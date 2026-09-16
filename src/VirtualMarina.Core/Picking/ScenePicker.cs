@@ -6,15 +6,20 @@ using VirtualMarina.Core.Mathematics;
 namespace VirtualMarina.Core.Picking;
 
 /// <summary>
-/// CPU ray casting against slip footprints and boat bounding boxes. Works the same on every backend
+/// CPU ray casting against slip footprints and the actual triangles of boat models. Works the same on every backend
 /// and needs no GPU read-back.
 /// </summary>
+/// <remarks>
+/// A boat is hit only where the ray touches its geometry (hull, cabin, mast, sails), not its bounding box, so a tall
+/// boat in front doesn't steal clicks meant for the boat visible behind it. The bounding box is only used to skip
+/// boats the ray can't touch.
+/// </remarks>
 internal static class ScenePicker
 {
     /// <param name="ray">World-space pick ray.</param>
     /// <param name="slips">Slips whose pads can be hit (visible and not filtered out).</param>
     /// <param name="boats">Boats that can be hit.</param>
-    /// <param name="meshes">Mesh bounds used for boat hit boxes.</param>
+    /// <param name="meshes">Boat meshes, tested triangle by triangle.</param>
     public static SlipHit? Pick(Ray ray, IEnumerable<Slip> slips, IEnumerable<BoatInstance> boats, MeshLibrary meshes)
     {
         SlipHit? best = null;
@@ -42,9 +47,18 @@ internal static class ScenePicker
                 continue;
             }
 
+            // The local direction isn't normalized, so distances along it equal world distances along the world ray.
             var localOrigin = Vector3.Transform(ray.Origin, toLocal);
             var localDirection = Vector3.TransformNormal(ray.Direction, toLocal);
-            if (mesh.Bounds.IntersectRay(localOrigin, localDirection, out var boatDistance) &&
+
+            // Broad phase: skip boats whose bounding box is missed or can't beat the current best hit.
+            if (!mesh.Bounds.IntersectRay(localOrigin, localDirection, out var boxDistance) ||
+                (best is not null && boxDistance >= best.Value.Distance))
+            {
+                continue;
+            }
+
+            if (TryIntersectMesh(mesh, localOrigin, localDirection, out var boatDistance) &&
                 (best is null || boatDistance < best.Value.Distance))
             {
                 var hitPoint = ray.GetPoint(boatDistance);
@@ -54,6 +68,51 @@ internal static class ScenePicker
 
         return best;
     }
+
+    /// <summary>Nearest intersection of a ray with any triangle of the mesh (both faces count; sails are thin plates).</summary>
+    internal static bool TryIntersectMesh(MeshData mesh, Vector3 origin, Vector3 direction, out float distance)
+    {
+        distance = float.MaxValue;
+        var vertices = mesh.Vertices;
+        var indices = mesh.Indices;
+        var stride = MeshData.VertexStride;
+
+        for (var i = 0; i + 2 < indices.Length; i += 3)
+        {
+            var a = Position(vertices, (int)indices[i] * stride);
+            var b = Position(vertices, (int)indices[i + 1] * stride);
+            var c = Position(vertices, (int)indices[i + 2] * stride);
+            if (IntersectTriangle(origin, direction, a, b, c, out var t) && t < distance) distance = t;
+        }
+
+        return distance < float.MaxValue;
+    }
+
+    /// <summary>Möller–Trumbore ray/triangle intersection, no back-face culling. <paramref name="t"/> is in units of <paramref name="direction"/>.</summary>
+    private static bool IntersectTriangle(Vector3 origin, Vector3 direction, Vector3 a, Vector3 b, Vector3 c, out float t)
+    {
+        const float epsilon = 1e-7f;
+        t = 0f;
+        var edge1 = b - a;
+        var edge2 = c - a;
+        var p = Vector3.Cross(direction, edge2);
+        var determinant = Vector3.Dot(edge1, p);
+        if (MathF.Abs(determinant) < epsilon) return false; // parallel to the triangle
+
+        var inverse = 1f / determinant;
+        var s = origin - a;
+        var u = Vector3.Dot(s, p) * inverse;
+        if (u < 0f || u > 1f) return false;
+
+        var q = Vector3.Cross(s, edge1);
+        var v = Vector3.Dot(direction, q) * inverse;
+        if (v < 0f || u + v > 1f) return false;
+
+        t = Vector3.Dot(edge2, q) * inverse;
+        return t > epsilon;
+    }
+
+    private static Vector3 Position(float[] vertices, int offset) => new(vertices[offset], vertices[offset + 1], vertices[offset + 2]);
 
     /// <summary>For a boat spanning several slips, the visible member slip nearest the hit point (interactive ones first).</summary>
     private static string ResolveSlip(BoatInstance boat, Vector2 plan)
