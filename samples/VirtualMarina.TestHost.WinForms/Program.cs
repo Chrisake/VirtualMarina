@@ -3,9 +3,9 @@ namespace VirtualMarina.TestHost.WinForms;
 internal static class Program
 {
     [STAThread]
-    private static void Main(string[] args)
+    private static void Main()
     {
         ApplicationConfiguration.Initialize();
-        Application.Run(new MainForm(args));
+        Application.Run(new MainForm());
     }
 }
