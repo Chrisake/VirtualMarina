@@ -12,6 +12,7 @@ Namespace `VirtualMarina.WinForms`, project `VirtualMarina.WinForms` (net8.0-win
 | `Animate` | Pause or resume rendering |
 | `RendererDescription` | Backend and GPU after the first frame |
 | `RenderError` | Raised when OpenGL 3.3 can't be initialized or rendering fails. The loop stops. Without a handler the exception is rethrown. |
+| `SlipClicked`, `SlipSelected`, `MultiSlipSelected`, `SelectionChanged`, `SelectionCleared`, `SlipActionInvoked`, `PopupChanged`, `SlipHoverChanged`, `SlipStatusChanged`, `LayoutChanged` | The `Marina` events, forwarded by the control so they appear in the Visual Studio designer (Properties → Events → **Marina**). The sender is the control; the event data is identical. They follow `Marina` when it's swapped. |
 
 The control:
 - **Rendering:** hosts an OpenGL 3.3 core surface with 4× MSAA.
@@ -22,8 +23,12 @@ The control:
 var view = new MarinaViewControl { Dock = DockStyle.Fill };
 form.Controls.Add(view);
 view.RenderError += (_, e) => log.Error(e.Exception);
+view.SlipSelected += (_, e) => e.Actions.Add("checkin", "Check in");     // same as view.Marina.SlipSelected
 view.Marina.InitializeLayout(layout);
 ```
+
+- **In the Visual Studio designer:** drop the control from the Toolbox, then double-click an event in the Properties window under **Marina** to generate a handler.
+- **At design time:** the control shows a placeholder instead of creating the OpenGL surface.
 
 ## Blazor WebAssembly: `<MarinaView>`
 

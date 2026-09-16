@@ -154,9 +154,9 @@ Console.WriteLine($"Wrote {types.Count} types to {Path.GetFullPath(output)}");
 (string Summary, string Remarks) Doc(string id)
 {
     if (!docs.TryGetValue(id, out var element)) return ("", "");
-    if (element.Element("inheritdoc") is not null && element.Element("summary") is null)
+    if (element.Element("inheritdoc") is { } inherit && element.Element("summary") is null)
     {
-        return ("*(See the interface member.)*", "");
+        return (string?)inherit.Attribute("cref") is { } cref && cref != id ? Doc(cref) : ("*(See the interface member.)*", "");
     }
 
     return (Flatten(element.Element("summary")), Flatten(element.Element("remarks")));

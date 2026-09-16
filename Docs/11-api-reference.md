@@ -1863,12 +1863,22 @@ Drop-in WinForms control that renders a `MarinaVisualizer` with OpenGL, and show
 |---|---|
 | `MarinaViewControl()` | Creates the control with its own empty `MarinaVisualizer` (available as `MarinaViewControl.Marina`). |
 | `MarinaViewControl(MarinaVisualizer marina)` | Creates the control for an existing visualizer (e.g. one configured before the form is shown). |
-| `MarinaVisualizer Marina { get; set; }` | The visualizer this control displays. Can be swapped at runtime. |
+| `MarinaVisualizer Marina { get; set; }` | The visualizer this control displays. Can be swapped at runtime; the control's Marina events follow the new instance. |
 | `int FrameIntervalMilliseconds { get; set; }` | Delay between frames in milliseconds (the Windows timer resolution is about 15 ms). |
 | `bool Animate { get; set; }` | Pauses or resumes the render loop. |
 | `string RendererDescription { get; }` | Backend and GPU description after the first frame, e.g. for a status bar. |
 | `event EventHandler<ThreadExceptionEventArgs>? RenderError` | Raised if OpenGL initialization or rendering fails (e.g. no OpenGL 3.3 driver). |
+| `event EventHandler<SlipEventArgs>? SlipClicked` | A slip (its water area or its boat) was clicked or double-clicked with any mouse button. Raised after the selection change the click caused. Never raised for disabled slips. |
+| `event EventHandler<SlipSelectedEventArgs>? SlipSelected` | A single slip was selected: by a left or right click (including on an already selected slip), through the API, or because the open popup's content needs refreshing (`SlipSelectedEventArgs.Reason`). Fill `SlipSelectedEventArgs.Tooltip` (pre-filled with slip and boat details) and `SlipSelectedEventArgs.Actions` (empty) to control the popup: a left click shows the tooltip, a right click shows the actions window. |
+| `event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected` | Two or more slips are selected (Ctrl+click, right-click inside a multi-selection, or `IMarinaVisualizer.SetSelection`). Fill the tooltip and actions for the whole selection. |
+| `event EventHandler<SelectionChangedEventArgs>? SelectionChanged` | The set of selected slips or the primary slip changed, including the selection being cleared. |
+| `event EventHandler? SelectionCleared` | The selection became empty (raised right after `IMarinaVisualizer.SelectionChanged`). |
+| `event EventHandler<SlipActionInvokedEventArgs>? SlipActionInvoked` | The user clicked an enabled action in the actions window (or `IMarinaVisualizer.InvokeSlipAction` was called). The window closes afterwards unless `SlipActionInvokedEventArgs.KeepPopupOpen` or `SlipAction.KeepOpen` is set. |
+| `event EventHandler<SlipPopupChangedEventArgs>? PopupChanged` | The tooltip/actions popup opened, closed or changed content. Host views re-render `IMarinaVisualizer.ActivePopup`. |
+| `event EventHandler<SlipHoverEventArgs>? SlipHoverChanged` | The slip under the pointer changed (null when the pointer left all slips). Disabled slips are never hovered. |
+| `event EventHandler<SlipStatusChangedEventArgs>? SlipStatusChanged` | A slip's status or assigned boat changed, through any API (single updates, batches, berths). Raised once per slip, with the previous and current snapshots. |
+| `event EventHandler<LayoutChangedEventArgs>? LayoutChanged` | Docks, slips, dividers or berths were added, updated or removed, or the layout was initialized or cleared. Inside `IMarinaVisualizer.BeginUpdate` or `IMarinaVisualizer.BatchUpdate` the notifications are coalesced into one `LayoutChangeKind.BatchUpdated`. |
 | `protected override void Dispose(bool disposing)` | Stops rendering and releases GPU resources, the GL control and the popup. |
-| `protected override void OnHandleCreated(EventArgs e)` | Starts the render loop once the window handle exists. |
-| `protected override void OnPaint(PaintEventArgs e)` | Draws a placeholder in the designer (the 3D view is drawn by the embedded GL control). |
+| `protected override void OnHandleCreated(EventArgs e)` | Creates the OpenGL surface and starts the render loop once the window handle exists (not in the designer). |
+| `protected override void OnPaint(PaintEventArgs e)` | In the designer (or if OpenGL is unavailable) draws a placeholder describing the 3D render area. |
 
