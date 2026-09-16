@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Desktop OpenGL 3.3 core-profile implementation of ISceneRenderer (via OpenTK bindings).
+    It depends on no windowing toolkit, so it can be hosted by WinForms, WPF, Avalonia or GLFW
+    as long as the host provides a current GL context.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>VirtualMarina.Rendering.OpenGL</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTK.Graphics" Version="4.9.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VirtualMarina.Core\VirtualMarina.Core.csproj" />
+  </ItemGroup>
+
+</Project>

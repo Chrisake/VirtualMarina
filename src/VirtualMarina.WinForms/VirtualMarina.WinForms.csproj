@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- WinForms host control: embeds an OpenGL surface and wires it to MarinaVisualizer. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>VirtualMarina.WinForms</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTK.GLControl" Version="4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VirtualMarina.Core\VirtualMarina.Core.csproj" />
+    <ProjectReference Include="..\VirtualMarina.Rendering.OpenGL\VirtualMarina.Rendering.OpenGL.csproj" />
+  </ItemGroup>
+
+</Project>

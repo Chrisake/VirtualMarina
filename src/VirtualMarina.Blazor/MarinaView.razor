@@ -1,0 +1,90 @@
+@namespace VirtualMarina.Blazor
+@using VirtualMarina.Core.Api
+@implements IAsyncDisposable
+
+<div class="vm-marina-view @CssClass" style="position:relative;width:100%;height:100%;overflow:hidden;@Style">
+    <canvas @ref="_canvas"
+            tabindex="0"
+            style="display:block;width:100%;height:100%;outline:none;touch-action:none;cursor:grab;"></canvas>
+
+    @* Positioned every frame by marinaWebGL.js; the content is rendered here. *@
+    <div @ref="_popupElement" class="vm-popup @PopupKindClass" style="@AccentStyle">
+        @if (_popup is { } popup)
+        {
+            var tooltip = popup.Tooltip;
+            var showTooltip = tooltip.IsVisible;
+            <div class="vm-popup__accent"></div>
+            <div class="vm-popup__body">
+                @if (showTooltip && (!string.IsNullOrWhiteSpace(tooltip.Title) || !string.IsNullOrWhiteSpace(tooltip.Subtitle)) || popup.Kind == SlipPopupKind.Actions)
+                {
+                    <div class="vm-popup__head">
+                        <div class="vm-popup__titles">
+                            <div class="vm-popup__title">@(showTooltip && !string.IsNullOrWhiteSpace(tooltip.Title) ? tooltip.Title : popup.PrimarySlip.DisplayName)</div>
+                            @if (showTooltip && !string.IsNullOrWhiteSpace(tooltip.Subtitle))
+                            {
+                                <div class="vm-popup__subtitle">@tooltip.Subtitle</div>
+                            }
+                        </div>
+                        <button class="vm-popup__close" title="Close (Esc)" @onclick="() => Marina.ClosePopup()">×</button>
+                    </div>
+                }
+
+                @if (showTooltip && tooltip.Lines.Count > 0)
+                {
+                    <dl class="vm-popup__lines">
+                        @foreach (var line in tooltip.Lines)
+                        {
+                            @if (string.IsNullOrEmpty(line.Label))
+                            {
+                                <dd class="vm-wide @(line.IsEmphasized ? "vm-strong" : null)">@line.Value</dd>
+                            }
+                            else
+                            {
+                                <dt>@line.Label</dt>
+                                <dd class="@(line.IsEmphasized ? "vm-strong" : null)">@line.Value</dd>
+                            }
+                        }
+                    </dl>
+                }
+
+                @if (showTooltip && !string.IsNullOrWhiteSpace(tooltip.Footer))
+                {
+                    <div class="vm-popup__footer">@tooltip.Footer</div>
+                }
+
+                @if (popup.Kind == SlipPopupKind.Actions && popup.Actions.Count > 0)
+                {
+                    <div class="vm-popup__actions">
+                        @foreach (var action in popup.Actions)
+                        {
+                            @if (action.BeginGroup && action != popup.Actions[0])
+                            {
+                                <div class="vm-popup__sep"></div>
+                            }
+
+                            <button class="vm-popup__action @ActionStyleClass(action)"
+                                    disabled="@(!action.Enabled)"
+                                    title="@action.Description"
+                                    @onclick="() => Marina.InvokeSlipAction(action.ActionId)">
+                                <span class="vm-popup__icon">@action.Icon</span>
+                                <span class="vm-popup__caption">@action.Caption</span>
+                                @if (!string.IsNullOrEmpty(action.ShortcutText))
+                                {
+                                    <span class="vm-popup__shortcut">@action.ShortcutText</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="vm-popup__caret"></div>
+        }
+    </div>
+
+    @if (_errorMessage is not null)
+    {
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;background:#1b2733;color:#f3c1c1;font-family:sans-serif;text-align:center;">
+            @_errorMessage
+        </div>
+    }
+</div>

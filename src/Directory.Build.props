@@ -1,0 +1,13 @@
+<Project>
+  <!-- Shared settings for the shipped libraries (samples and tests don't get these). -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!--
+      Emit VirtualMarina.*.xml next to each DLL so Visual Studio / Rider show the API documentation in
+      IntelliSense and Quick Info when the libraries are referenced as binaries or packages.
+      Missing XML comments on public members (CS1591) are reported as warnings to keep the docs complete.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>
