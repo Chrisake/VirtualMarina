@@ -430,7 +430,12 @@ function attachInput(view) {
     }));
     on(canvas, 'pointermove', safe((e) => {
         const [x, y] = position(e);
-        ref.invokeMethod('OnPointerMove', x, y, modifiers(e));
+        const overSelectable = ref.invokeMethod('OnPointerMove', x, y, modifiers(e));
+        // While a button is held the cursor stays 'grabbing'; otherwise a hand over selectable slips/boats.
+        if (!canvas.hasPointerCapture(e.pointerId)) {
+            const cursor = overSelectable ? 'pointer' : 'grab';
+            if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
+        }
     }));
     on(canvas, 'pointerup', safe((e) => {
         if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);

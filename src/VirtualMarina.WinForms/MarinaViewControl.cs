@@ -400,11 +400,25 @@ public sealed class MarinaViewControl : UserControl
         _marina.Input.PointerDown(e.X, e.Y, MapButton(e.Button), CurrentModifiers());
     }
 
-    private void OnGlMouseMove(object? sender, MouseEventArgs e) =>
+    private void OnGlMouseMove(object? sender, MouseEventArgs e)
+    {
         _marina.Input.PointerMove(e.X, e.Y, CurrentModifiers());
+        UpdateCursor();
+    }
 
-    private void OnGlMouseUp(object? sender, MouseEventArgs e) =>
+    private void OnGlMouseUp(object? sender, MouseEventArgs e)
+    {
         _marina.Input.PointerUp(e.X, e.Y, MapButton(e.Button), CurrentModifiers());
+        UpdateCursor();
+    }
+
+    /// <summary>Hand cursor over a selectable slip or boat (hover uses the exact boat shapes); default otherwise and while dragging.</summary>
+    private void UpdateCursor()
+    {
+        if (_glControl is null) return;
+        var cursor = !_marina.Input.IsDragging && _marina.HoveredSlip is not null ? Cursors.Hand : Cursors.Default;
+        if (_glControl.Cursor != cursor) _glControl.Cursor = cursor;
+    }
 
     private void OnGlMouseDoubleClick(object? sender, MouseEventArgs e) =>
         _marina.Input.DoubleClick(e.X, e.Y, MapButton(e.Button), CurrentModifiers());

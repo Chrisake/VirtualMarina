@@ -150,10 +150,16 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
     public void OnPointerDown(double x, double y, int button, int modifiers) =>
         Marina.Input.PointerDown((float)x, (float)y, MapButton(button), (InputModifiers)modifiers);
 
-    /// <summary>Called by marinaWebGL.js; forwards to <see cref="MarinaInputController.PointerMove"/>. Not for direct use.</summary>
+    /// <summary>
+    /// Called by marinaWebGL.js; forwards to <see cref="MarinaInputController.PointerMove"/>. Returns true when the pointer is over a
+    /// selectable slip or boat (the JS side shows a pointer cursor). Not for direct use.
+    /// </summary>
     [JSInvokable]
-    public void OnPointerMove(double x, double y, int modifiers) =>
+    public bool OnPointerMove(double x, double y, int modifiers)
+    {
         Marina.Input.PointerMove((float)x, (float)y, (InputModifiers)modifiers);
+        return !Marina.Input.IsDragging && Marina.HoveredSlip is not null;
+    }
 
     /// <summary>Called by marinaWebGL.js; forwards to <see cref="MarinaInputController.PointerUp"/>. Not for direct use.</summary>
     [JSInvokable]
