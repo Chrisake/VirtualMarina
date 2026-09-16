@@ -116,6 +116,7 @@ marina.BatchUpdate(erpBerths.Select(b => b.BoatOnBerth is { } boat
 
 | Input | Action |
 |---|---|
+| Hover | Highlights the slip or boat under the cursor (exact shape, not its bounding box); the cursor becomes a hand/pointer |
 | Left click | Select the slip and show its tooltip |
 | Right click | Select the slip and open its actions window |
 | Ctrl+click or Shift+click (Cmd+click in browsers) | Add/remove slips from the selection |

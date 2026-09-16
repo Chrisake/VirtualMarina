@@ -42,7 +42,7 @@ Blazor WebAssembly component that renders a `MarinaVisualizer` into a WebGL 2 ca
 | `protected override void OnParametersSet()` | Subscribes to the visualizer's popup changes. |
 | `void OnPointerDown(double x, double y, int button, int modifiers)` | Called by marinaWebGL.js; forwards to `MarinaInputController.PointerDown`. Not for direct use. |
 | `void OnPointerLeave()` | Called by marinaWebGL.js; forwards to `MarinaInputController.PointerLeave`. Not for direct use. |
-| `void OnPointerMove(double x, double y, int modifiers)` | Called by marinaWebGL.js; forwards to `MarinaInputController.PointerMove`. Not for direct use. |
+| `bool OnPointerMove(double x, double y, int modifiers)` | Called by marinaWebGL.js; forwards to `MarinaInputController.PointerMove`. Returns true when the pointer is over a selectable slip or boat (the JS side shows a pointer cursor). Not for direct use. |
 | `void OnPointerUp(double x, double y, int button, int modifiers)` | Called by marinaWebGL.js; forwards to `MarinaInputController.PointerUp`. Not for direct use. |
 | `void OnWheel(double notches, double x, double y)` | Called by marinaWebGL.js; forwards to `MarinaInputController.Wheel`. Not for direct use. |
 

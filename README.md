@@ -34,7 +34,7 @@ VirtualMarina.sln
 │  │  │               SlipUpdate, BatchUpdateResult, MarinaStatistics, events, StatusColorScheme
 │  │  ├─ Camera/      OrbitCamera (smoothed pan/zoom/orbit), CameraConstraints, CameraPreset
 │  │  ├─ Input/       MarinaInputController (platform-neutral pointer/keyboard → camera/picking)
-│  │  ├─ Picking/     Ray, CPU ScenePicker (slip footprints + boat bounding boxes)
+│  │  ├─ Picking/     Ray, CPU ScenePicker (slip footprints + boat triangles)
 │  │  ├─ Geometry/    MeshBuilder, BoatMeshFactory (7 low-poly boats), MarinaMeshFactory, MeshLibrary
 │  │  ├─ Rendering/   ISceneRenderer, RenderFrame, RenderObject, Lighting/WaterSettings,
 │  │  │               ShaderSources (shared GLSL 330 / GLSL ES 300), SceneBuilder
@@ -249,6 +249,7 @@ view.Marina.InitializeLayout(layout);
 | Left-drag / middle-drag | Pan (map-style) |
 | Right-drag, or Shift+left-drag | Orbit |
 | Mouse wheel | Zoom toward the cursor |
+| Hover | Highlight the slip or boat under the cursor (exact shape); the cursor becomes a pointer |
 | Click | Select the slip or boat and show its tooltip (raises `SlipClicked` and `SlipSelected`) |
 | Right-click | Select and open the actions window |
 | Ctrl+click or Shift+click (Cmd+click in browsers) | Add/remove slips from a multi-selection (raises `MultiSlipSelected`) |

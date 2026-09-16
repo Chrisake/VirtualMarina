@@ -126,4 +126,4 @@ SlipHit? hit = marina.HitTest(x, y);       // nearest slip pad or boat under a p
 if (hit is { } h) Console.WriteLine($"{h.SlipId} at {h.WorldPoint} (boat: {h.HitBoat}, {h.Distance:0.0} m)");
 ```
 
-Hit testing runs on the CPU against slip footprints and boat bounding boxes, using the same placement code as rendering. Hidden and filtered-out slips aren't hit. Disabled slips are hit but ignored by input.
+Hit testing runs on the CPU against slip footprints and the actual triangles of the boat models (hull, cabin, mast, sails), using the same placement code as rendering. A boat's bounding box is only a quick pre-check, so the empty space around a tall boat's mast never blocks clicks or hover on the boat or slip visible behind it. Hidden and filtered-out slips aren't hit. Disabled slips are hit but ignored by input.
