@@ -100,6 +100,13 @@ namespace VirtualMarina.TestHost.WinForms
             marinaView.Size = new Size(1024, 839);
             marinaView.TabIndex = 0;
             marinaView.RenderError += OnMarinaViewRenderError;
+            marinaView.SlipSelected += OnSlipSelected;
+            marinaView.MultiSlipSelected += OnMultiSlipSelected;
+            marinaView.SelectionChanged += OnSelectionChanged;
+            marinaView.SlipActionInvoked += OnSlipActionInvoked;
+            marinaView.SlipHoverChanged += OnSlipHoverChanged;
+            marinaView.SlipStatusChanged += OnSlipStatusChanged;
+            marinaView.LayoutChanged += OnLayoutChanged;
             // 
             // grpEvents
             // 

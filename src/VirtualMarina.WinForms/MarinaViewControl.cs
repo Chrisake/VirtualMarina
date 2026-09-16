@@ -23,6 +23,7 @@ namespace VirtualMarina.WinForms;
 /// </remarks>
 [ToolboxItem(true)]
 [Description("Interactive 3D marina view.")]
+[DefaultEvent(nameof(SlipSelected))]
 public sealed class MarinaViewControl : UserControl
 {
     private readonly System.Windows.Forms.Timer _frameTimer;
@@ -58,7 +59,7 @@ public sealed class MarinaViewControl : UserControl
 
         _popupPanel.ActionClicked += (_, actionId) => _marina.InvokeSlipAction(actionId);
         _popupPanel.CloseClicked += (_, _) => _marina.ClosePopup();
-        _marina.PopupChanged += OnPopupChanged;
+        AttachMarina(_marina);
 
         // The OpenGL surface is created in OnHandleCreated, where design mode can be detected reliably:
         // the Visual Studio designer must never create it (GLFW would throw "can only be called from the main thread").
@@ -68,9 +69,65 @@ public sealed class MarinaViewControl : UserControl
     }
 
     /// <summary>Raised if OpenGL initialization or rendering fails (e.g. no OpenGL 3.3 driver).</summary>
+    [Category("Marina")]
     public event EventHandler<ThreadExceptionEventArgs>? RenderError;
 
-    /// <summary>The visualizer this control displays. Can be swapped at runtime.</summary>
+    // ---- Marina events, forwarded from Marina so they can be wired in the Visual Studio designer ----------
+    // The sender is this control; the event data is the same as on MarinaVisualizer.
+
+    /// <inheritdoc cref="IMarinaVisualizer.SlipClicked"/>
+    [Category("Marina")]
+    [Description("A slip or its boat was clicked or double-clicked.")]
+    public event EventHandler<SlipEventArgs>? SlipClicked;
+
+    /// <inheritdoc cref="IMarinaVisualizer.SlipSelected"/>
+    [Category("Marina")]
+    [Description("A slip was selected. Fill e.Tooltip and e.Actions to control the popup.")]
+    public event EventHandler<SlipSelectedEventArgs>? SlipSelected;
+
+    /// <inheritdoc cref="IMarinaVisualizer.MultiSlipSelected"/>
+    [Category("Marina")]
+    [Description("Two or more slips were selected (Ctrl+click). Fill e.Tooltip and e.Actions for the selection.")]
+    public event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected;
+
+    /// <inheritdoc cref="IMarinaVisualizer.SelectionChanged"/>
+    [Category("Marina")]
+    [Description("The selected slips changed, including the selection being cleared.")]
+    public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
+
+    /// <inheritdoc cref="IMarinaVisualizer.SelectionCleared"/>
+    [Category("Marina")]
+    [Description("The selection became empty.")]
+    public event EventHandler? SelectionCleared;
+
+    /// <inheritdoc cref="IMarinaVisualizer.SlipActionInvoked"/>
+    [Category("Marina")]
+    [Description("The user clicked an action in the actions window (e.ActionId, e.Slips).")]
+    public event EventHandler<SlipActionInvokedEventArgs>? SlipActionInvoked;
+
+    /// <inheritdoc cref="IMarinaVisualizer.PopupChanged"/>
+    [Category("Marina")]
+    [Description("The tooltip or actions window opened, closed or changed.")]
+    public event EventHandler<SlipPopupChangedEventArgs>? PopupChanged;
+
+    /// <inheritdoc cref="IMarinaVisualizer.SlipHoverChanged"/>
+    [Category("Marina")]
+    [Description("The slip under the mouse changed.")]
+    public event EventHandler<SlipHoverEventArgs>? SlipHoverChanged;
+
+    /// <inheritdoc cref="IMarinaVisualizer.SlipStatusChanged"/>
+    [Category("Marina")]
+    [Description("A slip's status or boat changed.")]
+    public event EventHandler<SlipStatusChangedEventArgs>? SlipStatusChanged;
+
+    /// <inheritdoc cref="IMarinaVisualizer.LayoutChanged"/>
+    [Category("Marina")]
+    [Description("Docks, slips, dividers or berths were added, changed or removed.")]
+    public event EventHandler<LayoutChangedEventArgs>? LayoutChanged;
+
+    /// <summary>
+    /// The visualizer this control displays. Can be swapped at runtime; the control's Marina events follow the new instance.
+    /// </summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public MarinaVisualizer Marina
@@ -80,12 +137,58 @@ public sealed class MarinaViewControl : UserControl
         {
             ArgumentNullException.ThrowIfNull(value);
             if (ReferenceEquals(value, _marina)) return;
-            _marina.PopupChanged -= OnPopupChanged;
+            DetachMarina(_marina);
             _marina = value;
-            _marina.PopupChanged += OnPopupChanged;
+            AttachMarina(_marina);
             ShowPopup(_marina.ActivePopup);
         }
     }
+
+    private void AttachMarina(MarinaVisualizer marina)
+    {
+        marina.PopupChanged += OnPopupChanged;
+        marina.SlipClicked += OnMarinaSlipClicked;
+        marina.SlipSelected += OnMarinaSlipSelected;
+        marina.MultiSlipSelected += OnMarinaMultiSlipSelected;
+        marina.SelectionChanged += OnMarinaSelectionChanged;
+        marina.SelectionCleared += OnMarinaSelectionCleared;
+        marina.SlipActionInvoked += OnMarinaSlipActionInvoked;
+        marina.SlipHoverChanged += OnMarinaSlipHoverChanged;
+        marina.SlipStatusChanged += OnMarinaSlipStatusChanged;
+        marina.LayoutChanged += OnMarinaLayoutChanged;
+    }
+
+    private void DetachMarina(MarinaVisualizer marina)
+    {
+        marina.PopupChanged -= OnPopupChanged;
+        marina.SlipClicked -= OnMarinaSlipClicked;
+        marina.SlipSelected -= OnMarinaSlipSelected;
+        marina.MultiSlipSelected -= OnMarinaMultiSlipSelected;
+        marina.SelectionChanged -= OnMarinaSelectionChanged;
+        marina.SelectionCleared -= OnMarinaSelectionCleared;
+        marina.SlipActionInvoked -= OnMarinaSlipActionInvoked;
+        marina.SlipHoverChanged -= OnMarinaSlipHoverChanged;
+        marina.SlipStatusChanged -= OnMarinaSlipStatusChanged;
+        marina.LayoutChanged -= OnMarinaLayoutChanged;
+    }
+
+    private void OnMarinaSlipClicked(object? sender, SlipEventArgs e) => SlipClicked?.Invoke(this, e);
+
+    private void OnMarinaSlipSelected(object? sender, SlipSelectedEventArgs e) => SlipSelected?.Invoke(this, e);
+
+    private void OnMarinaMultiSlipSelected(object? sender, MultiSlipSelectedEventArgs e) => MultiSlipSelected?.Invoke(this, e);
+
+    private void OnMarinaSelectionChanged(object? sender, SelectionChangedEventArgs e) => SelectionChanged?.Invoke(this, e);
+
+    private void OnMarinaSelectionCleared(object? sender, EventArgs e) => SelectionCleared?.Invoke(this, e);
+
+    private void OnMarinaSlipActionInvoked(object? sender, SlipActionInvokedEventArgs e) => SlipActionInvoked?.Invoke(this, e);
+
+    private void OnMarinaSlipHoverChanged(object? sender, SlipHoverEventArgs e) => SlipHoverChanged?.Invoke(this, e);
+
+    private void OnMarinaSlipStatusChanged(object? sender, SlipStatusChangedEventArgs e) => SlipStatusChanged?.Invoke(this, e);
+
+    private void OnMarinaLayoutChanged(object? sender, LayoutChangedEventArgs e) => LayoutChanged?.Invoke(this, e);
 
     /// <summary>Delay between frames in milliseconds (the Windows timer resolution is about 15 ms).</summary>
     [DefaultValue(15)]
@@ -173,7 +276,7 @@ public sealed class MarinaViewControl : UserControl
     {
         if (disposing)
         {
-            _marina.PopupChanged -= OnPopupChanged;
+            DetachMarina(_marina);
             _frameTimer.Stop();
             _frameTimer.Dispose();
             if (_renderer is not null && _glControl is { IsHandleCreated: true, IsDisposed: false })
@@ -219,7 +322,11 @@ public sealed class MarinaViewControl : UserControl
         Controls.Add(_glControl);
     }
 
-    private void OnPopupChanged(object? sender, SlipPopupChangedEventArgs e) => ShowPopup(e.Current);
+    private void OnPopupChanged(object? sender, SlipPopupChangedEventArgs e)
+    {
+        ShowPopup(e.Current);
+        PopupChanged?.Invoke(this, e);
+    }
 
     private void ShowPopup(SlipPopup? popup)
     {

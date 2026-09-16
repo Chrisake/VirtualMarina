@@ -33,16 +33,9 @@ public partial class MainForm : Form
         InitializeComponent();
 
         // The MarinaViewControl owns the visualizer; everything goes through marinaView.Marina.
+        // Its events (SlipSelected, SlipActionInvoked, ...) are wired in the designer: Properties window → Events → Marina.
         var marina = marinaView.Marina;
         marina.DefaultFocusAngle = CameraAngle.TopDown;        // focus (buttons, actions, double-click) looks straight down
-
-        marina.SlipSelected += OnSlipSelected;                  // fill the tooltip and actions of one slip
-        marina.MultiSlipSelected += OnMultiSlipSelected;        // ... or of a Ctrl+click multi-selection
-        marina.SlipActionInvoked += OnSlipActionInvoked;        // the user clicked an action in the 3D view
-        marina.SelectionChanged += OnSelectionChanged;
-        marina.SlipStatusChanged += OnSlipStatusChanged;
-        marina.LayoutChanged += OnLayoutChanged;
-        marina.SlipHoverChanged += OnSlipHoverChanged;
 
         // In a real application the layout comes from the ERP database.
         marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
