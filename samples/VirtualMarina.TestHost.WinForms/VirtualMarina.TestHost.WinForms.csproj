@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <RootNamespace>VirtualMarina.TestHost.WinForms</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VirtualMarina.WinForms\VirtualMarina.WinForms.csproj" />
+    <ProjectReference Include="..\VirtualMarina.SampleData\VirtualMarina.SampleData.csproj" />
+  </ItemGroup>
+
+</Project>
