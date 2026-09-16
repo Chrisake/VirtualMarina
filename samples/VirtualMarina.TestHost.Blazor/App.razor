@@ -10,7 +10,7 @@
     <div class="statusbar">
         <span>@_rendererInfo</span>
         <span>@_hoverText</span>
-        <span>Click: tooltip · Ctrl+click: multi-select · Right-click: actions · Left-drag: pan · Right-drag: orbit · Wheel: zoom · Double-click: focus · Esc: close/clear</span>
+        <span>Click: tooltip · Ctrl/Shift+click: multi-select · Right-click: actions · Left-drag: pan · Right-drag: orbit · Wheel: zoom · Double-click: focus · Esc: close/clear</span>
     </div>
 
     <aside class="side">
@@ -290,7 +290,7 @@
 
     private string SelectionDetails()
     {
-        if (_marina.SelectedSlip is not { } slip) return "Click a slip or boat in the 3D view.\nCtrl+click to select several, right-click for actions.";
+        if (_marina.SelectedSlip is not { } slip) return "Click a slip or boat in the 3D view.\nCtrl+click or Shift+click to select several, right-click for actions.";
 
         var sb = new StringBuilder();
         if (_marina.IsMultiSelection)

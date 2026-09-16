@@ -83,7 +83,7 @@ public partial class MainForm : Form
         e.Actions.Add(Lock, "Lock (read-only)", icon: "🔒");
     }
 
-    /// <summary>Several slips are selected (Ctrl+click): offer commands for all of them.</summary>
+    /// <summary>Several slips are selected (Ctrl+click or Shift+click): offer commands for all of them.</summary>
     private void OnMultiSlipSelected(object? sender, MultiSlipSelectedEventArgs e)
     {
         Log($"Selected {e.Slips.Count} slips: {string.Join(", ", e.SlipIds)}");
@@ -247,7 +247,7 @@ public partial class MainForm : Form
             case MoorAlongside:
                 if (!CanMoorAlongside(slips))
                 {
-                    MessageBox.Show(this, "Select two or more free slips on the same dock (Ctrl+click).", "Moor alongside");
+                    MessageBox.Show(this, "Select two or more free slips on the same dock (Ctrl+click or Shift+click).", "Moor alongside");
                     return;
                 }
 
@@ -286,7 +286,7 @@ public partial class MainForm : Form
         if (slips.Count == 0)
         {
             text.AppendLine("Click a berth in the 3D view.");
-            text.AppendLine("Ctrl+click selects several, right-click shows actions.");
+            text.AppendLine("Ctrl+click or Shift+click selects several, right-click shows actions.");
         }
         else if (slips.Count > 1)
         {

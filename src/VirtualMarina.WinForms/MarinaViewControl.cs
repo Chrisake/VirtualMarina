@@ -87,7 +87,7 @@ public sealed class MarinaViewControl : UserControl
 
     /// <inheritdoc cref="IMarinaVisualizer.MultiSlipSelected"/>
     [Category("Marina")]
-    [Description("Two or more slips were selected (Ctrl+click). Fill e.Tooltip and e.Actions for the selection.")]
+    [Description("Two or more slips were selected (Ctrl+click or Shift+click). Fill e.Tooltip and e.Actions for the selection.")]
     public event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected;
 
     /// <inheritdoc cref="IMarinaVisualizer.SelectionChanged"/>

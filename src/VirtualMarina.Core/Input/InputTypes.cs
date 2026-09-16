@@ -23,10 +23,10 @@ public enum InputModifiers
     /// <summary>No modifier.</summary>
     None = 0,
 
-    /// <summary>Shift: swaps pan and orbit while dragging; orbits with the arrow keys.</summary>
+    /// <summary>Shift: click adds or removes slips from the selection (like Control); swaps pan and orbit while dragging; orbits with the arrow keys.</summary>
     Shift = 1,
 
-    /// <summary>Control (Cmd on macOS browsers): adds or removes slips from a multi-selection when clicking.</summary>
+    /// <summary>Control (Cmd on macOS browsers): click adds or removes slips from the selection (like Shift).</summary>
     Control = 2,
 
     /// <summary>Alt: currently unused.</summary>

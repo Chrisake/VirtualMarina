@@ -438,7 +438,7 @@ namespace VirtualMarina.TestHost.WinForms
             // 
             lblHelp.Name = "lblHelp";
             lblHelp.Size = new Size(593, 17);
-            lblHelp.Text = "Click: info | Ctrl+click: multi-select | Right-click: actions | Drag: pan | Right-drag: orbit | Wheel: zoom | Esc: close";
+            lblHelp.Text = "Click: info | Ctrl/Shift+click: multi-select | Right-click: actions | Drag: pan | Right-drag: orbit | Wheel: zoom | Esc: close";
             // 
             // tmrStatus
             // 

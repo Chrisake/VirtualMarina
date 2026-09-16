@@ -190,7 +190,7 @@ public sealed class SampleErpIntegration : IDisposable
         var slips = slipIds.Select(_marina.GetSlip).OfType<Slip>().ToList();
         if (slips.Count < 2)
         {
-            _log("Select at least two slips (Ctrl+click) to moor a yacht alongside.");
+            _log("Select at least two slips (Ctrl+click or Shift+click) to moor a yacht alongside.");
             return null;
         }
 

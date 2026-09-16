@@ -57,7 +57,7 @@ public interface IMarinaVisualizer
     event EventHandler<SlipSelectedEventArgs>? SlipSelected;
 
     /// <summary>
-    /// Two or more slips are selected (Ctrl+click, right-click inside a multi-selection, or <see cref="SetSelection(IEnumerable{string}, bool, CameraAngle?)"/>).
+    /// Two or more slips are selected (Ctrl+click or Shift+click, right-click inside a multi-selection, or <see cref="SetSelection(IEnumerable{string}, bool, CameraAngle?)"/>).
     /// Fill the tooltip and actions for the whole selection.
     /// </summary>
     event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected;
@@ -414,7 +414,7 @@ public interface IMarinaVisualizer
     /// <summary>Open the actions window on right-click (default true).</summary>
     bool ActionsEnabled { get; set; }
 
-    /// <summary>Allow Ctrl+click multi-selection (default true).</summary>
+    /// <summary>Allow Ctrl+click or Shift+click multi-selection (default true).</summary>
     bool MultiSelectEnabled { get; set; }
 
     // ---- Filtering and appearance -------------------------------------------------------------

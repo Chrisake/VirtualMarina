@@ -6,7 +6,7 @@
 |---|---|---|---|
 | Left click on a slip or its boat | That slip only | Tooltip | `SelectionChanged` (if changed), `SlipSelected`, `PopupChanged`, `SlipClicked` |
 | Left click on a selected slip | Unchanged | Tooltip (rebuilt) | `SlipSelected` (`IsNewSelection = false`), `PopupChanged`, `SlipClicked` |
-| Ctrl+click (Cmd+click in browsers) | Toggles the slip in the selection; the clicked slip becomes primary | Tooltip for the new selection | `SelectionChanged`, then `MultiSlipSelected` (2+ slips) or `SlipSelected` (1 slip) |
+| Ctrl+click or Shift+click (Cmd+click in browsers) | Toggles the slip in the selection; the clicked slip becomes primary | Tooltip for the new selection | `SelectionChanged`, then `MultiSlipSelected` (2+ slips) or `SlipSelected` (1 slip) |
 | Right click on a slip | That slip only | Actions window | as left click, with `Button = Right` |
 | Right click inside a multi-selection | Kept; the clicked slip becomes primary | Actions window for all selected slips | `SelectionChanged` (primary changed), `MultiSlipSelected` |
 | Double-click | Unchanged | Unchanged | `SlipClicked` (`IsDoubleClick`); a left double-click focuses the camera |

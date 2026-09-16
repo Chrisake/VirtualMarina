@@ -23,7 +23,7 @@ public sealed partial class MarinaVisualizer
     /// <summary>Show the actions window on right-click (default true).</summary>
     public bool ActionsEnabled { get; set; } = true;
 
-    /// <summary>Allow Ctrl+click to build a multi-selection (default true).</summary>
+    /// <summary>Allow Ctrl+click or Shift+click to build a multi-selection (default true).</summary>
     public bool MultiSelectEnabled { get; set; } = true;
 
     /// <summary>Show the tooltip when host code selects slips through the API (default true).</summary>
@@ -196,11 +196,12 @@ public sealed partial class MarinaVisualizer
     {
         var hit = HitTest(x, y);
         var slip = hit is { } h ? GetSlip(h.SlipId) : null;
-        var ctrl = MultiSelectEnabled && (modifiers & InputModifiers.Control) != 0;
+        // Ctrl+click or Shift+click adds/removes slips. (Shift+drag still orbits: drags never reach this method.)
+        var additive = MultiSelectEnabled && (modifiers & (InputModifiers.Control | InputModifiers.Shift)) != 0;
 
         if (slip is null)
         {
-            if (isDoubleClick || ctrl) return;
+            if (isDoubleClick || additive) return;
             if (button == PointerButton.Left) ClearSelection();
             else if (button == PointerButton.Right) ClosePopup();
             return;
@@ -219,7 +220,7 @@ public sealed partial class MarinaVisualizer
 
         switch (button)
         {
-            case PointerButton.Left when ctrl:
+            case PointerButton.Left when additive:
             {
                 var ids = IsSlipSelected(slip.Id)
                     ? _selection.Where(id => !IdComparer.Equals(id, slip.Id)).ToArray()
@@ -243,14 +244,14 @@ public sealed partial class MarinaVisualizer
             {
                 var before = new HashSet<string>(_selection, IdComparer);
                 string[] ids;
-                if (before.Contains(slip.Id) && (before.Count > 1 || ctrl))
+                if (before.Contains(slip.Id) && (before.Count > 1 || additive))
                 {
                     // Right-click inside a multi-selection keeps it and moves the popup to the clicked slip.
                     ids = _selection.Where(id => !IdComparer.Equals(id, slip.Id)).Append(slip.Id).ToArray();
                 }
                 else
                 {
-                    ids = ctrl ? _selection.Append(slip.Id).ToArray() : new[] { slip.Id };
+                    ids = additive ? _selection.Append(slip.Id).ToArray() : new[] { slip.Id };
                 }
 
                 SetSelectionCore(ids);

@@ -147,7 +147,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `SlipPopup? ActivePopup { get; }` | The tooltip or actions window currently shown above the selection, or null. |
 | `bool TooltipsEnabled { get; set; }` | Show a tooltip on left-click (default true). |
 | `bool ActionsEnabled { get; set; }` | Open the actions window on right-click (default true). |
-| `bool MultiSelectEnabled { get; set; }` | Allow Ctrl+click multi-selection (default true). |
+| `bool MultiSelectEnabled { get; set; }` | Allow Ctrl+click or Shift+click multi-selection (default true). |
 | `SlipLabelMode SlipLabelMode { get; set; }` | Which slips have their name written on the water: None (default), OnlyFree, NonOccupied or All. |
 | `SlipStatusFilter StatusFilter { get; }` | Statuses currently shown. Filtered-out slips keep their structure but lose status visuals, boats, labels and interaction. |
 | `OrbitCamera Camera { get; }` | The orbit camera. Use it for low-level control (poses, constraints, field of view). |
@@ -157,7 +157,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `WaterSettings Water { get; }` | Water colors and wave animation. Changes apply on the next frame. |
 | `event EventHandler<SlipEventArgs>? SlipClicked` | A slip (its water area or its boat) was clicked or double-clicked with any mouse button. Raised after the selection change the click caused. Never raised for disabled slips. |
 | `event EventHandler<SlipSelectedEventArgs>? SlipSelected` | A single slip was selected: by a left or right click (including on an already selected slip), through the API, or because the open popup's content needs refreshing (`SlipSelectedEventArgs.Reason`). Fill `SlipSelectedEventArgs.Tooltip` (pre-filled with slip and boat details) and `SlipSelectedEventArgs.Actions` (empty) to control the popup: a left click shows the tooltip, a right click shows the actions window. |
-| `event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected` | Two or more slips are selected (Ctrl+click, right-click inside a multi-selection, or `IMarinaVisualizer.SetSelection`). Fill the tooltip and actions for the whole selection. |
+| `event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected` | Two or more slips are selected (Ctrl+click or Shift+click, right-click inside a multi-selection, or `IMarinaVisualizer.SetSelection`). Fill the tooltip and actions for the whole selection. |
 | `event EventHandler<SelectionChangedEventArgs>? SelectionChanged` | The set of selected slips or the primary slip changed, including the selection being cleared. |
 | `event EventHandler? SelectionCleared` | The selection became empty (raised right after `IMarinaVisualizer.SelectionChanged`). |
 | `event EventHandler<SlipActionInvokedEventArgs>? SlipActionInvoked` | The user clicked an enabled action in the actions window (or `IMarinaVisualizer.InvokeSlipAction` was called). The window closes afterwards unless `SlipActionInvokedEventArgs.KeepPopupOpen` or `SlipAction.KeepOpen` is set. |
@@ -325,7 +325,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `Vector2 ViewportSize { get; }` | View size in pointer units (usually pixels), as last set with `MarinaVisualizer.SetViewportSize`. Defaults to 1280 × 720. |
 | `bool TooltipsEnabled { get; set; }` | Show a tooltip above the selection on left-click (default true). |
 | `bool ActionsEnabled { get; set; }` | Show the actions window on right-click (default true). |
-| `bool MultiSelectEnabled { get; set; }` | Allow Ctrl+click to build a multi-selection (default true). |
+| `bool MultiSelectEnabled { get; set; }` | Allow Ctrl+click or Shift+click to build a multi-selection (default true). |
 | `bool ShowTooltipOnApiSelection { get; set; }` | Show the tooltip when host code selects slips through the API (default true). |
 | `Slip? SelectedSlip { get; }` | The primary (most recently clicked) selected slip. |
 | `IReadOnlyList<Slip> SelectedSlips { get; }` | All selected slips in selection order; the last one is `MarinaVisualizer.SelectedSlip`. |
@@ -1541,8 +1541,8 @@ Keyboard modifiers held during a pointer or key event.
 | Value | Description |
 |---|---|
 | `None` = 0 | No modifier. |
-| `Shift` = 1 | Shift: swaps pan and orbit while dragging; orbits with the arrow keys. |
-| `Control` = 2 | Control (Cmd on macOS browsers): adds or removes slips from a multi-selection when clicking. |
+| `Shift` = 1 | Shift: click adds or removes slips from the selection (like Control); swaps pan and orbit while dragging; orbits with the arrow keys. |
+| `Control` = 2 | Control (Cmd on macOS browsers): click adds or removes slips from the selection (like Shift). |
 | `Alt` = 4 | Alt: currently unused. |
 
 <a id="marinainputcontroller"></a>
@@ -1552,7 +1552,7 @@ Keyboard modifiers held during a pointer or key event.
 
 Turns raw, platform-neutral pointer and keyboard input into camera moves, hover, clicks and selection. Every host view (WinForms, Blazor, ...) just forwards its native events here.
 
-Defaults: left-drag pans (map-style), right-drag orbits, middle-drag pans, Shift+left-drag orbits, wheel zooms toward the cursor, click selects and shows the tooltip, Ctrl+click adds/removes slips, right-click opens the actions window, double-click focuses a slip, Escape closes the popup and then clears the selection, Home resets the view. The popup stays anchored above its slip while the camera moves.
+Defaults: left-drag pans (map-style), right-drag orbits, middle-drag pans, Shift+left-drag orbits, wheel zooms toward the cursor, click selects and shows the tooltip, Ctrl+click or Shift+click adds/removes slips, right-click opens the actions window, double-click focuses a slip, Escape closes the popup and then clears the selection, Home resets the view. The popup stays anchored above its slip while the camera moves.
 
 | Member | Description |
 |---|---|
@@ -1870,7 +1870,7 @@ Drop-in WinForms control that renders a `MarinaVisualizer` with OpenGL, and show
 | `event EventHandler<ThreadExceptionEventArgs>? RenderError` | Raised if OpenGL initialization or rendering fails (e.g. no OpenGL 3.3 driver). |
 | `event EventHandler<SlipEventArgs>? SlipClicked` | A slip (its water area or its boat) was clicked or double-clicked with any mouse button. Raised after the selection change the click caused. Never raised for disabled slips. |
 | `event EventHandler<SlipSelectedEventArgs>? SlipSelected` | A single slip was selected: by a left or right click (including on an already selected slip), through the API, or because the open popup's content needs refreshing (`SlipSelectedEventArgs.Reason`). Fill `SlipSelectedEventArgs.Tooltip` (pre-filled with slip and boat details) and `SlipSelectedEventArgs.Actions` (empty) to control the popup: a left click shows the tooltip, a right click shows the actions window. |
-| `event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected` | Two or more slips are selected (Ctrl+click, right-click inside a multi-selection, or `IMarinaVisualizer.SetSelection`). Fill the tooltip and actions for the whole selection. |
+| `event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected` | Two or more slips are selected (Ctrl+click or Shift+click, right-click inside a multi-selection, or `IMarinaVisualizer.SetSelection`). Fill the tooltip and actions for the whole selection. |
 | `event EventHandler<SelectionChangedEventArgs>? SelectionChanged` | The set of selected slips or the primary slip changed, including the selection being cleared. |
 | `event EventHandler? SelectionCleared` | The selection became empty (raised right after `IMarinaVisualizer.SelectionChanged`). |
 | `event EventHandler<SlipActionInvokedEventArgs>? SlipActionInvoked` | The user clicked an enabled action in the actions window (or `IMarinaVisualizer.InvokeSlipAction` was called). The window closes afterwards unless `SlipActionInvokedEventArgs.KeepPopupOpen` or `SlipAction.KeepOpen` is set. |

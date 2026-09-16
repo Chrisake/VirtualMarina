@@ -175,7 +175,7 @@ Each member slip carries the berth's status and boat, plus `Slip.BerthId`. `Mari
 
 - **Left click:** selects the slip and shows a tooltip above it.
 - **Right click:** selects the slip and opens the actions window.
-- **Ctrl+click:** adds or removes slips from the selection. Right-clicking inside a multi-selection opens its actions.
+- **Ctrl+click or Shift+click:** adds or removes slips from the selection. Right-clicking inside a multi-selection opens its actions.
 
 The popup follows its slip while the camera moves. Esc closes the popup, and a second Esc clears the selection.
 
@@ -251,7 +251,7 @@ view.Marina.InitializeLayout(layout);
 | Mouse wheel | Zoom toward the cursor |
 | Click | Select the slip or boat and show its tooltip (raises `SlipClicked` and `SlipSelected`) |
 | Right-click | Select and open the actions window |
-| Ctrl+click (Cmd+click in browsers) | Add/remove slips from a multi-selection (raises `MultiSlipSelected`) |
+| Ctrl+click or Shift+click (Cmd+click in browsers) | Add/remove slips from a multi-selection (raises `MultiSlipSelected`) |
 | Double-click | Focus the camera on the slip |
 | Arrows / WASD, Shift+arrows, PageUp/PageDown, +/- | Pan, orbit, tilt, zoom |
 | Esc / Home | Close the popup, then clear the selection / reset the camera |

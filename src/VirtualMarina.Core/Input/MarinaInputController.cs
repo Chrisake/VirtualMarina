@@ -9,7 +9,7 @@ namespace VirtualMarina.Core.Input;
 /// </summary>
 /// <remarks>
 /// Defaults: left-drag pans (map-style), right-drag orbits, middle-drag pans, Shift+left-drag orbits,
-/// wheel zooms toward the cursor, click selects and shows the tooltip, Ctrl+click adds/removes slips,
+/// wheel zooms toward the cursor, click selects and shows the tooltip, Ctrl+click or Shift+click adds/removes slips,
 /// right-click opens the actions window, double-click focuses a slip, Escape closes the popup and then
 /// clears the selection, Home resets the view. The popup stays anchored above its slip while the camera moves.
 /// </remarks>

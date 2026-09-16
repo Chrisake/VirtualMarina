@@ -242,6 +242,39 @@ public class InteractionAndBerthTests
         Assert.Equal(new[] { "A-R03" }, marina.SelectedSlips.Select(s => s.Id));
     }
 
+    [Fact]
+    public void ShiftClick_BuildsMultiSelection_LikeCtrlClick()
+    {
+        var marina = CreateMarina();
+
+        Click(marina, "A-L01");
+        Click(marina, "A-L02", modifiers: InputModifiers.Shift);
+        Click(marina, "A-R01", modifiers: InputModifiers.Control);   // both modifiers can be mixed
+        Assert.Equal(new[] { "A-L01", "A-L02", "A-R01" }, marina.SelectedSlips.Select(s => s.Id));
+
+        Click(marina, "A-L02", modifiers: InputModifiers.Shift);      // Shift+click toggles a slip back out
+        Assert.Equal(new[] { "A-L01", "A-R01" }, marina.SelectedSlips.Select(s => s.Id));
+
+        marina.MultiSelectEnabled = false;
+        Click(marina, "A-L03", modifiers: InputModifiers.Shift);      // disabled: a plain selection
+        Assert.Equal(new[] { "A-L03" }, marina.SelectedSlips.Select(s => s.Id));
+    }
+
+    [Fact]
+    public void ShiftDrag_StillOrbits_WithoutChangingTheSelection()
+    {
+        var marina = CreateMarina();
+        Click(marina, "A-L01");
+        var yawBefore = marina.Camera.DesiredPose.YawDegrees;
+
+        marina.Input.PointerDown(400, 300, PointerButton.Left, InputModifiers.Shift);
+        marina.Input.PointerMove(500, 300, InputModifiers.Shift);
+        marina.Input.PointerUp(500, 300, PointerButton.Left, InputModifiers.Shift);
+
+        Assert.NotEqual(yawBefore, marina.Camera.DesiredPose.YawDegrees);
+        Assert.Equal(new[] { "A-L01" }, marina.SelectedSlips.Select(s => s.Id));
+    }
+
     // ---- Temporarily free --------------------------------------------------------------------------------
 
     [Fact]

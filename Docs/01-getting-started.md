@@ -118,10 +118,10 @@ marina.BatchUpdate(erpBerths.Select(b => b.BoatOnBerth is { } boat
 |---|---|
 | Left click | Select the slip and show its tooltip |
 | Right click | Select the slip and open its actions window |
-| Ctrl+click (Cmd+click in browsers) | Add/remove slips from the selection |
+| Ctrl+click or Shift+click (Cmd+click in browsers) | Add/remove slips from the selection |
 | Double-click | Focus the camera on the slip (at `DefaultFocusAngle`) |
 | Left-drag / middle-drag | Pan |
-| Right-drag, Shift+left-drag | Orbit |
+| Right-drag, Shift+left-drag | Orbit (Shift only changes a *drag*; a Shift+click without moving multi-selects) |
 | Mouse wheel | Zoom toward the cursor |
 | Arrows / WASD | Pan (Shift: orbit) |
 | PageUp / PageDown | Tilt |

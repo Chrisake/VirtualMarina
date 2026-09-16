@@ -8,7 +8,7 @@
 |---|---|---|
 | `SlipClicked` | `SlipEventArgs` | A slip or its boat is clicked or double-clicked with any button (after any selection change). Never for disabled slips. |
 | `SlipSelected` | `SlipSelectedEventArgs` | One slip is selected: by click (also re-clicking it), by API, or to refresh an open popup |
-| `MultiSlipSelected` | `MultiSlipSelectedEventArgs` | Two or more slips are selected (Ctrl+click, right-click in a multi-selection, API), or their popup is refreshed |
+| `MultiSlipSelected` | `MultiSlipSelectedEventArgs` | Two or more slips are selected (Ctrl+click or Shift+click, right-click in a multi-selection, API), or their popup is refreshed |
 | `SelectionChanged` | `SelectionChangedEventArgs` | The set of selected slips or the primary slip changed, including clearing |
 | `SelectionCleared` | `EventArgs` | The selection became empty (after `SelectionChanged`) |
 | `SlipActionInvoked` | `SlipActionInvokedEventArgs` | An enabled action was clicked in the actions window, or `InvokeSlipAction` was called |
