@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Generates Docs/11-api-reference.md from the public surface of the VirtualMarina libraries (reflection) and their
+    XML documentation files. Not part of VirtualMarina.sln. Run from the repository root:
+    dotnet run (project Docs/tools/ApiDocGen) with the output path as argument, e.g. Docs/11-api-reference.md
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\VirtualMarina.Core\VirtualMarina.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\VirtualMarina.Rendering.OpenGL\VirtualMarina.Rendering.OpenGL.csproj" />
+    <ProjectReference Include="..\..\..\src\VirtualMarina.WinForms\VirtualMarina.WinForms.csproj" />
+    <ProjectReference Include="..\..\..\src\VirtualMarina.Blazor\VirtualMarina.Blazor.csproj" />
+  </ItemGroup>
+
+</Project>
