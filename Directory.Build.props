@@ -1,0 +1,12 @@
+<Project>
+  <!-- Settings shared by every project in the solution. -->
+  <PropertyGroup>
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <Authors>VirtualMarina</Authors>
+    <Product>VirtualMarina 3D Marina Visualization</Product>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+</Project>
