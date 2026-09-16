@@ -33,6 +33,7 @@ public sealed class MarinaViewControl : UserControl
     private MarinaVisualizer _marina;
     private double _lastFrameSeconds;
     private bool _renderFailed;
+    private bool _animate = true;
 
     /// <summary>Creates the control with its own empty <see cref="MarinaVisualizer"/> (available as <see cref="Marina"/>).</summary>
     public MarinaViewControl()
@@ -59,11 +60,9 @@ public sealed class MarinaViewControl : UserControl
         _popupPanel.CloseClicked += (_, _) => _marina.ClosePopup();
         _marina.PopupChanged += OnPopupChanged;
 
-        if (LicenseManager.UsageMode != LicenseUsageMode.Designtime)
-        {
-            CreateGlControl();
-        }
-
+        // The OpenGL surface is created in OnHandleCreated, where design mode can be detected reliably:
+        // the Visual Studio designer must never create it (GLFW would throw "can only be called from the main thread").
+        SetStyle(ControlStyles.ResizeRedraw, true);
         Controls.Add(_popupPanel);
         _popupPanel.BringToFront();
     }
@@ -100,8 +99,12 @@ public sealed class MarinaViewControl : UserControl
     [DefaultValue(true)]
     public bool Animate
     {
-        get => _frameTimer.Enabled;
-        set => _frameTimer.Enabled = value && _glControl is not null;
+        get => _animate;
+        set
+        {
+            _animate = value;
+            _frameTimer.Enabled = value && _glControl is not null;
+        }
     }
 
     /// <summary>Backend and GPU description after the first frame, e.g. for a status bar.</summary>
@@ -110,22 +113,59 @@ public sealed class MarinaViewControl : UserControl
     public string RendererDescription =>
         _renderer?.DeviceDescription is { } device ? $"{_renderer.BackendName} | {device}" : "OpenGL (not initialized)";
 
-    /// <summary>Starts the render loop once the window handle exists.</summary>
+    /// <summary>Creates the OpenGL surface and starts the render loop once the window handle exists (not in the designer).</summary>
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
-        if (_glControl is not null) _frameTimer.Start();
+        if (IsInDesigner()) return;
+
+        if (_glControl is null)
+        {
+            CreateGlControl();
+            _popupPanel.BringToFront();
+        }
+
+        if (_animate) _frameTimer.Start();
     }
 
-    /// <summary>Draws a placeholder in the designer (the 3D view is drawn by the embedded GL control).</summary>
+    /// <summary>In the designer (or if OpenGL is unavailable) draws a placeholder describing the 3D render area.</summary>
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        if (_glControl is null)
+        if (_glControl is not null) return;
+
+        var bounds = ClientRectangle;
+        using (var border = new Pen(Color.FromArgb(120, 150, 175)) { DashStyle = System.Drawing.Drawing2D.DashStyle.Dash })
         {
-            TextRenderer.DrawText(e.Graphics, "VirtualMarina 3D view", Font, ClientRectangle, ForeColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+            e.Graphics.DrawRectangle(border, 0, 0, bounds.Width - 1, bounds.Height - 1);
         }
+
+        using var titleFont = new Font(Font.FontFamily, Font.Size * 1.4f, FontStyle.Bold);
+        var titleHeight = TextRenderer.MeasureText("Ag", titleFont).Height;
+        var titleRect = new Rectangle(0, bounds.Height / 2 - titleHeight, bounds.Width, titleHeight);
+        var subtitleRect = new Rectangle(0, bounds.Height / 2 + 4, bounds.Width, titleHeight * 2);
+        const TextFormatFlags flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.Top | TextFormatFlags.WordBreak;
+
+        TextRenderer.DrawText(e.Graphics, "VirtualMarina 3D view", titleFont, titleRect, Color.FromArgb(40, 70, 95), flags);
+        TextRenderer.DrawText(e.Graphics, "The marina is rendered here at runtime (OpenGL 3.3).", Font, subtitleRect, Color.FromArgb(70, 95, 120), flags);
+    }
+
+    /// <summary>
+    /// True inside a forms designer. Checks the site of this control and its parents (set by the designer before the
+    /// handle is created), the license context, and the Visual Studio designer host processes.
+    /// </summary>
+    private bool IsInDesigner()
+    {
+        if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return true;
+
+        for (Control? control = this; control is not null; control = control.Parent)
+        {
+            if (control.Site?.DesignMode == true) return true;
+        }
+
+        var process = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
+        return process.Equals("DesignToolsServer", StringComparison.OrdinalIgnoreCase)
+            || process.Equals("devenv", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Stops rendering and releases GPU resources, the GL control and the popup.</summary>
