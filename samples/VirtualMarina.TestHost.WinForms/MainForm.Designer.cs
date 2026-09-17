@@ -338,7 +338,7 @@ namespace VirtualMarina.TestHost.WinForms
             btnSelectDock.Name = "btnSelectDock";
             btnSelectDock.Size = new Size(138, 27);
             btnSelectDock.TabIndex = 7;
-            btnSelectDock.Text = "Select whole dock";
+            btnSelectDock.Text = "Select dock / land";
             btnSelectDock.UseVisualStyleBackColor = true;
             btnSelectDock.Click += OnSelectDockClick;
             // 

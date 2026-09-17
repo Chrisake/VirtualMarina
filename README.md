@@ -28,17 +28,18 @@ Requirements: .NET 8 SDK or newer (`global.json` rolls forward), and a GPU/drive
 VirtualMarina.sln
 ├─ src/
 │  ├─ VirtualMarina.Core/                 net8.0 – no graphics/UI dependencies
-│  │  ├─ Domain/      Dock, Slip, Boat, BoatType, SlipStatus, OrientedRect, LandArea,
-│  │  │               MarinaLayout (+Validate), MarinaLayoutBuilder, SlipGenerator
+│  │  ├─ Domain/      Dock, Slip, Boat, BoatType, SlipStatus, OrientedRect, LandArea (polygon),
+│  │  │               MarinaLayout (+Validate), MarinaLayoutBuilder, LandAreaBuilder, SlipGenerator
 │  │  ├─ Api/         IMarinaVisualizer, MarinaVisualizer (Layout/Status/View partials),
 │  │  │               SlipUpdate, BatchUpdateResult, MarinaStatistics, events, StatusColorScheme
 │  │  ├─ Camera/      OrbitCamera (smoothed pan/zoom/orbit), CameraConstraints, CameraPreset
 │  │  ├─ Input/       MarinaInputController (platform-neutral pointer/keyboard → camera/picking)
 │  │  ├─ Picking/     Ray, CPU ScenePicker (slip footprints + boat triangles)
-│  │  ├─ Geometry/    MeshBuilder, BoatMeshFactory (7 low-poly boats), MarinaMeshFactory, MeshLibrary
+│  │  ├─ Geometry/    MeshBuilder, BoatMeshFactory (7 low-poly boats), MarinaMeshFactory,
+│  │  │               LandMeshFactory (polygon slabs, rock breakwaters), MeshLibrary
 │  │  ├─ Rendering/   ISceneRenderer, RenderFrame, RenderObject, Lighting/WaterSettings,
 │  │  │               ShaderSources (shared GLSL 330 / GLSL ES 300), SceneBuilder
-│  │  └─ Mathematics/ MarinaMath
+│  │  └─ Mathematics/ MarinaMath, PolygonMath
 │  ├─ VirtualMarina.Rendering.OpenGL/     net8.0 – ISceneRenderer for OpenGL 3.3 (OpenTK bindings only)
 │  ├─ VirtualMarina.WinForms/             net8.0-windows – MarinaViewControl (GLControl host)
 │  └─ VirtualMarina.Blazor/               Razor class library – <MarinaView>, WebGlSceneRenderer, marinaWebGL.js
@@ -129,8 +130,8 @@ new MarinaLayoutBuilder().AddDock("A", "Dock A", Vector2.Zero, 0, 60, dock => do
 
 | `DockType` | Look | Default deck height |
 |---|---|---|
-| `FloatingWooden` (default) | plank deck, walers, dark pontoon floats, wooden guide piles | 0.5 m |
-| `FloatingConcrete` | monolithic pontoon, rubber fenders, section joints, cleats, steel guide piles | 0.55 m |
+| `FloatingWooden` (default) | plank deck, walers, dark pontoon floats | 0.5 m |
+| `FloatingConcrete` | monolithic pontoon, rubber fenders, section joints, cleats | 0.55 m |
 | `Concrete` | fixed slab on columns, curbs, bollards | 1.1 m |
 
 ### Statuses and slip flags

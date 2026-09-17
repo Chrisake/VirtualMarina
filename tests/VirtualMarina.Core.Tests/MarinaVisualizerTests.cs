@@ -205,7 +205,7 @@ public class MarinaVisualizerTests
         marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
 
         Assert.Contains(marina.CameraPresets, p => p.Name == MarinaVisualizer.OverviewPresetName);
-        Assert.Equal(4, marina.CameraPresets.Count(p => p.Name.StartsWith("Dock: ")));
+        Assert.Equal(6, marina.CameraPresets.Count(p => p.Name.StartsWith("Dock: ")));
         Assert.True(marina.ApplyCameraPreset("top down", immediate: true));
         Assert.True(marina.Camera.Pose.PitchDegrees > 85f);
     }

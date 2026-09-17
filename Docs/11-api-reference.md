@@ -7,10 +7,10 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Blazor**: [MarinaView](#marinaview), [WebGlSceneRenderer](#webglscenerenderer)
 - **VirtualMarina.Core.Api**: [BatchUpdateError](#batchupdateerror), [BatchUpdateResult](#batchupdateresult), [DefaultPopupContent](#defaultpopupcontent), [DockUpdate](#dockupdate), [IMarinaVisualizer](#imarinavisualizer), [LayoutChangeKind](#layoutchangekind), [LayoutChangedEventArgs](#layoutchangedeventargs), [MarinaStatistics](#marinastatistics), [MarinaVisualizer](#marinavisualizer), [MarinaVisualizerOptions](#marinavisualizeroptions), [MultiSlipSelectedEventArgs](#multislipselectedeventargs), [RejectedSlip](#rejectedslip), [SelectionChangedEventArgs](#selectionchangedeventargs), [SelectionReason](#selectionreason), [SelectionResult](#selectionresult), [SlipAction](#slipaction), [SlipActionCollection](#slipactioncollection), [SlipActionInvokedEventArgs](#slipactioninvokedeventargs), [SlipActionStyle](#slipactionstyle), [SlipEventArgs](#slipeventargs), [SlipHoverEventArgs](#sliphovereventargs), [SlipLabelMode](#sliplabelmode), [SlipLabelModeExtensions](#sliplabelmodeextensions), [SlipPopup](#slippopup), [SlipPopupChangedEventArgs](#slippopupchangedeventargs), [SlipPopupKind](#slippopupkind), [SlipSelectedEventArgs](#slipselectedeventargs), [SlipSelectionRejection](#slipselectionrejection), [SlipStatusChangedEventArgs](#slipstatuschangedeventargs), [SlipTooltip](#sliptooltip), [SlipTooltipLine](#sliptooltipline), [SlipUpdate](#slipupdate), [StatusColorScheme](#statuscolorscheme)
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
-- **VirtualMarina.Core.Domain**: [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [Dock](#dock), [DockBuilder](#dockbuilder), [DockSide](#dockside), [DockType](#docktype), [LandArea](#landarea), [LandKind](#landkind), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MooringStyle](#mooringstyle), [MultiSlipBerth](#multislipberth), [OrientedRect](#orientedrect), [Slip](#slip), [SlipDataBag](#slipdatabag), [SlipGenerator](#slipgenerator), [SlipStatus](#slipstatus), [SlipStatusExtensions](#slipstatusextensions), [SlipStatusFilter](#slipstatusfilter)
-- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [MarinaMeshFactory](#marinameshfactory), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary)
+- **VirtualMarina.Core.Domain**: [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [Dock](#dock), [DockBuilder](#dockbuilder), [DockSide](#dockside), [DockSides](#docksides), [DockType](#docktype), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MooringStyle](#mooringstyle), [MultiSlipBerth](#multislipberth), [OrientedRect](#orientedrect), [Slip](#slip), [SlipDataBag](#slipdatabag), [SlipGenerator](#slipgenerator), [SlipStatus](#slipstatus), [SlipStatusExtensions](#slipstatusextensions), [SlipStatusFilter](#slipstatusfilter)
+- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
-- **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath)
+- **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [Ray](#ray), [SlipHit](#sliphit)
 - **VirtualMarina.Core.Rendering**: [ColorRgba](#colorrgba), [ISceneRenderer](#iscenerenderer), [LightingSettings](#lightingsettings), [RenderAnimation](#renderanimation), [RenderFrame](#renderframe), [RenderObject](#renderobject), [ShaderDialect](#shaderdialect), [ShaderSources](#shadersources), [WaterSettings](#watersettings)
 - **VirtualMarina.Rendering.OpenGL**: [OpenGlSceneRenderer](#openglscenerenderer)
@@ -105,8 +105,8 @@ Builds the tooltip the visualizer pre-fills before raising the selection events.
 | Member | Description |
 |---|---|
 | `const int MaxListedSlips = 6` | Maximum number of per-slip rows in a multi-selection tooltip. |
-| `static SlipTooltip ForSlip(Slip slip, Dock? dock, MultiSlipBerth? berth, StatusColorScheme colors)` | The default single-slip tooltip: title = slip name, subtitle = dock, rows for status, slip size and draft, boat name, type, size, owner, registration, expected arrival/return, multi-slip berth and read-only access. Accent = status color. |
-| `static SlipTooltip ForSlips(IReadOnlyList<Slip> slips, Func<string, Dock?> dockLookup, StatusColorScheme colors)` | The default multi-selection tooltip: "N slips selected", dock names, counts per status and read-only, then one row per slip (up to `DefaultPopupContent.MaxListedSlips`, with an "and N more" footer). |
+| `static SlipTooltip ForSlip(Slip slip, Dock? dock, MultiSlipBerth? berth, StatusColorScheme colors, LandArea? landArea = null)` | The default single-slip tooltip: title = slip name, subtitle = dock (or land area for a land slip), rows for status, slip size and draft, boat name, type, size, owner, registration, expected arrival/return, multi-slip berth and read-only access. Accent = status color. |
+| `static SlipTooltip ForSlips(IReadOnlyList<Slip> slips, Func<string, Dock?> dockLookup, StatusColorScheme colors, Func<string, LandArea?>? landLookup = null)` | The default multi-selection tooltip: "N slips selected", dock and land area names, counts per status and read-only, then one row per slip (up to `DefaultPopupContent.MaxListedSlips`, with an "and N more" footer). |
 
 <a id="dockupdate"></a>
 ### DockUpdate
@@ -128,6 +128,7 @@ Partial change to a dock's position, size, orientation, type or name, for `IMari
 | `DockType? Type { get; init; }` | New construction type (changes the look; the default deck height follows unless `DockUpdate.DeckHeight` was set explicitly). |
 | `float? DeckHeight { get; init; }` | New deck height above the water, in meters. |
 | `float? PilingSpacing { get; init; }` | New support spacing in meters. |
+| `DockSides? BerthingSides { get; init; }` | New berthing sides (single- or double-sided dock). Existing slips are not moved or removed. |
 
 <a id="imarinavisualizer"></a>
 ### IMarinaVisualizer
@@ -192,6 +193,8 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `IReadOnlyList<Divider> GetDividersByDock(string dockId)` | Dividers whose `Divider.DockId` is `dockId`. |
 | `Dock? GetDock(string dockId)` | The dock with this id, or null. |
 | `IReadOnlyList<Dock> GetDocks()` | All docks, in the order they were added. |
+| `LandArea? GetLandArea(string landAreaId)` | The land area with this id, or null. |
+| `IReadOnlyList<LandArea> GetLandAreas()` | All land areas, in layout order. |
 | `MarinaLayout GetLayout()` | A snapshot of the current marina, suitable for saving and passing back to `IMarinaVisualizer.InitializeLayout`. |
 | `MultiSlipBerth? GetMultiSlipBerth(string berthId)` | The berth with this id, or null. |
 | `MultiSlipBerth? GetMultiSlipBerthForSlip(string slipId)` | The berth a slip belongs to, or null. |
@@ -199,6 +202,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `Slip? GetSlip(string slipId)` | The slip with this id, or null. |
 | `IReadOnlyList<Slip> GetSlips()` | All slips, in the order they were added. |
 | `IReadOnlyList<Slip> GetSlipsByDock(string dockId)` | Slips belonging to a dock. |
+| `IReadOnlyList<Slip> GetSlipsByLandArea(string landAreaId)` | Land slips on a land area (see `Slip.OnLand`). |
 | `IReadOnlyList<Slip> GetSlipsByStatus(SlipStatus status)` | Slips with a given status. |
 | `MarinaStatistics GetStatistics()` | Slip counts per status, for dashboards. |
 | `ColorRgba GetStatusColor(SlipStatus status)` | The current color of a status. |
@@ -376,6 +380,8 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `IReadOnlyList<Divider> GetDividersByDock(string dockId)` | *(See the interface member.)* |
 | `Dock? GetDock(string dockId)` | *(See the interface member.)* |
 | `IReadOnlyList<Dock> GetDocks()` | *(See the interface member.)* |
+| `LandArea? GetLandArea(string landAreaId)` | *(See the interface member.)* |
+| `IReadOnlyList<LandArea> GetLandAreas()` | *(See the interface member.)* |
 | `MarinaLayout GetLayout()` | *(See the interface member.)* |
 | `MultiSlipBerth? GetMultiSlipBerth(string berthId)` | *(See the interface member.)* |
 | `MultiSlipBerth? GetMultiSlipBerthForSlip(string slipId)` | The berth a slip belongs to, or null. |
@@ -383,6 +389,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `Slip? GetSlip(string slipId)` | *(See the interface member.)* |
 | `IReadOnlyList<Slip> GetSlips()` | *(See the interface member.)* |
 | `IReadOnlyList<Slip> GetSlipsByDock(string dockId)` | *(See the interface member.)* |
+| `IReadOnlyList<Slip> GetSlipsByLandArea(string landAreaId)` | *(See the interface member.)* |
 | `IReadOnlyList<Slip> GetSlipsByStatus(SlipStatus status)` | *(See the interface member.)* |
 | `MarinaStatistics GetStatistics()` | *(See the interface member.)* |
 | `ColorRgba GetStatusColor(SlipStatus status)` | *(See the interface member.)* |
@@ -613,7 +620,8 @@ Data for `IMarinaVisualizer.SlipClicked` and the base of `SlipSelectedEventArgs`
 | `SlipStatus Status { get; }` | The slip's status (`Slip.Status`). |
 | `Boat? Boat { get; }` | Boat assigned to the slip (moored, expected or temporarily away), if known. |
 | `SlipDataBag ExternalData { get; }` | Host-owned data bag of the slip; values written here persist with the slip (see `Slip.ExternalData`). |
-| `Dock? Dock { get; }` | The dock the slip belongs to. |
+| `Dock? Dock { get; }` | The dock the slip belongs to; null for a land slip. |
+| `LandArea? LandArea { get; init; }` | The land area a land slip is on (`Slip.LandAreaId`); null for a water slip. |
 | `PointerButton Button { get; }` | Button that triggered the event; `PointerButton.None` for programmatic selection. |
 | `bool IsDoubleClick { get; }` | True when the event came from a double-click. |
 | `Vector3? WorldPoint { get; }` | World-space point under the pointer, when the event came from a click. |
@@ -1057,7 +1065,8 @@ Use the constructor when you know the shore end, or `Dock.FromCenter` when you s
 | `float Width { get; init; }` | Deck width across the heading, in meters. |
 | `DockType Type { get; init; }` | Construction type; controls rendering and the default deck height. |
 | `float DeckHeight { get; init; }` | Height of the deck surface above the water, in meters. Defaults depend on `Dock.Type`. |
-| `float PilingSpacing { get; init; }` | Distance between supports along each edge: columns for `DockType.Concrete`, guide piles (every second interval) for floating docks. |
+| `float PilingSpacing { get; init; }` | Distance between columns (`DockType.Concrete`) or cleats (`DockType.FloatingConcrete`) along the dock. |
+| `DockSides BerthingSides { get; init; }` | Sides where boats berth. Default `DockSides.Both`. A single-sided dock (e.g. one running along the edge of a `LandArea`) only takes slips on its open side, and its mooring points (bollards, cleats and fenders) are drawn on that side only. |
 | `Vector2 Direction { get; }` | Unit plan-view vector along the dock (from start to end). |
 | `Vector2 Right { get; }` | Unit plan-view vector across the dock toward `DockSide.Right`: the heading's local +X axis, `(cos h, −sin h)`. For a dock with heading 0° (running along +Z) it points to +X. |
 | `Vector2 End { get; }` | Seaward-end center point. |
@@ -1067,6 +1076,7 @@ Use the constructor when you know the shore end, or `Dock.FromCenter` when you s
 | `static Dock FromCenter(string id, string name, Vector2 center, float length, float width, float headingDegrees, DockType type = DockType.FloatingWooden)` | Creates a dock from its center point, size and orientation. |
 | `static float GetDefaultDeckHeight(DockType type)` | Deck height used when `Dock.DeckHeight` isn't set: 0.5 m wooden, 0.55 m floating concrete, 1.1 m fixed concrete. |
 | `static string GetDisplayName(DockType type)` | Human-readable name of a dock type, e.g. "Floating (wooden)". |
+| `bool HasBerthsOn(DockSide side)` | True when boats can berth on `side` (see `Dock.BerthingSides`). |
 | `Dock WithCenter(Vector2 center)` | Returns a copy moved so its center is at `center`. |
 
 <a id="dockbuilder"></a>
@@ -1096,6 +1106,19 @@ Which side of a dock slips and dividers are generated on, relative to `Dock.Righ
 | `Left` = 0 | The side opposite `Dock.Right` (−X for a dock with heading 0°). Generated ids use "L": `{DockId}-L01`. |
 | `Right` = 1 | The side `Dock.Right` points to (+X for a dock with heading 0°). Generated ids use "R": `{DockId}-R01`. |
 
+<a id="docksides"></a>
+### DockSides
+
+`[Flags] enum DockSides`
+
+The sides of a dock where boats berth (`Dock.BerthingSides`).
+
+| Value | Description |
+|---|---|
+| `Left` = 1 | Only the `DockSide.Left` side (opposite `Dock.Right`). |
+| `Right` = 2 | Only the `DockSide.Right` side (toward `Dock.Right`). |
+| `Both` = 3 | Both sides (default). |
+
 <a id="docktype"></a>
 ### DockType
 
@@ -1105,8 +1128,8 @@ Construction of a dock. Controls how it is drawn and its default deck height.
 
 | Value | Description |
 |---|---|
-| `FloatingWooden` = 0 | Wooden deck on pontoon floats, held by guide piles. Default deck height 0.5 m. |
-| `FloatingConcrete` = 1 | Monolithic concrete pontoon with rubber fenders, held by steel guide piles. Default deck height 0.55 m. |
+| `FloatingWooden` = 0 | Wooden deck on pontoon floats. Default deck height 0.5 m. |
+| `FloatingConcrete` = 1 | Monolithic concrete pontoon with rubber fenders and cleats. Default deck height 0.55 m. |
 | `Concrete` = 2 | Fixed concrete pier on columns, with curbs and bollards. Default deck height 1.1 m. |
 
 <a id="landarea"></a>
@@ -1114,45 +1137,66 @@ Construction of a dock. Controls how it is drawn and its default deck height.
 
 `sealed record LandArea`
 
-A solid block such as a quay, breakwater or lawn, drawn for context around the water. Not interactive.
+A flat piece of land such as a quay, breakwater or lawn: a polygon outline in plan coordinates with one top height for the whole area. Land slips (`Slip.OnLand`) can be placed on it for boats stored or maintained ashore.
+
+The outline may be convex or concave, in either winding order, but its edges must not cross. Don't repeat the first point at the end.
 
 | Member | Description |
 |---|---|
-| `LandArea(string Id, OrientedRect Area, float Height, LandKind Kind = LandKind.Quay)` | A solid block such as a quay, breakwater or lawn, drawn for context around the water. Not interactive. |
-| `string Id { get; init; }` | Identifier (for host bookkeeping; not validated for uniqueness). |
-| `OrientedRect Area { get; init; }` | Footprint in plan coordinates. |
-| `float Height { get; init; }` | Top surface height above the water, in meters. |
+| `LandArea(string id, IEnumerable<Vector2> points, float height, LandKind kind = LandKind.Quay)` | Creates a land area from its outline. |
+| `LandArea(string id, OrientedRect area, float height, LandKind kind = LandKind.Quay)` | Creates a rectangular land area. |
+| `string Id { get; init; }` | Unique id (case-insensitive). Land slips reference it through `Slip.LandAreaId`. |
+| `string? Name { get; init; }` | Display name (tooltips); the id is used when null. |
+| `IReadOnlyList<Vector2> Points { get; init; }` | Outline in plan coordinates (X = world X, Y = world Z). The last point connects back to the first. |
+| `float Height { get; init; }` | Height of the top surface above the water, in meters, over the whole area. |
 | `LandKind Kind { get; init; }` | Surface type. |
+| `string DisplayName { get; }` | `LandArea.Name` when set, otherwise `LandArea.Id`. |
+| `float Area { get; }` | Plan-view area in square meters. |
+| `bool Contains(Vector2 point)` | True when the plan-view point lies inside the outline. |
+| `ValueTuple<Vector2, Vector2> GetAxisAlignedBounds()` | The smallest axis-aligned rectangle containing the outline. |
+
+<a id="landareabuilder"></a>
+### LandAreaBuilder
+
+`sealed class LandAreaBuilder`
+
+Adds land slips to a single `LandAreaBuilder.LandArea` inside `MarinaLayoutBuilder`.
+
+| Member | Description |
+|---|---|
+| `LandArea LandArea { get; }` | The land area being configured. |
+| `LandAreaBuilder AddSlip(string id, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f, Func<Slip, Slip>? customize = null)` | Adds a land slip centered at `position` (see `Slip.OnLand`). |
+| `LandAreaBuilder AddSlips(string idPrefix, Vector2 firstPosition, float rowHeadingDegrees, int count, float slipWidth, float slipLength, Func<int, Slip, Slip>? customize = null, float gap = 0.5f, float? boatHeadingDegrees = null)` | Adds a row of `count` land slips side by side, starting at `firstPosition` and continuing along `rowHeadingDegrees`. Ids follow `{idPrefix}01`, continuing after slips already added with the same prefix. |
 
 <a id="landkind"></a>
 ### LandKind
 
 `enum LandKind`
 
-Surface of a `LandArea`; controls its color.
+Surface of a `LandArea`; controls how it is drawn.
 
 | Value | Description |
 |---|---|
-| `Quay` = 0 | Paved quay or pier head (light concrete). |
-| `Breakwater` = 1 | Rock or concrete breakwater (gray). |
-| `Grass` = 2 | Lawn or park (green). |
+| `Quay` = 0 | Paved quay or pier head: a solid light concrete block. |
+| `Breakwater` = 1 | Rubble-mound breakwater: the area is filled with a pile of rocks sloping down to the water. |
+| `Grass` = 2 | Lawn or park: a solid green block. |
 
 <a id="marinalayout"></a>
 ### MarinaLayout
 
 `sealed record MarinaLayout`
 
-Complete description of a marina: docks, slips (flat list, linked by `Slip.DockId`), dividers, multi-slip berths and surrounding land. Pass to `MarinaVisualizer.InitializeLayout`.
+Complete description of a marina: docks, slips (flat list, linked by `Slip.DockId`), dividers, multi-slip berths, surrounding land and land slips (linked by `Slip.LandAreaId`). Pass to `MarinaVisualizer.InitializeLayout`.
 
 | Member | Description |
 |---|---|
 | `MarinaLayout()` | Creates an instance with default values. |
 | `string Name { get; init; }` | Marina name (`IMarinaVisualizer.MarinaName`). |
 | `IReadOnlyList<Dock> Docks { get; init; }` | Docks. Ids must be unique. |
-| `IReadOnlyList<Slip> Slips { get; init; }` | Slips, each referencing a dock in `MarinaLayout.Docks`. Ids must be unique. |
+| `IReadOnlyList<Slip> Slips { get; init; }` | Slips, each referencing a dock in `MarinaLayout.Docks` or, for land slips, a land area in `MarinaLayout.LandAreas`. Ids must be unique. |
 | `IReadOnlyList<Divider> Dividers { get; init; }` | Finger piers, pile rows and booms between slips. |
 | `IReadOnlyList<MultiSlipBerth> MultiSlipBerths { get; init; }` | Boats spanning several slips. Member slips take the berth's status and boat when the layout is loaded. |
-| `IReadOnlyList<LandArea> LandAreas { get; init; }` | Quays, breakwaters and lawns drawn around the water. |
+| `IReadOnlyList<LandArea> LandAreas { get; init; }` | Quays, breakwaters and lawns drawn around the water. Ids must be unique. |
 | `static MarinaLayout Empty { get; }` | A layout with nothing in it. |
 | `ValueTuple<Vector2, Vector2> ComputeBounds()` | Plan-view bounds of all docks, slips, dividers and land. Returns a default 100 m square when empty. |
 | `IReadOnlyList<string> Validate()` | Returns a list of problems; empty when the layout is valid. |
@@ -1170,7 +1214,8 @@ Fluent helper for composing a `MarinaLayout` with slips auto-positioned along do
 | `MarinaLayoutBuilder AddDivider(Divider divider)` | Adds a divider at an explicit position, length and orientation. |
 | `MarinaLayoutBuilder AddDock(Dock dock, Action<DockBuilder>? configure = null)` | Adds a dock and, optionally, lays out its slips and dividers. |
 | `MarinaLayoutBuilder AddDock(string id, string name, Vector2 start, float headingDegrees, float length, Action<DockBuilder>? configure = null, float width = 2.5f, DockType type = DockType.FloatingWooden)` | Adds a dock from its shore-end point, heading and size, and optionally lays out its slips and dividers. |
-| `MarinaLayoutBuilder AddLandArea(LandArea landArea)` | Adds a quay, breakwater or lawn. |
+| `MarinaLayoutBuilder AddLandArea(LandArea landArea, Action<LandAreaBuilder>? configure = null)` | Adds a quay, breakwater or lawn and, optionally, land slips on it. |
+| `MarinaLayoutBuilder AddLandArea(string id, IEnumerable<Vector2> points, float height, LandKind kind = LandKind.Quay, Action<LandAreaBuilder>? configure = null)` | Adds a land area from its outline and, optionally, land slips on it. |
 | `MarinaLayoutBuilder AddMultiSlipBerth(MultiSlipBerth berth)` | Puts one boat across several slips added earlier. |
 | `MarinaLayoutBuilder AddSlip(Slip slip)` | Adds a slip at an explicit position, size and orientation. |
 | `MarinaLayout Build()` | Creates the layout. It is not validated here; `InitializeLayout` (or `MarinaLayout.Validate`) does that. |
@@ -1245,7 +1290,7 @@ Plan-view rectangle rotated about its center. Used as the spatial boundary of sl
 
 `sealed record Slip`
 
-A single berth. Immutable: the visualizer stores snapshots and hands them out in events, so host code can never change marina state without going through the API.
+A single berth: a water slip along a dock (`Slip.DockId`), or a land slip on a `LandArea` (`Slip.LandAreaId`) where a boat is stored or maintained ashore. Immutable: the visualizer stores snapshots and hands them out in events, so host code can never change marina state without going through the API.
 
 The one deliberate exception is `Slip.ExternalData`, a mutable bag shared by every snapshot of the same slip, where host code can keep its own objects.
 
@@ -1253,16 +1298,17 @@ The one deliberate exception is `Slip.ExternalData`, a mutable bag shared by eve
 |---|---|
 | `Slip(string id, string dockId, Vector2 center, float headingDegrees, float length, float width)` | Creates a Free slip at an explicit position, orientation and size. |
 | `string Id { get; init; }` | ERP identifier (unique within the marina, case-insensitive). |
-| `string DockId { get; init; }` | Id of the dock this slip belongs to. |
+| `string? DockId { get; init; }` | Id of the dock this slip belongs to; null for a land slip. |
+| `string? LandAreaId { get; init; }` | Id of the `LandArea` a land slip is on; null for a water slip along a dock. |
 | `string? Label { get; init; }` | Human-readable label, e.g. "A-12". Falls back to `Slip.Id`. |
-| `Vector2 Center { get; init; }` | Center of the slip's water area in plan coordinates (X = world X, Y = world Z). |
+| `Vector2 Center { get; init; }` | Center of the slip's water area (or land spot) in plan coordinates (X = world X, Y = world Z). |
 | `float HeadingDegrees { get; init; }` | Direction a moored boat's bow points (normally toward the dock). |
 | `float Length { get; init; }` | Usable length in meters, along the heading. |
 | `float Width { get; init; }` | Usable width in meters, across the heading. |
 | `float? MaxDraft { get; init; }` | Maximum boat draft in meters, if known (shown in the default tooltip). |
 | `SlipStatus Status { get; init; }` | Occupancy status; controls the pad, buoy and boat rendering. Default `SlipStatus.Free`. |
 | `Boat? Boat { get; init; }` | The moored boat (Occupied), expected boat (Reserved) or away boat (TemporarilyFree). Always null when Free. For a slip in a `MultiSlipBerth`, every member slip carries the berth's boat. |
-| `bool HasFingerPiers { get; init; }` | Draw narrow finger piers along both long sides of the slip. |
+| `bool HasFingerPiers { get; init; }` | Draw narrow finger piers along both long sides of the slip. Ignored for land slips. |
 | `bool IsVisible { get; init; }` | When false the slip is not drawn at all (not even its finger piers) and cannot be interacted with. |
 | `bool IsDisabled { get; init; }` | When true the slip is drawn in gray (its boat desaturated) and cannot be hovered, selected, right-clicked or acted on. |
 | `bool IsReadOnly { get; init; }` | When true the slip looks normal and can be selected and show its tooltip, but its actions window does not open. |
@@ -1272,10 +1318,12 @@ The one deliberate exception is `Slip.ExternalData`, a mutable bag shared by eve
 | `string DisplayName { get; }` | `Slip.Label` when set, otherwise `Slip.Id`. Used for tooltips and water labels. |
 | `bool IsInteractive { get; }` | Visible and not disabled: can be hovered, selected and show a tooltip. |
 | `bool AllowsActions { get; }` | Interactive and not read-only: its actions window can open. |
+| `bool IsOnLand { get; }` | True for a land slip (`Slip.LandAreaId` is set). |
 | `bool IsInMultiSlipBerth { get; }` | True when the slip is part of a `MultiSlipBerth`. |
 | `OrientedRect Bounds { get; }` | Spatial boundary of the slip's water area. |
 | `Vector2 Forward { get; }` | Unit plan-view vector a moored boat's bow points along (toward the dock end of the slip). |
 | `Vector2 Right { get; }` | Unit plan-view vector across the slip: the heading's local +X axis, `(cos h, −sin h)`. For heading 0° it is +X. |
+| `static Slip OnLand(string id, string landAreaId, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f)` | Creates a Free land slip: a spot on a `LandArea` where a boat is stored or maintained ashore (boatyard, hard standing, dry stack). It is drawn on the land's surface, its boat rests on cradle stands, and it is selected, colored and updated like any other slip. |
 
 <a id="slipdatabag"></a>
 ### SlipDataBag
@@ -1414,6 +1462,20 @@ Glyph model space: the glyph is 1 unit tall along local +Z (the text's "up") and
 | `static float MeasureWidth(int characterCount)` | Width of a line of text in units of the glyph height. |
 | `static bool TryGetMeshId(char c, out int meshId)` | Mesh id for a character; false for whitespace (nothing to draw). |
 
+<a id="landmeshfactory"></a>
+### LandMeshFactory
+
+`static class LandMeshFactory`
+
+World-space meshes for `LandArea` outlines: solid slabs for quays and lawns, rock piles for breakwaters.
+
+| Member | Description |
+|---|---|
+| `const float WallDepth = 3f` | How far land walls reach below the water surface, in meters. |
+| `static MeshData Create(int id, LandArea area)` | The mesh for a land area: a rock pile for `LandKind.Breakwater`, otherwise a solid slab. |
+| `static MeshData CreateRockPile(int id, LandArea area)` | A rubble mound: the area filled with irregular rocks (low-poly squashed spheres), reaching the land height in the middle and sloping down to the water along the outline, over a dark core that hides the gaps between rocks. |
+| `static MeshData CreateSlab(int id, LandArea area)` | The outline extruded from `LandMeshFactory.WallDepth` below the water up to the land height, with a flat top. |
+
 <a id="marinameshfactory"></a>
 ### MarinaMeshFactory
 
@@ -1497,7 +1559,9 @@ Well-known mesh ids referenced by render objects.
 | `const int Buoy = 6` | White sphere, 0.5 m radius (status buoys, boom floats). |
 | `const int Cylinder = 7` | White cylinder, 1 m diameter, Y 0–1 (steel piles, bollards). |
 | `const int GlyphBase = 300` | First id of the text glyph meshes (see `GlyphFont`). |
+| `const int LandBase = 10000` | First id of the per-land-area meshes (see `MeshIds.ForLand`). |
 | `static int ForBoat(BoatType type)` | Mesh id of a boat model (100 + type). Register a `MeshData` under this id to replace the model. |
+| `static int ForLand(int index)` | Mesh id of the land area at `index` in the layout (world-space geometry built by `LandMeshFactory`). |
 
 <a id="meshlibrary"></a>
 ### MeshLibrary
@@ -1515,6 +1579,7 @@ The set of meshes a scene can reference. Renderers upload each mesh once, keyed 
 | `MeshData Get(int id)` | The mesh with this id. |
 | `void Register(MeshData mesh)` | Adds or replaces a mesh (e.g. swap a procedural boat for one loaded from GLTF). |
 | `bool TryGet(int id, out MeshData mesh)` | Looks up a mesh by id. |
+| `bool Unregister(int id)` | Removes a mesh. Returns false when no mesh has this id. |
 
 ## VirtualMarina.Core.Input
 
@@ -1633,6 +1698,22 @@ World space is right-handed and Y-up. The water surface is the plane Y = 0. Plan
 | `static float StableHash01(string value)` | Deterministic hash of a string mapped to [0, 1). Stable across processes (unlike string.GetHashCode). |
 | `static Vector2 ToPlan(Vector3 world)` | World point to plan position (X, Z), dropping the height. |
 | `static Vector3 ToWorld(Vector2 planPosition, float y = 0f)` | Plan position (X, Z) to a world point at height `y`. |
+
+<a id="polygonmath"></a>
+### PolygonMath
+
+`static class PolygonMath`
+
+Plan-view polygon helpers (point lists in plan coordinates, X = world X, Y = world Z).
+
+| Member | Description |
+|---|---|
+| `static bool Contains(IReadOnlyList<Vector2> points, Vector2 point)` | True when the point lies inside the polygon (even-odd rule). Points exactly on an edge may go either way. |
+| `static float DistanceToBoundary(IReadOnlyList<Vector2> points, Vector2 point)` | Shortest distance from the point to the polygon's outline. |
+| `static ValueTuple<Vector2, Vector2> GetBounds(IReadOnlyList<Vector2> points)` | Axis-aligned bounds of the points (zero box when empty). |
+| `static bool IsSimple(IReadOnlyList<Vector2> points)` | True when no two non-adjacent edges cross and no edge has zero length. |
+| `static float SignedArea(IReadOnlyList<Vector2> points)` | Signed area (shoelace formula on plan X and Y). Positive when the points run counter-clockwise in the X/Y plane (−X to +X, then toward +Y); negative for the opposite direction. |
+| `static IReadOnlyList<ValueTuple<int, int, int>> Triangulate(IReadOnlyList<Vector2> points)` | Splits a simple polygon (convex or concave, either winding) into triangles by ear clipping. Returns index triples into `points`, each wound counter-clockwise in the X/Y plane. |
 
 ## VirtualMarina.Core.Picking
 

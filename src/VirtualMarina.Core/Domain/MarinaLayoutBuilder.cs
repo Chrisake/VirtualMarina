@@ -32,12 +32,24 @@ public sealed class MarinaLayoutBuilder
         _name = name;
     }
 
-    /// <summary>Adds a quay, breakwater or lawn.</summary>
-    public MarinaLayoutBuilder AddLandArea(LandArea landArea)
+    /// <summary>Adds a quay, breakwater or lawn and, optionally, land slips on it.</summary>
+    /// <param name="landArea">The land area.</param>
+    /// <param name="configure">Callback receiving a <see cref="LandAreaBuilder"/> to add land slips.</param>
+    public MarinaLayoutBuilder AddLandArea(LandArea landArea, Action<LandAreaBuilder>? configure = null)
     {
         _land.Add(landArea);
+        configure?.Invoke(new LandAreaBuilder(landArea, _slips));
         return this;
     }
+
+    /// <summary>Adds a land area from its outline and, optionally, land slips on it.</summary>
+    /// <param name="id">Unique land area id.</param>
+    /// <param name="points">Outline in plan coordinates.</param>
+    /// <param name="height">Top surface height above the water, in meters.</param>
+    /// <param name="kind">Surface type.</param>
+    /// <param name="configure">Callback receiving a <see cref="LandAreaBuilder"/> to add land slips.</param>
+    public MarinaLayoutBuilder AddLandArea(string id, IEnumerable<Vector2> points, float height, LandKind kind = LandKind.Quay, Action<LandAreaBuilder>? configure = null) =>
+        AddLandArea(new LandArea(id, points, height, kind), configure);
 
     /// <summary>Adds a dock and, optionally, lays out its slips and dividers.</summary>
     /// <param name="dock">The dock.</param>
@@ -128,6 +140,7 @@ public sealed class DockBuilder
     /// When set, explicit dividers of this type are generated at every slip boundary and the slips'
     /// automatic finger piers are turned off.
     /// </param>
+    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
     public DockBuilder AddSlips(
         DockSide side, int count, float slipWidth, float slipLength,
         Func<int, Slip, Slip>? customize = null, float startOffset = 2f, float gap = 0f, DividerType? dividers = null)
@@ -163,6 +176,7 @@ public sealed class DockBuilder
     /// <param name="slipWidth">Width along the dock, in meters.</param>
     /// <param name="slipLength">Length away from the dock, in meters.</param>
     /// <param name="customize">Optional callback to adjust the generated slip.</param>
+    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
     public DockBuilder AddSlip(string id, DockSide side, float offsetAlong, float slipWidth, float slipLength, Func<Slip, Slip>? customize = null)
     {
         var slip = SlipGenerator.AtDock(Dock, id, side, offsetAlong, slipWidth, slipLength);
@@ -181,6 +195,70 @@ public sealed class DockBuilder
     public DockBuilder AddDivider(Divider divider)
     {
         _dividers.Add(divider.DockId == Dock.Id ? divider : divider with { DockId = Dock.Id });
+        return this;
+    }
+}
+
+/// <summary>Adds land slips to a single <see cref="LandArea"/> inside <see cref="MarinaLayoutBuilder"/>.</summary>
+public sealed class LandAreaBuilder
+{
+    private readonly List<Slip> _slips;
+
+    internal LandAreaBuilder(LandArea landArea, List<Slip> slips)
+    {
+        LandArea = landArea;
+        _slips = slips;
+    }
+
+    /// <summary>The land area being configured.</summary>
+    public LandArea LandArea { get; }
+
+    /// <summary>Adds a land slip centered at <paramref name="position"/> (see <see cref="Slip.OnLand"/>).</summary>
+    /// <param name="id">Unique slip id.</param>
+    /// <param name="position">Center of the spot in plan coordinates.</param>
+    /// <param name="headingDegrees">Direction the stored boat's bow points.</param>
+    /// <param name="length">Length along the heading, in meters.</param>
+    /// <param name="width">Width across the heading, in meters.</param>
+    /// <param name="customize">Optional callback to set status, boat, label, flags... on the slip.</param>
+    public LandAreaBuilder AddSlip(string id, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f, Func<Slip, Slip>? customize = null)
+    {
+        var slip = Slip.OnLand(id, LandArea.Id, position, headingDegrees, length, width);
+        _slips.Add(customize is null ? slip : customize(slip));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a row of <paramref name="count"/> land slips side by side, starting at <paramref name="firstPosition"/> and
+    /// continuing along <paramref name="rowHeadingDegrees"/>. Ids follow <c>{idPrefix}01</c>, continuing after slips
+    /// already added with the same prefix.
+    /// </summary>
+    /// <param name="idPrefix">Id prefix, e.g. "Y-".</param>
+    /// <param name="firstPosition">Center of the first slip.</param>
+    /// <param name="rowHeadingDegrees">Direction the row runs in.</param>
+    /// <param name="count">Number of slips.</param>
+    /// <param name="slipWidth">Width of each slip (along the row), in meters.</param>
+    /// <param name="slipLength">Length of each slip (across the row), in meters.</param>
+    /// <param name="customize">Optional callback (index, slip) → slip.</param>
+    /// <param name="gap">Space between neighbouring slips.</param>
+    /// <param name="boatHeadingDegrees">Bow direction; defaults to <paramref name="rowHeadingDegrees"/> − 90° (boats parallel, across the row).</param>
+    public LandAreaBuilder AddSlips(
+        string idPrefix, Vector2 firstPosition, float rowHeadingDegrees, int count, float slipWidth, float slipLength,
+        Func<int, Slip, Slip>? customize = null, float gap = 0.5f, float? boatHeadingDegrees = null)
+    {
+        ArgumentNullException.ThrowIfNull(idPrefix);
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipLength);
+
+        var direction = MarinaMath.HeadingToDirection(rowHeadingDegrees);
+        var heading = boatHeadingDegrees ?? rowHeadingDegrees - 90f;
+        var existing = _slips.Count(s => s.Id.StartsWith(idPrefix, StringComparison.Ordinal));
+        for (var i = 0; i < count; i++)
+        {
+            var slip = Slip.OnLand($"{idPrefix}{existing + i + 1:00}", LandArea.Id, firstPosition + direction * (i * (slipWidth + gap)), heading, slipLength, slipWidth);
+            _slips.Add(customize is null ? slip : customize(i, slip));
+        }
+
         return this;
     }
 }
@@ -205,6 +283,7 @@ public static class SlipGenerator
     /// <param name="gap">Extra spacing between consecutive slips.</param>
     /// <param name="firstNumber">Number used for the first generated slip id.</param>
     /// <example><code>marina.AddSlips(SlipGenerator.AlongDock(marina.GetDock("E")!, DockSide.Left, count: 10, slipWidth: 5, slipLength: 12));</code></example>
+    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
     public static IReadOnlyList<Slip> AlongDock(
         Dock dock, DockSide side, int count, float slipWidth, float slipLength,
         float startOffset = 2f, float gap = 0f, int firstNumber = 1)
@@ -232,11 +311,14 @@ public static class SlipGenerator
     /// <param name="offsetAlong">Distance from the dock's start to the slip's near edge.</param>
     /// <param name="slipWidth">Width along the dock, in meters.</param>
     /// <param name="slipLength">Length away from the dock, in meters.</param>
+    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
     public static Slip AtDock(Dock dock, string id, DockSide side, float offsetAlong, float slipWidth, float slipLength)
     {
         ArgumentNullException.ThrowIfNull(dock);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipWidth);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipLength);
+
+        ThrowIfNoBerths(dock, side);
 
         var outward = Outward(dock, side);
         var along = offsetAlong + slipWidth * 0.5f;
@@ -256,12 +338,14 @@ public static class SlipGenerator
     /// <param name="type">Divider type.</param>
     /// <param name="startOffset">Distance from the dock's start to the first slip.</param>
     /// <param name="gap">Space between slips; each slip then gets its own pair of dividers.</param>
+    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
     public static IReadOnlyList<Divider> DividersAlongDock(
         Dock dock, DockSide side, int count, float slipWidth, float slipLength, DividerType type,
         float startOffset = 2f, float gap = 0f)
     {
         ArgumentNullException.ThrowIfNull(dock);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
+        ThrowIfNoBerths(dock, side);
 
         var outward = Outward(dock, side);
         var heading = MarinaMath.DirectionToHeading(outward);
@@ -289,6 +373,14 @@ public static class SlipGenerator
         }
 
         return result;
+    }
+
+    private static void ThrowIfNoBerths(Dock dock, DockSide side)
+    {
+        if (!dock.HasBerthsOn(side))
+        {
+            throw new InvalidOperationException($"Dock '{dock.Id}' is single-sided ({dock.BerthingSides}); it has no berths on the {side} side.");
+        }
     }
 
     private static Vector2 Outward(Dock dock, DockSide side) => dock.Right * (side == DockSide.Right ? 1f : -1f);

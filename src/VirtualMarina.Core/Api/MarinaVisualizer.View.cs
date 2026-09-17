@@ -155,7 +155,7 @@ public sealed partial class MarinaVisualizer
         var points = FocusPoints(slips);
 
         var (planMin, planMax) = MarinaLayout.ComputeBounds(slips.Select(s => s.Bounds));
-        var target = MarinaMath.ToWorld((planMin + planMax) * 0.5f);
+        var target = MarinaMath.ToWorld((planMin + planMax) * 0.5f, slips.Average(s => GroundHeight(s) ?? 0f));
         var extent = MathF.Max(planMax.X - planMin.X, planMax.Y - planMin.Y);
         var limit = 1f - 2f * _focusMargin; // usable NDC half-extent
         var pose = Camera.Constrain(new CameraPose(target, resolved.YawDegrees, resolved.PitchDegrees, MathF.Max(MinFocusDistance, FitDistance(extent))));
@@ -213,16 +213,17 @@ public sealed partial class MarinaVisualizer
         return pose;
     }
 
-    /// <summary>Slip corners on the water and at the height of their boats (so masts stay in view from oblique angles).</summary>
+    /// <summary>Slip corners on the water (or land) and at the height of their boats (so masts stay in view from oblique angles).</summary>
     private List<Vector3> FocusPoints(IEnumerable<Slip> slips)
     {
         var points = new List<Vector3>();
         foreach (var slip in slips)
         {
-            var top = slip.Boat is { } boat && slip.Status.CanHaveBoat() ? Picking.SlipPlacement.BoatTopHeight(boat, Meshes) : 1f;
+            var ground = GroundHeight(slip);
+            var top = slip.Boat is { } boat && slip.Status.CanHaveBoat() ? Picking.SlipPlacement.BoatTopHeight(boat, Meshes, ground) : (ground ?? 0f) + 1f;
             foreach (var corner in slip.Bounds.GetCorners())
             {
-                points.Add(MarinaMath.ToWorld(corner));
+                points.Add(MarinaMath.ToWorld(corner, ground ?? 0f));
                 points.Add(MarinaMath.ToWorld(corner, top));
             }
         }
@@ -284,9 +285,8 @@ public sealed partial class MarinaVisualizer
     {
         var rects = OrderedDocks().Select(d => d.Bounds)
             .Concat(OrderedSlips().Select(s => s.Bounds))
-            .Concat(OrderedDividers().Select(d => d.Bounds))
-            .Concat(_landAreas.Select(l => l.Area));
-        var (min, max) = MarinaLayout.ComputeBounds(rects);
+            .Concat(OrderedDividers().Select(d => d.Bounds));
+        var (min, max) = MarinaLayout.ComputeBounds(rects, OrderedLandAreas());
         var center = MarinaMath.ToWorld((min + max) * 0.5f);
         var extent = MathF.Max(max.X - min.X, max.Y - min.Y);
         var fit = FitDistance(extent);

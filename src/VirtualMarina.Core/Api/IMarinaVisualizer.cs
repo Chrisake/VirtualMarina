@@ -178,7 +178,7 @@ public interface IMarinaVisualizer
     // ---- Slips --------------------------------------------------------------------------------
 
     /// <summary>Adds a slip. Its position, heading and size are absolute plan coordinates (see <see cref="Slip"/>).</summary>
-    /// <exception cref="MarinaLayoutException">The slip is invalid or references an unknown dock.</exception>
+    /// <exception cref="MarinaLayoutException">The slip is invalid or references an unknown dock or land area.</exception>
     /// <exception cref="InvalidOperationException">A slip with the same id exists.</exception>
     void AddSlip(Slip slip);
 
@@ -226,6 +226,15 @@ public interface IMarinaVisualizer
 
     /// <summary>Slips belonging to a dock.</summary>
     IReadOnlyList<Slip> GetSlipsByDock(string dockId);
+
+    /// <summary>Land slips on a land area (see <see cref="Slip.OnLand"/>).</summary>
+    IReadOnlyList<Slip> GetSlipsByLandArea(string landAreaId);
+
+    /// <summary>The land area with this id, or null.</summary>
+    LandArea? GetLandArea(string landAreaId);
+
+    /// <summary>All land areas, in layout order.</summary>
+    IReadOnlyList<LandArea> GetLandAreas();
 
     /// <summary>Slips with a given status.</summary>
     IReadOnlyList<Slip> GetSlipsByStatus(SlipStatus status);

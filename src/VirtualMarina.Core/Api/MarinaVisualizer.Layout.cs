@@ -17,6 +17,12 @@ public sealed partial class MarinaVisualizer
         ClearState();
 
         MarinaName = layout.Name;
+        foreach (var land in layout.LandAreas)
+        {
+            _landAreas[land.Id] = land;
+            _landOrder.Add(land.Id);
+        }
+
         foreach (var dock in layout.Docks)
         {
             _docks[dock.Id] = dock;
@@ -46,7 +52,7 @@ public sealed partial class MarinaVisualizer
             }
         }
 
-        _landAreas.AddRange(layout.LandAreas);
+        RegisterLandMeshes();
 
         var (min, max) = layout.ComputeBounds();
         Meshes.Register(MarinaMeshFactory.CreateWaterGrid(MeshIds.Water, Water.Size, Water.GridResolution, (min + max) * 0.5f));
@@ -71,7 +77,7 @@ public sealed partial class MarinaVisualizer
         Slips = OrderedSlips().ToArray(),
         Dividers = OrderedDividers().ToArray(),
         MultiSlipBerths = OrderedBerths().ToArray(),
-        LandAreas = _landAreas.ToArray(),
+        LandAreas = OrderedLandAreas().ToArray(),
     };
 
     /// <inheritdoc/>
@@ -80,6 +86,7 @@ public sealed partial class MarinaVisualizer
         var previous = SelectedSlips;
         ClosePopup();
         ClearState();
+        RegisterLandMeshes();
         RebuildBuiltInPresets();
         MarkSceneDirty();
         if (previous.Count > 0)
@@ -310,6 +317,20 @@ public sealed partial class MarinaVisualizer
         OrderedSlips().Where(s => IdComparer.Equals(s.DockId, dockId)).ToArray();
 
     /// <inheritdoc/>
+    public IReadOnlyList<Slip> GetSlipsByLandArea(string landAreaId) =>
+        OrderedSlips().Where(s => IdComparer.Equals(s.LandAreaId, landAreaId)).ToArray();
+
+    // ---- Land -----------------------------------------------------------------------------------
+
+    /// <inheritdoc/>
+    public LandArea? GetLandArea(string landAreaId) => landAreaId is not null && _landAreas.TryGetValue(landAreaId, out var land) ? land : null;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<LandArea> GetLandAreas() => OrderedLandAreas().ToArray();
+
+    // ---- Slips (continued) ----------------------------------------------------------------------
+
+    /// <inheritdoc/>
     public IReadOnlyList<Slip> GetSlipsByStatus(SlipStatus status) =>
         OrderedSlips().Where(s => s.Status == status).ToArray();
 
@@ -443,6 +464,11 @@ public sealed partial class MarinaVisualizer
             errors.Add($"Slip '{slip.Id}' references unknown dock '{slip.DockId}'.");
         }
 
+        if (!string.IsNullOrWhiteSpace(slip.LandAreaId) && !_landAreas.ContainsKey(slip.LandAreaId))
+        {
+            errors.Add($"Slip '{slip.Id}' references unknown land area '{slip.LandAreaId}'.");
+        }
+
         ThrowIfInvalid(errors);
     }
 
@@ -478,6 +504,7 @@ public sealed partial class MarinaVisualizer
         _berths.Clear();
         _berthOrder.Clear();
         _landAreas.Clear();
+        _landOrder.Clear();
         _selection.Clear();
         _hoveredSlipId = null;
         _popupRefreshPending = false;

@@ -40,8 +40,11 @@ public class SlipEventArgs : EventArgs
     /// <summary>Host-owned data bag of the slip; values written here persist with the slip (see <see cref="Slip.ExternalData"/>).</summary>
     public SlipDataBag ExternalData => Slip.ExternalData;
 
-    /// <summary>The dock the slip belongs to.</summary>
+    /// <summary>The dock the slip belongs to; null for a land slip.</summary>
     public Dock? Dock { get; }
+
+    /// <summary>The land area a land slip is on (<see cref="Slip.LandAreaId"/>); null for a water slip.</summary>
+    public LandArea? LandArea { get; init; }
 
     /// <summary>Button that triggered the event; <see cref="PointerButton.None"/> for programmatic selection.</summary>
     public PointerButton Button { get; }

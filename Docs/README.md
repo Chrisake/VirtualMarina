@@ -6,7 +6,7 @@ VirtualMarina is a .NET 8 library that renders an interactive 3D marina (docks, 
 |---|---|
 | [Getting started](01-getting-started.md) | Build, reference the libraries, host the view in WinForms or Blazor, load a first marina |
 | [Coordinates and conventions](02-coordinates-and-conventions.md) | Plan coordinates, headings, axes, ids, immutable snapshots, threading, exceptions |
-| [Layout: docks, slips, dividers, land](03-layout.md) | `MarinaLayout`, `MarinaLayoutBuilder`, dock types, explicit positioning, runtime changes, batching |
+| [Layout: docks, slips, dividers, land](03-layout.md) | `MarinaLayout`, `MarinaLayoutBuilder`, dock types, single-sided docks, polygon land and rock breakwaters, land slips, explicit positioning, runtime changes, batching |
 | [Slip status, boats and flags](04-status-and-flags.md) | Free / Occupied / Reserved / Temporarily Free, boats, Visible / Disabled / Read-only, filter, statistics |
 | [Multi-slip berths](05-multi-slip-berths.md) | One boat across several slips: alongside and bow-in mooring |
 | [Selection, tooltips and actions](06-selection-tooltips-actions.md) | Click / Ctrl or Shift+click / right-click, `SetSelection`, tooltip and action content, invoking actions, external data |

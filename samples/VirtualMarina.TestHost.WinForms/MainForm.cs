@@ -142,13 +142,18 @@ public partial class MainForm : Form
 
     private void OnShowActionsClick(object sender, EventArgs e) => marinaView.Marina.ShowActions();
 
-    /// <summary>Selects every slip of the current dock. Disabled and hidden slips are skipped by SetSelection.</summary>
+    /// <summary>
+    /// Selects every slip of the current dock, or every land slip of the current land area.
+    /// Disabled and hidden slips are skipped by SetSelection.
+    /// </summary>
     private void OnSelectDockClick(object sender, EventArgs e)
     {
         var marina = marinaView.Marina;
-        var dockId = marina.SelectedSlip?.DockId ?? marina.GetDocks()[0].Id;
+        var slipIds = marina.SelectedSlip?.LandAreaId is { } landAreaId
+            ? marina.GetSlipsByLandArea(landAreaId).Select(s => s.Id)
+            : marina.GetSlipsByDock(marina.SelectedSlip?.DockId ?? marina.GetDocks()[0].Id).Select(s => s.Id);
 
-        var result = marina.SetSelection(marina.GetSlipsByDock(dockId).Select(s => s.Id), focusCamera: true);
+        var result = marina.SetSelection(slipIds, focusCamera: true);
         foreach (var rejected in result.Rejected) Log($"Not selected: {rejected.SlipId} ({rejected.Reason})");
     }
 
@@ -269,6 +274,7 @@ public partial class MainForm : Form
     private static bool CanMoorAlongside(IReadOnlyList<Slip> slips) =>
         slips.Count >= 2 &&
         slips.All(s => s.Status == SlipStatus.Free && s.AllowsActions && s.BerthId is null) &&
+        slips.All(s => s.DockId is not null) &&
         slips.Select(s => s.DockId).Distinct().Count() == 1;
 
     /// <summary>Stands in for an ERP lookup of the boat that belongs to this berth.</summary>
@@ -296,7 +302,10 @@ public partial class MainForm : Form
         else
         {
             var slip = slips[0];
-            text.AppendLine($"Berth:   {slip.DisplayName}  ({marinaView.Marina.GetDock(slip.DockId)?.Name})");
+            var where = slip.LandAreaId is { } landAreaId
+                ? $"on land: {marinaView.Marina.GetLandArea(landAreaId)?.DisplayName}"
+                : marinaView.Marina.GetDock(slip.DockId!)?.Name;
+            text.AppendLine($"Berth:   {slip.DisplayName}  ({where})");
             text.AppendLine($"Status:  {slip.Status.GetDisplayName()}{(slip.IsReadOnly ? " (locked)" : "")}");
             text.AppendLine($"Size:    {slip.Length:0.0} x {slip.Width:0.0} m");
             if (slip.Boat is { } boat)

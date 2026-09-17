@@ -146,6 +146,9 @@ public sealed record DockUpdate(string DockId)
     /// <summary>New support spacing in meters.</summary>
     public float? PilingSpacing { get; init; }
 
+    /// <summary>New berthing sides (single- or double-sided dock). Existing slips are not moved or removed.</summary>
+    public DockSides? BerthingSides { get; init; }
+
     internal Dock ApplyTo(Dock dock)
     {
         // Keep the center fixed while resizing/rotating unless a new start point is given.
@@ -159,6 +162,7 @@ public sealed record DockUpdate(string DockId)
         if (Type.HasValue) result = result with { Type = Type.Value };
         if (DeckHeight.HasValue) result = result with { DeckHeight = DeckHeight.Value };
         if (PilingSpacing.HasValue) result = result with { PilingSpacing = PilingSpacing.Value };
+        if (BerthingSides.HasValue) result = result with { BerthingSides = BerthingSides.Value };
         if (center.HasValue && (Center.HasValue || HeadingDegrees.HasValue || Length.HasValue)) result = result.WithCenter(center.Value);
         return result;
     }

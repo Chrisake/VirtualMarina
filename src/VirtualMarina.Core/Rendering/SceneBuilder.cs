@@ -16,7 +16,10 @@ internal sealed class SceneState
 
     public required IEnumerable<Divider> Dividers { get; init; }
 
+    /// <summary>Land areas in layout order; the one at index i is drawn with mesh <see cref="MeshIds.ForLand"/>(i).</summary>
     public required IEnumerable<LandArea> Land { get; init; }
+
+    public required Func<string, LandArea?> LandLookup { get; init; }
 
     public required Func<string, Slip?> SlipLookup { get; init; }
 
@@ -46,6 +49,9 @@ internal static class SceneBuilder
     private static readonly Vector4 White = Vector4.One;
     private static readonly float[] Sides = { -1f, 1f };
 
+    /// <summary>Sides (−1 left, +1 right) where boats berth and mooring points are drawn.</summary>
+    private static IEnumerable<float> BerthSides(Dock dock) => Sides.Where(side => dock.HasBerthsOn(side < 0f ? DockSide.Left : DockSide.Right));
+
     // Wood
     private static readonly Vector4 WoodDeck = new(0.66f, 0.50f, 0.33f, 1f);
     private static readonly Vector4 WoodSeam = new(0.43f, 0.31f, 0.20f, 1f);
@@ -69,6 +75,11 @@ internal static class SceneBuilder
     private static readonly Vector4 BoomEnd = new(0.98f, 0.84f, 0.15f, 1f);
     private static readonly Vector4 BoomLine = new(0.25f, 0.25f, 0.27f, 1f);
 
+    // Land slips
+    private static readonly Vector4 CradleSteel = new(0.22f, 0.32f, 0.52f, 1f);
+    private static readonly Vector4 KeelBlock = new(0.45f, 0.33f, 0.22f, 1f);
+    private static readonly Vector4 PostGray = new(0.55f, 0.56f, 0.58f, 1f);
+
     // Slip labels
     private static readonly Vector4 LabelColor = new(0.97f, 0.98f, 1f, 1f);
     private static readonly Vector4 LabelHighlight = new(1f, 0.90f, 0.35f, 1f);
@@ -86,7 +97,14 @@ internal static class SceneBuilder
     /// <summary>Top of the selection marker (including bob) relative to its base.</summary>
     public const float MarkerTop = 4.3f;
 
-    public static float MarkerBaseHeight(float boatTop) => MathF.Max(boatTop, 2.5f) + MarkerClearance;
+    /// <summary>World Y of the selection marker's base.</summary>
+    /// <param name="boatTop">World Y of the top of the slip's boat (or of the default clearance when it has none).</param>
+    /// <param name="ground">Land height of a land slip; 0 on the water.</param>
+    public static float MarkerBaseHeight(float boatTop, float ground = 0f) => MathF.Max(boatTop, ground + 2.5f) + MarkerClearance;
+
+    /// <summary>Height of the land under a land slip, or null for a water slip (or a land slip whose land area is missing).</summary>
+    public static float? GroundHeight(Slip slip, Func<string, LandArea?> landLookup) =>
+        slip.LandAreaId is { } id && landLookup(id) is { } land ? land.Height : null;
 
     public static void Build(List<RenderObject> output, SceneState state)
     {
@@ -94,17 +112,19 @@ internal static class SceneBuilder
         var transparent = new List<RenderObject>();
         var colors = state.Colors;
 
-        foreach (var area in state.Land) AddLand(output, area);
+        var landIndex = 0;
+        foreach (var _ in state.Land) output.Add(new RenderObject(MeshIds.ForLand(landIndex++), Matrix4x4.Identity, White));
         foreach (var dock in state.Docks) AddDock(output, dock);
         foreach (var divider in state.Dividers) AddDivider(output, divider, divider.DockId is null ? null : state.DockLookup(divider.DockId));
 
         var slips = state.Slips as IReadOnlyCollection<Slip> ?? state.Slips.ToList();
 
         // Boats first, so the selection marker can sit above them.
+        Func<Slip, float?> ground = slip => GroundHeight(slip, state.LandLookup);
         var boatTops = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
-        foreach (var boat in SlipPlacement.EnumerateBoats(slips, state.SlipLookup, state.BerthLookup, state.Filter))
+        foreach (var boat in SlipPlacement.EnumerateBoats(slips, state.SlipLookup, state.BerthLookup, state.Filter, ground, state.Meshes))
         {
-            var top = SlipPlacement.BoatTopHeight(boat.Boat, state.Meshes);
+            var top = SlipPlacement.BoatTopHeight(boat.Boat, state.Meshes, boat.Ground);
             foreach (var member in boat.Slips) boatTops[member.Id] = top;
             AddBoat(output, transparent, boat, state);
         }
@@ -114,8 +134,8 @@ internal static class SceneBuilder
             // Hidden slips draw nothing at all, not even their physical structure.
             if (!slip.IsVisible) continue;
 
-            var dock = state.DockLookup(slip.DockId);
-            if (slip.HasFingerPiers) AddFingerPiers(output, slip, dock, state);
+            var slipGround = ground(slip);
+            if (slip.HasFingerPiers && !slip.IsOnLand) AddFingerPiers(output, slip, slip.DockId is null ? null : state.DockLookup(slip.DockId), state);
 
             // The status filter hides status visuals and boats, but not structure.
             if (!state.Filter.Includes(slip.Status)) continue;
@@ -130,22 +150,36 @@ internal static class SceneBuilder
             var padAlpha = isSelected ? 0.72f : isHovered ? 0.6f : slip.IsDisabled ? colors.PadOpacity * 0.75f : colors.PadOpacity;
             var padEmissive = isSelected ? 0.45f : isHovered ? 0.25f : 0.05f;
             transparent.Add(new RenderObject(
-                MeshIds.SlipPad, SlipPlacement.PadWorld(slip), statusColor.WithAlpha(padAlpha).ToVector4(), padEmissive,
+                MeshIds.SlipPad, SlipPlacement.PadWorld(slip, slipGround), statusColor.WithAlpha(padAlpha).ToVector4(), padEmissive,
                 isSelected ? RenderAnimation.Pulse : RenderAnimation.None, phase, desaturation));
 
-            // Status buoy, visible from far away.
-            output.Add(new RenderObject(
-                MeshIds.Buoy,
-                Matrix4x4.CreateScale(0.9f) * Matrix4x4.CreateTranslation(SlipPlacement.BuoyPosition(slip)),
-                statusColor.WithAlpha(1f).ToVector4(), slip.IsDisabled ? 0.05f : 0.35f, RenderAnimation.FloatOnWater, phase, desaturation));
+            if (slipGround is { } landHeight)
+            {
+                // Status post at the rear of a land slip, visible from far away.
+                var post = SlipPlacement.StatusPostPosition(slip);
+                output.Add(Cylinder(post, landHeight, new Vector3(0.12f, SlipPlacement.StatusPostHeight, 0.12f), PostGray) with { Desaturation = desaturation });
+                output.Add(new RenderObject(
+                    MeshIds.Buoy,
+                    Matrix4x4.CreateScale(0.7f) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(post, landHeight + SlipPlacement.StatusPostHeight + 0.3f)),
+                    statusColor.WithAlpha(1f).ToVector4(), slip.IsDisabled ? 0.05f : 0.35f, RenderAnimation.None, phase, desaturation));
+            }
+            else
+            {
+                // Status buoy, visible from far away.
+                output.Add(new RenderObject(
+                    MeshIds.Buoy,
+                    Matrix4x4.CreateScale(0.9f) * Matrix4x4.CreateTranslation(SlipPlacement.BuoyPosition(slip)),
+                    statusColor.WithAlpha(1f).ToVector4(), slip.IsDisabled ? 0.05f : 0.35f, RenderAnimation.FloatOnWater, phase, desaturation));
+            }
 
-            if (state.LabelMode.Includes(slip.Status)) AddLabel(output, slip, isSelected || isHovered, phase);
+            if (state.LabelMode.Includes(slip.Status)) AddLabel(output, slip, isSelected || isHovered, phase, slipGround);
 
             if (isSelected)
             {
                 var isPrimary = string.Equals(slip.Id, state.PrimarySelectedId, StringComparison.OrdinalIgnoreCase);
-                var boatTop = boatTops.TryGetValue(slip.Id, out var t) ? t : 3f;
-                var markerPosition = MarinaMath.ToWorld(slip.Center, MarkerBaseHeight(boatTop));
+                var baseGround = slipGround ?? 0f;
+                var boatTop = boatTops.TryGetValue(slip.Id, out var t) ? t : baseGround + 3f;
+                var markerPosition = MarinaMath.ToWorld(slip.Center, MarkerBaseHeight(boatTop, baseGround));
                 output.Add(new RenderObject(
                     MeshIds.SelectionMarker,
                     Matrix4x4.CreateScale(isPrimary ? 2.4f : 1.7f) * Matrix4x4.CreateTranslation(markerPosition),
@@ -159,8 +193,9 @@ internal static class SceneBuilder
     /// <summary>
     /// The slip's name written flat on the water past its open end, one object per character. The characters sit just
     /// above the highest wave the water can reach (see <see cref="RenderAnimation.AboveWaves"/>), so waves never hide them.
+    /// Land slips get their name on the ground, just above their pad.
     /// </summary>
-    private static void AddLabel(List<RenderObject> output, Slip slip, bool highlighted, float phase)
+    private static void AddLabel(List<RenderObject> output, Slip slip, bool highlighted, float phase, float? ground)
     {
         var text = slip.DisplayName.Trim();
         if (text.Length == 0) return;
@@ -176,8 +211,8 @@ internal static class SceneBuilder
             var position = start + reading * (i * GlyphFont.Advance * height);
             output.Add(new RenderObject(
                 meshId,
-                MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, LabelHeightAboveWater)),
-                tint, highlighted ? 0.35f : 0.15f, RenderAnimation.AboveWaves, phase));
+                MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, ground is { } g ? g + SlipPlacement.LandPadLift + 0.02f : LabelHeightAboveWater)),
+                tint, highlighted ? 0.35f : 0.15f, ground.HasValue ? RenderAnimation.None : RenderAnimation.AboveWaves, phase));
         }
     }
 
@@ -188,13 +223,14 @@ internal static class SceneBuilder
         var isHovered = !isSelected && state.HoveredSlipId is { } hovered &&
             boat.Slips.Any(s => s.IsInteractive && string.Equals(s.Id, hovered, StringComparison.OrdinalIgnoreCase));
         var disabled = boat.IsDisabled;
-        var animation = RenderAnimation.FloatOnWater | (isSelected ? RenderAnimation.Pulse : RenderAnimation.None);
+        var animation = (boat.OnLand ? RenderAnimation.None : RenderAnimation.FloatOnWater) | (isSelected ? RenderAnimation.Pulse : RenderAnimation.None);
         var emissive = isSelected ? 0.3f : isHovered ? 0.15f : 0f;
         var phase = SlipPlacement.AnimationPhase(boat.BerthId ?? boat.PrimarySlip.Id);
         var meshId = MeshIds.ForBoat(boat.Boat.Type);
 
         if (!boat.Status.ShowsGhostBoat())
         {
+            if (boat.Ground is { } ground) AddCradle(output, boat, ground, state.Meshes, disabled ? 1f : 0f);
             var tint = disabled ? new Vector4(0.92f, 0.92f, 0.92f, 1f) : White;
             output.Add(new RenderObject(meshId, boat.World, tint, emissive, animation, phase, disabled ? 1f : 0f));
             return;
@@ -206,21 +242,41 @@ internal static class SceneBuilder
         transparent.Add(new RenderObject(meshId, boat.World, ghost.ToVector4(), disabled ? emissive : MathF.Max(emissive, 0.25f), animation, phase, disabled ? 1f : 0f));
     }
 
-    private static void AddLand(List<RenderObject> output, LandArea area)
+    /// <summary>Keel blocks and side supports holding a boat stored ashore.</summary>
+    private static void AddCradle(List<RenderObject> output, BoatInstance boat, float ground, MeshLibrary meshes, float desaturation)
     {
-        const float depth = 3f;
-        var color = area.Kind switch
-        {
-            LandKind.Breakwater => new Vector4(0.52f, 0.51f, 0.49f, 1f),
-            LandKind.Grass => new Vector4(0.40f, 0.58f, 0.30f, 1f),
-            _ => new Vector4(0.74f, 0.72f, 0.67f, 1f),
-        };
+        var world = boat.World;
+        var origin = MarinaMath.ToPlan(world.Translation);
+        var forward = MarinaMath.ToPlan(new Vector3(world.M31, world.M32, world.M33));
+        var right = MarinaMath.ToPlan(new Vector3(world.M11, world.M12, world.M13));
+        if (forward.LengthSquared() < 1e-8f || right.LengthSquared() < 1e-8f) return;
+        forward = Vector2.Normalize(forward);
+        right = Vector2.Normalize(right);
+        var heading = MarinaMath.DirectionToHeading(forward);
 
-        var world = MarinaMath.CreatePlacement(
-            new Vector3(area.Area.Width, area.Height + depth, area.Area.Length),
-            area.Area.HeadingDegrees,
-            MarinaMath.ToWorld(area.Area.Center, (area.Height - depth) * 0.5f));
-        output.Add(new RenderObject(MeshIds.UnitBox, world, color));
+        var length = boat.Boat.LengthMeters;
+        var beam = boat.Boat.BeamMeters;
+        var keel = ground + SlipPlacement.CradleHeight;
+        var hullSide = keel + SlipPlacement.KeelDepth(boat.Boat, meshes) * 0.8f;
+
+        foreach (var along in new[] { -0.28f, 0.22f })
+        {
+            var at = origin + forward * (length * along);
+            output.Add(new RenderObject(
+                MeshIds.UnitBox,
+                MarinaMath.CreatePlacement(new Vector3(0.5f, SlipPlacement.CradleHeight, 0.7f), heading, MarinaMath.ToWorld(at, ground + SlipPlacement.CradleHeight * 0.5f)),
+                KeelBlock, 0f, RenderAnimation.None, 0f, desaturation));
+
+            foreach (var side in Sides)
+            {
+                var foot = at + right * (side * MathF.Max(0.5f, beam * 0.42f));
+                output.Add(Cylinder(foot, ground, new Vector3(0.12f, hullSide - ground, 0.12f), CradleSteel) with { Desaturation = desaturation });
+                output.Add(new RenderObject(
+                    MeshIds.UnitBox,
+                    MarinaMath.CreatePlacement(new Vector3(0.7f, 0.06f, 0.7f), heading, MarinaMath.ToWorld(foot, ground + 0.03f)),
+                    CradleSteel, 0f, RenderAnimation.None, 0f, desaturation));
+            }
+        }
     }
 
     // ---- Docks --------------------------------------------------------------------------------------
@@ -258,7 +314,7 @@ internal static class SceneBuilder
                 var height = top - slab + PilingDepth;
                 output.Add(Box(dock, column, 0f, new Vector3(0.5f, height, 0.5f), top - slab - height * 0.5f, ConcreteColumn));
 
-                if (i % 2 == 1)
+                if (i % 2 == 1 && dock.HasBerthsOn(side < 0f ? DockSide.Left : DockSide.Right))
                 {
                     var bollard = dock.Start + dock.Direction * along + dock.Right * side * (dock.Width * 0.5f - 0.55f);
                     output.Add(Cylinder(bollard, top, new Vector3(0.32f, 0.38f, 0.32f), Bollard));
@@ -267,7 +323,7 @@ internal static class SceneBuilder
         }
     }
 
-    /// <summary>Plank deck with walers on dark pontoon floats, held by wooden guide piles.</summary>
+    /// <summary>Plank deck with walers on dark pontoon floats.</summary>
     private static void AddFloatingWoodenDock(List<RenderObject> output, Dock dock)
     {
         const float deck = 0.14f;
@@ -288,10 +344,9 @@ internal static class SceneBuilder
         }
 
         AddPontoonFloats(output, dock, top - deck);
-        AddGuidePiles(output, dock, steel: false);
     }
 
-    /// <summary>Monolithic concrete pontoon with rubber fenders, section joints and steel guide piles.</summary>
+    /// <summary>Monolithic concrete pontoon with rubber fenders, section joints and cleats.</summary>
     private static void AddFloatingConcreteDock(List<RenderObject> output, Dock dock)
     {
         const float bottom = -0.35f;
@@ -300,7 +355,7 @@ internal static class SceneBuilder
         output.Add(Box(dock, dock.Center, 0f, new Vector3(dock.Width, height - 0.04f, dock.Length), bottom + (height - 0.04f) * 0.5f, PontoonBody));
         output.Add(Box(dock, dock.Center, 0f, new Vector3(dock.Width - 0.16f, 0.04f, dock.Length - 0.16f), top - 0.02f, PontoonTop));
 
-        foreach (var side in Sides)
+        foreach (var side in BerthSides(dock))
         {
             var fender = dock.Right * side * (dock.Width * 0.5f + 0.06f);
             output.Add(Box(dock, dock.Center + fender, 0f, new Vector3(0.12f, 0.22f, dock.Length), top - 0.16f, Rubber));
@@ -316,13 +371,12 @@ internal static class SceneBuilder
         for (var i = 0; i < cleats; i++)
         {
             var along = 0.6f + (dock.Length - 1.2f) * i / (cleats - 1);
-            foreach (var side in Sides)
+            foreach (var side in BerthSides(dock))
             {
                 output.Add(Cylinder(dock.Start + dock.Direction * along + dock.Right * side * (dock.Width * 0.5f - 0.3f), top, new Vector3(0.22f, 0.22f, 0.22f), Bollard));
             }
         }
 
-        AddGuidePiles(output, dock, steel: true);
     }
 
     private static void AddPontoonFloats(List<RenderObject> output, Dock dock, float underside)
@@ -340,20 +394,6 @@ internal static class SceneBuilder
         {
             var along = start + i * pitch + segment * 0.5f;
             output.Add(Box(dock, dock.Start + dock.Direction * along, 0f, new Vector3(dock.Width * 0.85f, height, segment), bottom + height * 0.5f, PontoonFloat));
-        }
-    }
-
-    private static void AddGuidePiles(List<RenderObject> output, Dock dock, bool steel)
-    {
-        var spacing = MathF.Max(dock.PilingSpacing * 2f, 8f);
-        var count = Math.Max(2, (int)MathF.Floor(dock.Length / spacing) + 1);
-        for (var i = 0; i < count; i++)
-        {
-            var along = 1f + (dock.Length - 2f) * i / (count - 1);
-            // Alternate sides so the dock reads as floating rather than on stilts.
-            var side = i % 2 == 0 ? -1f : 1f;
-            var position = dock.Start + dock.Direction * along + dock.Right * side * (dock.Width * 0.5f + (steel ? 0.5f : 0.35f));
-            output.Add(steel ? SteelPile(position, dock.DeckHeight + 1.8f, 0.55f) : Piling(position, dock.DeckHeight + 1.6f, 0.4f));
         }
     }
 

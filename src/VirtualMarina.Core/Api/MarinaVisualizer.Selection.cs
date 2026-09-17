@@ -309,8 +309,8 @@ public sealed partial class MarinaVisualizer
 
         var snapshot = _selection.ToArray();
         var tooltip = slips.Count == 1
-            ? DefaultPopupContent.ForSlip(slips[0], GetDock(slips[0].DockId), GetMultiSlipBerthForSlip(slips[0].Id), _colors)
-            : DefaultPopupContent.ForSlips(slips, GetDock, _colors);
+            ? DefaultPopupContent.ForSlip(slips[0], GetDock(slips[0].DockId!), GetMultiSlipBerthForSlip(slips[0].Id), _colors, GetLandArea(slips[0].LandAreaId!))
+            : DefaultPopupContent.ForSlips(slips, GetDock, _colors, GetLandArea);
         var actions = new SlipActionCollection();
 
         _popupRefreshSuppression++;
@@ -320,8 +320,11 @@ public sealed partial class MarinaVisualizer
             {
                 var slip = slips[0];
                 SlipSelected?.Invoke(this, new SlipSelectedEventArgs(
-                    slip, GetDock(slip.DockId), GetMultiSlipBerthForSlip(slip.Id), tooltip, actions, reason, isNewSelection,
-                    button, isDoubleClick: false, worldPoint));
+                    slip, GetDock(slip.DockId!), GetMultiSlipBerthForSlip(slip.Id), tooltip, actions, reason, isNewSelection,
+                    button, isDoubleClick: false, worldPoint)
+                {
+                    LandArea = GetLandArea(slip.LandAreaId!),
+                });
             }
             else
             {

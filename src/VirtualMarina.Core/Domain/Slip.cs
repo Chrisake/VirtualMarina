@@ -5,7 +5,8 @@ using VirtualMarina.Core.Mathematics;
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>
-/// A single berth. Immutable: the visualizer stores snapshots and hands them out in events,
+/// A single berth: a water slip along a dock (<see cref="DockId"/>), or a land slip on a <see cref="LandArea"/>
+/// (<see cref="LandAreaId"/>) where a boat is stored or maintained ashore. Immutable: the visualizer stores snapshots and hands them out in events,
 /// so host code can never change marina state without going through the API.
 /// </summary>
 /// <remarks>
@@ -45,16 +46,48 @@ public sealed record Slip
         Width = width;
     }
 
+    private Slip(string id, Vector2 center, float headingDegrees, float length, float width)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        Id = id;
+        Center = center;
+        HeadingDegrees = headingDegrees;
+        Length = length;
+        Width = width;
+        HasFingerPiers = false;
+    }
+
+    /// <summary>
+    /// Creates a Free land slip: a spot on a <see cref="LandArea"/> where a boat is stored or maintained ashore
+    /// (boatyard, hard standing, dry stack). It is drawn on the land's surface, its boat rests on cradle stands, and it is
+    /// selected, colored and updated like any other slip.
+    /// </summary>
+    /// <param name="id">Unique id (case-insensitive), shared with water slips.</param>
+    /// <param name="landAreaId">Id of the land area the slip is on.</param>
+    /// <param name="position">Center of the spot in plan coordinates (X = world X, Y = world Z).</param>
+    /// <param name="headingDegrees">Direction the stored boat's bow points (0° = +Z, 90° = +X).</param>
+    /// <param name="length">Length along the heading, in meters.</param>
+    /// <param name="width">Width across the heading, in meters.</param>
+    /// <example><code>Slip.OnLand("Y-01", "boatyard", new Vector2(40, -20), headingDegrees: 0, length: 12, width: 5) with { Status = SlipStatus.Occupied, Boat = boat }</code></example>
+    public static Slip OnLand(string id, string landAreaId, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(landAreaId);
+        return new Slip(id, position, headingDegrees, length, width) { LandAreaId = landAreaId, Label = id };
+    }
+
     /// <summary>ERP identifier (unique within the marina, case-insensitive).</summary>
     public string Id { get; init; }
 
-    /// <summary>Id of the dock this slip belongs to.</summary>
-    public string DockId { get; init; }
+    /// <summary>Id of the dock this slip belongs to; null for a land slip.</summary>
+    public string? DockId { get; init; }
+
+    /// <summary>Id of the <see cref="LandArea"/> a land slip is on; null for a water slip along a dock.</summary>
+    public string? LandAreaId { get; init; }
 
     /// <summary>Human-readable label, e.g. "A-12". Falls back to <see cref="Id"/>.</summary>
     public string? Label { get; init; }
 
-    /// <summary>Center of the slip's water area in plan coordinates (X = world X, Y = world Z).</summary>
+    /// <summary>Center of the slip's water area (or land spot) in plan coordinates (X = world X, Y = world Z).</summary>
     public Vector2 Center { get; init; }
 
     /// <summary>Direction a moored boat's bow points (normally toward the dock).</summary>
@@ -78,7 +111,7 @@ public sealed record Slip
     /// </summary>
     public Boat? Boat { get; init; }
 
-    /// <summary>Draw narrow finger piers along both long sides of the slip.</summary>
+    /// <summary>Draw narrow finger piers along both long sides of the slip. Ignored for land slips.</summary>
     public bool HasFingerPiers { get; init; } = true;
 
     /// <summary>When false the slip is not drawn at all (not even its finger piers) and cannot be interacted with.</summary>
@@ -115,6 +148,9 @@ public sealed record Slip
     /// <summary>Interactive and not read-only: its actions window can open.</summary>
     public bool AllowsActions => IsInteractive && !IsReadOnly;
 
+    /// <summary>True for a land slip (<see cref="LandAreaId"/> is set).</summary>
+    public bool IsOnLand => LandAreaId is not null;
+
     /// <summary>True when the slip is part of a <see cref="MultiSlipBerth"/>.</summary>
     public bool IsInMultiSlipBerth => BerthId is not null;
 
@@ -130,7 +166,16 @@ public sealed record Slip
     internal IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Id)) yield return "Slip id must not be empty.";
-        if (string.IsNullOrWhiteSpace(DockId)) yield return $"Slip '{Id}' must reference a dock.";
+        if (LandAreaId is not null)
+        {
+            if (string.IsNullOrWhiteSpace(LandAreaId)) yield return $"Slip '{Id}' has an empty land area id.";
+            if (DockId is not null) yield return $"Slip '{Id}' cannot belong to both a dock and a land area.";
+        }
+        else if (string.IsNullOrWhiteSpace(DockId))
+        {
+            yield return $"Slip '{Id}' must reference a dock or a land area.";
+        }
+
         if (!(Length > 0f)) yield return $"Slip '{Id}' must have a positive length.";
         if (!(Width > 0f)) yield return $"Slip '{Id}' must have a positive width.";
         if (!float.IsFinite(Center.X) || !float.IsFinite(Center.Y)) yield return $"Slip '{Id}' has a non-finite position.";

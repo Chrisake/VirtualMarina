@@ -6,10 +6,10 @@ namespace VirtualMarina.Core.Domain;
 /// <summary>Construction of a dock. Controls how it is drawn and its default deck height.</summary>
 public enum DockType
 {
-    /// <summary>Wooden deck on pontoon floats, held by guide piles. Default deck height 0.5 m.</summary>
+    /// <summary>Wooden deck on pontoon floats. Default deck height 0.5 m.</summary>
     FloatingWooden = 0,
 
-    /// <summary>Monolithic concrete pontoon with rubber fenders, held by steel guide piles. Default deck height 0.55 m.</summary>
+    /// <summary>Monolithic concrete pontoon with rubber fenders and cleats. Default deck height 0.55 m.</summary>
     FloatingConcrete = 1,
 
     /// <summary>Fixed concrete pier on columns, with curbs and bollards. Default deck height 1.1 m.</summary>
@@ -89,11 +89,19 @@ public sealed record Dock
         init => _deckHeight = value;
     }
 
-    /// <summary>
-    /// Distance between supports along each edge: columns for <see cref="DockType.Concrete"/>,
-    /// guide piles (every second interval) for floating docks.
-    /// </summary>
+    /// <summary>Distance between columns (<see cref="DockType.Concrete"/>) or cleats (<see cref="DockType.FloatingConcrete"/>) along the dock.</summary>
     public float PilingSpacing { get; init; } = 6f;
+
+    /// <summary>
+    /// Sides where boats berth. Default <see cref="DockSides.Both"/>. A single-sided dock (e.g. one running along the edge of a
+    /// <see cref="LandArea"/>) only takes slips on its open side, and its mooring points (bollards, cleats and
+    /// fenders) are drawn on that side only.
+    /// </summary>
+    /// <example><code>new Dock("Q", "Quay pontoon", new Vector2(-40, 0), headingDegrees: 90, length: 60) { BerthingSides = DockSides.Left }</code></example>
+    public DockSides BerthingSides { get; init; } = DockSides.Both;
+
+    /// <summary>True when boats can berth on <paramref name="side"/> (see <see cref="BerthingSides"/>).</summary>
+    public bool HasBerthsOn(DockSide side) => (BerthingSides & (side == DockSide.Left ? DockSides.Left : DockSides.Right)) != 0;
 
     /// <summary>Unit plan-view vector along the dock (from start to end).</summary>
     public Vector2 Direction => MarinaMath.HeadingToDirection(HeadingDegrees);
@@ -144,6 +152,7 @@ public sealed record Dock
         if (!(PilingSpacing > 0.5f)) yield return $"Dock '{Id}' piling spacing must be greater than 0.5 m.";
         if (!float.IsFinite(Start.X) || !float.IsFinite(Start.Y) || !float.IsFinite(HeadingDegrees)) yield return $"Dock '{Id}' has a non-finite position or heading.";
         if (!Enum.IsDefined(Type)) yield return $"Dock '{Id}' has an unknown type '{Type}'.";
+        if (BerthingSides is not (DockSides.Left or DockSides.Right or DockSides.Both)) yield return $"Dock '{Id}' berthing sides must be Left, Right or Both.";
         if (!(DeckHeight >= 0f) || DeckHeight > 5f) yield return $"Dock '{Id}' deck height must be between 0 and 5 m.";
     }
 }
@@ -156,4 +165,18 @@ public enum DockSide
 
     /// <summary>The side <see cref="Dock.Right"/> points to (+X for a dock with heading 0°). Generated ids use "R": <c>{DockId}-R01</c>.</summary>
     Right,
+}
+
+/// <summary>The sides of a dock where boats berth (<see cref="Dock.BerthingSides"/>).</summary>
+[Flags]
+public enum DockSides
+{
+    /// <summary>Only the <see cref="DockSide.Left"/> side (opposite <see cref="Dock.Right"/>).</summary>
+    Left = 1,
+
+    /// <summary>Only the <see cref="DockSide.Right"/> side (toward <see cref="Dock.Right"/>).</summary>
+    Right = 2,
+
+    /// <summary>Both sides (default).</summary>
+    Both = Left | Right,
 }

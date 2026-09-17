@@ -20,21 +20,21 @@ internal static class ScenePicker
     /// <param name="slips">Slips whose pads can be hit (visible and not filtered out).</param>
     /// <param name="boats">Boats that can be hit.</param>
     /// <param name="meshes">Boat meshes, tested triangle by triangle.</param>
-    public static SlipHit? Pick(Ray ray, IEnumerable<Slip> slips, IEnumerable<BoatInstance> boats, MeshLibrary meshes)
+    /// <param name="groundHeight">Land height of a land slip (null for water slips); when null every pad is on the water.</param>
+    public static SlipHit? Pick(Ray ray, IEnumerable<Slip> slips, IEnumerable<BoatInstance> boats, MeshLibrary meshes, Func<Slip, float?>? groundHeight = null)
     {
         SlipHit? best = null;
 
-        // 1. Slip water areas (the colored pads).
-        if (ray.IntersectHorizontalPlane(SlipPlacement.PadHeight, out var padDistance))
+        // 1. Slip areas (the colored pads), on the water or on land.
+        foreach (var slip in slips)
         {
+            var padHeight = SlipPlacement.PadHeightFor(groundHeight?.Invoke(slip));
+            if (!ray.IntersectHorizontalPlane(padHeight, out var padDistance) || (best is not null && padDistance >= best.Value.Distance)) continue;
+
             var point = ray.GetPoint(padDistance);
-            var plan = MarinaMath.ToPlan(point);
-            foreach (var slip in slips)
+            if (slip.Bounds.Contains(MarinaMath.ToPlan(point)))
             {
-                if (slip.Bounds.Contains(plan) && (best is null || padDistance < best.Value.Distance))
-                {
-                    best = new SlipHit(slip.Id, padDistance, point, HitBoat: false);
-                }
+                best = new SlipHit(slip.Id, padDistance, point, HitBoat: false);
             }
         }
 

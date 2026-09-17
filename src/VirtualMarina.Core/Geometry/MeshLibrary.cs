@@ -30,7 +30,13 @@ public static class MeshIds
     /// <summary>First id of the text glyph meshes (see <see cref="GlyphFont"/>).</summary>
     public const int GlyphBase = 300;
 
+    /// <summary>First id of the per-land-area meshes (see <see cref="ForLand"/>).</summary>
+    public const int LandBase = 10_000;
+
     private const int BoatBase = 100;
+
+    /// <summary>Mesh id of the land area at <paramref name="index"/> in the layout (world-space geometry built by <see cref="LandMeshFactory"/>).</summary>
+    public static int ForLand(int index) => LandBase + index;
 
     /// <summary>Mesh id of a boat model (100 + type). Register a <see cref="MeshData"/> under this id to replace the model.</summary>
     public static int ForBoat(BoatType type) => BoatBase + (int)type;
@@ -80,6 +86,14 @@ public sealed class MeshLibrary
         ArgumentNullException.ThrowIfNull(mesh);
         _meshes[mesh.Id] = mesh;
         Version++;
+    }
+
+    /// <summary>Removes a mesh. Returns false when no mesh has this id.</summary>
+    public bool Unregister(int id)
+    {
+        if (!_meshes.Remove(id)) return false;
+        Version++;
+        return true;
     }
 
     /// <summary>The mesh with this id.</summary>

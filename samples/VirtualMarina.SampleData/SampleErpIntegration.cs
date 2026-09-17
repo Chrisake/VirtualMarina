@@ -85,6 +85,23 @@ public sealed class SampleErpIntegration : IDisposable
 
         if (e.Berth is not null) Danger(a.Add("release-berth", $"Release berth ({e.Berth.SlipIds.Count} slips)", icon: "⛓"));
 
+        // Moving boats between the water and the boatyard.
+        if (slip.Boat is { } stored && slip.Status == SlipStatus.Occupied && e.Berth is null)
+        {
+            if (slip.IsOnLand)
+            {
+                var target = MockMarinaFactory.FindFreeWaterSlip(_marina, stored);
+                var launch = a.Add("launch", target is null ? "Launch (no free berth fits)" : $"Launch to {target.DisplayName}", enabled: target is not null, icon: "🌊");
+                launch.BeginGroup = true;
+            }
+            else
+            {
+                var target = MockMarinaFactory.FindFreeLandSlip(_marina, stored);
+                var haulOut = a.Add("haulout", target is null ? "Haul out (boatyard full)" : $"Haul out to {target.DisplayName}", enabled: target is not null, icon: "🏗");
+                haulOut.BeginGroup = true;
+            }
+        }
+
         var contractAction = a.Add("contract", "Open contract…", enabled: slip.Boat is not null, icon: "📄");
         contractAction.BeginGroup = true;
         contractAction.ShortcutText = "Ctrl+O";
@@ -107,6 +124,7 @@ public sealed class SampleErpIntegration : IDisposable
         // Any number of slips (two or more) can take one boat alongside.
         var canMoorAlongside = actionable.Count >= 2 && actionable.Count == e.Slips.Count &&
             actionable.All(s => s.Status == SlipStatus.Free && s.BerthId is null) &&
+            actionable.All(s => s.DockId is not null) &&
             actionable.Select(s => s.DockId).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1;
         var moor = e.Actions.Add("moor-alongside", $"Moor one yacht alongside {actionable.Count} slips", enabled: canMoorAlongside, icon: "🛥");
         moor.Style = SlipActionStyle.Primary;
@@ -145,6 +163,10 @@ public sealed class SampleErpIntegration : IDisposable
                 break;
             case "tempfree":
                 _marina.MarkTemporarilyFree(slip.Id, slip.Boat is { } away ? away with { ExpectedArrival = DateTimeOffset.Now.AddDays(7) } : null);
+                break;
+            case "launch":
+            case "haulout":
+                MoveBoat(slip, e.ActionId == "launch");
                 break;
             case "release-berth":
                 if (slip.BerthId is { } berthId) _marina.ReleaseMultiSlipBerth(berthId);
@@ -214,6 +236,23 @@ public sealed class SampleErpIntegration : IDisposable
             _log("Cannot moor alongside: " + ex.Message);
             return null;
         }
+    }
+
+    /// <summary>Moves a slip's boat into the water (<paramref name="launch"/>) or up onto a land slip, in one batch.</summary>
+    public Slip? MoveBoat(Slip from, bool launch)
+    {
+        if (from.Boat is not { } boat) return null;
+        var target = launch ? MockMarinaFactory.FindFreeWaterSlip(_marina, boat) : MockMarinaFactory.FindFreeLandSlip(_marina, boat);
+        if (target is null)
+        {
+            _log(launch ? "No free berth fits this boat." : "The boatyard has no free spot for this boat.");
+            return null;
+        }
+
+        var result = _marina.BatchUpdate(new[] { SlipUpdate.Free(from.Id), SlipUpdate.Occupy(target.Id, boat) });
+        _log($"{(launch ? "Launched" : "Hauled out"),-15} {boat.Name}: {from.DisplayName} -> {target.DisplayName} (applied {result.AppliedCount})");
+        _marina.SelectSlip(target.Id, focusCamera: true);
+        return _marina.GetSlip(target.Id);
     }
 
     /// <summary>Clears Disabled / Read-only on every slip and shows hidden ones.</summary>

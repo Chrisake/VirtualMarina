@@ -10,14 +10,15 @@ public static class DefaultPopupContent
     public const int MaxListedSlips = 6;
 
     /// <summary>
-    /// The default single-slip tooltip: title = slip name, subtitle = dock, rows for status, slip size and draft, boat name,
+    /// The default single-slip tooltip: title = slip name, subtitle = dock (or land area for a land slip), rows for status, slip size and draft, boat name,
     /// type, size, owner, registration, expected arrival/return, multi-slip berth and read-only access. Accent = status color.
     /// </summary>
     /// <param name="slip">The slip.</param>
     /// <param name="dock">Its dock, if known.</param>
     /// <param name="berth">Its multi-slip berth, if any.</param>
     /// <param name="colors">Color scheme for the accent.</param>
-    public static SlipTooltip ForSlip(Slip slip, Dock? dock, MultiSlipBerth? berth, StatusColorScheme colors)
+    /// <param name="landArea">The land area of a land slip, if known.</param>
+    public static SlipTooltip ForSlip(Slip slip, Dock? dock, MultiSlipBerth? berth, StatusColorScheme colors, LandArea? landArea = null)
     {
         ArgumentNullException.ThrowIfNull(slip);
         ArgumentNullException.ThrowIfNull(colors);
@@ -26,7 +27,7 @@ public static class DefaultPopupContent
         var tooltip = new SlipTooltip
         {
             Title = slip.DisplayName,
-            Subtitle = dock?.Name,
+            Subtitle = dock?.Name ?? (slip.IsOnLand ? $"On land · {landArea?.DisplayName ?? slip.LandAreaId}" : null),
             AccentColor = colors.Get(slip.Status),
         };
 
@@ -59,20 +60,27 @@ public static class DefaultPopupContent
     }
 
     /// <summary>
-    /// The default multi-selection tooltip: "N slips selected", dock names, counts per status and read-only, then one row per
+    /// The default multi-selection tooltip: "N slips selected", dock and land area names, counts per status and read-only, then one row per
     /// slip (up to <see cref="MaxListedSlips"/>, with an "and N more" footer).
     /// </summary>
     /// <param name="slips">The selected slips.</param>
     /// <param name="dockLookup">Resolves dock names.</param>
     /// <param name="colors">Color scheme; the accent is set when all slips share a status.</param>
-    public static SlipTooltip ForSlips(IReadOnlyList<Slip> slips, Func<string, Dock?> dockLookup, StatusColorScheme colors)
+    /// <param name="landLookup">Resolves land area names for land slips; ids are shown when null.</param>
+    public static SlipTooltip ForSlips(IReadOnlyList<Slip> slips, Func<string, Dock?> dockLookup, StatusColorScheme colors, Func<string, LandArea?>? landLookup = null)
     {
         ArgumentNullException.ThrowIfNull(slips);
         ArgumentNullException.ThrowIfNull(dockLookup);
         ArgumentNullException.ThrowIfNull(colors);
 
         var statuses = slips.Select(s => s.Status).Distinct().ToArray();
-        var docks = slips.Select(s => dockLookup(s.DockId)?.Name ?? s.DockId).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var docks = slips
+            .Select(s => s.DockId is { } dockId
+                ? dockLookup(dockId)?.Name ?? dockId
+                : s.LandAreaId is { } landId ? landLookup?.Invoke(landId)?.DisplayName ?? landId : null)
+            .OfType<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         var tooltip = new SlipTooltip
         {
             Title = $"{slips.Count} slips selected",

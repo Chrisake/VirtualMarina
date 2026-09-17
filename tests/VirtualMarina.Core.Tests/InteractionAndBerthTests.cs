@@ -482,11 +482,10 @@ public class InteractionAndBerthTests
 
         // The deck is the first object; each type has its own material.
         Assert.Equal(3, new[] { wooden[0].Tint, floatingConcrete[0].Tint, concrete[0].Tint }.Distinct().Count());
-        // Wooden guide piles vs steel piles; the fixed pier stands on columns without guide piles.
-        Assert.Contains(wooden, o => o.MeshId == MeshIds.Piling);
-        Assert.DoesNotContain(floatingConcrete, o => o.MeshId == MeshIds.Piling);
-        Assert.Contains(floatingConcrete, o => o.MeshId == MeshIds.Cylinder && o.World.M22 > 3f);
-        Assert.DoesNotContain(concrete, o => o.MeshId == MeshIds.Piling);
+        // No dock type draws standalone piles; the floating concrete pontoon has cleats, the fixed pier bollards.
+        Assert.All(new[] { wooden, floatingConcrete, concrete }, objects => Assert.DoesNotContain(objects, o => o.MeshId == MeshIds.Piling));
+        Assert.Contains(floatingConcrete, o => o.MeshId == MeshIds.Cylinder);
+        Assert.Contains(concrete, o => o.MeshId == MeshIds.Cylinder);
         // Floating docks reach below the water line; the fixed pier's deck is higher.
         Assert.True(concrete[0].World.M42 > wooden[0].World.M42);
     }

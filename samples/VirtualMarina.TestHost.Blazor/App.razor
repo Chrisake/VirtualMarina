@@ -24,7 +24,7 @@
                 <button class="temporarily-free" @onclick="() => SetSelectedStatus(SlipStatus.TemporarilyFree)">Temp. free</button>
                 <button @onclick="() => _marina.ShowActions()">Actions…</button>
                 <button @onclick="FocusSelected">Focus (top down)</button>
-                <button @onclick="SelectWholeDock">Select whole dock</button>
+                <button @onclick="SelectWholeDock">Select whole dock / land area</button>
                 <button @onclick="() => _marina.ClearSelection()">Clear</button>
             </div>
             <div class="buttons">
@@ -187,9 +187,19 @@
 
     private void FocusSelected() => _marina.FocusSelection(CameraAngle.TopDown);
 
-    /// <summary>Selects every slip on the selected slip's dock (disabled ones are discarded) and frames them top-down.</summary>
+    /// <summary>
+    /// Selects every slip on the selected slip's dock, or every land slip on its land area (disabled ones are discarded),
+    /// and frames them top-down.
+    /// </summary>
     private void SelectWholeDock()
     {
+        if (_marina.SelectedSlip?.LandAreaId is { } landAreaId)
+        {
+            var onLand = _marina.SetSelection(_marina.GetSlipsByLandArea(landAreaId).Select(s => s.Id), focusCamera: true, CameraAngle.TopDown);
+            Log($"SetSelection    {onLand.Count} selected on land area {landAreaId}; skipped: {onLand.Rejected.Count}");
+            return;
+        }
+
         var dockId = _marina.SelectedSlip?.DockId ?? _marina.GetDocks().FirstOrDefault()?.Id;
         if (dockId is null) return;
 
@@ -301,8 +311,17 @@
         }
 
         sb.AppendLine($"Slip:    {slip.DisplayName} ({slip.Id})");
-        var dock = _marina.GetDock(slip.DockId);
-        sb.AppendLine($"Dock:    {dock?.Name} ({(dock is null ? "?" : Dock.GetDisplayName(dock.Type))})");
+        if (slip.LandAreaId is { } landAreaId)
+        {
+            sb.AppendLine($"Land:    {_marina.GetLandArea(landAreaId)?.DisplayName ?? landAreaId} (stored ashore)");
+        }
+        else if (slip.DockId is { } dockId)
+        {
+            var dock = _marina.GetDock(dockId);
+            var sides = dock?.BerthingSides is DockSides.Left or DockSides.Right ? ", single-sided" : "";
+            sb.AppendLine($"Dock:    {dock?.Name} ({(dock is null ? "?" : Dock.GetDisplayName(dock.Type))}{sides})");
+        }
+
         sb.AppendLine($"Status:  {slip.Status.GetDisplayName()}");
         sb.AppendLine($"Size:    {slip.Length:0.0} m x {slip.Width:0.0} m, draft {slip.MaxDraft?.ToString("0.0") ?? "?"} m");
         if (slip.Boat is { } boat)

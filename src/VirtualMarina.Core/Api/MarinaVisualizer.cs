@@ -58,7 +58,9 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private readonly List<string> _dividerOrder = new();
     private readonly Dictionary<string, MultiSlipBerth> _berths = new(IdComparer);
     private readonly List<string> _berthOrder = new();
-    private readonly List<LandArea> _landAreas = new();
+    private readonly Dictionary<string, LandArea> _landAreas = new(IdComparer);
+    private readonly List<string> _landOrder = new();
+    private int _registeredLandMeshes;
     private readonly List<CameraPreset> _presets = new();
     private readonly List<RenderObject> _renderObjects = new();
     private readonly StatusColorScheme _colors = new();
@@ -208,7 +210,8 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
                 Docks = OrderedDocks(),
                 Slips = OrderedSlips().ToList(),
                 Dividers = OrderedDividers(),
-                Land = _landAreas,
+                Land = OrderedLandAreas(),
+                LandLookup = GetLandArea,
                 SlipLookup = GetSlip,
                 DockLookup = GetDock,
                 BerthLookup = GetMultiSlipBerth,
@@ -249,8 +252,8 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     {
         var ray = Camera.ScreenPointToRay(x, y, _viewportSize.X, _viewportSize.Y);
         var slips = OrderedSlips().Where(IsShown).ToList();
-        var boats = SlipPlacement.EnumerateBoats(slips, GetSlip, GetMultiSlipBerth, _statusFilter);
-        return ScenePicker.Pick(ray, slips, boats, Meshes);
+        var boats = SlipPlacement.EnumerateBoats(slips, GetSlip, GetMultiSlipBerth, _statusFilter, GroundHeight, Meshes);
+        return ScenePicker.Pick(ray, slips, boats, Meshes, GroundHeight);
     }
 
     /// <summary>Point on the water plane under a view pixel, if the ray hits it.</summary>
@@ -290,8 +293,23 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
 
     private Vector3 GetPopupAnchorWorld(Slip slip)
     {
-        var boatTop = slip.Boat is { } boat && slip.Status.CanHaveBoat() ? SlipPlacement.BoatTopHeight(boat, Meshes) : 3f;
-        return MarinaMath.ToWorld(slip.Center, SceneBuilder.MarkerBaseHeight(boatTop) + SceneBuilder.MarkerTop);
+        var ground = GroundHeight(slip);
+        var boatTop = slip.Boat is { } boat && slip.Status.CanHaveBoat() ? SlipPlacement.BoatTopHeight(boat, Meshes, ground) : (ground ?? 0f) + 3f;
+        return MarinaMath.ToWorld(slip.Center, SceneBuilder.MarkerBaseHeight(boatTop, ground ?? 0f) + SceneBuilder.MarkerTop);
+    }
+
+    /// <summary>Land height under a land slip; null for water slips.</summary>
+    private float? GroundHeight(Slip slip) => SceneBuilder.GroundHeight(slip, GetLandArea);
+
+    private IEnumerable<LandArea> OrderedLandAreas() => _landOrder.Select(id => _landAreas[id]);
+
+    /// <summary>Builds one mesh per land area (<see cref="MeshIds.ForLand"/>) and drops meshes of land areas that no longer exist.</summary>
+    private void RegisterLandMeshes()
+    {
+        var index = 0;
+        foreach (var land in OrderedLandAreas()) Meshes.Register(LandMeshFactory.Create(MeshIds.ForLand(index++), land));
+        for (var stale = index; stale < _registeredLandMeshes; stale++) Meshes.Unregister(MeshIds.ForLand(stale));
+        _registeredLandMeshes = index;
     }
 
     private IEnumerable<Dock> OrderedDocks() => _dockOrder.Select(id => _docks[id]);
@@ -330,7 +348,10 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     }
 
     private SlipEventArgs CreateSlipArgs(Slip slip, PointerButton button = PointerButton.None, bool isDoubleClick = false, Vector3? worldPoint = null) =>
-        new(slip, _docks.GetValueOrDefault(slip.DockId), button, isDoubleClick, worldPoint);
+        new(slip, slip.DockId is null ? null : _docks.GetValueOrDefault(slip.DockId), button, isDoubleClick, worldPoint)
+        {
+            LandArea = slip.LandAreaId is null ? null : GetLandArea(slip.LandAreaId),
+        };
 
     private sealed class UpdateScope : IDisposable
     {
