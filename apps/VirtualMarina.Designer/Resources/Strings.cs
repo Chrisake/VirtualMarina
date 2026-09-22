@@ -698,6 +698,10 @@ internal static class Strings
     /// <summary>"Its id, which its berths and dividers point at:"</summary>
     internal static string RenamePierIdQuestion => Get("RenamePierIdQuestion");
 
+    internal static string RenamePatternQuestion => Get("RenamePatternQuestion");
+
+    internal static string RenamePatternHint => Get("RenamePatternHint");
+
     /// <summary>"Pier id {0} is now {1}"</summary>
     internal static string LogPierIdChanged => Get("LogPierIdChanged");
 
@@ -733,6 +737,8 @@ internal static class Strings
 
     /// <summary>"Renamed {0} to {1}"</summary>
     internal static string LogRenamed => Get("LogRenamed");
+
+    internal static string LogBerthPattern => Get("LogBerthPattern");
 
     /// <summary>"{0} is already taken; {1} keeps its name."</summary>
     internal static string LogRenameRefused => Get("LogRenameRefused");

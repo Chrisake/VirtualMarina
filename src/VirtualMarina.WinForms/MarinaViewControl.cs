@@ -27,7 +27,7 @@ namespace VirtualMarina.WinForms;
 [ToolboxItem(true)]
 [Description("Interactive 3D marina view.")]
 [DefaultEvent(nameof(BerthSelected))]
-public sealed class MarinaViewControl : UserControl
+public sealed class MarinaViewControl : UserControl, IMessageFilter
 {
     private readonly System.Windows.Forms.Timer _frameTimer;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
@@ -245,6 +245,11 @@ public sealed class MarinaViewControl : UserControl
         }
 
         if (_animate) _frameTimer.Start();
+
+        // Watched application-wide rather than on the GL control, because Alt does not stay with it: pressing Alt
+        // hands the keyboard to the window's menu bar, so the key-up would never arrive here and the preview would
+        // stay stuck on "whole row" until the pointer moved again.
+        Application.AddMessageFilter(this);
     }
 
     /// <summary>In the designer (or if OpenGL is unavailable) draws a placeholder describing the 3D render area.</summary>
@@ -292,6 +297,7 @@ public sealed class MarinaViewControl : UserControl
     {
         if (disposing)
         {
+            Application.RemoveMessageFilter(this);
             DetachMarina(_marina);
             _frameTimer.Stop();
             _frameTimer.Dispose();
@@ -334,6 +340,9 @@ public sealed class MarinaViewControl : UserControl
         _glControl.MouseLeave += (_, _) => _marina.Input.PointerLeave();
         _glControl.PreviewKeyDown += (_, e) => { if (MapKey(e.KeyCode) is not null) e.IsInputKey = true; };
         _glControl.KeyDown += OnGlKeyDown;
+
+        // Letting go of the view entirely is the same as letting go of every key: nothing is held any more.
+        _glControl.LostFocus += (_, _) => _marina.Input.ModifiersChanged(InputModifiers.None);
 
         Controls.Add(_glControl);
     }
@@ -465,6 +474,40 @@ public sealed class MarinaViewControl : UserControl
 
     private void OnGlMouseWheel(object? sender, MouseEventArgs e) =>
         _marina.Input.Wheel(e.Delta / (float)SystemInformation.MouseWheelScrollDelta, e.X, e.Y);
+
+    // WM_KEYDOWN / WM_KEYUP, and their WM_SYS- forms, which is how Alt arrives.
+    private const int KeyDownMessage = 0x0100;
+    private const int KeyUpMessage = 0x0101;
+    private const int SystemKeyDownMessage = 0x0104;
+    private const int SystemKeyUpMessage = 0x0105;
+
+    /// <summary>
+    /// Keeps the view's idea of the modifier keys up to date the moment one goes down or up, so a preview that
+    /// depends on one redraws straight away instead of waiting for the pointer to move.
+    /// </summary>
+    /// <param name="m">The message about to be dispatched.</param>
+    /// <returns>Always false: this only watches, and never swallows a key.</returns>
+    bool IMessageFilter.PreFilterMessage(ref Message m)
+    {
+        if (m.Msg is not (KeyDownMessage or KeyUpMessage or SystemKeyDownMessage or SystemKeyUpMessage)) return false;
+
+        var down = m.Msg is KeyDownMessage or SystemKeyDownMessage;
+        var held = CurrentModifiers();
+
+        // Read the key out of the message rather than trusting ModifierKeys, which still has the bit set while the
+        // key-up that clears it is being delivered.
+        var changed = ((Keys)(int)m.WParam) switch
+        {
+            Keys.Menu or Keys.LMenu or Keys.RMenu => InputModifiers.Alt,
+            Keys.ShiftKey or Keys.LShiftKey or Keys.RShiftKey => InputModifiers.Shift,
+            Keys.ControlKey or Keys.LControlKey or Keys.RControlKey => InputModifiers.Control,
+            _ => InputModifiers.None,
+        };
+
+        if (changed == InputModifiers.None) return false;
+        _marina.Input.ModifiersChanged(down ? held | changed : held & ~changed);
+        return false;
+    }
 
     private void OnGlKeyDown(object? sender, KeyEventArgs e)
     {

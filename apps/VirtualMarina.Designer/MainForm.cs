@@ -644,6 +644,11 @@ internal sealed class MainForm : Form
         var name = e.CurrentName;
         var pierId = e.Pier?.Id ?? string.Empty;
 
+        // Renaming a pier renames every berth on it, so the pattern they are named by is offered as well, filled in
+        // with the one they follow now.
+        var pattern = e.BerthPattern ?? string.Empty;
+        var askPattern = !berth && e.BerthPattern is not null;
+
         while (true)
         {
             // A pier has a display name and an id its berths point at, so it is asked for both.
@@ -652,7 +657,10 @@ internal sealed class MainForm : Form
                 berth ? Strings.RenameBerthQuestion : Strings.RenamePierQuestion,
                 name,
                 berth ? null : Strings.RenamePierIdQuestion,
-                pierId);
+                pierId,
+                askPattern ? Strings.RenamePatternQuestion : null,
+                pattern,
+                askPattern ? Strings.RenamePatternHint : null);
 
             if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
             {
@@ -662,6 +670,7 @@ internal sealed class MainForm : Form
 
             name = form.Value.Trim();
             if (!berth) pierId = form.SecondValue.Trim();
+            if (askPattern) pattern = form.ThirdValue.Trim();
 
             var taken = berth
                 ? !Designer.IsBerthNameAvailable(name, e.Berth!.Id) ? name : null
@@ -684,6 +693,13 @@ internal sealed class MainForm : Form
                 MarkDirty();
                 Log(Strings.Format(Strings.LogPierIdChanged, pier.Id, id));
             }
+        }
+
+        if (askPattern && pattern.Length > 0 && !string.Equals(pattern, e.BerthPattern, StringComparison.Ordinal))
+        {
+            e.NewBerthPattern = pattern;
+            MarkDirty();
+            Log(Strings.Format(Strings.LogBerthPattern, e.Pier!.Id, pattern));
         }
 
         e.NewName = name;

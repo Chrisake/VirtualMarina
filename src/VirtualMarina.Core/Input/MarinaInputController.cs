@@ -177,6 +177,18 @@ public sealed class MarinaInputController
         _marina.Designer.HandlePointerLeave();
     }
 
+    /// <summary>
+    /// Tells the view which modifier keys are held now, for a host that can see them go down and up. Returns true
+    /// when the scene was redrawn because of it.
+    /// </summary>
+    /// <remarks>
+    /// Modifiers otherwise only arrive with a pointer event, so a preview that depends on one — the eraser taking a
+    /// whole row while Alt is held, say — would not catch up until the pointer moved again. Call this whenever a
+    /// modifier key goes down or up.
+    /// </remarks>
+    /// <param name="modifiers">The modifier keys now held.</param>
+    public bool ModifiersChanged(InputModifiers modifiers) => _marina.Designer.SetModifiers(modifiers);
+
     /// <summary>Returns true when the key was handled.</summary>
     public bool KeyDown(MarinaKey key, InputModifiers modifiers = InputModifiers.None)
     {

@@ -1202,11 +1202,14 @@ A berth or pier is about to be renamed (`MarinaDesigner.ElementRenaming`). Put t
 | Member | Description |
 |---|---|
 | `DesignElementRenamingEventArgs(Berth? berth, Pier? pier, string currentName)` | Creates the arguments. |
+| `DesignElementRenamingEventArgs(Berth? berth, Pier? pier, string currentName, string? berthPattern)` | Creates the arguments, saying how the element's berths are named. |
 | `Berth? Berth { get; }` | The berth being renamed, or null when a pier is. |
 | `Pier? Pier { get; }` | The pier being renamed, or null when a berth is. |
 | `string CurrentName { get; }` | The name the element has now: a berth's id, or a pier's display name. |
 | `string NewName { get; set; }` | The name to give it. Starts as `DesignElementRenamingEventArgs.CurrentName`; leaving it unchanged does nothing. |
 | `string? NewPierId { get; set; }` | For a pier, the id to give it, which its berths and dividers follow. Starts as the pier's current id; leaving it unchanged moves nothing. Ignored for a berth, whose name is its id. |
+| `string? BerthPattern { get; }` | For a pier, the pattern its berths are named by now, read back out of their names — `{pier}-{side}{number}` for berths called `A-L01`. Null for a berth, and for a pier whose berths were all named by hand. |
+| `string? NewBerthPattern { get; set; }` | The pattern to name the pier's berths by. Starts as `DesignElementRenamingEventArgs.BerthPattern`; changing it renames every numbered berth on the pier to match, keeping the number each one already has. Ignored for a berth. |
 | `bool Cancel { get; set; }` | Set to true to leave the element alone. |
 
 <a id="designtool"></a>
@@ -1381,6 +1384,7 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `Berth RenameBerth(string berthId, string newBerthId)` | Gives one berth another name, keeping everything else about it, and records the change for `MarinaDesigner.Undo`. Returns the renamed berth. |
 | `Pier RenamePier(string pierId, string name)` | Gives a pier a display name (`Pier.Name`), the one shown in tooltips and the camera preset, and records the change for `MarinaDesigner.Undo`. The pier's id, and the berth names built from it, stay as they are. Returns the renamed pier. |
 | `IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId)` | Names a pier's berths again from `MarinaDesigner.BerthNaming`, keeping the number each one already has, and records it for `MarinaDesigner.Undo`. Returns the berths that were renamed, as (old name, new name). |
+| `IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId, string? pattern)` | Names a pier's berths again from a pattern of your own, keeping the number each one already has, and records it for `MarinaDesigner.Undo`. Returns the berths that were renamed, as (old name, new name). |
 | `IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)` | Selects every berth whose middle lies inside a north-up box in plan coordinates. Kept for code that wants a box in compass terms; the tool itself uses the overload that takes a heading. |
 | `IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, float headingDegrees, bool add = false)` | Selects every berth whose middle lies inside a box whose sides run along `headingDegrees`. This is what `DesignTool.SelectArea` does when the drag ends, using the camera heading. |
 | `IReadOnlyList<Berth> SetBerthServices(string berthId, bool wholeSide = false)` | Gives berths the pedestals in `MarinaDesigner.BerthServices`, and records one step for `MarinaDesigner.Undo`. This is what `DesignTool.EditServices` does when a berth is clicked. |
@@ -2373,6 +2377,7 @@ Defaults: left-drag pans (map-style), right-drag orbits, middle-drag pans, Shift
 | `bool IsDragging { get; }` | True while a button is held and the pointer has moved past `MarinaInputController.ClickTolerancePixels`. |
 | `void DoubleClick(float x, float y, PointerButton button, InputModifiers modifiers = InputModifiers.None)` | Forward a double-click. A left double-click on a berth focuses the camera on it (at `DefaultFocusAngle`). |
 | `bool KeyDown(MarinaKey key, InputModifiers modifiers = InputModifiers.None)` | Returns true when the key was handled. |
+| `bool ModifiersChanged(InputModifiers modifiers)` | Tells the view which modifier keys are held now, for a host that can see them go down and up. Returns true when the scene was redrawn because of it. |
 | `void PointerDown(float x, float y, PointerButton button, InputModifiers modifiers = InputModifiers.None)` | Forward a mouse/pointer press. Coordinates are view pixels, origin top-left. |
 | `void PointerLeave()` | Forward the pointer leaving the view: ends any drag and clears the hover. |
 | `void PointerMove(float x, float y, InputModifiers modifiers = InputModifiers.None)` | Forward pointer movement: hovers when no button is held, otherwise pans or orbits. |

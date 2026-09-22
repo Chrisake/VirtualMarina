@@ -3,7 +3,7 @@ sealed class VirtualMarina.WinForms.MarinaDesignerPanel : UserControl, IBindable
     VirtualMarina.Core.Api.MarinaVisualizer Marina { get; set; }
     event EventHandler<ThreadExceptionEventArgs> ImageLoadFailed
 
-sealed class VirtualMarina.WinForms.MarinaViewControl : UserControl, IBindableComponent, IComponent, IContainerControl, IDisposable, IDropTarget, ISynchronizeInvoke, IWin32Window
+sealed class VirtualMarina.WinForms.MarinaViewControl : UserControl, IBindableComponent, IComponent, IContainerControl, IDisposable, IDropTarget, IMessageFilter, ISynchronizeInvoke, IWin32Window
     .ctor()
     .ctor(VirtualMarina.Core.Api.MarinaVisualizer marina)
     VirtualMarina.Core.Api.MarinaVisualizer Marina { get; set; }

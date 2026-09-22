@@ -964,14 +964,31 @@ public sealed class MarinaDesigner
     /// </remarks>
     /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
     /// <example><code>designer.RenumberBerths("E");   // E-R01 becomes E-01 on a pier that berths to one side</code></example>
-    public IReadOnlyList<(string From, string To)> RenumberBerths(string pierId)
+    public IReadOnlyList<(string From, string To)> RenumberBerths(string pierId) => RenumberBerths(pierId, null);
+
+    /// <summary>
+    /// Names a pier's berths again from a pattern of your own, keeping the number each one already has, and records
+    /// it for <see cref="Undo"/>. Returns the berths that were renamed, as (old name, new name).
+    /// </summary>
+    /// <param name="pierId">The pier whose berths to rename.</param>
+    /// <param name="pattern">
+    /// The pattern to name them by, in the form <see cref="BerthNamingScheme.Pattern"/> takes; null uses
+    /// <see cref="BerthNaming"/> as it stands. The padding follows the names the berths already have.
+    /// </param>
+    /// <remarks>
+    /// A berth whose new name is already taken is left alone rather than overwritten, so a pattern that would give
+    /// two berths the same name — dropping <c>{side}</c> from a pier that berths on both — renames neither.
+    /// </remarks>
+    /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
+    /// <example><code>designer.RenumberBerths("E", "{pier}.{number}");   // E-R01 becomes E.01</code></example>
+    public IReadOnlyList<(string From, string To)> RenumberBerths(string pierId, string? pattern)
     {
         ArgumentNullException.ThrowIfNull(pierId);
         var pier = _marina.GetPier(pierId) ?? throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
 
         // Asked for outright, this puts every numbered berth right, including ones still carrying a prefix from an
         // id the pier had long ago. Only a berth named without a number on the end is taken to be named by hand.
-        var renamed = RenameBerthsAfterPier(pier.Id, namedFrom: null);
+        var renamed = RenameBerthsAfterPier(pier.Id, namedFrom: null, SchemeFor(pier, pattern));
         if (renamed.Count == 0) return renamed;
 
         var action = new DesignAction(Strings.Format(Strings.UndoRenumberBerths, renamed.Count, pier.Name));
@@ -990,22 +1007,29 @@ public sealed class MarinaDesigner
     /// The pier id the current names were built from, so berths named after something else are left alone. Null takes
     /// every berth with a running number, which is what an outright renumber wants.
     /// </param>
+    /// <param name="scheme">
+    /// The scheme to name them by; null uses <see cref="BerthNaming"/>. Giving one also takes every berth on the
+    /// pier rather than only those named after <paramref name="namedFrom"/>, since a pattern asked for by name is
+    /// meant for the whole pier.
+    /// </param>
     /// <remarks>
     /// Going through the scheme rather than swapping the prefix is what drops the side letter from a pier that berths
     /// on one side only: under pier K, <c>K-R07</c> becomes <c>T-07</c> when the pier becomes T. A berth whose name
     /// was not built from the pier id, or has no running number on the end, was named by hand and is left alone.
     /// </remarks>
-    private List<(string From, string To)> RenameBerthsAfterPier(string pierId, string? namedFrom)
+    private List<(string From, string To)> RenameBerthsAfterPier(string pierId, string? namedFrom, BerthNamingScheme? scheme = null)
     {
         var renamed = new List<(string From, string To)>();
         if (_marina.GetPier(pierId) is not { } pier) return renamed;
 
+        // A pattern asked for by name means the whole pier, whatever its berths happen to be called now.
+        var naming = scheme ?? _berthNaming;
         foreach (var berth in _marina.GetBerthsByPier(pierId))
         {
-            if (namedFrom is not null && !berth.Id.StartsWith(namedFrom, StringComparison.OrdinalIgnoreCase)) continue;
+            if (scheme is null && namedFrom is not null && !berth.Id.StartsWith(namedFrom, StringComparison.OrdinalIgnoreCase)) continue;
             if (NumberIn(berth.Id) is not { } number) continue;
 
-            var wanted = _berthNaming.Format(pier, SideOf(pier, berth), number);
+            var wanted = naming.Format(pier, SideOf(pier, berth), number);
             if (string.Equals(wanted, berth.Id, StringComparison.Ordinal)) continue;
             if (_marina.GetBerth(wanted) is not null) continue;   // already taken; leave this one as it was
 
@@ -1018,6 +1042,34 @@ public sealed class MarinaDesigner
         }
 
         return renamed;
+    }
+
+    /// <summary>
+    /// The naming scheme a pattern asked for by the host stands for: the one in use, with that pattern and with the
+    /// padding the pier's berths already have, so putting the pattern back unchanged renames nothing.
+    /// </summary>
+    /// <param name="pier">The pier being renamed.</param>
+    /// <param name="pattern">The pattern wanted, or null to use the scheme as it stands.</param>
+    private BerthNamingScheme? SchemeFor(Pier pier, string? pattern)
+    {
+        if (string.IsNullOrWhiteSpace(pattern)) return null;
+        var digits = InferBerthPattern(pier)?.Digits ?? _berthNaming.NumberDigits;
+        return _berthNaming with { Pattern = pattern, NumberDigits = digits };
+    }
+
+    /// <summary>
+    /// The pattern a pier's berths are named by now, read back out of the first one that carries a running number.
+    /// Null when the pier has no berths, or none of them was named from a pattern.
+    /// </summary>
+    /// <param name="pier">The pier to look at.</param>
+    private (string Pattern, int Digits)? InferBerthPattern(Pier pier)
+    {
+        foreach (var berth in _marina.GetBerthsByPier(pier.Id))
+        {
+            if (_berthNaming.Infer(pier, SideOf(pier, berth), berth.Id) is { } found) return found;
+        }
+
+        return null;
     }
 
     /// <summary>Which side of its pier a berth lies on, from where it actually is.</summary>
@@ -1130,7 +1182,7 @@ public sealed class MarinaDesigner
         var args = element switch
         {
             Berth berth => new DesignElementRenamingEventArgs(berth, null, berth.Id),
-            Pier pier => new DesignElementRenamingEventArgs(null, pier, pier.Name),
+            Pier pier => new DesignElementRenamingEventArgs(null, pier, pier.Name, InferBerthPattern(pier)?.Pattern),
             _ => null,
         };
 
@@ -1138,7 +1190,9 @@ public sealed class MarinaDesigner
         ElementRenaming(this, args);
         var nameChanged = !string.IsNullOrWhiteSpace(args.NewName) && !string.Equals(args.NewName.Trim(), args.CurrentName, StringComparison.Ordinal);
         var idChanged = args.Pier is { } owner && args.NewPierId is { } wanted && !string.Equals(wanted.Trim(), owner.Id, StringComparison.Ordinal);
-        if (args.Cancel || (!nameChanged && !idChanged)) return;
+        var patternChanged = args.Pier is not null && !string.IsNullOrWhiteSpace(args.NewBerthPattern)
+            && !string.Equals(args.NewBerthPattern.Trim(), args.BerthPattern, StringComparison.Ordinal);
+        if (args.Cancel || (!nameChanged && !idChanged && !patternChanged)) return;
         if (!nameChanged) args.NewName = args.CurrentName;
 
         try
@@ -1157,8 +1211,10 @@ public sealed class MarinaDesigner
                 var current = moving ? ChangePierId(pier.Id, wantedId!).Id : pier.Id;
                 RenamePier(current, args.NewName);
 
-                // Moving the id already put the berth names right; otherwise this is the chance to.
-                if (!moving) RenumberBerths(current);
+                // A pattern of the host's own goes over the whole pier, including the berths the id move just
+                // renamed under the old one. Otherwise moving the id has already put the names right.
+                if (patternChanged) RenumberBerths(current, args.NewBerthPattern!.Trim());
+                else if (!moving) RenumberBerths(current);
             }
         }
         catch (InvalidOperationException)
@@ -1676,6 +1732,43 @@ public sealed class MarinaDesigner
         _selectTo = null;
         _marina.MarkSceneDirty();
     }
+
+    /// <summary>
+    /// Tells the designer which modifier keys are held, without the pointer having moved. Returns true when it
+    /// redrew because of it.
+    /// </summary>
+    /// <remarks>
+    /// Alt changes what the tools are about to do — the eraser takes the whole row rather than one berth, a point
+    /// stops snapping — and the preview has to say so the moment the key goes down, not the next time the pointer
+    /// happens to move. Without this the marina sits there showing the wrong thing while the user holds the key
+    /// still and wonders whether it worked.
+    /// </remarks>
+    /// <param name="modifiers">The modifier keys now held.</param>
+    internal bool SetModifiers(InputModifiers modifiers)
+    {
+        if (_modifiers == modifiers) return false;
+
+        var before = _modifiers;
+        _modifiers = modifiers;
+        if (!_active || !ShowsModifiers(before ^ modifiers)) return false;
+
+        _marina.MarkSceneDirty();
+        return true;
+    }
+
+    /// <summary>Whether a change in these modifiers would show in the preview of the tool in hand.</summary>
+    private bool ShowsModifiers(InputModifiers changed) => _tool switch
+    {
+        // Alt sweeps the whole row, or the whole side of the pier.
+        DesignTool.Erase or DesignTool.Rename or DesignTool.EditServices => (changed & InputModifiers.Alt) != 0,
+
+        // Alt turns snapping off and Shift squares the angle up, both of which move the preview.
+        DesignTool.DrawLandArea or DesignTool.DrawShoreline or DesignTool.DrawPier or DesignTool.AddBerths
+            or DesignTool.AddLandBerths or DesignTool.MoveReferenceImage or DesignTool.MeasureScale =>
+            (changed & (InputModifiers.Alt | InputModifiers.Shift)) != 0,
+
+        _ => false,
+    };
 
     internal void HandlePointerMove(float x, float y, InputModifiers modifiers)
     {

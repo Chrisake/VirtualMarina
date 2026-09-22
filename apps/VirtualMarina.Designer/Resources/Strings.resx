@@ -765,6 +765,12 @@ Runtime      {4}
   <data name="RenamePierIdQuestion">
     <value>Its id, which its berths and dividers point at:</value>
   </data>
+  <data name="RenamePatternQuestion">
+    <value>Name its berths by:</value>
+  </data>
+  <data name="RenamePatternHint">
+    <value>Use {pier}, {side} and {number}. Every numbered berth on the pier is renamed to match, keeping the number it has.</value>
+  </data>
   <data name="LogPierIdChanged">
     <value>Pier id {0} is now {1}</value>
     <comment>{0} = the old id, {1} = the new one.</comment>
@@ -803,6 +809,10 @@ Runtime      {4}
   <data name="LogRenamed">
     <value>Renamed {0} to {1}</value>
     <comment>{0} = the old name, {1} = the new one.</comment>
+  </data>
+  <data name="LogBerthPattern">
+    <value>Berths on pier {0} are now named {1}</value>
+    <comment>{0} = the pier id, {1} = the naming pattern.</comment>
   </data>
   <data name="LogRenameRefused">
     <value>{0} is already taken; {1} keeps its name.</value>

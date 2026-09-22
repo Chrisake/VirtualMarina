@@ -97,6 +97,56 @@ public sealed record BerthNamingScheme
         return Format(LandPattern ?? Pattern, landArea.Id, landArea.DisplayName, string.Empty, number, LandNumberDigits ?? NumberDigits);
     }
 
+    /// <summary>
+    /// Reads a pattern back out of a berth's name: what pattern, applied to this pier and side, would have produced
+    /// it. Null when the name has no running number on the end, which means it was written by hand.
+    /// </summary>
+    /// <remarks>
+    /// Worked out from the name rather than simply handing back <see cref="Pattern"/>, because the berths on a pier
+    /// may well have been named under an older scheme, and the point of showing it is to say what they look like
+    /// now. The number of digits comes back too, so putting the pattern straight back leaves the names untouched.
+    /// </remarks>
+    /// <remarks>
+    /// <see cref="LeftSide"/> and <see cref="RightSide"/> are still read from this scheme, since there is nothing in
+    /// a name to say which letter in it stood for the side. A berth named under a scheme whose side letters differed
+    /// comes back with that letter as plain text, which still reproduces the name it has.
+    /// </remarks>
+    /// <param name="pier">The pier the berth is on.</param>
+    /// <param name="side">Which side of it the berth lies on.</param>
+    /// <param name="berthId">The berth's name.</param>
+    internal (string Pattern, int Digits)? Infer(Pier pier, PierSide side, string berthId)
+    {
+        ArgumentNullException.ThrowIfNull(pier);
+        if (string.IsNullOrEmpty(berthId)) return null;
+
+        // The running number is the digits on the end; without one there is nothing to count on from.
+        var start = berthId.Length;
+        while (start > 0 && char.IsAsciiDigit(berthId[start - 1])) start--;
+        if (start == berthId.Length) return null;
+
+        var head = berthId[..start];
+        var digits = berthId.Length - start;
+
+        // The side token sits next to the number when it is there at all — "A-L01", "QUAY.P.001" — so it is looked
+        // for only in the last couple of characters. Searching the whole name would turn the L of a berth called
+        // PLAZA-01 into a side token.
+        var token = SideToken(pier, side);
+        if (token.Length > 0)
+        {
+            var from = Math.Max(0, head.Length - token.Length - 2);
+            var at = head.LastIndexOf(token, StringComparison.OrdinalIgnoreCase);
+            if (at >= from) head = head[..at] + "{side}" + head[(at + token.Length)..];
+        }
+
+        // The pier id is the front of the name, and only the front: a later match is part of the name proper.
+        if (pier.Id.Length > 0 && head.StartsWith(pier.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            head = "{pier}" + head[pier.Id.Length..];
+        }
+
+        return (head + "{number}", digits);
+    }
+
     /// <summary>Where the numbering of the slots ashore starts, and the step between them.</summary>
     internal (int Start, int Step) AshoreNumbering => (LandStartNumber ?? StartNumber, LandIncrement ?? Increment);
 

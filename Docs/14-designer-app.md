@@ -86,6 +86,8 @@ The **Ashore** panel has the same four fields for the slots on land, counted sep
 
 The **Rename** tool (or Edit ▸ Rename, F2) gives one element another name: click a berth or a pier, type the name, press Enter. A berth's name is also its id, so a name already used is refused and the log says so; a pier's name is only a title, so any name will do. Ctrl+Z puts the old name back.
 
+Renaming a **pier** asks for three things, because it renames every berth on it as well: the pier's name, its id, and the pattern its berths are named by. The pattern comes filled in with the one those berths follow now — `{pier}-{side}{number}` for berths called `A-L01` — so leaving it alone changes nothing. Type a different one and the whole pier is renamed to match, keeping the number each berth already has. A berth whose new name is already taken keeps the one it has, so a pattern that would give two berths the same name renames neither.
+
 ## What it saves
 
 **File ▸ Save** writes a `.marina.json` file holding the layout, the appearance and motion settings, the berth labels, the camera position and the designer's tool settings. Opening one puts all of it back on screen: the Look and Cameras panels and the tool settings read themselves out of the file, so the sliders, colours and ticks show what the design was saved with rather than what the window started with. The title bar shows the file name and marks unsaved changes with `*`; closing with unsaved work asks first.
@@ -113,5 +115,6 @@ The WinForms test host has **Open design…** and **Save design…** buttons on 
 | Ctrl+Z | Undo the last change |
 | Shift while drawing | Snap a pier, or a bow direction, to 15° steps |
 | Alt while drawing | Ignore the snapping to corners and edges |
+| Alt while erasing | Take the whole row of berths, not just the one under the pointer |
 | Ctrl+N / O / S / Shift+S / I | New, open, save, save as, load reference image |
 | Ctrl+T / Ctrl+F | Top view north up / fit the marina |

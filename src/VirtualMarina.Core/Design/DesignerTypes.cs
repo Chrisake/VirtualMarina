@@ -116,12 +116,24 @@ public sealed class DesignElementRenamingEventArgs : EventArgs
     /// <param name="pier">The pier being renamed, or null for a berth.</param>
     /// <param name="currentName">The name it has now.</param>
     public DesignElementRenamingEventArgs(Berth? berth, Pier? pier, string currentName)
+        : this(berth, pier, currentName, null)
+    {
+    }
+
+    /// <summary>Creates the arguments, saying how the element's berths are named.</summary>
+    /// <param name="berth">The berth being renamed, or null for a pier.</param>
+    /// <param name="pier">The pier being renamed, or null for a berth.</param>
+    /// <param name="currentName">The name it has now.</param>
+    /// <param name="berthPattern">The pattern the pier's berths follow now, or null when there is none to show.</param>
+    public DesignElementRenamingEventArgs(Berth? berth, Pier? pier, string currentName, string? berthPattern)
     {
         Berth = berth;
         Pier = pier;
         CurrentName = currentName;
         NewName = currentName;
         NewPierId = pier?.Id;
+        BerthPattern = berthPattern;
+        NewBerthPattern = berthPattern;
     }
 
     /// <summary>The berth being renamed, or null when a pier is.</summary>
@@ -141,6 +153,23 @@ public sealed class DesignElementRenamingEventArgs : EventArgs
     /// leaving it unchanged moves nothing. Ignored for a berth, whose name is its id.
     /// </summary>
     public string? NewPierId { get; set; }
+
+    /// <summary>
+    /// For a pier, the pattern its berths are named by now, read back out of their names — <c>{pier}-{side}{number}</c>
+    /// for berths called <c>A-L01</c>. Null for a berth, and for a pier whose berths were all named by hand.
+    /// </summary>
+    /// <seealso cref="BerthNamingScheme"/>
+    public string? BerthPattern { get; }
+
+    /// <summary>
+    /// The pattern to name the pier's berths by. Starts as <see cref="BerthPattern"/>; changing it renames every
+    /// numbered berth on the pier to match, keeping the number each one already has. Ignored for a berth.
+    /// </summary>
+    /// <remarks>
+    /// A berth whose new name is already taken is left alone rather than overwritten, so a pattern that would give
+    /// two berths the same name renames neither of them.
+    /// </remarks>
+    public string? NewBerthPattern { get; set; }
 
     /// <summary>Set to true to leave the element alone.</summary>
     public bool Cancel { get; set; }

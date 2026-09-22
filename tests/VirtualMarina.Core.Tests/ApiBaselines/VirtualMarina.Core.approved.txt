@@ -792,10 +792,13 @@ sealed class VirtualMarina.Core.Design.DesignElementErasedEventArgs : EventArgs
 
 sealed class VirtualMarina.Core.Design.DesignElementRenamingEventArgs : EventArgs
     .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, string currentName)
+    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, string currentName, string berthPattern)
     VirtualMarina.Core.Domain.Berth Berth { get; }
     VirtualMarina.Core.Domain.Pier Pier { get; }
     bool Cancel { get; set; }
+    string BerthPattern { get; }
     string CurrentName { get; }
+    string NewBerthPattern { get; set; }
     string NewName { get; set; }
     string NewPierId { get; set; }
 
@@ -854,6 +857,7 @@ sealed class VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMari
 
 sealed class VirtualMarina.Core.Design.MarinaDesigner
     IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId)
+    IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId, string pattern)
     IReadOnlyList<Vector2> DraftPoints { get; }
     IReadOnlyList<Vector2> SelectionQuad { get; }
     IReadOnlyList<Vector2> ShorelineAwaitingSide { get; }
@@ -1546,6 +1550,7 @@ sealed class VirtualMarina.Core.Input.MarinaInputController
     bool HoverEnabled { get; set; }
     bool IsDragging { get; }
     bool KeyDown(VirtualMarina.Core.Input.MarinaKey key, VirtualMarina.Core.Input.InputModifiers modifiers = 0)
+    bool ModifiersChanged(VirtualMarina.Core.Input.InputModifiers modifiers)
     float ClickTolerancePixels { get; set; }
     float KeyboardOrbitDegrees { get; set; }
     float KeyboardPanMeters { get; set; }

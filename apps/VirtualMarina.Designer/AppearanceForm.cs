@@ -235,29 +235,54 @@ internal sealed class TextInputForm : Form
 {
     private readonly TextBox _box = new() { Dock = DockStyle.Top, Font = Theme.Body, BorderStyle = BorderStyle.FixedSingle, Height = 26 };
     private readonly TextBox _second = new() { Dock = DockStyle.Top, Font = Theme.Body, BorderStyle = BorderStyle.FixedSingle, Height = 26 };
+    private readonly TextBox _third = new() { Dock = DockStyle.Top, Font = Theme.Body, BorderStyle = BorderStyle.FixedSingle, Height = 26 };
 
-    /// <summary>Asks for one value, or for two when <paramref name="secondQuestion"/> is given.</summary>
+    /// <summary>Asks for one value, or for more as the later questions are given.</summary>
     /// <param name="title">Dialog caption.</param>
     /// <param name="question">Label above the first field.</param>
     /// <param name="value">Initial text of the first field.</param>
     /// <param name="secondQuestion">Label above the second field, or null for a one-field dialog.</param>
     /// <param name="secondValue">Initial text of the second field.</param>
-    public TextInputForm(string title, string question, string value, string? secondQuestion = null, string? secondValue = null)
+    /// <param name="thirdQuestion">Label above the third field, or null to leave it out.</param>
+    /// <param name="thirdValue">Initial text of the third field.</param>
+    /// <param name="thirdHint">A line of explanation under the third field, or null for none.</param>
+    public TextInputForm(
+        string title,
+        string question,
+        string value,
+        string? secondQuestion = null,
+        string? secondValue = null,
+        string? thirdQuestion = null,
+        string? thirdValue = null,
+        string? thirdHint = null)
     {
         Text = title;
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MinimizeBox = false;
         MaximizeBox = false;
-        ClientSize = new Size(380, secondQuestion is null ? 130 : 186);
+        var rows = 1 + (secondQuestion is null ? 0 : 1) + (thirdQuestion is null ? 0 : 1);
+        ClientSize = new Size(400, 74 + rows * 56 + (thirdHint is null ? 0 : 34));
         BackColor = Theme.Surface;
         Font = Theme.Body;
         _box.Text = value;
         _second.Text = secondValue ?? string.Empty;
+        _third.Text = thirdValue ?? string.Empty;
 
         var content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 8) };
 
         // Docked top, so they stack in the reverse order they are added.
+        if (thirdQuestion is not null)
+        {
+            if (thirdHint is not null)
+            {
+                content.Controls.Add(new Label { Text = thirdHint, Dock = DockStyle.Top, AutoSize = true, ForeColor = Theme.TextSoft, Margin = new Padding(0, 4, 0, 8), Height = 30, MaximumSize = new Size(360, 0) });
+            }
+
+            content.Controls.Add(_third);
+            content.Controls.Add(new Label { Text = thirdQuestion, Dock = DockStyle.Top, AutoSize = true, ForeColor = Theme.TextSoft, Margin = new Padding(0, 8, 0, 8), Height = 22 });
+        }
+
         if (secondQuestion is not null)
         {
             content.Controls.Add(_second);
@@ -283,4 +308,7 @@ internal sealed class TextInputForm : Form
 
     /// <summary>Text of the second field, empty for a one-field dialog.</summary>
     public string SecondValue => _second.Text;
+
+    /// <summary>Text of the third field, empty when it was left out.</summary>
+    public string ThirdValue => _third.Text;
 }

@@ -55,6 +55,11 @@ While `IsActive` is true, clicks go to the designer instead of selecting berths.
 
 Ctrl+Z undoes the last change, with any tool (see [Undo](#undo)). When there's nothing to cancel, Esc switches back to `Navigate`. Corners and pier ends snap to existing land corners, pier ends and land edges within `SnapDistancePixels` (default 12). Holding Alt turns snapping off.
 
+**Modifiers show at once.** What Alt and Shift are about to do shows in the preview the moment the key goes down —
+the eraser sweeping a whole row rather than one berth, a point that has stopped snapping — and goes back the moment
+it is released. Modifiers otherwise only arrive with a pointer event, so a host that can see keys go down and up
+calls `marina.Input.ModifiersChanged(modifiers)` to keep the preview honest; `MarinaViewControl` already does.
+
 **Piers square up.** A pier being drawn takes a direction at right angles to what is already there: the piers in the marina, and the land edges within 40 m of its shore end — the quay it springs from. A direction within 6° of square is corrected; anything further is left as drawn, so a deliberately angled pier still works. The preview marks a squared-up direction with a short line back along the pier. Alt draws exactly what the pointer says, and Shift asks for 15° steps instead.
 
 While drawing, the view shows a preview on top of everything: outline and rubber band, the ghost pier with its length, the berths a click would add, and the element the eraser would remove. Invalid drawings (a crossing outline, a closed pier side) are shown in red.
@@ -128,6 +133,28 @@ back.
 `RenumberBerths(pierId)` does the same on its own, without changing the id. It is the repair for berths whose names
 no longer match their pier — one that used to take boats on both sides and now takes them on one, or berths still
 carrying a prefix from an id the pier had long ago. Renaming a pier in the designer runs it too.
+
+#### Renaming a whole pier to a pattern
+
+Because renaming a pier renames every berth on it, `ElementRenaming` also offers the **pattern** those berths are
+named by. `BerthPattern` is read back out of the names they actually have — `{pier}-{side}{number}` for berths called
+`A-L01` — rather than being whatever `BerthNaming` happens to be set to, so it describes the pier in front of the
+user. It is null for a berth, and for a pier whose berths were all named by hand.
+
+Setting `NewBerthPattern` renames every numbered berth on the pier to match, keeping the number and the padding each
+one already has, so putting the same pattern back changes nothing. `RenumberBerths(pierId, pattern)` does it directly:
+
+```csharp
+designer.RenumberBerths("E", "{pier}.{number}");   // E-R01 becomes E.01
+```
+
+A berth whose new name is already taken is left alone rather than overwritten, so a pattern that would give two
+berths the same name — dropping `{side}` from a pier that berths on both — renames neither of them. The whole pier is
+one step for Ctrl+Z.
+
+The side token is still read from `BerthNaming`, since nothing in a name says which letter stood for the side, and it
+is only looked for right next to the number. A berth named under a scheme whose side letters differed comes back with
+that letter as plain text, which still reproduces the name it has.
 
 ### The mainland
 
@@ -275,7 +302,7 @@ The camera limits and the water surface grow to cover the image.
 | `ElementCreating` | A drawing is complete and about to be added | `LandArea`, `Pier`, `Berths`, `Dividers` (all settable), `Cancel` |
 | `ElementCreated` | The element was added | `LandArea`, `Pier`, `Berths`, `Dividers` |
 | `ElementErased` | Something was removed with the eraser (or `Erase(element)`) | `Element`, `RemovedBerths`, `RemovedDividers` |
-| `ElementRenaming` | A berth or pier was clicked with `DesignTool.Rename` | `Berth`, `Pier`, `CurrentName`, settable `NewName`, `Cancel` |
+| `ElementRenaming` | A berth or pier was clicked with `DesignTool.Rename` | `Berth`, `Pier`, `CurrentName`, `BerthPattern`, settable `NewName`, `NewPierId`, `NewBerthPattern`, `Cancel` |
 | `TreesPlanted` | Trees were scattered or removed | `LandArea`, `PreviousCount` |
 | `ActionUndone` | `Undo()` reverted a change | `Description`, `RemainingSteps` |
 | `ScaleLineDrawn` | A scale line was drawn | `Start`, `End`, `MeasuredLength`, settable `KnownLengthMeters` |
