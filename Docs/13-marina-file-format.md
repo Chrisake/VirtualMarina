@@ -112,19 +112,23 @@ and from the shoreline when the file is loaded, so a busy sea costs no more to s
 same every time it is opened. Nothing about the lanes themselves is written, so moving the coast moves the shipping
 with it.
 
-`clearance` is how near the middle of the marina the nearest lane comes, in meters, and `laneCount` and `laneSpacing`
-say how many lanes there are and how far each one steps out to sea beyond it. Lanes that would cross a land area are
-pushed further out until none does, so nothing ever appears to sail over a quay — that is the only thing that puts the
-traffic further out than `clearance` asks.
+`clearance` is how near the middle of the marina the nearest lane comes, in meters, and `edgeClearance` how far off
+the coast a lane sits where it leaves the map. The two ends of a lane are set by the second and its middle by the
+first, so together they say how sharply it sweeps in. `laneCount` and `laneSpacing` say how many lanes there are and
+how far each steps out to sea beyond the first.
 
-A file written before the traffic had lanes has neither setting; both fall back to their defaults on load, since zero
-lanes would fail validation and leave an empty sea.
+`speedPercent` scales what each kind of vessel really does rather than setting one speed for all of them, and
+`spawnDelaySeconds` is roughly how long after a vessel leaves the map before another appears. `maximumVessels` caps
+how many are out at once.
 
-`reach` is how far each end of a lane runs on past the coast before its vessels fade away. It is capped on load by
-however much water the grid actually covers, since a vessel past the edge of the water would be sailing on nothing.
+A file written before any of these settings existed has none of them; each falls back to its default on load, since
+zero lanes or zero speed would fail validation and leave an empty sea. A file written when the speed was in knots
+loses that setting rather than being converted, because it no longer means the same thing.
 
-Whether the lanes are *drawn* is not stored: it is a working aid for setting the clearance and the spacing, and a
-reloaded design always has it off.
+`reach` is only used when there is no shoreline to take the lane ends from.
+
+Whether the lanes are *drawn* is not stored: it is a working aid for setting the clearances, and a reloaded design
+always has it off.
 
 The vessels are decoration: they are not berths, they cannot be clicked, and they never appear in `berths`.
 

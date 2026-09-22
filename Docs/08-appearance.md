@@ -128,81 +128,84 @@ Vessels crossing the bay beyond the marina, so the sea is not empty. It is off u
 marina.SetMarineTraffic(MarineTraffic.None with
 {
     IsEnabled = true,
-    Intensity = 0.45f,   // 0-1, as a share of MaximumVessels
-    Clearance = 300f,    // meters: how near the middle of the marina the nearest lane passes
+    Clearance = 300f,          // meters: how near the marina the nearest lane passes
+    EdgeClearance = 700f,      // meters: how far off the coast it leaves the map
     LaneCount = 3,
-    LaneSpacing = 160f,  // meters between one lane and the next
-    SpeedKnots = 8f,
-    Seed = 12,           // the same seed always puts the same traffic in the same place
+    LaneSpacing = 160f,
+    SpeedPercent = 120f,       // a share of what each kind of vessel really does
+    MaximumVessels = 16,
+    SpawnDelaySeconds = 25f,
 });
 ```
 
 | Property | Default | Notes |
 |---|---|---|
 | `IsEnabled` | false | Off until asked for |
-| `Intensity` | 0.5 | How busy, as a share of `MaximumVessels` |
-| `MaximumVessels` | 24 | The most on the water at once, up to `MarineTraffic.VesselLimit` (60) |
-| `Clearance` | 300 m | The nearest lane's closest approach to the middle of the marina |
+| `Clearance` | 300 m | How near the middle of the marina the nearest lane passes |
+| `EdgeClearance` | 700 m | How far off the coast a lane sits where it leaves the map |
 | `LaneCount` | 2 | How many lanes, up to `MarineTraffic.LaneLimit` (8) |
-| `LaneSpacing` | 160 m | Between one lane and the next, and how loosely vessels sit in them |
-| `SpeedKnots` | 8 | How fast they cross |
-| `Reach` | 6000 m | How far each end runs on past the coast: where a vessel appears and where it fades |
-| `Seed` | 1 | Fixes the vessels on the lanes |
+| `LaneSpacing` | 160 m | Between one lane and the next, on average |
+| `SpeedPercent` | 100 | Scales every vessel's own speed up or down |
+| `MaximumVessels` | 16 | The most on the water at once, up to `MarineTraffic.VesselLimit` (60) |
+| `SpawnDelaySeconds` | 25 | Roughly how long after one leaves before another appears |
+| `Reach` | 8000 m | How far the lanes run when there is no shoreline to take their ends from |
+| `Seed` | 1 | Fixes the lanes and the traffic on them |
 | `Vessels` | empty | The mix to draw from; empty means `MarineTraffic.DefaultVessels` |
 
 ### Where the lanes go
 
-The lanes follow the coast. Each is the [shoreline](07-land-and-shoreline.md) pushed out to sea: its ends run
-alongside the shoreline's endless segments and its middle curves between them, so the shipping reads as passing along
-the coast rather than cutting across it at an angle of its own. A marina with no shoreline behind it has nothing to be
-parallel to and gets straight lanes instead.
+A lane is drawn through **three points** and curved smoothly between them:
 
-`Clearance` is how far out the **nearest** lane is pushed, measured as its closest approach to the middle of the
-marina — not a margin added to the marina's own size. That is what makes the setting mean something on its own: 300 m
-puts the near lane 300 m off whether the marina is 100 m across or 2 km. `LaneSpacing` then steps each further lane
-out to sea from there.
+- one at each edge of the map, out where the [mainland](07-land-and-shoreline.md) ends, sitting `EdgeClearance` off
+  the coast;
+- one in the middle, passing the marina at `Clearance`.
 
-The one thing that overrides `Clearance` is land: lanes that would cross a land area are pushed out until none does,
-and then brought back in as near as the land allows, so they can end up a little further out than asked but never over
-a quay or through the piers.
+So a lane sweeps in towards the marina and back out again, and both its ends are far enough away that a vessel
+appears and disappears out of sight. `Clearance` is the closest approach to the middle of the marina, not a margin
+added to the size of it, so 300 m means 300 m whether the marina is 100 m across or 2 km. The two settings together
+say how sharply a lane sweeps in.
 
-### Which way they run, and why nothing looks ruled
+Three points is the whole of it, and that is the point. Pushing the coastline itself out to sea -- which is what this
+used to do -- folds over on itself wherever the coast turns in, since a bay narrower than the push becomes a loop.
+Lanes came out with a right-angle kink in them and a six-kilometre jump between the first two points.
 
-Every vessel in a lane runs the same way, and neighbouring lanes run opposite ways, as a traffic separation scheme
-does. So vessels overtake within a lane and pass between lanes, and **nothing ever meets head-on** — which is the
-reason for the fixed direction rather than a coin toss per vessel. Each lane stores its points in the direction its
-traffic travels, so `At(along)` always faces the way the vessels are going; `Reversed` says which lanes run the other
-way.
-
-Two things keep it off a ruled line, both bounded well inside `LaneSpacing` so lanes never cross and vessels from
-neighbouring lanes never meet:
-
-- each lane **bulges gently seaward** along its length by a differing amount, so the lanes are not quite parallel and
-  the gap between two of them opens and closes as they run;
-- each vessel **holds its own offset** within its lane and wanders slowly across it as it goes, taking about seventy
-  seconds to cross and back. Widening `LaneSpacing` widens both, so wide lanes look looser.
-
-`TrafficLanes` gives the planned lanes back, nearest the marina first — each with its `Points`, its `Length`,
-`Reversed`, `DistanceTo(point)` for the closest approach and `At(along)` for a position and heading a fraction of the
-way along. It is empty when the traffic is off or its settings are unsound.
+Lanes beyond the first step out to sea by `LaneSpacing` on average, give or take, so they are not ruled parallel.
+Every vessel in a lane runs the same way and nothing meets head-on; one or two lanes run opposite ways as a traffic
+separation scheme does, and beyond that the directions are drawn at random. `TrafficLanes` gives the planned lanes
+back, nearest first, each with its `Points`, `Length`, `Reversed`, `DistanceTo(point)` and `At(along)`.
 
 ```csharp
-marina.ShowTrafficLanes = true;   // draws the lanes on the water while the spacing is being set
+marina.ShowTrafficLanes = true;   // draws the lanes on the water while the clearances are being set
 ```
 
-`ShowTrafficLanes` is a working aid, not a style: it draws the lanes, tinted by which way each one runs, so the
-clearance and the spacing can be judged by eye. It is not saved with the design. The Designer offers it as **Show the
-lanes** in the traffic card of the Look panel.
+`ShowTrafficLanes` is a working aid, not a style: it draws the lanes, tinted by which way each runs. It is not saved
+with the design. The Designer offers it as **Show the lanes** in the traffic card of the Look panel.
 
-### The vessels on them
+### How fast they go
 
-`Intensity` and `MaximumVessels` decide how many vessels there are in total; `LaneCount` shares those out rather than
-multiplying them, so adding lanes spreads the same sea thinner. Both ends of every lane sit far out in the flat sea
-beyond the detailed water, so a vessel appears and disappears where nobody is looking, crosses within view of the
-marina, and carries on out the other side. The fade at each end is deliberately short — a vessel is at full strength a
-twentieth of the way along — so it is never caught materialising. They are decoration: they are not berths, they
-cannot be clicked or hit-tested, and they take no part in selection. `GetTrafficVessels()` returns where they are
-right now, for a host that wants to draw its own marker.
+Every kind of vessel travels at its own speed, from `MarineTraffic.CruisingKnots`: a fishing boat plods at 7 knots
+and a jet ski tears past at 30. One figure for the whole sea had them all keeping station, which reads as wrong
+immediately.
+
+| | Fishing | Monohull | Catamaran | Day motor | Cat. motor | Ferry | Motor yacht | Jet ski |
+|---|---|---|---|---|---|---|---|---|
+| knots | 7 | 8 | 9.5 | 14 | 15 | 18 | 22 | 30 |
+
+`SpeedPercent` scales all of them together rather than replacing them, so the mix keeps its character however fast
+the sea is turned up. Each vessel then differs from its kind by up to a sixth either way, so no two keep station
+while the average across the sea is still the real figure.
+
+### How they come and go
+
+A random number of vessels, up to `MaximumVessels`, is out there to begin with, already under way so the marina does
+not open with a row of them on the horizon. Each crosses its lane **once** and is gone off the far edge. About
+`SpawnDelaySeconds` after one leaves, another appears at the start of a lane -- a lane of its own choosing, of its own
+kind, at its own speed and its own offset within the lane. So the sea stays near the number it started with rather
+than filling to the cap, and it never repeats itself.
+
+`MarineTrafficField` holds that: `Advance(seconds)` moves it on, `Vessels` says where everything is. The visualizer
+keeps one and advances it as time passes; `GetTrafficVessels()` returns the same snapshot for a host that wants to
+draw its own marker. They are decoration: not berths, not clickable, and they take no part in selection.
 
 Because the vessels move, the scene's instance data is rebuilt on every frame while traffic is on. Switching it off
 hands the renderer the still scene again, which it can leave uploaded.

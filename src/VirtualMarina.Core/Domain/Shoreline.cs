@@ -152,6 +152,22 @@ public sealed record Shoreline
         return shape;
     }
 
+    /// <summary>
+    /// Where the two endless segments reach the edge of the map: the far ends of the coast, as far out as the
+    /// mainland is ever drawn. Returns null when <see cref="Validate"/> would complain.
+    /// </summary>
+    /// <remarks>
+    /// This is where something crossing the whole map passes the coast for the last time, which is what the passing
+    /// traffic aims its lanes at.
+    /// </remarks>
+    public (Vector2 Start, Vector2 End)? EndsAtTheMapEdge()
+    {
+        if (Validate().Any()) return null;
+
+        var edge = FarEdge;
+        return (ExtendToEdge(Points[1], Points[0], edge), ExtendToEdge(Points[^2], Points[^1], edge));
+    }
+
     /// <summary>True when a point in plan coordinates lies on the land side of the shoreline.</summary>
     /// <param name="point">The point to test.</param>
     public bool Contains(Vector2 point)

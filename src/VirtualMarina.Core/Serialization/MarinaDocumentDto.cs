@@ -226,15 +226,17 @@ internal sealed class MarineTrafficDto : ExtensibleDto
 {
     public bool Enabled { get; set; }
 
-    public float Intensity { get; set; } = 0.5f;
-
     public float Clearance { get; set; } = 300f;
 
-    public float SpeedKnots { get; set; } = 8f;
+    public float EdgeClearance { get; set; } = 700f;
 
-    public float Reach { get; set; } = 6000f;
+    public float SpeedPercent { get; set; } = 100f;
 
-    public int MaximumVessels { get; set; } = 24;
+    public float SpawnDelaySeconds { get; set; } = 25f;
+
+    public float Reach { get; set; } = 8000f;
+
+    public int MaximumVessels { get; set; } = 16;
 
     public int LaneCount { get; set; } = 2;
 
@@ -251,9 +253,10 @@ internal sealed class MarineTrafficDto : ExtensibleDto
     public static MarineTrafficDto From(MarineTraffic traffic) => new()
     {
         Enabled = traffic.IsEnabled,
-        Intensity = traffic.Intensity,
         Clearance = traffic.Clearance,
-        SpeedKnots = traffic.SpeedKnots,
+        EdgeClearance = traffic.EdgeClearance,
+        SpeedPercent = traffic.SpeedPercent,
+        SpawnDelaySeconds = traffic.SpawnDelaySeconds,
         Reach = traffic.Reach,
         MaximumVessels = traffic.MaximumVessels,
         LaneCount = traffic.LaneCount,
@@ -266,9 +269,10 @@ internal sealed class MarineTrafficDto : ExtensibleDto
     public MarineTraffic ToDomain() => new()
     {
         IsEnabled = Enabled,
-        Intensity = Intensity,
         Clearance = Clearance,
-        SpeedKnots = SpeedKnots,
+        EdgeClearance = EdgeClearance > 0f ? EdgeClearance : new MarineTraffic().EdgeClearance,
+        SpeedPercent = SpeedPercent > 0f ? SpeedPercent : new MarineTraffic().SpeedPercent,
+        SpawnDelaySeconds = SpawnDelaySeconds >= 0f ? SpawnDelaySeconds : new MarineTraffic().SpawnDelaySeconds,
         Reach = Reach,
         MaximumVessels = MaximumVessels > 0 ? MaximumVessels : new MarineTraffic().MaximumVessels,
 

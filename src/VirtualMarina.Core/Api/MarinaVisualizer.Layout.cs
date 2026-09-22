@@ -495,12 +495,22 @@ public sealed partial class MarinaVisualizer
     {
         // The lanes are planned around the marina, so a host that asks before the next frame is drawn would
         // otherwise get vessels laid out around whatever the marina was when the traffic was last set.
-        if (_trafficDirty && (_traffic.IsEnabled || _trafficLanes.Count > 0)) ReplanTraffic();
-        return MarineTrafficPlanner.Place(_trafficLanes, _traffic, _time).ToArray();
+        if (_trafficDirty && (_traffic.IsEnabled || _trafficField is not null)) ReplanTraffic();
+        AdvanceTraffic();
+        return _trafficField?.Vessels.ToArray() ?? Array.Empty<TrafficVessel>();
+    }
+
+    /// <summary>Moves the traffic on to the current moment, once per moment however often it is asked for.</summary>
+    private void AdvanceTraffic()
+    {
+        if (_trafficField is null) return;
+        var elapsed = _time - _trafficTime;
+        _trafficTime = _time;
+        _trafficField.Advance(elapsed);
     }
 
     /// <inheritdoc/>
-    public IReadOnlyList<TrafficLane> TrafficLanes => _trafficLanes;
+    public IReadOnlyList<TrafficLane> TrafficLanes => _trafficField?.Lanes ?? Array.Empty<TrafficLane>();
 
     /// <inheritdoc/>
     public bool ShowTrafficLanes
@@ -738,7 +748,7 @@ public sealed partial class MarinaVisualizer
         _landOrder.Clear();
         _shoreline = null;
         _traffic = MarineTraffic.None;
-        _trafficLanes = Array.Empty<TrafficLane>();
+        _trafficField = null;
         _selection.Clear();
         _hoveredBerthId = null;
         _popupRefreshPending = false;

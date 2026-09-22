@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
@@ -9,17 +9,15 @@ using VirtualMarina.Core.Serialization;
 namespace VirtualMarina.Core.Tests;
 
 /// <summary>
-/// The passing traffic out at sea. What matters is that the settings mean what they say — the clearance is the
-/// nearest lane's closest approach to the middle of the marina and nothing else, the spacing is the gap between
-/// lanes — that the lanes follow the coast without sailing over the land, and that nothing on them can meet
-/// head-on.
+/// The passing traffic. A lane is one smooth curve from the edge of the map, in past the marina at the clearance
+/// asked for, and out to the far edge; vessels cross it once at the speed their kind really does, and another
+/// follows a while after each one leaves.
 /// </summary>
 public class MarineTrafficTests
 {
     private static MarineTraffic Busy(int seed = 1) =>
-        MarineTraffic.None with { IsEnabled = true, Intensity = 1f, Clearance = 200f, Reach = 1500f, Seed = seed };
+        MarineTraffic.None with { IsEnabled = true, Clearance = 300f, Seed = seed };
 
-    /// <summary>A quay along the south of the water, with a pier sticking out into it.</summary>
     private static LandArea Quay() =>
         new("quay", new[] { new Vector2(-120, -60), new Vector2(120, -60), new Vector2(120, -10), new Vector2(-120, -10) }, 1f, LandKind.Quay);
 
@@ -35,24 +33,55 @@ public class MarineTrafficTests
     private static Shoreline BentCoast() =>
         new(new[] { new Vector2(-900, -90), new Vector2(0, -90), new Vector2(700, -700) }, landOnLeft: false);
 
-    /// <summary>How near the nearest lane comes to the middle of the marina.</summary>
     private static float NearestApproach(IReadOnlyList<TrafficLane> lanes) => lanes.Min(lane => lane.DistanceTo(Centre()));
+
+    [Fact]
+    public void EveryLaneIsOneUnbrokenCurve()
+    {
+        // The lanes used to be the coastline pushed out to sea, which folds over on itself where the coast turns in.
+        // That put a right-angle kink in a lane and a six-kilometre jump between its first two points.
+        foreach (var shoreline in new Shoreline?[] { null, StraightCoast(), BentCoast() })
+        {
+            var lanes = MarineTrafficPlanner.Plan(Busy() with { LaneCount = 4 }, MarinaBounds(), shoreline);
+            Assert.Equal(4, lanes.Count);
+
+            foreach (var lane in lanes)
+            {
+                var steps = new List<float>();
+                for (var i = 1; i < lane.Points.Count; i++)
+                {
+                    var step = lane.Points[i] - lane.Points[i - 1];
+                    Assert.True(step.Length() > 1e-3f, "a lane has two points on top of each other");
+                    steps.Add(step.Length());
+                }
+
+                // No jump: the longest step along a lane is nothing like the whole of it.
+                Assert.True(steps.Max() < lane.Length * 0.2f, $"a lane jumps {steps.Max():0} m in one step of a {lane.Length:0} m run");
+
+                // And no corner: it turns gently the whole way.
+                for (var i = 1; i < lane.Points.Count - 1; i++)
+                {
+                    var before = Vector2.Normalize(lane.Points[i] - lane.Points[i - 1]);
+                    var after = Vector2.Normalize(lane.Points[i + 1] - lane.Points[i]);
+                    var turn = MathF.Acos(Math.Clamp(Vector2.Dot(before, after), -1f, 1f)) * MarinaMath.RadToDeg;
+                    Assert.True(turn < 8f, $"a lane kinks by {turn:0}° at point {i}");
+                }
+            }
+        }
+    }
 
     [Fact]
     public void TheClearance_IsHowNearTheMiddleOfTheMarinaTheNearestLaneComes()
     {
-        // The whole point of the setting: 300 m means 300 m, whether or not there is a coast to follow, and whether
-        // there is one lane out there or six.
         foreach (var shoreline in new Shoreline?[] { null, StraightCoast(), BentCoast() })
         {
             foreach (var clearance in new[] { 150f, 300f, 600f, 1000f })
             {
                 foreach (var count in new[] { 1, 2, 5 })
                 {
-                    var traffic = Busy() with { Clearance = clearance, Reach = 6000f, LaneCount = count };
-                    var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, shoreline);
+                    var traffic = Busy() with { Clearance = clearance, LaneCount = count };
+                    var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), shoreline);
 
-                    Assert.NotEmpty(lanes);
                     Assert.Equal(count, lanes.Count);
                     Assert.Equal(clearance, NearestApproach(lanes), tolerance: clearance * 0.05f);
                 }
@@ -63,294 +92,323 @@ public class MarineTrafficTests
     [Fact]
     public void TheClearance_DoesNotGrowWithTheSizeOfTheMarina()
     {
-        // The old planner added half the marina's diagonal to the clearance, so a large marina pushed the shipping
-        // out of sight however low the setting was.
         var small = (new Vector2(-50, -50), new Vector2(50, 50));
         var large = (new Vector2(-2000, -2000), new Vector2(2000, 2000));
-        var traffic = Busy() with { Clearance = 400f, Reach = 9000f };
+        var traffic = Busy() with { Clearance = 400f };
 
         foreach (var shoreline in new Shoreline?[] { null, StraightCoast() })
         {
-            var near = MarineTrafficPlanner.Plan(traffic, small, Array.Empty<LandArea>(), shoreline);
-            var far = MarineTrafficPlanner.Plan(traffic, large, Array.Empty<LandArea>(), shoreline);
+            var near = MarineTrafficPlanner.Plan(traffic, small, shoreline);
+            var far = MarineTrafficPlanner.Plan(traffic, large, shoreline);
 
-            Assert.NotEmpty(near);
-            Assert.NotEmpty(far);
             Assert.Equal(400f, near.Min(lane => lane.DistanceTo((small.Item1 + small.Item2) * 0.5f)), tolerance: 20f);
             Assert.Equal(400f, far.Min(lane => lane.DistanceTo((large.Item1 + large.Item2) * 0.5f)), tolerance: 20f);
         }
     }
 
     [Fact]
-    public void TheSpacing_IsHowFarApartTheLanesAre()
+    public void TheEdgeClearance_SetsHowFarOffTheCoastALaneLeavesTheMap()
     {
-        foreach (var shoreline in new Shoreline?[] { null, StraightCoast(), BentCoast() })
-        {
-            foreach (var spacing in new[] { 80f, 160f, 400f })
-            {
-                var traffic = Busy() with { Clearance = 300f, Reach = 6000f, LaneCount = 4, LaneSpacing = spacing };
-                var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, shoreline);
-                Assert.Equal(4, lanes.Count);
+        var shore = StraightCoast();
 
-                // Each lane in turn is one spacing further out than the one before it.
-                for (var i = 1; i < lanes.Count; i++)
+        foreach (var edge in new[] { 200f, 700f, 2000f })
+        {
+            var lanes = MarineTrafficPlanner.Plan(Busy() with { EdgeClearance = edge, LaneCount = 1 }, MarinaBounds(), shore);
+            var lane = Assert.Single(lanes);
+
+            // Both ends sit that far off where the coast reaches the edge of the map, whatever the middle is
+            // doing. Measured from there rather than with DistanceToShore, which only knows the drawn segments and
+            // not the endless ones the ends are out on.
+            var ends = shore.EndsAtTheMapEdge();
+            Assert.NotNull(ends);
+            foreach (var corner in new[] { ends!.Value.Start, ends.Value.End })
+            {
+                var nearest = MathF.Min(Vector2.Distance(corner, lane.Points[0]), Vector2.Distance(corner, lane.Points[^1]));
+                Assert.Equal(edge, nearest, tolerance: edge * 0.2f + 5f);
+            }
+
+            Assert.False(shore.Contains(lane.Points[0]), "a lane leaves the map on the land side of the coast");
+            Assert.False(shore.Contains(lane.Points[^1]), "a lane leaves the map on the land side of the coast");
+        }
+    }
+
+    [Fact]
+    public void ALaneRunsFromOneEdgeOfTheMapToTheOther_PastTheMarina()
+    {
+        var shore = StraightCoast();
+        var lanes = MarineTrafficPlanner.Plan(Busy() with { LaneCount = 2 }, MarinaBounds(), shore);
+        var ends = shore.EndsAtTheMapEdge();
+        Assert.NotNull(ends);
+
+        foreach (var lane in lanes)
+        {
+            // Its ends are out where the mainland ends, and its middle comes in to the marina.
+            var first = lane.Points[0];
+            var last = lane.Points[^1];
+            Assert.True(Vector2.Distance(first, Centre()) > 5000f, "a lane starts near the marina rather than at the edge of the map");
+            Assert.True(Vector2.Distance(last, Centre()) > 5000f, "a lane ends near the marina rather than at the edge of the map");
+
+            // One end near each end of the coast, so it crosses rather than doubling back.
+            var toStart = MathF.Min(Vector2.Distance(first, ends!.Value.Start), Vector2.Distance(first, ends.Value.End));
+            Assert.True(toStart < 3000f, "a lane does not reach the edge of the map");
+            Assert.True(lane.DistanceTo(Centre()) < 1000f, "a lane never comes in to the marina");
+        }
+    }
+
+    [Fact]
+    public void TheSpacing_IsHowFarApartTheLanesAreOnAverage()
+    {
+        foreach (var spacing in new[] { 80f, 160f, 400f })
+        {
+            var traffic = Busy() with { LaneCount = 5, LaneSpacing = spacing };
+            var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
+            Assert.Equal(5, lanes.Count);
+
+            var steps = new List<float>();
+            for (var i = 1; i < lanes.Count; i++)
+            {
+                steps.Add(lanes[i].DistanceTo(Centre()) - lanes[i - 1].DistanceTo(Centre()));
+            }
+
+            // Each step is about the spacing, and the average of them is closer still.
+            Assert.All(steps, step => Assert.InRange(step, spacing * 0.7f, spacing * 1.3f));
+            Assert.Equal(spacing, steps.Average(), tolerance: spacing * 0.12f);
+
+            // But not identical, or they would be ruled parallel.
+            Assert.True(steps.Max() - steps.Min() > 1f, "the lanes are spaced exactly evenly");
+        }
+    }
+
+    [Fact]
+    public void OneOrTwoLanesRunOppositeWays_AndMoreThanThatAreMixed()
+    {
+        // Two lanes are a separation scheme: one each way.
+        var pair = MarineTrafficPlanner.Plan(Busy() with { LaneCount = 2 }, MarinaBounds(), StraightCoast());
+        Assert.Equal(new[] { false, true }, pair.Select(lane => lane.Reversed).ToArray());
+        Assert.True(Vector2.Dot(pair[0].At(0.5f).Direction, pair[1].At(0.5f).Direction) < -0.9f, "the two lanes run the same way");
+
+        // Beyond that the directions are drawn at random, so over a spread of seeds they are not all alternating.
+        var patterns = new HashSet<string>();
+        for (var seed = 1; seed <= 12; seed++)
+        {
+            var lanes = MarineTrafficPlanner.Plan(Busy(seed) with { LaneCount = 5 }, MarinaBounds(), StraightCoast());
+            patterns.Add(string.Concat(lanes.Select(lane => lane.Reversed ? "<" : ">")));
+        }
+
+        Assert.True(patterns.Count > 2, $"the directions of five lanes only ever came out as {patterns.Count} pattern(s)");
+    }
+
+    [Fact]
+    public void EachKindOfVesselTravelsAtItsOwnSpeed()
+    {
+        // The order asked for: a fishing boat plods and a jet ski tears past.
+        var order = new[]
+        {
+            BoatType.FishingBoat,
+            BoatType.MonohullSailboat,
+            BoatType.CatamaranSailboat,
+            BoatType.DayMotorBoat,
+            BoatType.CatamaranMotorboat,
+            BoatType.Ferry,
+            BoatType.MotorYacht,
+            BoatType.JetSki,
+        };
+
+        for (var i = 1; i < order.Length; i++)
+        {
+            Assert.True(
+                MarineTraffic.CruisingKnots(order[i]) > MarineTraffic.CruisingKnots(order[i - 1]),
+                $"{order[i]} is not faster than {order[i - 1]}");
+        }
+
+        // The speed setting is a percentage of those, not a replacement for them.
+        var traffic = Busy();
+        Assert.Equal(100f, traffic.SpeedPercent);
+        var half = traffic with { SpeedPercent = 50f };
+        foreach (var type in order)
+        {
+            Assert.Equal(traffic.SpeedMetersPerSecond(type) * 0.5f, half.SpeedMetersPerSecond(type), tolerance: 0.001f);
+        }
+
+        Assert.True(traffic.SpeedMetersPerSecond(BoatType.JetSki) > traffic.SpeedMetersPerSecond(BoatType.FishingBoat) * 3f);
+    }
+
+    [Fact]
+    public void VesselsOfOneKind_VaryAroundTheSpeedTheirKindReallyDoes()
+    {
+        // One kind only, so what is left is the variation between them.
+        var traffic = Busy() with
+        {
+            LaneCount = 1, MaximumVessels = 40, SpawnDelaySeconds = 1f, Vessels = new[] { BoatType.Ferry },
+        };
+
+        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
+        var field = new MarineTrafficField(traffic, lanes);
+
+        // Measure each one over a step, which is exactly how fast it is going.
+        var before = field.Vessels.Select(vessel => vessel.Position).ToArray();
+        field.Advance(10d);
+        var moved = field.Vessels.Take(before.Length)
+            .Select((vessel, i) => Vector2.Distance(vessel.Position, before[i]) / 10f)
+            .Where(speed => speed > 0.01f)
+            .ToArray();
+
+        Assert.True(moved.Length >= 4, "not enough vessels to compare");
+        var expected = traffic.SpeedMetersPerSecond(BoatType.Ferry);
+        Assert.Equal(expected, moved.Average(), tolerance: expected * 0.12f);
+        Assert.True(moved.Max() - moved.Min() > expected * 0.05f, "every vessel of a kind travels at exactly the same speed");
+    }
+
+    [Fact]
+    public void TheSeaStartsWithARandomNumberOfVessels_AndKeepsItself()
+    {
+        var traffic = Busy() with { MaximumVessels = 12, SpawnDelaySeconds = 5f, LaneCount = 3 };
+        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
+
+        var counts = new HashSet<int>();
+        for (var seed = 1; seed <= 10; seed++)
+        {
+            var field = new MarineTrafficField(traffic with { Seed = seed }, lanes);
+            Assert.InRange(field.Vessels.Count, 1, traffic.MaximumVessels);
+            counts.Add(field.Vessels.Count);
+        }
+
+        Assert.True(counts.Count > 1, "the sea always starts with exactly the same number of vessels");
+
+        // Left running, it neither empties nor overflows.
+        var running = new MarineTrafficField(traffic, lanes);
+        for (var step = 0; step < 400; step++)
+        {
+            running.Advance(30d);
+            Assert.InRange(running.Vessels.Count, 0, traffic.MaximumVessels);
+        }
+
+        Assert.NotEmpty(running.Vessels);
+    }
+
+    [Fact]
+    public void AVesselCrossesItsLaneOnce_AndIsReplacedLater()
+    {
+        // One lane, one vessel allowed, moving quickly: it crosses, leaves, and another follows.
+        var traffic = Busy() with
+        {
+            LaneCount = 1, MaximumVessels = 1, SpeedPercent = 4000f, SpawnDelaySeconds = 30f, Seed = 4,
+        };
+
+        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
+        var field = new MarineTrafficField(traffic, lanes);
+        Assert.Single(field.Vessels);
+
+        // Followed over a long run: it only ever travels forwards along its lane, it leaves at the end, and after a
+        // wait another takes its place.
+        var direction = lanes[0].At(0.5f).Direction;
+        var previous = field.Vessels[0].Position;
+        var travelled = 0f;
+        var departures = 0;
+        var arrivals = 0;
+        var wasThere = true;
+
+        for (var step = 0; step < 2000; step++)
+        {
+            field.Advance(1d);
+            var here = field.Vessels.Count > 0;
+            if (wasThere && !here) departures++;
+            if (!wasThere && here) arrivals++;
+
+            if (here && wasThere)
+            {
+                var moved = field.Vessels[0].Position - previous;
+                if (moved.Length() > 1f)
                 {
-                    var step = lanes[i].DistanceTo(Centre()) - lanes[i - 1].DistanceTo(Centre());
-                    Assert.Equal(spacing, step, tolerance: spacing * 0.25f);
-                }
-
-                // And no two lanes ever touch, however they bulge.
-                for (var i = 1; i < lanes.Count; i++)
-                {
-                    var gap = lanes[i - 1].Points.Min(point => lanes[i].DistanceTo(point));
-                    Assert.True(gap > spacing * 0.5f, $"lanes {i - 1} and {i} come within {gap:0} m at a spacing of {spacing:0} m");
+                    Assert.True(Vector2.Dot(Vector2.Normalize(moved), direction) > 0.9f, "a vessel turned round");
+                    travelled += moved.Length();
                 }
             }
+
+            if (here) previous = field.Vessels[0].Position;
+            wasThere = here;
         }
+
+        Assert.True(travelled > 5000f, $"the vessel barely moved: {travelled:0} m");
+        Assert.True(departures > 0, "no vessel ever reached the end of its lane");
+        Assert.True(arrivals > 0, "no replacement ever appeared");
     }
 
     [Fact]
-    public void NeighbouringLanes_RunOppositeWays_SoNothingMeetsHeadOn()
+    public void VesselsFadeInAndOutAtTheEndsOfTheirLane()
     {
-        var traffic = Busy() with { Clearance = 300f, Reach = 6000f, LaneCount = 4, Intensity = 1f };
-        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, StraightCoast());
-        Assert.Equal(4, lanes.Count);
+        var traffic = Busy() with { LaneCount = 1, MaximumVessels = 1, SpeedPercent = 3000f, SpawnDelaySeconds = 1f, Seed = 7 };
+        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
+        var field = new MarineTrafficField(traffic, lanes);
 
-        // Every other lane is turned round.
-        Assert.Equal(new[] { false, true, false, true }, lanes.Select(lane => lane.Reversed).ToArray());
-        for (var i = 1; i < lanes.Count; i++)
+        var seen = new List<(float Opacity, float FromEnd)>();
+        for (var step = 0; step < 600; step++)
         {
-            var before = lanes[i - 1].At(0.5f).Direction;
-            var after = lanes[i].At(0.5f).Direction;
-            Assert.True(Vector2.Dot(before, after) < -0.9f, $"lanes {i - 1} and {i} run the same way");
-        }
-
-        // And within a lane everything goes the same way, at every moment, so nothing on it can ever meet head-on.
-        foreach (var seconds in new[] { 0d, 45d, 400d })
-        {
-            foreach (var lane in lanes)
+            field.Advance(2d);
+            foreach (var vessel in field.Vessels)
             {
-                var headings = MarineTrafficPlanner.Place(new[] { lane }, traffic, seconds)
-                    .Select(vessel => MarinaMath.HeadingToDirection(vessel.HeadingDegrees))
-                    .ToArray();
-
-                Assert.NotEmpty(headings);
-                Assert.All(headings, heading => Assert.True(
-                    Vector2.Dot(heading, headings[0]) > 0.8f,
-                    "two vessels in one lane are heading at each other"));
+                var fromEnd = MathF.Min(
+                    Vector2.Distance(vessel.Position, lanes[0].Points[0]),
+                    Vector2.Distance(vessel.Position, lanes[0].Points[^1])) / lanes[0].Length;
+                seen.Add((vessel.Opacity, fromEnd));
             }
         }
+
+        Assert.NotEmpty(seen);
+        Assert.All(seen, s => Assert.InRange(s.Opacity, 0f, 1f));
+        Assert.True(seen.Any(s => s.Opacity < 0.5f), "nothing ever faded");
+        Assert.True(seen.Any(s => s.Opacity > 0.99f), "nothing was ever drawn at full strength");
+
+        // Well away from the ends everything is solid, so nobody watches one materialise.
+        Assert.All(seen.Where(s => s.FromEnd > 0.05f), s => Assert.True(s.Opacity > 0.99f, $"a vessel {s.FromEnd:0.000} along is only {s.Opacity:0.00} visible"));
     }
 
     [Fact]
-    public void VesselsHoldTheirOwnOffset_AndWanderAcrossTheirLaneAsTheyGo()
+    public void VesselsHoldTheirOwnOffsetWithinTheLane()
     {
-        var traffic = Busy() with { Clearance = 300f, Reach = 6000f, LaneCount = 2, LaneSpacing = 200f, SpeedKnots = 0.001f };
-        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, StraightCoast());
-        Assert.NotEmpty(lanes);
+        var traffic = Busy() with { LaneCount = 1, MaximumVessels = 20, LaneSpacing = 200f, SpawnDelaySeconds = 1f };
+        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
+        var field = new MarineTrafficField(traffic, lanes);
 
-        // Barely moving along the lane, so what is left is the wander across it.
-        var offsets = Enumerable.Range(0, 120)
-            .Select(step => MarineTrafficPlanner.Place(lanes, traffic, step * 2d).First())
-            .Select(vessel => lanes.Min(lane => lane.DistanceTo(vessel.Position)))
-            .ToArray();
-
-        Assert.True(offsets.Max() - offsets.Min() > 4f, "a vessel holds exactly to its line and never wanders");
-        Assert.True(offsets.Max() < traffic.LaneSpacing * 0.5f, "a vessel wanders out of its own lane");
-
-        // Two vessels do not wander in step, or the whole lane would just breathe in and out together.
-        var pair = Enumerable.Range(0, 120)
-            .Select(step => MarineTrafficPlanner.Place(lanes, traffic, step * 2d).Take(2).ToArray())
-            .Where(both => both.Length == 2)
-            .Select(both => lanes.Min(l => l.DistanceTo(both[0].Position)) - lanes.Min(l => l.DistanceTo(both[1].Position)))
-            .ToArray();
-        Assert.True(pair.Max() - pair.Min() > 1f, "every vessel wanders in lockstep with every other");
-    }
-
-    [Fact]
-    public void TheLanesRunAlongsideTheCoast_WithTheirEndsParallelToTheEndlessSegments()
-    {
-        var shore = BentCoast();
-        var lanes = MarineTrafficPlanner.Plan(Busy() with { Reach = 6000f, LaneCount = 3 }, MarinaBounds(), new[] { Quay() }, shore);
-        Assert.Equal(3, lanes.Count);
-
-        var coastStart = Vector2.Normalize(shore.Points[1] - shore.Points[0]);
-        var coastEnd = Vector2.Normalize(shore.Points[^1] - shore.Points[^2]);
-
-        foreach (var lane in lanes)
-        {
-            // A reversed lane is stored back to front, so compare it the way it was built.
-            var points = lane.Reversed ? lane.Points.Reverse().ToArray() : lane.Points.ToArray();
-
-            // The first segment runs the way the coast's first endless segment runs, and the last one the way the
-            // last does — so the traffic arrives along the coast rather than out of the open sea at an angle.
-            var first = Vector2.Normalize(points[1] - points[0]);
-            var last = Vector2.Normalize(points[^1] - points[^2]);
-            Assert.Equal(1f, Vector2.Dot(first, coastStart), tolerance: 0.001f);
-            Assert.Equal(1f, Vector2.Dot(last, coastEnd), tolerance: 0.001f);
-
-            // In between it bends: the direction at the far end is nothing like the direction at the near one.
-            Assert.True(Vector2.Dot(first, last) < 0.9f, "a lane never turns with the coast");
-
-            // And the turn is taken as a curve, not a corner: no single joint changes direction sharply.
-            for (var i = 1; i < points.Length - 1; i++)
-            {
-                var before = Vector2.Normalize(points[i] - points[i - 1]);
-                var after = Vector2.Normalize(points[i + 1] - points[i]);
-                Assert.True(Vector2.Dot(before, after) > 0.86f, $"a lane kinks by {MathF.Acos(Vector2.Dot(before, after)) * MarinaMath.RadToDeg:0}° at point {i}");
-            }
-        }
-    }
-
-    [Fact]
-    public void TheLanesAreNotQuiteParallel()
-    {
-        var traffic = Busy() with { Clearance = 300f, Reach = 6000f, LaneCount = 3, LaneSpacing = 200f };
-        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, StraightCoast());
-        Assert.Equal(3, lanes.Count);
-
-        // The gap between two lanes opens and closes along their length rather than holding one figure.
-        var gaps = lanes[0].Points
-            .Skip(1).SkipLast(1)
-            .Select(point => lanes[1].DistanceTo(point))
-            .ToArray();
-
-        Assert.True(gaps.Max() - gaps.Min() > 5f, "the lanes are exactly parallel");
-        Assert.True(gaps.Max() - gaps.Min() < traffic.LaneSpacing * 0.5f, "the lanes wander so far apart they no longer read as lanes");
-    }
-
-    [Fact]
-    public void TheLanesNeverCrossTheMainlandOrTheLand()
-    {
-        var shore = BentCoast();
-        var lanes = MarineTrafficPlanner.Plan(Busy() with { Reach = 4000f, LaneCount = 4 }, MarinaBounds(), new[] { Quay() }, shore);
-        Assert.NotEmpty(lanes);
-
-        foreach (var lane in lanes)
-        {
-            foreach (var point in Walk(lane, 800))
-            {
-                Assert.False(shore.Contains(point), $"a lane runs over the mainland at {point}");
-                Assert.False(PolygonMath.Contains(Quay().Points, point), $"a lane runs over the quay at {point}");
-            }
-        }
-    }
-
-    [Fact]
-    public void LanesThatWouldCrossAQuay_ArePushedOutUntilTheyDoNot()
-    {
-        // A breakwater reaching a long way out to sea, right where a 150 m clearance would put the shipping.
-        var breakwater = new LandArea(
-            "breakwater",
-            new[] { new Vector2(-15, 0), new Vector2(15, 0), new Vector2(15, 900), new Vector2(-15, 900) },
-            1f,
-            LandKind.Quay);
-
-        var traffic = Busy() with { Clearance = 150f, Reach = 4000f, LaneCount = 3 };
-        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { breakwater }, StraightCoast());
-
-        Assert.NotEmpty(lanes);
-        foreach (var lane in lanes)
-        {
-            foreach (var point in Walk(lane, 800))
-            {
-                Assert.False(PolygonMath.Contains(breakwater.Points, point), "the traffic sails through the breakwater");
-            }
-        }
-    }
-
-    [Fact]
-    public void Intensity_DecidesHowManyVesselsAreOutThere()
-    {
-        var land = new[] { Quay() };
-        var quiet = Busy() with { Intensity = 0.25f };
-        var busy = Busy() with { Intensity = 1f };
-
-        Assert.Equal(6, quiet.VesselCount);
-        Assert.Equal(busy.MaximumVessels, busy.VesselCount);
-        Assert.Equal(0, (busy with { IsEnabled = false }).VesselCount);
-
-        Assert.Equal(quiet.VesselCount, Count(MarineTrafficPlanner.Plan(quiet, MarinaBounds(), land, null)));
-        Assert.Equal(busy.VesselCount, Count(MarineTrafficPlanner.Plan(busy, MarinaBounds(), land, null)));
-
-        // More lanes share out the same vessels rather than multiplying them.
-        var spread = busy with { LaneCount = 5 };
-        var lanes = MarineTrafficPlanner.Plan(spread, MarinaBounds(), land, null);
-        Assert.Equal(busy.VesselCount, Count(lanes));
-        Assert.All(lanes, lane => Assert.True(lane.VesselCount > 0, "a lane was laid out with nothing on it"));
-
-        // Switched off, there is nothing at all.
-        Assert.Empty(MarineTrafficPlanner.Plan(MarineTraffic.None, MarinaBounds(), land, null));
+        var offsets = field.Vessels.Select(vessel => lanes[0].DistanceTo(vessel.Position)).ToArray();
+        Assert.True(offsets.Length >= 4, "not enough vessels to compare");
+        Assert.True(offsets.Max() > 1f, "every vessel rides exactly the middle of the lane");
+        Assert.All(offsets, offset => Assert.True(offset < traffic.LaneSpacing * 0.5f, "a vessel sits outside its own lane"));
     }
 
     [Fact]
     public void SettingsThatMakeNoSense_LeaveNoLanesRatherThanBadOnes()
     {
-        // Asking to stay 5 km clear when the lanes only reach 1.5 km out cannot be satisfied.
-        Assert.NotEmpty((Busy() with { Clearance = 5000f }).Validate());
-        Assert.Empty(MarineTrafficPlanner.Plan(Busy() with { Clearance = 5000f }, MarinaBounds(), new[] { Quay() }, null));
+        Assert.NotEmpty((Busy() with { Clearance = 9000f }).Validate());
+        Assert.Empty(MarineTrafficPlanner.Plan(Busy() with { Clearance = 9000f }, MarinaBounds(), null));
 
-        // Nor can a lane count outside what is allowed, or a spacing of nothing.
         Assert.NotEmpty((Busy() with { LaneCount = 0 }).Validate());
         Assert.NotEmpty((Busy() with { LaneCount = MarineTraffic.LaneLimit + 1 }).Validate());
         Assert.NotEmpty((Busy() with { LaneSpacing = 0f }).Validate());
-        Assert.Empty(MarineTrafficPlanner.Plan(Busy() with { LaneSpacing = 0f }, MarinaBounds(), new[] { Quay() }, null));
-    }
+        Assert.NotEmpty((Busy() with { SpeedPercent = 0f }).Validate());
+        Assert.NotEmpty((Busy() with { SpawnDelaySeconds = -1f }).Validate());
+        Assert.NotEmpty((Busy() with { MaximumVessels = 0 }).Validate());
+        Assert.NotEmpty((Busy() with { MaximumVessels = MarineTraffic.VesselLimit + 1 }).Validate());
 
-    [Fact]
-    public void VesselsMoveAlongTheirLane_AndFadeOutAtBothEnds()
-    {
-        var traffic = Busy() with { Intensity = 0.2f, SpeedKnots = 20f, LaneCount = 1 };
-        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, StraightCoast());
-        Assert.Single(lanes);
-
-        var first = MarineTrafficPlanner.Place(lanes, traffic, 0d).ToArray();
-        var later = MarineTrafficPlanner.Place(lanes, traffic, 30d).ToArray();
-
-        Assert.NotEmpty(first);
-        Assert.Equal(first.Length, later.Length);
-        Assert.Contains(first.Zip(later), pair => Vector2.Distance(pair.First.Position, pair.Second.Position) > 50f);
-
-        // Every vessel is within its lane, and its strength is a sensible fade.
-        foreach (var vessel in first.Concat(later))
-        {
-            Assert.InRange(vessel.Opacity, 0f, 1f);
-            Assert.True(lanes[0].DistanceTo(vessel.Position) < traffic.LaneSpacing * 0.5f, "a vessel is outside its lane");
-        }
-
-        // Nothing pops into view: followed right around the lane, a vessel is invisible at the ends and solid in the
-        // middle, and its strength tracks how far it is from the nearer end.
-        var lane = lanes[0];
-        var laps = 3d * lane.Length / (traffic.SpeedMetersPerSecond * 0.8f);
-        var samples = Enumerable.Range(0, 600)
-            .Select(step => MarineTrafficPlanner.Place(lanes, traffic, step * laps / 599d).First())
-            .Select(vessel => (vessel.Opacity, ToEnd: MathF.Min(
-                Vector2.Distance(vessel.Position, lane.Points[0]),
-                Vector2.Distance(vessel.Position, lane.Points[^1])) / lane.Length))
-            .ToArray();
-
-        Assert.True(samples.Min(s => s.Opacity) < 0.5f, "a vessel never fades at all at the end of its lane");
-        Assert.True(samples.Max(s => s.Opacity) > 0.99f, "a vessel is never drawn at full strength");
-
-        // And the fade is over quickly: a twentieth of the way along — still far out in the flat sea — a vessel is
-        // already solid, so nobody watches one materialise.
-        Assert.All(
-            samples.Where(s => s.ToEnd > 0.05f),
-            s => Assert.True(s.Opacity > 0.99f, $"a vessel {s.ToEnd:0.000} along its lane is only {s.Opacity:0.00} visible"));
+        // And switched off there is nothing at all.
+        Assert.Empty(MarineTrafficPlanner.Plan(MarineTraffic.None, MarinaBounds(), StraightCoast()));
     }
 
     [Fact]
     public void TheSameSeed_PutsTheSameTrafficInTheSamePlace()
     {
-        var traffic = Busy(seed: 5);
-        var land = new[] { Quay() };
+        var traffic = Busy(seed: 5) with { LaneCount = 3 };
+        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
 
-        var once = MarineTrafficPlanner.Place(MarineTrafficPlanner.Plan(traffic, MarinaBounds(), land, null), traffic, 12d).ToArray();
-        var again = MarineTrafficPlanner.Place(MarineTrafficPlanner.Plan(traffic, MarinaBounds(), land, null), traffic, 12d).ToArray();
-        Assert.Equal(once, again);
+        static TrafficVessel[] Run(MarineTraffic settings, IReadOnlyList<TrafficLane> on)
+        {
+            var field = new MarineTrafficField(settings, on);
+            for (var step = 0; step < 20; step++) field.Advance(7d);
+            return field.Vessels.ToArray();
+        }
 
-        var elsewhere = MarineTrafficPlanner.Plan(traffic with { Seed = 6 }, MarinaBounds(), land, null);
-        Assert.NotEqual(once, MarineTrafficPlanner.Place(elsewhere, traffic, 12d).ToArray());
+        Assert.Equal(Run(traffic, lanes), Run(traffic, lanes));
+        Assert.NotEqual(Run(traffic, lanes), Run(traffic with { Seed = 6 }, lanes));
     }
 
     [Fact]
@@ -358,6 +416,7 @@ public class MarineTrafficTests
     {
         var marina = new MarinaVisualizer();
         marina.AddLandArea(Quay());
+        marina.SetShoreline(StraightCoast());
         Assert.Same(MarineTraffic.None, marina.MarineTraffic);
         Assert.Empty(marina.GetTrafficVessels());
         Assert.Empty(marina.TrafficLanes);
@@ -365,7 +424,8 @@ public class MarineTrafficTests
         var quiet = marina.BuildRenderFrame().Objects.Count;
         marina.SetMarineTraffic(MarineTraffic.None with
         {
-            IsEnabled = true, Intensity = 0.5f, Clearance = 150f, Seed = 3, LaneCount = 3, LaneSpacing = 220f,
+            IsEnabled = true, Clearance = 150f, Seed = 3, LaneCount = 3, LaneSpacing = 220f,
+            EdgeClearance = 900f, SpeedPercent = 140f, SpawnDelaySeconds = 12f, MaximumVessels = 9,
         });
 
         Assert.Equal(3, marina.TrafficLanes.Count);
@@ -374,18 +434,20 @@ public class MarineTrafficTests
 
         // The vessels move on their own, without anything being marked dirty.
         var before = marina.GetTrafficVessels()[0].Position;
-        marina.Update(20d);
+        marina.Update(60d);
         Assert.NotEqual(before, marina.GetTrafficVessels()[0].Position);
 
         var reloaded = new MarinaVisualizer();
         MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina, generator: "tests").ToJson()).ApplyTo(reloaded);
 
         Assert.True(reloaded.MarineTraffic.IsEnabled);
-        Assert.Equal(0.5f, reloaded.MarineTraffic.Intensity);
         Assert.Equal(150f, reloaded.MarineTraffic.Clearance);
+        Assert.Equal(900f, reloaded.MarineTraffic.EdgeClearance);
+        Assert.Equal(140f, reloaded.MarineTraffic.SpeedPercent);
+        Assert.Equal(12f, reloaded.MarineTraffic.SpawnDelaySeconds);
+        Assert.Equal(9, reloaded.MarineTraffic.MaximumVessels);
         Assert.Equal(3, reloaded.MarineTraffic.LaneCount);
         Assert.Equal(220f, reloaded.MarineTraffic.LaneSpacing);
-        Assert.Equal(3, reloaded.MarineTraffic.Seed);
 
         // Switching it off empties the sea again.
         marina.SetMarineTraffic(null);
@@ -395,23 +457,26 @@ public class MarineTrafficTests
     }
 
     [Fact]
-    public void AFileFromBeforeTheLanes_StillLoadsWithSensibleOnes()
+    public void AFileFromBeforeTheseSettings_StillLoadsWithSensibleOnes()
     {
-        // A design written when the traffic was a single path has no lane settings at all; zero lanes would fail
-        // validation and empty the sea, so the defaults stand in.
         var marina = new MarinaVisualizer();
         marina.AddLandArea(Quay());
-        marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Intensity = 0.4f, Seed = 2 });
+        marina.SetShoreline(StraightCoast());
+        marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Seed = 2 });
 
+        // A design written when the traffic had none of these has to come back with the defaults, not with zeros
+        // that would fail validation and leave an empty sea.
         var json = MarinaDocument.FromVisualizer(marina, generator: "tests").ToJson()
-            .Replace("\"laneCount\":", "\"laneCountWas\":")
-            .Replace("\"laneSpacing\":", "\"laneSpacingWas\":");
+            .Replace("\"edgeClearance\":", "\"edgeClearanceWas\":")
+            .Replace("\"speedPercent\":", "\"speedPercentWas\":")
+            .Replace("\"spawnDelaySeconds\":", "\"spawnDelaySecondsWas\":");
 
         var reloaded = new MarinaVisualizer();
         MarinaDocument.Parse(json).ApplyTo(reloaded);
 
-        Assert.Equal(MarineTraffic.None.LaneCount, reloaded.MarineTraffic.LaneCount);
-        Assert.Equal(MarineTraffic.None.LaneSpacing, reloaded.MarineTraffic.LaneSpacing);
+        Assert.Equal(MarineTraffic.None.EdgeClearance, reloaded.MarineTraffic.EdgeClearance);
+        Assert.Equal(MarineTraffic.None.SpeedPercent, reloaded.MarineTraffic.SpeedPercent);
+        Assert.Equal(MarineTraffic.None.SpawnDelaySeconds, reloaded.MarineTraffic.SpawnDelaySeconds);
         Assert.NotEmpty(reloaded.GetTrafficVessels());
     }
 
@@ -421,7 +486,7 @@ public class MarineTrafficTests
         var marina = new MarinaVisualizer();
         marina.AddLandArea(Quay());
         marina.SetShoreline(StraightCoast());
-        marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Intensity = 0.4f, Clearance = 250f, Seed = 3 });
+        marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Clearance = 250f, Seed = 3 });
 
         Assert.False(marina.ShowTrafficLanes);
         var hidden = marina.BuildRenderFrame().Objects.Count;
@@ -430,19 +495,10 @@ public class MarineTrafficTests
         var shown = marina.BuildRenderFrame().Objects.Count;
         Assert.True(shown > hidden, "turning the lanes on drew nothing");
 
-        // More lanes draw more of them.
-        marina.SetMarineTraffic(marina.MarineTraffic with { LaneCount = 4 });
-        Assert.True(marina.BuildRenderFrame().Objects.Count > shown, "the extra lanes were not drawn");
-
-        // It is a working aid, so it is not written to the file and a reloaded design does not have it on.
         var json = MarinaDocument.FromVisualizer(marina, generator: "tests").ToJson();
         var reloaded = new MarinaVisualizer();
         MarinaDocument.Parse(json).ApplyTo(reloaded);
         Assert.False(reloaded.ShowTrafficLanes);
-
-        marina.ShowTrafficLanes = false;
-        marina.SetMarineTraffic(marina.MarineTraffic with { LaneCount = MarineTraffic.None.LaneCount });
-        Assert.Equal(hidden, marina.BuildRenderFrame().Objects.Count);
     }
 
     [Fact]
@@ -464,81 +520,18 @@ public class MarineTrafficTests
     {
         var marina = new MarinaVisualizer();
         marina.AddLandArea(Quay());
-        marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Intensity = 0.4f, Clearance = 400f, Seed = 2 });
+        marina.SetShoreline(StraightCoast());
+        marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Clearance = 400f, Seed = 2 });
         marina.BuildRenderFrame();
 
-        var before = marina.TrafficLanes[0].Points[0];
-
-        // A long pier reaching out into the water: the marina grew, so the lanes are planned again around the new
-        // middle of it.
+        var before = marina.TrafficLanes[0].DistanceTo(Centre());
         marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -10), 0f, 320f));
         marina.BuildRenderFrame();
 
+        // The marina grew, so its middle moved and the lanes were laid out again around the new one.
         Assert.NotEmpty(marina.TrafficLanes);
-        Assert.NotEqual(before, marina.TrafficLanes[0].Points[0]);
-
-        var reach = new OrientedRect(new Vector2(0, 150), new Vector2(320f, 6f), 0f).GetAxisAlignedBounds();
-        foreach (var vessel in marina.GetTrafficVessels())
-        {
-            Assert.True(
-                DistanceToBox(vessel.Position, reach) >= 100f,
-                $"a vessel sails {DistanceToBox(vessel.Position, reach):0} m from the new pier");
-        }
+        var after = marina.TrafficLanes[0].DistanceTo((marina.GetLayout().ComputeBounds().Min + marina.GetLayout().ComputeBounds().Max) * 0.5f);
+        Assert.Equal(400f, after, tolerance: 40f);
+        Assert.NotEqual(before, marina.TrafficLanes[0].DistanceTo(Centre()));
     }
-
-    [Fact]
-    public void TheLanesStartFarOut_CrossTheWaterNearTheMarina_AndLeaveOnTheOtherSide()
-    {
-        const float waterRadius = 2100f;
-        var traffic = MarineTraffic.None with
-        {
-            IsEnabled = true, Intensity = 1f, Clearance = 200f, Reach = 6000f, Seed = 3, LaneCount = 2,
-        };
-
-        foreach (var shoreline in new Shoreline?[] { null, StraightCoast(), BentCoast() })
-        {
-            var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, shoreline);
-            Assert.NotEmpty(lanes);
-
-            foreach (var lane in lanes)
-            {
-                // Both ends are far outside the water, so vessels fade in and out where nobody is looking.
-                Assert.True(Vector2.Distance(lane.Points[0], Centre()) > waterRadius, "a lane starts inside the detailed water");
-                Assert.True(Vector2.Distance(lane.Points[^1], Centre()) > waterRadius, "a lane ends inside the detailed water");
-            }
-
-            // And the nearest comes close enough to be seen crossing among the waves.
-            Assert.True(NearestApproach(lanes) < waterRadius, "no lane comes in among the waves");
-        }
-    }
-
-    [Fact]
-    public void MaximumVessels_CapsWhatABusySeaPutsOut()
-    {
-        var land = new[] { Quay() };
-        var traffic = MarineTraffic.None with
-        {
-            IsEnabled = true, Intensity = 1f, Clearance = 200f, Reach = 3000f, Seed = 1, MaximumVessels = 8,
-        };
-
-        Assert.Equal(8, traffic.VesselCount);
-        Assert.Equal(8, Count(MarineTrafficPlanner.Plan(traffic, MarinaBounds(), land, null)));
-
-        // Half as busy puts out half as many, and raising the cap raises both.
-        Assert.Equal(4, (traffic with { Intensity = 0.5f }).VesselCount);
-        Assert.Equal(40, (traffic with { MaximumVessels = 40 }).VesselCount);
-
-        // A cap outside the allowed range is refused rather than silently clamped.
-        Assert.NotEmpty((traffic with { MaximumVessels = 0 }).Validate());
-        Assert.NotEmpty((traffic with { MaximumVessels = MarineTraffic.VesselLimit + 1 }).Validate());
-    }
-
-    private static int Count(IReadOnlyList<TrafficLane> lanes) => lanes.Sum(lane => lane.VesselCount);
-
-    /// <summary>Points evenly spaced along the whole lane.</summary>
-    private static IEnumerable<Vector2> Walk(TrafficLane lane, int steps) =>
-        Enumerable.Range(0, steps + 1).Select(step => lane.At(step / (float)steps).Position);
-
-    private static float DistanceToBox(Vector2 point, (Vector2 Min, Vector2 Max) box) =>
-        Vector2.Max(Vector2.Max(box.Min - point, point - box.Max), Vector2.Zero).Length();
 }

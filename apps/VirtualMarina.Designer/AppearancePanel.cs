@@ -298,18 +298,20 @@ internal sealed class AppearancePanel : UserControl
 
         Check(table, Strings.TrafficShow, () => Traffic.IsEnabled, v => SetTraffic(t => t with { IsEnabled = v }), Strings.TrafficShowTip);
 
-        Percent(table, Strings.TrafficIntensity, 0, 100, () => Traffic.Intensity * 100f,
-            v => SetTraffic(t => t with { Intensity = v / 100f }), MarineTraffic.None.Intensity * 100f, Percentage, Strings.TrafficIntensityTip);
         Percent(table, Strings.TrafficClearance, 50, 1200, () => Traffic.Clearance,
             v => SetTraffic(t => t with { Clearance = v }), MarineTraffic.None.Clearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip);
+        Percent(table, Strings.TrafficEdgeClearance, 50, 4000, () => Traffic.EdgeClearance,
+            v => SetTraffic(t => t with { EdgeClearance = v }), MarineTraffic.None.EdgeClearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficEdgeClearanceTip);
         Percent(table, Strings.TrafficLanes, 1, MarineTraffic.LaneLimit, () => Traffic.LaneCount,
             v => SetTraffic(t => t with { LaneCount = (int)v }), MarineTraffic.None.LaneCount, v => Strings.Format(Strings.ValueLanes, v), Strings.TrafficLanesTip);
         Percent(table, Strings.TrafficLaneSpacing, 40, 600, () => Traffic.LaneSpacing,
             v => SetTraffic(t => t with { LaneSpacing = v }), MarineTraffic.None.LaneSpacing, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficLaneSpacingTip);
         Percent(table, Strings.TrafficMaximum, 1, MarineTraffic.VesselLimit, () => Traffic.MaximumVessels,
             v => SetTraffic(t => t with { MaximumVessels = (int)v }), MarineTraffic.None.MaximumVessels, v => Strings.Format(Strings.ValueVessels, v), Strings.TrafficMaximumTip);
-        Percent(table, Strings.TrafficSpeed, 1, 30, () => Traffic.SpeedKnots,
-            v => SetTraffic(t => t with { SpeedKnots = v }), MarineTraffic.None.SpeedKnots, v => Strings.Format(Strings.ValueKnots, v), Strings.TrafficSpeedTip);
+        Percent(table, Strings.TrafficSpeed, 10, 400, () => Traffic.SpeedPercent,
+            v => SetTraffic(t => t with { SpeedPercent = v }), MarineTraffic.None.SpeedPercent, Percentage, Strings.TrafficSpeedTip);
+        Percent(table, Strings.TrafficSpawnDelay, 1, 180, () => Traffic.SpawnDelaySeconds,
+            v => SetTraffic(t => t with { SpawnDelaySeconds = v }), MarineTraffic.None.SpawnDelaySeconds, v => Strings.Format(Strings.ValueSeconds, v), Strings.TrafficSpawnDelayTip);
 
         Check(table, Strings.TrafficShowLanes, () => _marina.ShowTrafficLanes, v => Changed(() => _marina.ShowTrafficLanes = v), Strings.TrafficShowLanesTip);
 

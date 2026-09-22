@@ -69,7 +69,8 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private readonly List<string> _landOrder = new();
     private Shoreline? _shoreline;
     private MarineTraffic _traffic = MarineTraffic.None;
-    private IReadOnlyList<TrafficLane> _trafficLanes = Array.Empty<TrafficLane>();
+    private MarineTrafficField? _trafficField;
+    private double _trafficTime;
     private bool _showTrafficLanes;
     private bool _trafficDirty = true;
     private readonly List<RenderObject> _frameObjects = new();
@@ -327,8 +328,9 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// </summary>
     private IReadOnlyList<RenderObject> AppendTraffic()
     {
-        if (_trafficDirty && (_traffic.IsEnabled || _trafficLanes.Count > 0)) ReplanTraffic();
-        if (_trafficLanes.Count == 0)
+        if (_trafficDirty && (_traffic.IsEnabled || _trafficField is not null)) ReplanTraffic();
+        AdvanceTraffic();
+        if (_trafficField is null || _trafficField.Vessels.Count == 0)
         {
             // Nothing moving: the renderer can have the scene list itself and keep its uploaded instance data.
             _staticObjectCount = -1;
@@ -346,7 +348,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             _frameObjects.RemoveRange(_staticObjectCount, _frameObjects.Count - _staticObjectCount);
         }
 
-        foreach (var vessel in MarineTrafficPlanner.Place(_trafficLanes, _traffic, _time))
+        foreach (var vessel in _trafficField.Vessels)
         {
             if (vessel.Opacity <= 0.004f) continue;
             var world = MarinaMath.CreatePlacement(Vector3.One, vessel.HeadingDegrees, MarinaMath.ToWorld(vessel.Position));
@@ -547,10 +549,12 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
                 .Concat(OrderedDividers().Select(divider => divider.Bounds)),
             OrderedLandAreas());
 
-        // The lanes follow the coast, the nearest pushed out until it passes the marina at the clearance asked
-        // for, so their ends are far outside the detailed water while their middles run through the part anyone is
+        // Each lane runs from one edge of the map to the other, sweeping past the marina at the clearance asked
+        // for, so its ends are far outside the detailed water while its middle runs through the part anyone is
         // watching.
-        _trafficLanes = MarineTrafficPlanner.Plan(_traffic, bounds, OrderedLandAreas(), _shoreline);
+        var lanes = MarineTrafficPlanner.Plan(_traffic, bounds, _shoreline);
+        _trafficField = lanes.Count == 0 ? null : new MarineTrafficField(_traffic, lanes);
+        _trafficTime = _time;
         _trafficDirty = false;
         _staticObjectCount = -1;
     }

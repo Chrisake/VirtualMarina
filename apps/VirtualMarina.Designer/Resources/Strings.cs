@@ -799,10 +799,14 @@ internal static class Strings
     internal static string TrafficShowTip => Get("TrafficShowTip");
 
     /// <summary>"How busy"</summary>
-    internal static string TrafficIntensity => Get("TrafficIntensity");
+    internal static string TrafficEdgeClearance => Get("TrafficEdgeClearance");
 
     /// <summary>"How many vessels are out there at once."</summary>
-    internal static string TrafficIntensityTip => Get("TrafficIntensityTip");
+    internal static string TrafficEdgeClearanceTip => Get("TrafficEdgeClearanceTip");
+
+    internal static string TrafficSpawnDelay => Get("TrafficSpawnDelay");
+
+    internal static string TrafficSpawnDelayTip => Get("TrafficSpawnDelayTip");
 
     /// <summary>"Keep clear by"</summary>
     internal static string TrafficClearance => Get("TrafficClearance");
@@ -838,7 +842,7 @@ internal static class Strings
     internal static string TrafficHint => Get("TrafficHint");
 
     /// <summary>"{0} kn"</summary>
-    internal static string ValueKnots => Get("ValueKnots");
+    internal static string ValueSeconds => Get("ValueSeconds");
 
     // ---- Look: the mainland --------------------------------------------------------------------------
 

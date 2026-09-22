@@ -873,11 +873,17 @@ Runtime      {4}
   <data name="TrafficShowTip">
     <value>Boats, yachts and a ferry crossing the bay beyond the marina. They are decoration: they cannot be clicked and take no berth.</value>
   </data>
-  <data name="TrafficIntensity">
-    <value>How busy</value>
+  <data name="TrafficEdgeClearance">
+    <value>Clear of land at the edge</value>
   </data>
-  <data name="TrafficIntensityTip">
-    <value>How many vessels are out there at once.</value>
+  <data name="TrafficEdgeClearanceTip">
+    <value>How far off the coast a lane sits where it leaves the map. With the setting above it decides how sharply a lane sweeps in towards the marina.</value>
+  </data>
+  <data name="TrafficSpawnDelay">
+    <value>Wait before the next one</value>
+  </data>
+  <data name="TrafficSpawnDelayTip">
+    <value>Roughly how long after a vessel leaves the map before another appears somewhere. Each wait is drawn at random around this.</value>
   </data>
   <data name="TrafficClearance">
     <value>Keep clear by</value>
@@ -889,7 +895,7 @@ Runtime      {4}
     <value>Speed</value>
   </data>
   <data name="TrafficSpeedTip">
-    <value>How fast the vessels cross, in knots.</value>
+    <value>Speeds the whole sea up or slows it down. Every kind of vessel keeps its own speed: a fishing boat plods, a jet ski tears past.</value>
   </data>
   <data name="TrafficPasses">
     <value>{0} lane(s); the nearest passes {1} m from the middle of the marina.</value>
@@ -899,7 +905,7 @@ Runtime      {4}
     <value>No lane could be found: lower the clearance, or widen the water.</value>
   </data>
   <data name="TrafficHint">
-    <value>The lanes follow the coast past the marina, each running the opposite way to its neighbours. Vessels fade in and away far out to sea.</value>
+    <value>Each lane sweeps in past the marina and back out to the edge of the map. Vessels cross it once and are gone, and another follows a while later.</value>
   </data>
   <data name="TrafficLanes">
     <value>Lanes</value>
@@ -919,9 +925,9 @@ Runtime      {4}
   <data name="TrafficShowLanesTip">
     <value>Draws the lines the shipping follows, tinted by which way each one runs, so the spacing can be set by eye. It is not saved with the design.</value>
   </data>
-  <data name="ValueKnots">
-    <value>{0} kn</value>
-    <comment>{0} = speed in knots.</comment>
+  <data name="ValueSeconds">
+    <value>{0} s</value>
+    <comment>{0} = a number of seconds.</comment>
   </data>
   <!-- Look: the mainland -->
   <data name="LandBuilding">
@@ -1031,7 +1037,7 @@ Runtime      {4}
     <value>At most</value>
   </data>
   <data name="TrafficMaximumTip">
-    <value>The most vessels on the water at once. How busy is a share of this.</value>
+    <value>The most vessels on the water at once. How many there actually are wanders below this as they come and go.</value>
   </data>
   <data name="ValueVessels">
     <value>{0} vessels</value>

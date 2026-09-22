@@ -356,7 +356,7 @@ public interface IMarinaVisualizer
     /// <exception cref="MarinaLayoutException">The settings are unsound (see <see cref="Domain.MarineTraffic.Validate"/>).</exception>
     /// <example>
     /// <code>
-    /// marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Intensity = 0.4f, Clearance = 400f });
+    /// marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Clearance = 400f, LaneCount = 3 });
     /// </code>
     /// </example>
     void SetMarineTraffic(MarineTraffic? traffic);

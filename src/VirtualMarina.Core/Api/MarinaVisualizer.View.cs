@@ -398,10 +398,10 @@ public sealed partial class MarinaVisualizer
     /// middle and projects far larger — so the answer is found by halving the range until the corners fit.
     /// </remarks>
     /// <param name="plan">Plan-view bounds to frame.</param>
-    /// <param name="target">What the view looks at.</param>
+    /// <param name="center">The middle of the marina, where the search starts from.</param>
     /// <param name="yawDegrees">Which way it faces.</param>
     /// <param name="pitchDegrees">How far down it looks.</param>
-    private float FitDistance((Vector2 Min, Vector2 Max) plan, Vector3 target, float yawDegrees, float pitchDegrees)
+    private (Vector3 Target, float Distance) FitView((Vector2 Min, Vector2 Max) plan, Vector3 center, float yawDegrees, float pitchDegrees)
     {
         var corners = new[]
         {
@@ -414,8 +414,37 @@ public sealed partial class MarinaVisualizer
         // Room left around the marina, as the share of the view it may fill.
         const float limit = 1f / FitMargin;
 
-        bool Fits(float distance)
+        var yaw = yawDegrees * MarinaMath.DegToRad;
+        var right = new Vector3(MathF.Cos(yaw), 0f, -MathF.Sin(yaw));
+        var groundForward = new Vector3(-MathF.Sin(yaw), 0f, -MathF.Cos(yaw));
+        var sinPitch = MathF.Max(MathF.Sin(pitchDegrees * MarinaMath.DegToRad), 0.25f);
+
+        // Where the view has to point for the marina to sit in the middle of the screen from this distance. Aiming
+        // straight at the middle of the marina does not do it: seen from an angle, the middle of a patch of ground
+        // does not land in the middle of the picture, so the marina sits high or low and the fit below then has to
+        // back off until the overhanging side comes in — which is how a view that "fits" ended up filling 60% of
+        // itself with water.
+        Vector3 Centred(float distance)
         {
+            var (tanH, tanV) = TanHalfFov();
+            var target = center;
+            for (var pass = 0; pass < 6; pass++)
+            {
+                var pose = Camera.Constrain(new CameraPose(target, yawDegrees, pitchDegrees, distance));
+                if (!TryProjectedBounds(pose, corners, out var min, out var max)) break;
+
+                var middle = (min + max) * 0.5f;
+                if (MathF.Abs(middle.X) < 0.002f && MathF.Abs(middle.Y) < 0.002f) break;
+                target += right * (middle.X * pose.Distance * tanH)
+                    + groundForward * (middle.Y * pose.Distance * tanV / sinPitch);
+            }
+
+            return target;
+        }
+
+        bool Fits(float distance, out Vector3 target)
+        {
+            target = Centred(distance);
             var pose = Camera.Constrain(new CameraPose(target, yawDegrees, pitchDegrees, distance));
             return TryProjectedBounds(pose, corners, out var min, out var max)
                 && min.X >= -limit && max.X <= limit && min.Y >= -limit && max.Y <= limit;
@@ -423,21 +452,28 @@ public sealed partial class MarinaVisualizer
 
         // Further away is always smaller on screen, so the smallest distance that fits can be halved in to.
         var far = MathF.Max(80f, Camera.Constraints.MaxDistance);
-        if (!Fits(far)) return far;
+        if (!Fits(far, out var best)) return (best, far);
 
         var near = 20f;
         for (var step = 0; step < 24 && far - near > 0.5f; step++)
         {
             var middle = (near + far) * 0.5f;
-            if (Fits(middle)) far = middle;
-            else near = middle;
+            if (Fits(middle, out var aim))
+            {
+                far = middle;
+                best = aim;
+            }
+            else
+            {
+                near = middle;
+            }
         }
 
-        return far;
+        return (best, far);
     }
 
     /// <summary>Room left around the marina in an automatic view, so it does not sit against the edges.</summary>
-    private const float FitMargin = 1.25f;
+    private const float FitMargin = 1.15f;
 
     /// <summary>Widens the camera limits to the layout and the designer's reference image (called when the image moves or scales).</summary>
     internal void RefreshCameraBounds() => RebuildBuiltInPresets();
@@ -471,8 +507,11 @@ public sealed partial class MarinaVisualizer
         // pulled back far enough to hold it — then one per pier.
         // Each one is pulled back far enough for the marina to fit from its own angle, rather than all sharing a
         // distance worked out without reference to where they stand.
-        CameraPreset Fitted(string name, float yaw, float pitch, string description) =>
-            new(name, new CameraPose(center, yaw, pitch, FitDistance((min, max), center, yaw, pitch)), description) { IsBuiltIn = true };
+        CameraPreset Fitted(string name, float yaw, float pitch, string description)
+        {
+            var (target, distance) = FitView((min, max), center, yaw, pitch);
+            return new CameraPreset(name, new CameraPose(target, yaw, pitch, distance), description) { IsBuiltIn = true };
+        }
 
         var builtIn = new List<CameraPreset>
         {

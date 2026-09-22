@@ -7,38 +7,38 @@ namespace VirtualMarina.Core.Domain;
 /// <param name="Type">What kind of vessel it is.</param>
 /// <param name="Position">Where it is, in plan coordinates.</param>
 /// <param name="HeadingDegrees">Which way its bow points, in the usual compass sense.</param>
-/// <param name="Opacity">0–1. Vessels fade in at the start of the path and out at the end.</param>
+/// <param name="Opacity">0–1. Vessels fade in where they appear and out again where they leave.</param>
 public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, float HeadingDegrees, float Opacity);
 
 /// <summary>
-/// Passing traffic out at sea: vessels running along lanes that follow the coast past the marina, fading in far out
-/// at one end of a lane and away again at the other.
+/// Passing traffic out at sea: vessels running along lanes that sweep past the marina from one edge of the map to
+/// the other, appearing far out, crossing the bay and leaving on the far side.
 /// </summary>
 /// <remarks>
 /// <para>
-/// It is decoration, not layout: the vessels are not berths, cannot be clicked, and are worked out from
-/// <see cref="Seed"/> rather than stored, so turning it up costs nothing in the file.
+/// It is decoration, not layout: the vessels are not berths and cannot be clicked. Only these settings are stored —
+/// the lanes are worked out from the shoreline and the traffic from <see cref="Seed"/>, so a busy sea costs no more
+/// to store than an empty one.
 /// </para>
 /// <para>
-/// <b>Where the lanes go.</b> Each is the shoreline pushed out to sea: its ends run alongside the shoreline's
-/// endless segments and its middle curves between them, so the shipping reads as following the coast rather than
-/// cutting across it. With no shoreline behind the marina the lanes are straight instead.
+/// <b>Where the lanes go.</b> A lane is drawn through three points: one at each edge of the map, out where the
+/// mainland ends, sitting <see cref="EdgeClearance"/> off the coast; and one in the middle, passing the marina at
+/// <see cref="Clearance"/>. It curves smoothly between them, so a lane sweeps in towards the marina and back out
+/// again. Further lanes step out to sea from the first by <see cref="LaneSpacing"/> on average.
 /// </para>
 /// <para>
-/// <b>How near they come.</b> <see cref="Clearance"/> is the closest the <i>nearest</i> lane gets to the middle of
-/// the marina, in meters, so the setting means the same thing whatever size the marina is; the rest step out to sea
-/// from there by <see cref="LaneSpacing"/> each. Lanes that would cross a land area are pushed further out until
-/// none does, which is the only case where they end up further away than asked.
+/// <b>Which way they run.</b> Every vessel in a lane runs the same way, so nothing ever meets head-on. One or two
+/// lanes run opposite ways, as a traffic separation scheme does; beyond that the directions are drawn at random.
 /// </para>
 /// <para>
-/// <b>Which way they run.</b> Every vessel in a lane runs the same way and neighbouring lanes run opposite ways, so
-/// nothing ever meets head-on. Lanes bulge gently seaward by differing amounts and each vessel wanders slowly across
-/// its own lane, so nothing looks drawn with a ruler — all of it bounded well inside <see cref="LaneSpacing"/>.
+/// <b>How many there are.</b> A random number of vessels, up to <see cref="MaximumVessels"/>, is out there to begin
+/// with. As each one leaves the map another appears after about <see cref="SpawnDelaySeconds"/> — on a lane of its
+/// own, of a different kind, at its own speed and its own offset within the lane.
 /// </para>
 /// </remarks>
 /// <example>
 /// <code>
-/// marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Intensity = 0.4f, Clearance = 400f });
+/// marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Clearance = 400f, LaneCount = 3 });
 /// </code>
 /// </example>
 public sealed record MarineTraffic
@@ -67,52 +67,88 @@ public sealed record MarineTraffic
         BoatType.CatamaranSailboat,
         BoatType.FishingBoat,
         BoatType.FishingBoat,
+        BoatType.DayMotorBoat,
         BoatType.MotorYacht,
         BoatType.Ferry,
+        BoatType.JetSki,
+    };
+
+    /// <summary>
+    /// How fast a kind of vessel actually travels, in knots, before <see cref="SpeedPercent"/> is applied: a fishing
+    /// boat plods, a jet ski tears past.
+    /// </summary>
+    /// <param name="type">The kind of vessel.</param>
+    /// <remarks>
+    /// One speed for the whole sea had a jet ski crawling alongside a fishing boat, which reads as wrong at once. The
+    /// speed setting scales these rather than replacing them, so the mix keeps its character however fast it is
+    /// turned up.
+    /// </remarks>
+    public static float CruisingKnots(BoatType type) => type switch
+    {
+        BoatType.FishingBoat => 7f,
+        BoatType.MonohullSailboat => 8f,
+        BoatType.CatamaranSailboat => 9.5f,
+        BoatType.DayMotorBoat => 14f,
+        BoatType.CatamaranMotorboat => 15f,
+        BoatType.Ferry => 18f,
+        BoatType.MotorYacht => 22f,
+        BoatType.JetSki => 30f,
+        _ => 10f,
     };
 
     /// <summary>Draw the traffic. Default false, so a marina is in empty sea until it is asked for.</summary>
     public bool IsEnabled { get; init; }
 
-    /// <summary>How busy the sea is, 0–1 (default 0.5). Scales the number of vessels up to <see cref="MaximumVessels"/>.</summary>
-    public float Intensity { get; init; } = 0.5f;
-
     /// <summary>
-    /// The most vessels on the water at once, 1–<see cref="VesselLimit"/> (default 24). <see cref="Intensity"/> is a
-    /// fraction of this, so raising it makes a busy sea busier without touching the setting that says how busy.
+    /// The most vessels on the water at once, 1–<see cref="VesselLimit"/> (default 16). How many there actually are
+    /// wanders below this as vessels leave and others take their place.
     /// </summary>
-    public int MaximumVessels { get; init; } = 24;
+    public int MaximumVessels { get; init; } = 16;
 
     /// <summary>
-    /// How near the middle of the marina the traffic passes, in meters (default 300): the closest approach of the
-    /// path, not a margin added to the size of the marina. Lower it to bring the shipping into view, raise it to put
-    /// it out towards the horizon.
+    /// How near the middle of the marina the nearest lane passes, in meters (default 300): the closest approach of
+    /// the lane, not a margin added to the size of the marina.
     /// </summary>
     public float Clearance { get; init; } = 300f;
 
     /// <summary>
+    /// How far off the coast a lane sits where it reaches the edge of the map, in meters (default 700). The two ends
+    /// of a lane are set by this and its middle by <see cref="Clearance"/>, so the two together say how sharply a
+    /// lane sweeps in towards the marina.
+    /// </summary>
+    public float EdgeClearance { get; init; } = 700f;
+
+    /// <summary>
     /// How many lanes of traffic there are, 1–<see cref="LaneLimit"/> (default 2). The first passes at
-    /// <see cref="Clearance"/> and each one after it is <see cref="LaneSpacing"/> further out to sea.
+    /// <see cref="Clearance"/> and each one after it is <see cref="LaneSpacing"/> further out to sea on average.
     /// </summary>
     public int LaneCount { get; init; } = 2;
 
     /// <summary>
     /// How far apart the lanes are, in meters (default 160). It also sets how far a vessel may hold off the middle of
-    /// its lane and how far it wanders while it goes, so widening the lanes loosens the traffic on them too.
+    /// its lane, so widening the lanes loosens the traffic on them too.
     /// </summary>
     public float LaneSpacing { get; init; } = 160f;
 
-    /// <summary>How fast the vessels go, in knots (default 8). They are meant to drift slowly across the view.</summary>
-    public float SpeedKnots { get; init; } = 8f;
+    /// <summary>
+    /// How fast the traffic goes, as a percentage of what each kind of vessel really does (default 100). Every
+    /// vessel keeps its own speed from <see cref="CruisingKnots"/>; this speeds the whole sea up or slows it down.
+    /// </summary>
+    public float SpeedPercent { get; init; } = 100f;
 
     /// <summary>
-    /// How far the two ends of the path run on past the coast, in meters (default 6000): where a vessel starts and
-    /// where it finally fades away. It is deliberately far beyond the detailed water, so vessels appear and disappear
-    /// out of sight rather than popping into view at the edge of the waves.
+    /// Roughly how long after a vessel leaves the map before another appears, in seconds (default 25). Each wait is
+    /// drawn at random around this, so they do not arrive in step.
     /// </summary>
-    public float Reach { get; init; } = 6000f;
+    public float SpawnDelaySeconds { get; init; } = 25f;
 
-    /// <summary>Keeps the vessels on the path the same between sessions. Any number will do.</summary>
+    /// <summary>
+    /// How far the lanes run when there is no shoreline to take their ends from, in meters (default 8000). With a
+    /// shoreline the ends come from where its endless segments reach the edge of the map instead.
+    /// </summary>
+    public float Reach { get; init; } = 8000f;
+
+    /// <summary>Keeps the lanes and the traffic on them the same between sessions. Any number will do.</summary>
     public int Seed { get; init; } = 1;
 
     /// <summary>
@@ -127,45 +163,35 @@ public sealed record MarineTraffic
     /// <summary>How many lanes this actually lays out; 0 when it is switched off.</summary>
     public int EffectiveLanes => IsEnabled ? Math.Clamp(LaneCount, 1, LaneLimit) : 0;
 
-    /// <summary>How many vessels this asks for; 0 when it is switched off.</summary>
-    public int VesselCount =>
-        IsEnabled ? (int)MathF.Round(Math.Clamp(Intensity, 0f, 1f) * Math.Clamp(MaximumVessels, 1, VesselLimit)) : 0;
-
-    /// <summary><see cref="SpeedKnots"/> in meters per second.</summary>
-    public float SpeedMetersPerSecond => SpeedKnots * KnotsToMetersPerSecond;
+    /// <summary>The most vessels that may be out at once; 0 when it is switched off.</summary>
+    public int VesselCount => IsEnabled ? Math.Clamp(MaximumVessels, 1, VesselLimit) : 0;
 
     /// <summary>The mix actually used: <see cref="Vessels"/>, or <see cref="DefaultVessels"/> when that is empty.</summary>
     public IReadOnlyList<BoatType> EffectiveVessels => Vessels.Count > 0 ? Vessels : DefaultVessels;
 
+    /// <summary>How fast one kind of vessel goes here, in meters per second, with the speed setting applied.</summary>
+    /// <param name="type">The kind of vessel.</param>
+    public float SpeedMetersPerSecond(BoatType type) =>
+        CruisingKnots(type) * KnotsToMetersPerSecond * MathF.Max(0f, SpeedPercent) * 0.01f;
+
     /// <summary>Problems that would stop the traffic being drawn, empty when it is sound.</summary>
     public IEnumerable<string> Validate()
     {
-        if (!float.IsFinite(Intensity) || Intensity < 0f || Intensity > 1f)
-        {
-            yield return "Marine traffic intensity must be between 0 and 1.";
-        }
-
         if (MaximumVessels < 1 || MaximumVessels > VesselLimit)
         {
             yield return $"Marine traffic can show between 1 and {VesselLimit} vessels at once.";
         }
 
+        if (LaneCount < 1 || LaneCount > LaneLimit) yield return $"Marine traffic can run between 1 and {LaneLimit} lanes.";
+        if (!float.IsFinite(LaneSpacing) || LaneSpacing <= 0f) yield return "Marine traffic lane spacing must be a positive distance.";
         if (!float.IsFinite(Clearance) || Clearance < 0f) yield return "Marine traffic clearance must not be negative.";
-        if (LaneCount < 1 || LaneCount > LaneLimit)
-        {
-            yield return $"Marine traffic can run between 1 and {LaneLimit} lanes.";
-        }
-
-        if (!float.IsFinite(LaneSpacing) || LaneSpacing <= 0f)
-        {
-            yield return "Marine traffic lane spacing must be a positive distance.";
-        }
-
-        if (!float.IsFinite(SpeedKnots) || SpeedKnots < 0f) yield return "Marine traffic speed must not be negative.";
+        if (!float.IsFinite(EdgeClearance) || EdgeClearance < 0f) yield return "Marine traffic edge clearance must not be negative.";
+        if (!float.IsFinite(SpeedPercent) || SpeedPercent <= 0f) yield return "Marine traffic speed must be a positive percentage.";
+        if (!float.IsFinite(SpawnDelaySeconds) || SpawnDelaySeconds < 0f) yield return "Marine traffic spawn delay must not be negative.";
         if (!float.IsFinite(Reach) || Reach <= 0f) yield return "Marine traffic reach must be a positive distance.";
         if (float.IsFinite(Reach) && float.IsFinite(Clearance) && Reach <= Clearance)
         {
-            yield return "Marine traffic reach must be further out than its clearance, or no path fits.";
+            yield return "Marine traffic reach must be further out than its clearance, or no lane fits.";
         }
 
         foreach (var vessel in Vessels.Where(vessel => !Enum.IsDefined(vessel)).Distinct())

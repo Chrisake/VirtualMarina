@@ -140,6 +140,35 @@ public class GeometryAndCameraTests
         Assert.Equal(1f, c.A);
     }
 
+
+    /// <summary>The middle of the marina in plan coordinates, and how far across it is.</summary>
+    private static (Vector2 Middle, float Span) MarinaMiddle(MarinaVisualizer marina)
+    {
+        var (min, max) = marina.GetLayout().ComputeBounds();
+        return ((min + max) * 0.5f, Vector2.Distance(min, max) * 0.5f);
+    }
+
+    /// <summary>Where a set of world points lands on screen, or false when one is behind the camera.</summary>
+    private static bool TryScreenBounds(MarinaVisualizer marina, IEnumerable<Vector3> points, out (Vector2 Min, Vector2 Max) bounds)
+    {
+        var min = new Vector2(float.MaxValue);
+        var max = new Vector2(float.MinValue);
+        foreach (var point in points)
+        {
+            if (!marina.TryProjectToScreen(point, out var screen))
+            {
+                bounds = default;
+                return false;
+            }
+
+            min = Vector2.Min(min, screen);
+            max = Vector2.Max(max, screen);
+        }
+
+        bounds = (min, max);
+        return true;
+    }
+
     [Fact]
     public void TheBuiltInViews_AreTheMarina_StraightDown_AndTheFourCompassPoints()
     {
@@ -154,10 +183,17 @@ public class GeometryAndCameraTests
         // One per pier, on top of those.
         foreach (var pier in marina.GetPiers()) Assert.Contains($"Pier: {pier.Name}", builtIn);
 
-        // They really do come from four different sides, all looking at the middle of the marina.
-        var overview = marina.CameraPresets.Single(preset => preset.Name == MarinaVisualizer.OverviewPresetName);
+        // They really do come from four different sides, and every one of them looks at the marina. Not at exactly
+        // the same point: seen from an angle the middle of the marina does not land in the middle of the picture, so
+        // each view aims a little off it to put the marina in the frame, by its own amount.
         var compass = new[] { "North", "East", "South", "West" };
-        Assert.All(compass, name => Assert.Equal(overview.Pose.Target, marina.CameraPresets.Single(p => p.Name == name).Pose.Target));
+        var (middle, span) = MarinaMiddle(marina);
+        Assert.All(compass, name =>
+        {
+            var aim = marina.CameraPresets.Single(p => p.Name == name).Pose.Target;
+            Assert.True(Vector2.Distance(MarinaMath.ToPlan(aim), middle) < span, $"{name} does not look at the marina");
+        });
+
         Assert.Equal(4, compass.Select(name => marina.CameraPresets.Single(p => p.Name == name).Pose.YawDegrees).Distinct().Count());
 
         // And every one of them actually holds the marina, in a tall window and a wide one alike. Each works out its
@@ -170,6 +206,14 @@ public class GeometryAndCameraTests
             MarinaMath.ToWorld(max),
             MarinaMath.ToWorld(new Vector2(min.X, max.Y)),
         };
+
+        // And the marina is actually worth looking at: it fills the view rather than sitting in the middle of it.
+        marina.SetViewportSize(1400f, 900f);
+        Assert.True(marina.ApplyBuiltInCameraPreset(MarinaVisualizer.OverviewPresetName, immediate: true));
+        Assert.True(TryScreenBounds(marina, corners, out var seen));
+        Assert.True(
+            MathF.Max((seen.Max.X - seen.Min.X) / 1400f, (seen.Max.Y - seen.Min.Y) / 900f) > 0.75f,
+            "the overview leaves the marina small in the middle of an empty view");
 
         foreach (var (width, height) in new[] { (1080f, 800f), (700f, 900f), (1900f, 600f) })
         {

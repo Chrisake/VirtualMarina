@@ -156,9 +156,9 @@ public static class MockMarinaFactory
             .WithMarineTraffic(MarineTraffic.None with
             {
                 IsEnabled = true,
-                Intensity = 0.45f,
                 Clearance = 260f,
-                SpeedKnots = 7f,
+                LaneCount = 3,
+                MaximumVessels = 12,
                 Seed = 12,
             })
             .Build();
