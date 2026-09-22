@@ -20,8 +20,11 @@ namespace VirtualMarina.Core.Geometry;
 /// </remarks>
 public static class MarineTrafficPlanner
 {
-    /// <summary>How much of each end of a lane a vessel spends fading in or out.</summary>
-    private const float FadeFraction = 0.12f;
+    /// <summary>
+    /// How much of each end of a lane a vessel spends fading in or out. Short on purpose: the ends of a lane are far
+    /// out in the flat sea, and a long fade there is a smear on the horizon rather than something arriving.
+    /// </summary>
+    private const float FadeFraction = 0.02f;
 
     /// <summary>Points tested along a candidate lane. Enough to catch a lane clipping a corner of the land.</summary>
     private const int SamplesPerLane = 48;
@@ -92,8 +95,11 @@ public static class MarineTrafficPlanner
             var offset = nearest + (float)random.NextDouble() * (furthest - nearest);
             if (random.Next(2) == 0) offset = -offset;
 
+            // Both ends sit well outside the water that is drawn in detail, so a vessel appears and disappears out
+            // on the flat sea where nobody is looking, and only crosses the part anyone is watching.
+            var reach = MathF.Max(traffic.Reach, passWithin * 2.5f);
             var middle = center + sideways * offset;
-            var lane = new TrafficLane(middle - direction * traffic.Reach, middle + direction * traffic.Reach);
+            var lane = new TrafficLane(middle - direction * reach, middle + direction * reach);
             if (!IsClear(lane, traffic.Clearance, marina, outlines, shoreline)) continue;
 
             // Keep the lanes apart, so the traffic does not stack up along one line.

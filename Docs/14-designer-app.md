@@ -19,8 +19,8 @@ It is built on the same pieces as any other host: a `MarinaViewControl` and `mar
 ## The Look and Cameras tabs
 
 **Look** and **Cameras** open beneath the current tool's settings rather than replacing them, so switching to them
-never means losing sight of what the tool in hand is doing. The tool's own settings keep the top of the panel (and
-scroll on their own if they are tall), with the rest underneath.
+never means losing sight of what the tool in hand is doing. The two are one scrolling column with one scrollbar: the
+tool's settings lead, and scrolling down carries them off the top and leaves the whole height to what follows.
 
 **Cameras** lists the views. *Save this view* stores where the camera is now under a name you choose, so you and the
 host application can come back to it. *Automatic views* — the whole marina, straight down, one from each compass

@@ -120,9 +120,10 @@ from the marina, from every land area and from the mainland behind the shore —
 quay or through the piers. Asking for more clearance than the open water allows leaves fewer lanes; `TrafficLaneCount`
 says how many were found room for, and 0 means the traffic cannot be drawn at all.
 
-A lane runs right across the map. Both ends sit far outside the detailed water, so a vessel fades in well out of
-sight, crosses within view of the marina, and fades out again on the far side; each lane is made to pass inside the
-detailed water so it is actually seen among the waves rather than only skirting the horizon. They are decoration: they are
+A lane runs right across the map. Both ends sit out in the flat sea beyond the detailed water — further out still
+when `Size` is widened, since the lane grows with it — so a vessel appears and disappears where nobody is looking,
+crosses within view of the marina, and carries on out the other side. The fade at each end is deliberately short: a
+vessel is at full strength a twentieth of the way along its lane, so it is never caught materialising. They are decoration: they are
 not berths, they cannot be clicked or hit-tested, and they take no part in selection. `GetTrafficVessels()` returns
 where they are right now, for a host that wants to draw its own marker.
 

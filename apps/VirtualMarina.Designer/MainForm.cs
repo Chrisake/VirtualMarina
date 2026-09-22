@@ -26,8 +26,16 @@ internal sealed class MainForm : Form
     private ToolStripButton _lookButton = null!;
     private ToolStripButton _camerasButton = null!;
 
-    /// <summary>How much of the side panel the tool settings may take before they scroll on their own.</summary>
-    private const int MaxToolSettingsHeight = 360;
+    /// <summary>
+    /// Holds the tool settings and whichever of Look or Cameras is open, as one column with one scrollbar. Scrolling
+    /// carries the tool settings off the top, leaving the whole height to what is underneath.
+    /// </summary>
+    private readonly Panel _side = new()
+    {
+        AutoScroll = true,
+        Dock = DockStyle.Fill,
+        BackColor = Theme.Background,
+    };
     private SplitContainer _split = null!;
     private readonly ToolStrip _toolbar = new();
     private readonly Dictionary<DesignTool, ToolStripButton> _toolButtons = new();
@@ -102,10 +110,15 @@ internal sealed class MainForm : Form
         };
         _split = split;
         split.Panel1.Controls.Add(_view);
-        // Fill first, Top second: the tool settings sit above whichever side panel is open.
-        split.Panel2.Controls.Add(_appearance);
-        split.Panel2.Controls.Add(_cameras);
-        split.Panel2.Controls.Add(_inspector);
+        // One scrolling column. Docked Top and added in this order, the last one added ends up at the very top, so
+        // the tool settings lead and the open side panel follows underneath.
+        _appearance.UseOuterScrolling();
+        _cameras.UseOuterScrolling();
+        _inspector.UseOuterScrolling();
+        _side.Controls.Add(_appearance);
+        _side.Controls.Add(_cameras);
+        _side.Controls.Add(_inspector);
+        split.Panel2.Controls.Add(_side);
 
         var logHeader = new Label
         {
@@ -384,7 +397,6 @@ internal sealed class MainForm : Form
         _statusCamera.Text = string.Format(CultureInfo.CurrentCulture, Strings.StatusCamera, pose.Distance, pose.PitchDegrees);
         _inspector.Sync();
         if (_cameras.Visible) _cameras.Sync();
-        SizeToolSettings();
     }
 
     private void ShowPointer(Point location)
@@ -558,24 +570,12 @@ internal sealed class MainForm : Form
         _cameras.Visible = which == SidePanel.Cameras;
         if (_cameras.Visible) _cameras.Sync();
 
-        // The tool settings are always there: filling the panel on their own, or a band across the top of it.
-        _inspector.Dock = which == SidePanel.Tools ? DockStyle.Fill : DockStyle.Top;
-        SizeToolSettings();
+        // The tool settings are always there, at the top of the column, however far it has been scrolled.
+        _side.AutoScrollPosition = Point.Empty;
 
         Designer.FogFactor = which == SidePanel.Look ? 1f : DesigningFogFactor;
         if (which == SidePanel.Look) MarkDirty();
         RefreshUi();
-    }
-
-    /// <summary>
-    /// Gives the tool settings the height they ask for when they share the panel, capped so they cannot crowd out
-    /// what is underneath. Past the cap they scroll on their own.
-    /// </summary>
-    private void SizeToolSettings()
-    {
-        if (_inspector.Dock != DockStyle.Top) return;
-        var wanted = Math.Min(MaxToolSettingsHeight, Math.Max(80, _inspector.PreferredPanelHeight));
-        if (_inspector.Height != wanted) _inspector.Height = wanted;
     }
 
     private bool _updatingSidePanel;

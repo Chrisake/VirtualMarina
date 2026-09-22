@@ -192,6 +192,22 @@ internal sealed class InspectorPanel : Panel
 
     private MarinaDesigner Designer => _marina.Designer;
 
+    /// <summary>
+    /// Hands the scrolling to a panel outside this one, so several of these can share a single scrollbar. This panel
+    /// then sizes to its content instead of to the space it is given, and scrolls away with everything else.
+    /// </summary>
+    public void UseOuterScrolling()
+    {
+        // The header is added after the scroller, so it still docks above it once both are Top.
+        _scroller.AutoScroll = false;
+        _scroller.Dock = DockStyle.Top;
+        _scroller.AutoSize = true;
+        _scroller.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        Dock = DockStyle.Top;
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
+    }
+
     /// <summary>Brings the panel in line with the designer: the tool's name and hint, its settings, and which cards are shown.</summary>
     public void Sync(bool force = false)
     {

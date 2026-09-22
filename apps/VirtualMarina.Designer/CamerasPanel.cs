@@ -1,4 +1,4 @@
-using VirtualMarina.Core.Api;
+﻿using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Designer.Resources;
 
@@ -85,6 +85,22 @@ internal sealed class CamerasPanel : UserControl
         Controls.Add(_scroller);
         Controls.Add(header);
         Sync();
+    }
+
+    /// <summary>
+    /// Hands the scrolling to a panel outside this one, so several of these can share a single scrollbar. This panel
+    /// then sizes to its content instead of to the space it is given, and scrolls away with everything else.
+    /// </summary>
+    public void UseOuterScrolling()
+    {
+        // The header is added after the scroller, so it still docks above it once both are Top.
+        _scroller.AutoScroll = false;
+        _scroller.Dock = DockStyle.Top;
+        _scroller.AutoSize = true;
+        _scroller.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        Dock = DockStyle.Top;
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
     }
 
     /// <summary>Rebuilds the two lists from the marina, e.g. after a pier was added or a view saved.</summary>

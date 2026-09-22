@@ -130,10 +130,14 @@ public class MarineTrafficTests
                 Vector2.Distance(vessel.Position, lane.End)) / lane.Length))
             .ToArray();
 
-        Assert.True(samples.Min(s => s.Opacity) < 0.1f, "a vessel never fades away at the end of its lane");
+        Assert.True(samples.Min(s => s.Opacity) < 0.5f, "a vessel never fades at all at the end of its lane");
         Assert.True(samples.Max(s => s.Opacity) > 0.99f, "a vessel is never drawn at full strength");
-        Assert.All(samples.Where(s => s.ToEnd < 0.01f), s => Assert.True(s.Opacity < 0.1f, $"a vessel at the end of its lane is still {s.Opacity:0.00} visible"));
-        Assert.All(samples.Where(s => s.ToEnd > 0.2f), s => Assert.True(s.Opacity > 0.99f, "a vessel in open water is not at full strength"));
+
+        // And the fade is over quickly: a twentieth of the way along the lane — still far out in the flat sea — a
+        // vessel is already solid, so nobody watches one materialise.
+        Assert.All(
+            samples.Where(s => s.ToEnd > 0.05f),
+            s => Assert.True(s.Opacity > 0.99f, $"a vessel {s.ToEnd:0.000} along its lane is only {s.Opacity:0.00} visible"));
     }
 
     [Fact]
@@ -244,6 +248,27 @@ public class MarineTrafficTests
                 .Min();
             Assert.True(nearest < waterRadius, $"a lane never comes nearer than {nearest:0} m, outside the water");
             Assert.True(nearest >= traffic.Clearance - 1f, $"a lane passes {nearest:0} m from the marina");
+        }
+    }
+
+    [Fact]
+    public void WideningTheWater_PushesWhereVesselsAppear_FurtherOutWithIt()
+    {
+        // A short reach, but a lot of detailed water to cross: the lane has to grow to still start outside it.
+        const float waterRadius = 5000f;
+        var traffic = MarineTraffic.None with
+        {
+            IsEnabled = true, Intensity = 0.5f, Clearance = 200f, Reach = 600f, Seed = 7,
+        };
+
+        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, null, waterRadius);
+        Assert.NotEmpty(lanes);
+
+        var centre = (MarinaBounds().Min + MarinaBounds().Max) * 0.5f;
+        foreach (var lane in lanes)
+        {
+            Assert.True(Vector2.Distance(lane.Start, centre) > waterRadius, "a vessel appears inside the detailed water");
+            Assert.True(Vector2.Distance(lane.End, centre) > waterRadius, "a vessel disappears inside the detailed water");
         }
     }
 
