@@ -46,6 +46,8 @@ Two of its cards are about what surrounds the marina rather than the marina itse
   *Show the lanes* to draw them while setting it, tinted by which way each one runs; that is a working aid and is not
   saved with the design.
 
+The **labels** card sets how berth names are drawn: *Letters* picks the shape (Sans, Serif or Slab) and the face below it the weight and width. They are drawn as strokes rather than set in an installed font, so they look the same everywhere and stay sharp however far you zoom in — which is why the list names shapes rather than Arial or Times.
+
 **Add preview boats** fills empty berths with a random mix so the colours and the water can be judged against a full
 marina. Those boats are not saved with the design.
 

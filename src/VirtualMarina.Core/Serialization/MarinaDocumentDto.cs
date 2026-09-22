@@ -1183,12 +1183,15 @@ internal sealed class LabelDto : ExtensibleDto
 
     public LabelFont FontFamily { get; set; }
 
+    public LabelTypeface Typeface { get; set; }
+
     public static LabelDto From(LabelStyle labels) => new()
     {
         Color = labels.Color,
         Highlight = labels.HighlightColor,
         Disabled = labels.DisabledColor,
         FontFamily = labels.FontFamily,
+        Typeface = labels.Typeface,
     };
 
     public void ApplyTo(LabelStyle labels)
@@ -1197,6 +1200,7 @@ internal sealed class LabelDto : ExtensibleDto
         labels.HighlightColor = Highlight;
         labels.DisabledColor = Disabled;
         labels.FontFamily = FontFamily;
+        labels.Typeface = Typeface;
     }
 }
 

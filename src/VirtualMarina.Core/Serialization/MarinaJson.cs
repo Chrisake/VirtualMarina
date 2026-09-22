@@ -62,6 +62,7 @@ public static class MarinaJson
             new TolerantEnumConverter<BerthSeparator>(),
             new TolerantEnumConverter<BerthLabelMode>(),
             new TolerantEnumConverter<LabelFont>(),
+            new TolerantEnumConverter<LabelTypeface>(),
         },
     };
 

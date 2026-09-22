@@ -318,6 +318,7 @@ internal static class SceneBuilder
         if (text.Length == 0) return;
 
         var font = t_palette?.LabelFontFamily ?? LabelFont.Regular;
+        var typeface = t_palette?.LabelTypeface ?? LabelTypeface.Sans;
         var (center, height, upHeading, reading) = BerthPlacement.LabelPlacement(berth, text.Length, font);
         var start = center - reading * (GlyphFont.MeasureWidth(text.Length, font) * height * 0.5f - GlyphFont.GlyphWidthOf(font) * height * 0.5f);
         var tint = berth.IsDisabled ? Colors.LabelDisabled : highlighted ? Colors.LabelHighlight : Colors.Label;
@@ -325,7 +326,7 @@ internal static class SceneBuilder
 
         for (var i = 0; i < text.Length; i++)
         {
-            if (!GlyphFont.TryGetMeshId(text[i], font, out var meshId)) continue;
+            if (!GlyphFont.TryGetMeshId(text[i], font, typeface, out var meshId)) continue;
             var position = start + reading * (i * GlyphFont.AdvanceOf(font) * height);
             output.Add(new RenderObject(
                 meshId,
@@ -731,6 +732,7 @@ internal static class SceneBuilder
             LabelHighlight = Opaque(style.Labels.HighlightColor.ToVector3());
             LabelDisabled = Opaque(style.Labels.DisabledColor.ToVector3());
             LabelFontFamily = style.Labels.FontFamily;
+            LabelTypeface = style.Labels.Typeface;
         }
 
         public Vector4 WoodDeck { get; }
@@ -758,6 +760,8 @@ internal static class SceneBuilder
 
         /// <summary>The face berth labels are set in.</summary>
         public LabelFont LabelFontFamily { get; }
+
+        public LabelTypeface LabelTypeface { get; }
 
         private static Vector4 Opaque(Vector3 color) => new(Vector3.Clamp(color, Vector3.Zero, Vector3.One), 1f);
     }

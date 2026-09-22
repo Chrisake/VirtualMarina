@@ -385,6 +385,16 @@ internal static class Strings
     internal static string LabelColorDisabled => Get("LabelColorDisabled");
 
     /// <summary>"Regular"</summary>
+    internal static string LabelTypeface => Get("LabelTypeface");
+
+    internal static string LabelTypefaceTip => Get("LabelTypefaceTip");
+
+    internal static string TypefaceSans => Get("TypefaceSans");
+
+    internal static string TypefaceSerif => Get("TypefaceSerif");
+
+    internal static string TypefaceSlab => Get("TypefaceSlab");
+
     internal static string FaceRegular => Get("FaceRegular");
 
     /// <summary>"Bold"</summary>

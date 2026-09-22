@@ -353,6 +353,17 @@ internal sealed class AppearancePanel : UserControl
     {
         var card = Theme.Card(Strings.CardLabels, out var table);
 
+        // The letters themselves, chosen separately from their weight, so any typeface can be had bold or condensed.
+        var typeface = Theme.Choice();
+        typeface.Items.AddRange(new object[] { Strings.TypefaceSans, Strings.TypefaceSerif, Strings.TypefaceSlab });
+        typeface.SelectedIndex = (int)Labels.Typeface;
+        typeface.SelectedIndexChanged += (_, _) => Changed(() => Labels.Typeface = (LabelTypeface)typeface.SelectedIndex);
+        _refresh.Add(() => typeface.SelectedIndex = (int)Labels.Typeface);
+        Theme.Row(table, Strings.LabelTypeface, typeface, (_, _) =>
+        {
+            typeface.SelectedIndex = (int)Defaults.Labels.Typeface;
+        }, Strings.LabelTypefaceTip);
+
         var face = Theme.Choice();
         face.Items.AddRange(new object[] { Strings.FaceRegular, Strings.FaceBold, Strings.FaceCondensed, Strings.FaceWide });
         face.SelectedIndex = (int)Labels.FontFamily;

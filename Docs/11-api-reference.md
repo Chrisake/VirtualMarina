@@ -9,7 +9,7 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
 - **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MarineTraffic](#marinetraffic), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TrafficVessel](#trafficvessel), [TreeShape](#treeshape)
-- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficField](#marinetrafficfield), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [ShadowProjection](#shadowprojection), [TrafficLane](#trafficlane)
+- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LabelTypeface](#labeltypeface), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficField](#marinetrafficfield), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [ShadowProjection](#shadowprojection), [TrafficLane](#trafficlane)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [BerthHit](#berthhit), [Ray](#ray)
@@ -2135,6 +2135,7 @@ Glyph model space: the glyph is 1 unit tall along local +Z (the text's "up") and
 | `static float MeasureWidth(int characterCount, LabelFont font)` | Width of a line of text in units of the glyph height. |
 | `static bool TryGetMeshId(char c, out int meshId)` | Mesh id for a character in `LabelFont.Regular`; false for whitespace (nothing to draw). |
 | `static bool TryGetMeshId(char c, LabelFont font, out int meshId)` | Mesh id for a character in one face; false for whitespace (nothing to draw). |
+| `static bool TryGetMeshId(char c, LabelFont font, LabelTypeface typeface, out int meshId)` | Mesh id for a character in one weight of one typeface; false for whitespace (nothing to draw). |
 
 <a id="labelfont"></a>
 ### LabelFont
@@ -2149,6 +2150,21 @@ The faces berth labels can be set in. They are stroke fonts baked into meshes, n
 | `Bold` = 1 | Heavier strokes, for labels that must read from further away. |
 | `Condensed` = 2 | Narrower glyphs, so longer names fit across a berth. |
 | `Wide` = 3 | Wider glyphs, easier to read on big berths. |
+
+<a id="labeltypeface"></a>
+### LabelTypeface
+
+`enum LabelTypeface`
+
+The shape of the letters themselves, as against `LabelFont`, which is their weight and width. The two are chosen separately, so any typeface can be had bold or condensed.
+
+These are drawn as strokes rather than set in a real font: the labels lie flat on the water and are rendered as meshes, with no textures, so that OpenGL and WebGL draw exactly the same thing and the library carries no font files. That rules out naming real faces here, and it is also why there is no monospaced one — every glyph already sits on the same grid and advances by the same step, so it would be the same letters as `LabelTypeface.Sans`.
+
+| Value | Description |
+|---|---|
+| `Sans` = 0 | Plain strokes with open ends. The default, and the one to read at a glance. |
+| `Serif` = 1 | Fine strokes finished with small feet, in the manner of a book face. |
+| `Slab` = 2 | Heavier strokes with square feet, which hold up at a distance and on a busy background. |
 
 <a id="landmeshfactory"></a>
 ### LandMeshFactory
@@ -2566,6 +2582,7 @@ Colors of berth names written on the water (`MarinaStyle.Labels`; see `BerthLabe
 |---|---|
 | `LabelStyle()` | Creates an instance with default values. |
 | `LabelFont FontFamily { get; set; }` | The face berth labels are set in. These are built-in stroke faces rather than system typefaces, so the choice is between a few weights and widths (see `LabelFont`). |
+| `LabelTypeface Typeface { get; set; }` | The shape of the letters, as against `LabelStyle.FontFamily`, which is their weight and width. Default `LabelTypeface.Sans`. |
 | `ColorRgba Color { get; set; }` | Normal label color. |
 | `ColorRgba HighlightColor { get; set; }` | Label of a hovered or selected berth. |
 | `ColorRgba DisabledColor { get; set; }` | Label of a disabled berth. |

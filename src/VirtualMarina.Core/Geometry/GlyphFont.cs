@@ -23,6 +23,29 @@ public enum LabelFont
 }
 
 /// <summary>
+/// The shape of the letters themselves, as against <see cref="LabelFont"/>, which is their weight and width. The
+/// two are chosen separately, so any typeface can be had bold or condensed.
+/// </summary>
+/// <remarks>
+/// These are drawn as strokes rather than set in a real font: the labels lie flat on the water and are rendered as
+/// meshes, with no textures, so that OpenGL and WebGL draw exactly the same thing and the library carries no font
+/// files. That rules out naming real faces here, and it is also why there is no monospaced one — every glyph
+/// already sits on the same grid and advances by the same step, so it would be the same letters as
+/// <see cref="Sans"/>.
+/// </remarks>
+public enum LabelTypeface
+{
+    /// <summary>Plain strokes with open ends. The default, and the one to read at a glance.</summary>
+    Sans = 0,
+
+    /// <summary>Fine strokes finished with small feet, in the manner of a book face.</summary>
+    Serif = 1,
+
+    /// <summary>Heavier strokes with square feet, which hold up at a distance and on a busy background.</summary>
+    Slab = 2,
+}
+
+/// <summary>
 /// Minimal stroke font for text laid flat on the water (berth labels). Each character is a mesh of flat,
 /// upward-facing strokes, so it renders on every backend without textures.
 /// </summary>
@@ -43,6 +66,12 @@ public static class GlyphFont
     /// <summary>Ids of one face's glyphs start this far apart.</summary>
     private const int FamilyStride = 100;
 
+    /// <summary>How many weights there are, so a typeface's ids start past all of them.</summary>
+    private const int FaceCount = 4;
+
+    /// <summary>How far a serif reaches either side of the stem it finishes, on the 4 x 6 grid.</summary>
+    private const float SerifReach = 0.72f;
+
     private const float GridHeight = 6f;
     private const float GridWidth = 4f;
     private const float StrokeWidth = 0.75f;
@@ -54,6 +83,17 @@ public static class GlyphFont
         LabelFont.Condensed => (0.7f, 0.76f),
         LabelFont.Wide => (0.8f, 1.22f),
         _ => (StrokeWidth, 1f),
+    };
+
+    /// <summary>
+    /// How each typeface differs: how much its strokes are scaled, and how heavy a foot they finish with. A foot of
+    /// zero means no feet at all.
+    /// </summary>
+    private static (float Stroke, float Foot) Typeface(LabelTypeface typeface) => typeface switch
+    {
+        LabelTypeface.Serif => (0.85f, 0.95f),
+        LabelTypeface.Slab => (1.12f, 1.1f),
+        _ => (1f, 0f),
     };
 
     // Polylines on a 4 × 6 grid (x right, y up), separated by '|'.
@@ -120,15 +160,26 @@ public static class GlyphFont
     /// <param name="c">The character.</param>
     /// <param name="font">Which face to draw it in.</param>
     /// <param name="meshId">The mesh to place.</param>
-    public static bool TryGetMeshId(char c, LabelFont font, out int meshId)
+    public static bool TryGetMeshId(char c, LabelFont font, out int meshId) =>
+        TryGetMeshId(c, font, LabelTypeface.Sans, out meshId);
+
+    /// <summary>Mesh id for a character in one weight of one typeface; false for whitespace (nothing to draw).</summary>
+    /// <param name="c">The character.</param>
+    /// <param name="font">Which weight to draw it in.</param>
+    /// <param name="typeface">Which typeface to draw it in.</param>
+    /// <param name="meshId">The mesh to place.</param>
+    public static bool TryGetMeshId(char c, LabelFont font, LabelTypeface typeface, out int meshId)
     {
         meshId = 0;
         if (char.IsWhiteSpace(c)) return false;
         var upper = char.ToUpper(c, CultureInfo.InvariantCulture);
         var index = Array.BinarySearch(Characters, Strokes.ContainsKey(upper) ? upper : '?');
-        meshId = MeshIds.GlyphBase + (int)font * FamilyStride + index;
+        meshId = MeshIds.GlyphBase + Variant(font, typeface) * FamilyStride + index;
         return true;
     }
+
+    /// <summary>Which of the weight-and-typeface combinations this is, counted from zero.</summary>
+    private static int Variant(LabelFont font, LabelTypeface typeface) => (int)typeface * FaceCount + (int)font;
 
     /// <summary>Distance between consecutive glyph centers in a face, as a fraction of the height.</summary>
     /// <param name="font">The face.</param>
@@ -153,20 +204,26 @@ public static class GlyphFont
     /// </summary>
     public static IEnumerable<MeshData> CreateAll()
     {
-        foreach (var font in Enum.GetValues<LabelFont>())
+        foreach (var typeface in Enum.GetValues<LabelTypeface>())
         {
-            for (var i = 0; i < Characters.Length; i++)
+            foreach (var font in Enum.GetValues<LabelFont>())
             {
-                yield return CreateGlyph(Characters[i], MeshIds.GlyphBase + (int)font * FamilyStride + i, font);
+                for (var i = 0; i < Characters.Length; i++)
+                {
+                    var id = MeshIds.GlyphBase + Variant(font, typeface) * FamilyStride + i;
+                    yield return CreateGlyph(Characters[i], id, font, typeface);
+                }
             }
         }
     }
 
-    private static MeshData CreateGlyph(char c, int meshId, LabelFont font)
+    private static MeshData CreateGlyph(char c, int meshId, LabelFont font, LabelTypeface typeface)
     {
         var b = new MeshBuilder();
         var white = Vector3.One;
-        var (stroke, widthScale) = Face(font);
+        var (weight, widthScale) = Face(font);
+        var (scale, foot) = Typeface(typeface);
+        var stroke = weight * scale;
         var halfStroke = stroke * 0.5f;
 
         foreach (var polyline in Strokes[c].Split('|'))
@@ -188,11 +245,51 @@ public static class GlyphFont
                 e += dir * halfStroke;
                 b.AddQuadUp(ToModel(a - normal), ToModel(e - normal), ToModel(e + normal), ToModel(a + normal), white);
             }
+
+            if (foot > 0f) AddSerifs(b, points, stroke * foot, halfStroke, white, ToModel);
         }
 
-        return b.Build(meshId, $"Glyph '{c}' ({font})");
+        return b.Build(meshId, $"Glyph '{c}' ({typeface} {font})");
 
         Vector3 ToModel(Vector2 grid) => GlyphFont.ToModel(grid, widthScale);
+    }
+
+    /// <summary>
+    /// Finishes the ends of an upright stroke with a small crossbar, which is what makes a serif face one.
+    /// </summary>
+    /// <remarks>
+    /// Only where a stroke ends going up or down, and only at the top or bottom of the grid: a serif on the end of
+    /// the arm of an E or in the middle of an S would read as a blot rather than a foot. That keeps this to the
+    /// stems, which is where the feet belong and where they are worth the triangles.
+    /// </remarks>
+    private static void AddSerifs(MeshBuilder b, Vector2[] points, float thickness, float halfStroke, Vector3 color, Func<Vector2, Vector3> toModel)
+    {
+        if (points.Length < 2) return;
+
+        Foot(points[0], points[0] - points[1]);
+        Foot(points[^1], points[^1] - points[^2]);
+
+        void Foot(Vector2 end, Vector2 outward)
+        {
+            if (outward.LengthSquared() < 1e-6f) return;
+
+            // Upright enough to be a stem, and at the head or the foot of the letter.
+            var direction = Vector2.Normalize(outward);
+            if (MathF.Abs(direction.Y) < 0.8f) return;
+            if (end.Y > 0.01f && end.Y < GridHeight - 0.01f) return;
+
+            // The bar sits just inside the line the stem ends on, so the letter keeps its height.
+            var half = thickness * 0.5f;
+            var reach = SerifReach + halfStroke;
+            var middle = new Vector2(end.X, end.Y > GridHeight * 0.5f ? GridHeight - half : half);
+
+            b.AddQuadUp(
+                toModel(new Vector2(middle.X - reach, middle.Y - half)),
+                toModel(new Vector2(middle.X + reach, middle.Y - half)),
+                toModel(new Vector2(middle.X + reach, middle.Y + half)),
+                toModel(new Vector2(middle.X - reach, middle.Y + half)),
+                color);
+        }
     }
 
     /// <summary>Grid → model space: 1 unit tall, centered, reading direction along −X.</summary>

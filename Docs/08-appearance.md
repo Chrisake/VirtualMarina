@@ -24,6 +24,32 @@ marina.BerthLabelMode = BerthLabelMode.NonOccupied;
 - **Which berths:** hidden and filtered-out berths get no label.
 - **Characters:** labels use a built-in stroke font (no textures) covering `A–Z`, `0–9` and `- _ + . , : / ( ) # ?`. Lowercase is drawn as uppercase and other characters as `?`.
 
+### How the letters look
+
+Two settings, chosen separately, so any typeface can be had in any weight:
+
+```csharp
+marina.Style.Labels.Typeface = LabelTypeface.Serif;    // the shape of the letters
+marina.Style.Labels.FontFamily = LabelFont.Bold;       // their weight and width
+```
+
+| `Typeface` | |
+|---|---|
+| `Sans` | Plain strokes with open ends. The default, and the one to read at a glance |
+| `Serif` | Finer strokes finished with small feet, in the manner of a book face |
+| `Slab` | Heavier strokes with square feet, which hold up at a distance and on a busy background |
+
+| `FontFamily` | |
+|---|---|
+| `Regular`, `Bold` | Even or heavy strokes at normal width |
+| `Condensed`, `Wide` | Narrower for long names, wider for big berths |
+
+The letters are **drawn as strokes**, not set in an installed font: they are meshes lying flat on the water, so
+OpenGL and WebGL render exactly the same thing, the library carries no font files, and the text stays crisp at any
+zoom. That is also why real font names such as Arial or Times are not among the choices, and why there is no
+monospaced one — every glyph already sits on the same grid and advances by the same step, so it would be the same
+letters as `Sans`.
+
 `BerthLabelModeExtensions.Includes(mode, status)` and `GetDisplayName(mode)` help build a mode picker.
 
 ## Status colors and overlays

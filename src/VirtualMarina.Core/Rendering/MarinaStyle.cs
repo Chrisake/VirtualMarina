@@ -196,12 +196,23 @@ public sealed class LabelStyle : StyleSection
     private ColorRgba _highlight = new(1f, 0.90f, 0.35f);
     private ColorRgba _disabled = new(0.62f, 0.64f, 0.66f);
     private Geometry.LabelFont _font = Geometry.LabelFont.Regular;
+    private Geometry.LabelTypeface _typeface = Geometry.LabelTypeface.Sans;
 
     /// <summary>
     /// The face berth labels are set in. These are built-in stroke faces rather than system typefaces, so the
     /// choice is between a few weights and widths (see <see cref="Geometry.LabelFont"/>).
     /// </summary>
     public Geometry.LabelFont FontFamily { get => _font; set => SetField(ref _font, Enum.IsDefined(value) ? value : Geometry.LabelFont.Regular); }
+
+    /// <summary>
+    /// The shape of the letters, as against <see cref="FontFamily"/>, which is their weight and width. Default
+    /// <see cref="Geometry.LabelTypeface.Sans"/>.
+    /// </summary>
+    /// <remarks>
+    /// The labels are drawn as strokes rather than set in a real font, so that both backends render them the same
+    /// and the library carries no font files. See <see cref="Geometry.LabelTypeface"/>.
+    /// </remarks>
+    public Geometry.LabelTypeface Typeface { get => _typeface; set => SetField(ref _typeface, Enum.IsDefined(value) ? value : Geometry.LabelTypeface.Sans); }
 
     /// <summary>Normal label color.</summary>
     public ColorRgba Color { get => _color; set => SetField(ref _color, value); }

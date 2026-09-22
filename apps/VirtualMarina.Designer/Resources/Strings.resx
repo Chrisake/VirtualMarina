@@ -453,6 +453,21 @@ Runtime      {4}
   <data name="LabelColorDisabled">
     <value>Disabled</value>
   </data>
+  <data name="LabelTypeface">
+    <value>Letters</value>
+  </data>
+  <data name="LabelTypefaceTip">
+    <value>The shape of the letters. They are drawn as strokes rather than set in an installed font, so they look the same everywhere and stay crisp at any zoom.</value>
+  </data>
+  <data name="TypefaceSans">
+    <value>Sans</value>
+  </data>
+  <data name="TypefaceSerif">
+    <value>Serif</value>
+  </data>
+  <data name="TypefaceSlab">
+    <value>Slab</value>
+  </data>
   <data name="FaceRegular">
     <value>Regular</value>
   </data>

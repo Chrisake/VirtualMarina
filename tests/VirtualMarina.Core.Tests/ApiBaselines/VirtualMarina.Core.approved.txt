@@ -1426,6 +1426,7 @@ static class VirtualMarina.Core.Geometry.GlyphFont
     const float GlyphWidth = 0.6666667
     static IEnumerable<VirtualMarina.Core.Geometry.MeshData> CreateAll()
     static IReadOnlyList<char> SupportedCharacters { get; }
+    static bool TryGetMeshId(char c, VirtualMarina.Core.Geometry.LabelFont font, VirtualMarina.Core.Geometry.LabelTypeface typeface, out int meshId)
     static bool TryGetMeshId(char c, VirtualMarina.Core.Geometry.LabelFont font, out int meshId)
     static bool TryGetMeshId(char c, out int meshId)
     static float AdvanceOf(VirtualMarina.Core.Geometry.LabelFont font)
@@ -1438,6 +1439,11 @@ enum VirtualMarina.Core.Geometry.LabelFont : IComparable, IConvertible, IFormatt
     Condensed = 2
     Regular = 0
     Wide = 3
+
+enum VirtualMarina.Core.Geometry.LabelTypeface : IComparable, IConvertible, IFormattable, ISpanFormattable
+    Sans = 0
+    Serif = 1
+    Slab = 2
 
 static class VirtualMarina.Core.Geometry.LandMeshFactory
     const float WallDepth = 3
@@ -1674,6 +1680,7 @@ interface VirtualMarina.Core.Rendering.ISceneRenderer : IDisposable
 sealed class VirtualMarina.Core.Rendering.LabelStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
     VirtualMarina.Core.Geometry.LabelFont FontFamily { get; set; }
+    VirtualMarina.Core.Geometry.LabelTypeface Typeface { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba Color { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba DisabledColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba HighlightColor { get; set; }
