@@ -9,7 +9,7 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
 - **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [TreeShape](#treeshape)
-- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary)
+- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [BerthHit](#berthhit), [Ray](#ray)
@@ -1938,6 +1938,9 @@ Shape of a `LandTree`.
 |---|---|
 | `Broadleaf` = 0 | Round crown (plane tree, olive, oak). |
 | `Conifer` = 1 | Tall, pointed crown (pine, cypress). |
+| `Palm` = 2 | Bare trunk with a spray of fronds on top (palm). Common along a promenade. |
+| `Cypress` = 3 | Narrow column (Italian cypress), the exclamation mark of a Mediterranean shore. |
+| `Cherry` = 4 | Pink blossom (Japanese cherry). Scattered far more rarely than the rest, so finding one is a small surprise. |
 
 ## VirtualMarina.Core.Geometry
 
@@ -1982,12 +1985,30 @@ Glyph model space: the glyph is 1 unit tall along local +Z (the text's "up") and
 
 | Member | Description |
 |---|---|
-| `const float GlyphWidth = 0.6666667f` | Glyph width as a fraction of its height. |
-| `const float Advance = 0.8666666f` | Distance between consecutive glyph centers, as a fraction of the height. |
+| `const float GlyphWidth = 0.6666667f` | Glyph width of `LabelFont.Regular` as a fraction of its height. |
+| `const float Advance = 0.8666666f` | Distance between consecutive `LabelFont.Regular` glyph centers, as a fraction of the height. |
 | `static IReadOnlyList<char> SupportedCharacters { get; }` | Characters that have a glyph (besides space). |
-| `static IEnumerable<MeshData> CreateAll()` | One mesh per supported character, with ids from `MeshIds.GlyphBase`. Registered by `MeshLibrary.CreateDefault`. |
-| `static float MeasureWidth(int characterCount)` | Width of a line of text in units of the glyph height. |
-| `static bool TryGetMeshId(char c, out int meshId)` | Mesh id for a character; false for whitespace (nothing to draw). |
+| `static float AdvanceOf(LabelFont font)` | Distance between consecutive glyph centers in a face, as a fraction of the height. |
+| `static IEnumerable<MeshData> CreateAll()` | Every supported character in every face, with ids from `MeshIds.GlyphBase`. Registered by `MeshLibrary.CreateDefault`. |
+| `static float GlyphWidthOf(LabelFont font)` | Glyph width in a face, as a fraction of the height. |
+| `static float MeasureWidth(int characterCount)` | Width of a line of `LabelFont.Regular` text in units of the glyph height. |
+| `static float MeasureWidth(int characterCount, LabelFont font)` | Width of a line of text in units of the glyph height. |
+| `static bool TryGetMeshId(char c, out int meshId)` | Mesh id for a character in `LabelFont.Regular`; false for whitespace (nothing to draw). |
+| `static bool TryGetMeshId(char c, LabelFont font, out int meshId)` | Mesh id for a character in one face; false for whitespace (nothing to draw). |
+
+<a id="labelfont"></a>
+### LabelFont
+
+`enum LabelFont`
+
+The faces berth labels can be set in. They are stroke fonts baked into meshes, not typefaces from the system, so the choice is between a few built-in weights and widths rather than a font file.
+
+| Value | Description |
+|---|---|
+| `Regular` = 0 | The default: even strokes, normal width. |
+| `Bold` = 1 | Heavier strokes, for labels that must read from further away. |
+| `Condensed` = 2 | Narrower glyphs, so longer names fit across a berth. |
+| `Wide` = 3 | Wider glyphs, easier to read on big berths. |
 
 <a id="landmeshfactory"></a>
 ### LandMeshFactory
@@ -2329,6 +2350,7 @@ Colors of berth names written on the water (`MarinaStyle.Labels`; see `BerthLabe
 | Member | Description |
 |---|---|
 | `LabelStyle()` | Creates an instance with default values. |
+| `LabelFont FontFamily { get; set; }` | The face berth labels are set in. These are built-in stroke faces rather than system typefaces, so the choice is between a few weights and widths (see `LabelFont`). |
 | `ColorRgba Color { get; set; }` | Normal label color. |
 | `ColorRgba HighlightColor { get; set; }` | Label of a hovered or selected berth. |
 | `ColorRgba DisabledColor { get; set; }` | Label of a disabled berth. |
@@ -2352,6 +2374,8 @@ Colors of land areas and their trees (`MarinaStyle.Land`). Changing them rebuild
 | `ColorRgba FoliageColor { get; set; }` | Crowns of broadleaf trees. |
 | `ColorRgba ConiferColor { get; set; }` | Crowns of conifers. |
 | `ColorRgba TrunkColor { get; set; }` | Tree trunks. |
+| `ColorRgba PalmColor { get; set; }` | Fronds of palms. |
+| `ColorRgba BlossomColor { get; set; }` | Blossom of cherry trees (`TreeShape.Cherry`). |
 | `bool ShowTrees { get; set; }` | Draw the trees of land areas (`LandArea.Trees`). Default true. |
 
 <a id="lightingsettings"></a>

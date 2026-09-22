@@ -1272,7 +1272,10 @@ enum VirtualMarina.Core.Domain.PierType : IComparable, IConvertible, IFormattabl
 
 enum VirtualMarina.Core.Domain.TreeShape : IComparable, IConvertible, IFormattable, ISpanFormattable
     Broadleaf = 0
+    Cherry = 4
     Conifer = 1
+    Cypress = 3
+    Palm = 2
 
 static class VirtualMarina.Core.Geometry.BoatMeshFactory
     static VirtualMarina.Core.Geometry.MeshData Create(VirtualMarina.Core.Domain.BoatType type, int meshId)
@@ -1298,8 +1301,18 @@ static class VirtualMarina.Core.Geometry.GlyphFont
     const float GlyphWidth = 0.6666667
     static IEnumerable<VirtualMarina.Core.Geometry.MeshData> CreateAll()
     static IReadOnlyList<char> SupportedCharacters { get; }
+    static bool TryGetMeshId(char c, VirtualMarina.Core.Geometry.LabelFont font, out int meshId)
     static bool TryGetMeshId(char c, out int meshId)
+    static float AdvanceOf(VirtualMarina.Core.Geometry.LabelFont font)
+    static float GlyphWidthOf(VirtualMarina.Core.Geometry.LabelFont font)
     static float MeasureWidth(int characterCount)
+    static float MeasureWidth(int characterCount, VirtualMarina.Core.Geometry.LabelFont font)
+
+enum VirtualMarina.Core.Geometry.LabelFont : IComparable, IConvertible, IFormattable, ISpanFormattable
+    Bold = 1
+    Condensed = 2
+    Regular = 0
+    Wide = 3
 
 static class VirtualMarina.Core.Geometry.LandMeshFactory
     const float WallDepth = 3
@@ -1500,16 +1513,19 @@ interface VirtualMarina.Core.Rendering.ISceneRenderer : IDisposable
 
 sealed class VirtualMarina.Core.Rendering.LabelStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
+    VirtualMarina.Core.Geometry.LabelFont FontFamily { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba Color { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba DisabledColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba HighlightColor { get; set; }
 
 sealed class VirtualMarina.Core.Rendering.LandStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
+    VirtualMarina.Core.Rendering.ColorRgba BlossomColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba ConiferColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba FoliageColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba GrassBankColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba GrassColor { get; set; }
+    VirtualMarina.Core.Rendering.ColorRgba PalmColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba QuayColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba QuayWallColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba RockColor { get; set; }

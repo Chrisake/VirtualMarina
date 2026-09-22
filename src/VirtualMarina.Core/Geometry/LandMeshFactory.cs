@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Mathematics;
 using VirtualMarina.Core.Rendering;
@@ -122,11 +122,46 @@ public static class LandMeshFactory
             var hash = MarinaMath.StableHash01(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{tree.Position.X:0.00},{tree.Position.Y:0.00}"));
             var shade = 0.85f + hash * 0.3f;
             var ground = MarinaMath.ToWorld(tree.Position, area.Height);
-            var trunkHeight = tree.Shape == TreeShape.Conifer ? tree.Height * 0.25f : tree.Height * 0.4f;
-            var trunkRadius = MathF.Max(0.1f, tree.CrownRadius * 0.12f);
+            var trunkHeight = tree.Shape switch
+            {
+                TreeShape.Conifer or TreeShape.Cypress => tree.Height * 0.25f,
+                TreeShape.Palm => tree.Height * 0.78f,   // a bare trunk with the fronds right at the top
+                _ => tree.Height * 0.4f,
+            };
+
+            var trunkRadius = MathF.Max(0.1f, tree.CrownRadius * (tree.Shape == TreeShape.Palm ? 0.08f : 0.12f));
             b.AddCylinder(ground - Vector3.UnitY * 0.2f, ground + Vector3.UnitY * (trunkHeight + tree.CrownRadius * 0.3f), trunkRadius, trunkRadius * 0.7f, 6, style.TrunkColor.ToVector3());
 
-            if (tree.Shape == TreeShape.Conifer)
+            if (tree.Shape == TreeShape.Cypress)
+            {
+                // One tall narrow cone: the Mediterranean exclamation mark.
+                var color = style.ConiferColor.ToVector3() * shade * 0.95f;
+                b.AddCylinder(ground + Vector3.UnitY * trunkHeight, ground + Vector3.UnitY * tree.Height, tree.CrownRadius, tree.CrownRadius * 0.15f, 7, color);
+            }
+            else if (tree.Shape == TreeShape.Palm)
+            {
+                // A spray of fronds: flattened blobs leaning out from the top of the trunk.
+                var color = style.PalmColor.ToVector3() * shade;
+                var crown = ground + Vector3.UnitY * trunkHeight;
+                var random = new Random((int)(hash * int.MaxValue));
+                for (var frond = 0; frond < 6; frond++)
+                {
+                    var angle = (frond + (float)random.NextDouble() * 0.4f) / 6f * MathF.Tau;
+                    var reach = new Vector3(MathF.Cos(angle), 0f, MathF.Sin(angle)) * tree.CrownRadius * 0.85f;
+                    b.AddCylinder(crown, crown + reach - Vector3.UnitY * tree.CrownRadius * 0.3f, tree.CrownRadius * 0.16f, 0f, 5, color);
+                }
+            }
+            else if (tree.Shape == TreeShape.Cherry)
+            {
+                // Blossom rather than leaves, and a wider, lower crown.
+                var color = style.BlossomColor.ToVector3() * (0.92f + hash * 0.16f);
+                var center = ground + Vector3.UnitY * (tree.Height - tree.CrownRadius * 0.8f);
+                var random = new Random((int)(hash * int.MaxValue));
+                AddRock(b, random, center, tree.CrownRadius, color * 0.95f, color, flatten: false);
+                var offset = new Vector3((float)random.NextDouble() - 0.5f, 0f, (float)random.NextDouble() - 0.5f) * tree.CrownRadius * 1.1f;
+                AddRock(b, random, center + offset - Vector3.UnitY * tree.CrownRadius * 0.2f, tree.CrownRadius * 0.72f, color, color * 1.06f, flatten: false);
+            }
+            else if (tree.Shape == TreeShape.Conifer)
             {
                 var color = style.ConiferColor.ToVector3() * shade;
                 var crownHeight = tree.Height - trunkHeight;

@@ -161,10 +161,19 @@ internal static class BerthPlacement
     /// upright to someone standing on the pier looking at the berth.
     /// </summary>
     /// <returns>Center of the text, glyph height, heading of the text's "up" direction and the reading direction.</returns>
-    public static (Vector2 Center, float Height, float UpHeadingDegrees, Vector2 ReadingDirection) LabelPlacement(Berth berth, int characterCount)
+    public static (Vector2 Center, float Height, float UpHeadingDegrees, Vector2 ReadingDirection) LabelPlacement(Berth berth, int characterCount) =>
+        LabelPlacement(berth, characterCount, LabelFont.Regular);
+
+    /// <summary>Where a berth's label sits, for text set in a particular face.</summary>
+    /// <param name="berth">The berth.</param>
+    /// <param name="characterCount">How many characters the label has.</param>
+    /// <param name="font">The face the label is set in, which decides how wide it runs.</param>
+    /// <returns>Center of the text, glyph height, heading of the text's "up" direction and the reading direction.</returns>
+    public static (Vector2 Center, float Height, float UpHeadingDegrees, Vector2 ReadingDirection) LabelPlacement(Berth berth, int characterCount, LabelFont font)
     {
+        ArgumentNullException.ThrowIfNull(berth);
         var available = MathF.Max(0.5f, berth.Width * LabelWidthFraction);
-        var height = Math.Clamp(available / MathF.Max(GlyphFont.MeasureWidth(characterCount), 0.01f), MinLabelHeight, MaxLabelHeight);
+        var height = Math.Clamp(available / MathF.Max(GlyphFont.MeasureWidth(characterCount, font), 0.01f), MinLabelHeight, MaxLabelHeight);
         const float gap = 0.35f;
         var center = berth.Center - berth.Forward * (berth.Length * 0.5f + gap + height * 0.5f);
         var upHeading = berth.HeadingDegrees + 180f;

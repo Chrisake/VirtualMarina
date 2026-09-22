@@ -6,6 +6,7 @@ using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
+using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Rendering;
 
 namespace VirtualMarina.Core.Serialization;
@@ -949,6 +950,10 @@ internal sealed class LandStyleDto : ExtensibleDto
 
     public ColorRgba Trunk { get; set; } = new(0.38f, 0.27f, 0.17f);
 
+    public ColorRgba Palm { get; set; } = new(0.33f, 0.52f, 0.26f);
+
+    public ColorRgba Blossom { get; set; } = new(0.95f, 0.72f, 0.80f);
+
     public bool ShowTrees { get; set; } = true;
 
     public static LandStyleDto From(LandStyle land) => new()
@@ -962,6 +967,8 @@ internal sealed class LandStyleDto : ExtensibleDto
         Foliage = land.FoliageColor,
         Conifer = land.ConiferColor,
         Trunk = land.TrunkColor,
+        Palm = land.PalmColor,
+        Blossom = land.BlossomColor,
         ShowTrees = land.ShowTrees,
     };
 
@@ -976,6 +983,8 @@ internal sealed class LandStyleDto : ExtensibleDto
         land.FoliageColor = Foliage;
         land.ConiferColor = Conifer;
         land.TrunkColor = Trunk;
+        land.PalmColor = Palm;
+        land.BlossomColor = Blossom;
         land.ShowTrees = ShowTrees;
     }
 }
@@ -1043,11 +1052,14 @@ internal sealed class LabelDto : ExtensibleDto
 
     public ColorRgba Disabled { get; set; } = new(0.62f, 0.64f, 0.66f);
 
+    public LabelFont FontFamily { get; set; }
+
     public static LabelDto From(LabelStyle labels) => new()
     {
         Color = labels.Color,
         Highlight = labels.HighlightColor,
         Disabled = labels.DisabledColor,
+        FontFamily = labels.FontFamily,
     };
 
     public void ApplyTo(LabelStyle labels)
@@ -1055,6 +1067,7 @@ internal sealed class LabelDto : ExtensibleDto
         labels.Color = Color;
         labels.HighlightColor = Highlight;
         labels.DisabledColor = Disabled;
+        labels.FontFamily = FontFamily;
     }
 }
 

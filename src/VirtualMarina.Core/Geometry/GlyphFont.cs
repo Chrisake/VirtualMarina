@@ -1,7 +1,26 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Numerics;
 
 namespace VirtualMarina.Core.Geometry;
+
+/// <summary>
+/// The faces berth labels can be set in. They are stroke fonts baked into meshes, not typefaces from the system, so
+/// the choice is between a few built-in weights and widths rather than a font file.
+/// </summary>
+public enum LabelFont
+{
+    /// <summary>The default: even strokes, normal width.</summary>
+    Regular = 0,
+
+    /// <summary>Heavier strokes, for labels that must read from further away.</summary>
+    Bold = 1,
+
+    /// <summary>Narrower glyphs, so longer names fit across a berth.</summary>
+    Condensed = 2,
+
+    /// <summary>Wider glyphs, easier to read on big berths.</summary>
+    Wide = 3,
+}
 
 /// <summary>
 /// Minimal stroke font for text laid flat on the water (berth labels). Each character is a mesh of flat,
@@ -15,15 +34,27 @@ namespace VirtualMarina.Core.Geometry;
 /// </remarks>
 public static class GlyphFont
 {
-    /// <summary>Glyph width as a fraction of its height.</summary>
+    /// <summary>Glyph width of <see cref="LabelFont.Regular"/> as a fraction of its height.</summary>
     public const float GlyphWidth = 4f / 6f;
 
-    /// <summary>Distance between consecutive glyph centers, as a fraction of the height.</summary>
+    /// <summary>Distance between consecutive <see cref="LabelFont.Regular"/> glyph centers, as a fraction of the height.</summary>
     public const float Advance = 5.2f / 6f;
+
+    /// <summary>Ids of one face's glyphs start this far apart.</summary>
+    private const int FamilyStride = 100;
 
     private const float GridHeight = 6f;
     private const float GridWidth = 4f;
     private const float StrokeWidth = 0.75f;
+
+    /// <summary>How each face differs: how heavy its strokes are and how wide its glyphs sit.</summary>
+    private static (float Stroke, float Width) Face(LabelFont font) => font switch
+    {
+        LabelFont.Bold => (1.15f, 1f),
+        LabelFont.Condensed => (0.7f, 0.76f),
+        LabelFont.Wide => (0.8f, 1.22f),
+        _ => (StrokeWidth, 1f),
+    };
 
     // Polylines on a 4 × 6 grid (x right, y up), separated by '|'.
     private static readonly Dictionary<char, string> Strokes = new()
@@ -82,32 +113,61 @@ public static class GlyphFont
     /// <summary>Characters that have a glyph (besides space).</summary>
     public static IReadOnlyList<char> SupportedCharacters => Characters;
 
-    /// <summary>Mesh id for a character; false for whitespace (nothing to draw).</summary>
-    public static bool TryGetMeshId(char c, out int meshId)
+    /// <summary>Mesh id for a character in <see cref="LabelFont.Regular"/>; false for whitespace (nothing to draw).</summary>
+    public static bool TryGetMeshId(char c, out int meshId) => TryGetMeshId(c, LabelFont.Regular, out meshId);
+
+    /// <summary>Mesh id for a character in one face; false for whitespace (nothing to draw).</summary>
+    /// <param name="c">The character.</param>
+    /// <param name="font">Which face to draw it in.</param>
+    /// <param name="meshId">The mesh to place.</param>
+    public static bool TryGetMeshId(char c, LabelFont font, out int meshId)
     {
         meshId = 0;
         if (char.IsWhiteSpace(c)) return false;
         var upper = char.ToUpper(c, CultureInfo.InvariantCulture);
         var index = Array.BinarySearch(Characters, Strokes.ContainsKey(upper) ? upper : '?');
-        meshId = MeshIds.GlyphBase + index;
+        meshId = MeshIds.GlyphBase + (int)font * FamilyStride + index;
         return true;
     }
 
-    /// <summary>Width of a line of text in units of the glyph height.</summary>
-    public static float MeasureWidth(int characterCount) =>
-        characterCount <= 0 ? 0f : (characterCount - 1) * Advance + GlyphWidth;
+    /// <summary>Distance between consecutive glyph centers in a face, as a fraction of the height.</summary>
+    /// <param name="font">The face.</param>
+    public static float AdvanceOf(LabelFont font) => Advance * Face(font).Width;
 
-    /// <summary>One mesh per supported character, with ids from <see cref="MeshIds.GlyphBase"/>. Registered by <see cref="MeshLibrary.CreateDefault"/>.</summary>
+    /// <summary>Glyph width in a face, as a fraction of the height.</summary>
+    /// <param name="font">The face.</param>
+    public static float GlyphWidthOf(LabelFont font) => GlyphWidth * Face(font).Width;
+
+    /// <summary>Width of a line of <see cref="LabelFont.Regular"/> text in units of the glyph height.</summary>
+    public static float MeasureWidth(int characterCount) => MeasureWidth(characterCount, LabelFont.Regular);
+
+    /// <summary>Width of a line of text in units of the glyph height.</summary>
+    /// <param name="characterCount">How many characters.</param>
+    /// <param name="font">The face it is set in.</param>
+    public static float MeasureWidth(int characterCount, LabelFont font) =>
+        characterCount <= 0 ? 0f : (characterCount - 1) * AdvanceOf(font) + GlyphWidthOf(font);
+
+    /// <summary>
+    /// Every supported character in every face, with ids from <see cref="MeshIds.GlyphBase"/>.
+    /// Registered by <see cref="MeshLibrary.CreateDefault"/>.
+    /// </summary>
     public static IEnumerable<MeshData> CreateAll()
     {
-        for (var i = 0; i < Characters.Length; i++) yield return CreateGlyph(Characters[i], MeshIds.GlyphBase + i);
+        foreach (var font in Enum.GetValues<LabelFont>())
+        {
+            for (var i = 0; i < Characters.Length; i++)
+            {
+                yield return CreateGlyph(Characters[i], MeshIds.GlyphBase + (int)font * FamilyStride + i, font);
+            }
+        }
     }
 
-    private static MeshData CreateGlyph(char c, int meshId)
+    private static MeshData CreateGlyph(char c, int meshId, LabelFont font)
     {
         var b = new MeshBuilder();
         var white = Vector3.One;
-        var halfStroke = StrokeWidth * 0.5f;
+        var (stroke, widthScale) = Face(font);
+        var halfStroke = stroke * 0.5f;
 
         foreach (var polyline in Strokes[c].Split('|'))
         {
@@ -130,10 +190,12 @@ public static class GlyphFont
             }
         }
 
-        return b.Build(meshId, $"Glyph '{c}'");
+        return b.Build(meshId, $"Glyph '{c}' ({font})");
+
+        Vector3 ToModel(Vector2 grid) => GlyphFont.ToModel(grid, widthScale);
     }
 
     /// <summary>Grid → model space: 1 unit tall, centered, reading direction along −X.</summary>
-    private static Vector3 ToModel(Vector2 grid) =>
-        new(-(grid.X - GridWidth * 0.5f) / GridHeight, 0f, (grid.Y - GridHeight * 0.5f) / GridHeight);
+    private static Vector3 ToModel(Vector2 grid, float widthScale) =>
+        new(-(grid.X - GridWidth * 0.5f) / GridHeight * widthScale, 0f, (grid.Y - GridHeight * 0.5f) / GridHeight);
 }

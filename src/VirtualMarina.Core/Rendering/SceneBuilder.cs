@@ -225,15 +225,16 @@ internal static class SceneBuilder
         var text = berth.DisplayName.Trim();
         if (text.Length == 0) return;
 
-        var (center, height, upHeading, reading) = BerthPlacement.LabelPlacement(berth, text.Length);
-        var start = center - reading * (GlyphFont.MeasureWidth(text.Length) * height * 0.5f - GlyphFont.GlyphWidth * height * 0.5f);
+        var font = t_palette?.LabelFontFamily ?? LabelFont.Regular;
+        var (center, height, upHeading, reading) = BerthPlacement.LabelPlacement(berth, text.Length, font);
+        var start = center - reading * (GlyphFont.MeasureWidth(text.Length, font) * height * 0.5f - GlyphFont.GlyphWidthOf(font) * height * 0.5f);
         var tint = berth.IsDisabled ? Colors.LabelDisabled : highlighted ? Colors.LabelHighlight : Colors.Label;
         var scale = new Vector3(height, 1f, height);
 
         for (var i = 0; i < text.Length; i++)
         {
-            if (!GlyphFont.TryGetMeshId(text[i], out var meshId)) continue;
-            var position = start + reading * (i * GlyphFont.Advance * height);
+            if (!GlyphFont.TryGetMeshId(text[i], font, out var meshId)) continue;
+            var position = start + reading * (i * GlyphFont.AdvanceOf(font) * height);
             output.Add(new RenderObject(
                 meshId,
                 MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, ground is { } g ? g + BerthPlacement.LandPadLift + 0.02f : LabelHeightAboveWater)),
@@ -637,6 +638,7 @@ internal static class SceneBuilder
             Label = Opaque(style.Labels.Color.ToVector3());
             LabelHighlight = Opaque(style.Labels.HighlightColor.ToVector3());
             LabelDisabled = Opaque(style.Labels.DisabledColor.ToVector3());
+            LabelFontFamily = style.Labels.FontFamily;
         }
 
         public Vector4 WoodDeck { get; }
@@ -661,6 +663,9 @@ internal static class SceneBuilder
         public Vector4 Label { get; }
         public Vector4 LabelHighlight { get; }
         public Vector4 LabelDisabled { get; }
+
+        /// <summary>The face berth labels are set in.</summary>
+        public LabelFont LabelFontFamily { get; }
 
         private static Vector4 Opaque(Vector3 color) => new(Vector3.Clamp(color, Vector3.Zero, Vector3.One), 1f);
     }

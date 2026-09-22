@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
+using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Rendering;
 
 namespace VirtualMarina.Core.Serialization;
@@ -59,6 +60,7 @@ public static class MarinaJson
             new TolerantEnumConverter<MooringStyle>(),
             new TolerantEnumConverter<BerthSeparator>(),
             new TolerantEnumConverter<BerthLabelMode>(),
+            new TolerantEnumConverter<LabelFont>(),
         },
     };
 

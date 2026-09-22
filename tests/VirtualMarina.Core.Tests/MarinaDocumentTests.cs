@@ -4,6 +4,7 @@ using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
+using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Rendering;
 using VirtualMarina.Core.Serialization;
 using VirtualMarina.SampleData;
@@ -463,5 +464,57 @@ public class MarinaDocumentTests
         Assert.True(pose.Distance > 60f, $"expected the whole pier framed, got {pose.Distance:0} m");
 
         Assert.False(marina.FocusPier("nope", CameraAngle.TopDown));
+    }
+
+    [Fact]
+    public void ScatteredTrees_AreMostlyOrdinary_WithTheOccasionalCherry()
+    {
+        var outline = new[] { new Vector2(0, 0), new Vector2(400, 0), new Vector2(400, 400), new Vector2(0, 400) };
+        var trees = LandArea.GenerateTrees(outline, 40f, new Random(7));
+        Assert.True(trees.Count > 200, $"expected a decent sample, got {trees.Count}");
+
+        var kinds = trees.GroupBy(t => t.Shape).ToDictionary(g => g.Key, g => g.Count());
+        Assert.True(kinds.GetValueOrDefault(TreeShape.Broadleaf) > kinds.GetValueOrDefault(TreeShape.Conifer));
+        Assert.Contains(TreeShape.Cypress, kinds.Keys);
+        Assert.Contains(TreeShape.Palm, kinds.Keys);
+
+        // The cherry is meant to be a surprise, not a feature of the landscape.
+        var cherries = kinds.GetValueOrDefault(TreeShape.Cherry);
+        Assert.True(cherries * 20 < trees.Count, $"{cherries} cherries out of {trees.Count} is not rare");
+    }
+
+    [Fact]
+    public void EveryLabelFace_HasItsOwnGlyphsAndWidth()
+    {
+        var ids = new HashSet<int>();
+        foreach (var font in Enum.GetValues<LabelFont>())
+        {
+            Assert.True(GlyphFont.TryGetMeshId('A', font, out var meshId));
+            Assert.True(ids.Add(meshId), $"{font} shares its glyphs with another face");
+        }
+
+        // Condensed runs narrower than regular, wide runs broader.
+        var regular = GlyphFont.MeasureWidth(5, LabelFont.Regular);
+        Assert.True(GlyphFont.MeasureWidth(5, LabelFont.Condensed) < regular);
+        Assert.True(GlyphFont.MeasureWidth(5, LabelFont.Wide) > regular);
+
+        // Every face's glyphs are actually built.
+        var built = GlyphFont.CreateAll().Select(mesh => mesh.Id).ToHashSet();
+        Assert.True(GlyphFont.TryGetMeshId('A', LabelFont.Bold, out var bold));
+        Assert.Contains(bold, built);
+    }
+
+    [Fact]
+    public void TheLabelFace_AndTheNewTreeColours_SurviveASaveAndLoad()
+    {
+        var marina = new MarinaVisualizer();
+        marina.Style.Labels.FontFamily = LabelFont.Condensed;
+        marina.Style.Land.BlossomColor = new ColorRgba(0.9f, 0.5f, 0.6f);
+
+        var copy = new MarinaVisualizer();
+        MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson()).ApplyTo(copy);
+
+        Assert.Equal(LabelFont.Condensed, copy.Style.Labels.FontFamily);
+        Assert.Equal("#E68099", copy.Style.Land.BlossomColor.ToHex());
     }
 }

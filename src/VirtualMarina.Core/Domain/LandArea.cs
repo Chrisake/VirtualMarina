@@ -25,6 +25,17 @@ public enum TreeShape
 
     /// <summary>Tall, pointed crown (pine, cypress).</summary>
     Conifer = 1,
+
+    /// <summary>Bare trunk with a spray of fronds on top (palm). Common along a promenade.</summary>
+    Palm = 2,
+
+    /// <summary>Narrow column (Italian cypress), the exclamation mark of a Mediterranean shore.</summary>
+    Cypress = 3,
+
+    /// <summary>
+    /// Pink blossom (Japanese cherry). Scattered far more rarely than the rest, so finding one is a small surprise.
+    /// </summary>
+    Cherry = 4,
 }
 
 /// <summary>A tree standing on a <see cref="LandArea"/>. Positions and sizes are stored, so trees look the same in every session.</summary>
@@ -126,20 +137,48 @@ public sealed record LandArea
         var trees = new List<LandTree>(target);
         for (var attempt = 0; attempt < target * 30 && trees.Count < target; attempt++)
         {
-            var conifer = random.NextDouble() < 0.3;
-            var height = conifer ? 6f + (float)random.NextDouble() * 7f : 4f + (float)random.NextDouble() * 5f;
-            var radius = conifer ? height * (0.16f + (float)random.NextDouble() * 0.06f) : height * (0.3f + (float)random.NextDouble() * 0.12f);
+            var shape = PickShape(random);
+            var narrow = shape is TreeShape.Conifer or TreeShape.Cypress or TreeShape.Palm;
+            var height = shape switch
+            {
+                TreeShape.Conifer => 6f + (float)random.NextDouble() * 7f,
+                TreeShape.Cypress => 7f + (float)random.NextDouble() * 5f,
+                TreeShape.Palm => 5f + (float)random.NextDouble() * 5f,
+                TreeShape.Cherry => 4f + (float)random.NextDouble() * 3f,
+                _ => 4f + (float)random.NextDouble() * 5f,
+            };
+
+            var radius = shape switch
+            {
+                TreeShape.Cypress => height * (0.08f + (float)random.NextDouble() * 0.03f),
+                TreeShape.Palm => height * (0.22f + (float)random.NextDouble() * 0.06f),
+                _ when narrow => height * (0.16f + (float)random.NextDouble() * 0.06f),
+                _ => height * (0.3f + (float)random.NextDouble() * 0.12f),
+            };
             var position = new Vector2(min.X + (float)random.NextDouble() * (max.X - min.X), min.Y + (float)random.NextDouble() * (max.Y - min.Y));
 
             if (!PolygonMath.Contains(outline, position) || PolygonMath.DistanceToBoundary(outline, position) < radius * 0.8f + 0.5f) continue;
             if (clear.Any(r => new OrientedRect(r.Center, r.Size + new Vector2(radius * 2f + 1f), r.HeadingDegrees).Contains(position))) continue;
             if (trees.Any(t => Vector2.Distance(t.Position, position) < (t.CrownRadius + radius) * 0.9f)) continue;
 
-            trees.Add(new LandTree(position, MathF.Round(height, 2), MathF.Round(radius, 2), conifer ? TreeShape.Conifer : TreeShape.Broadleaf));
+            trees.Add(new LandTree(position, MathF.Round(height, 2), MathF.Round(radius, 2), shape));
         }
 
         return trees;
     }
+
+    /// <summary>
+    /// What the next scattered tree is: mostly broadleaf, a good share of conifers, a few cypresses and palms, and
+    /// once in a great while a cherry in blossom.
+    /// </summary>
+    private static TreeShape PickShape(Random random) => random.NextDouble() switch
+    {
+        < 0.010 => TreeShape.Cherry,
+        < 0.075 => TreeShape.Palm,
+        < 0.150 => TreeShape.Cypress,
+        < 0.430 => TreeShape.Conifer,
+        _ => TreeShape.Broadleaf,
+    };
 
     /// <summary><see cref="Name"/> when set, otherwise <see cref="Id"/>.</summary>
     public string DisplayName => string.IsNullOrWhiteSpace(Name) ? Id : Name!;

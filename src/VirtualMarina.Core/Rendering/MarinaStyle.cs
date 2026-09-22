@@ -87,6 +87,8 @@ public sealed class LandStyle : StyleSection
     private ColorRgba _foliage = new(0.24f, 0.46f, 0.20f);
     private ColorRgba _conifer = new(0.16f, 0.36f, 0.22f);
     private ColorRgba _trunk = new(0.38f, 0.27f, 0.17f);
+    private ColorRgba _palm = new(0.33f, 0.52f, 0.26f);
+    private ColorRgba _blossom = new(0.95f, 0.72f, 0.80f);
     private bool _showTrees = true;
     private float _rockVariation = 0.2f;
 
@@ -116,6 +118,12 @@ public sealed class LandStyle : StyleSection
 
     /// <summary>Tree trunks.</summary>
     public ColorRgba TrunkColor { get => _trunk; set => SetField(ref _trunk, value); }
+
+    /// <summary>Fronds of palms.</summary>
+    public ColorRgba PalmColor { get => _palm; set => SetField(ref _palm, value); }
+
+    /// <summary>Blossom of cherry trees (<see cref="Domain.TreeShape.Cherry"/>).</summary>
+    public ColorRgba BlossomColor { get => _blossom; set => SetField(ref _blossom, value); }
 
     /// <summary>Draw the trees of land areas (<c>LandArea.Trees</c>). Default true.</summary>
     public bool ShowTrees { get => _showTrees; set => SetField(ref _showTrees, value); }
@@ -176,6 +184,13 @@ public sealed class LabelStyle : StyleSection
     private ColorRgba _color = new(0.97f, 0.98f, 1f);
     private ColorRgba _highlight = new(1f, 0.90f, 0.35f);
     private ColorRgba _disabled = new(0.62f, 0.64f, 0.66f);
+    private Geometry.LabelFont _font = Geometry.LabelFont.Regular;
+
+    /// <summary>
+    /// The face berth labels are set in. These are built-in stroke faces rather than system typefaces, so the
+    /// choice is between a few weights and widths (see <see cref="Geometry.LabelFont"/>).
+    /// </summary>
+    public Geometry.LabelFont FontFamily { get => _font; set => SetField(ref _font, Enum.IsDefined(value) ? value : Geometry.LabelFont.Regular); }
 
     /// <summary>Normal label color.</summary>
     public ColorRgba Color { get => _color; set => SetField(ref _color, value); }
