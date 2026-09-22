@@ -65,6 +65,70 @@ internal sealed class DocumentDto : ExtensibleDto
     public CameraDto? Camera { get; set; }
 
     public DesignerDto? Designer { get; set; }
+
+    public ReferenceImageDto? ReferenceImage { get; set; }
+}
+
+/// <summary>The traced-over picture: the original file in base64, and where it sits.</summary>
+internal sealed class ReferenceImageDto : ExtensibleDto
+{
+    public string? Data { get; set; }
+
+    public string? ContentType { get; set; }
+
+    public int PixelWidth { get; set; }
+
+    public int PixelHeight { get; set; }
+
+    public Vector2 Center { get; set; }
+
+    public float MetersPerPixel { get; set; } = 1f;
+
+    public float Opacity { get; set; } = 0.6f;
+
+    public bool Visible { get; set; } = true;
+
+    public bool AboveScene { get; set; } = true;
+
+    public static ReferenceImageDto From(ReferenceImageRecord record) => new()
+    {
+        Data = Convert.ToBase64String(record.Image.EncodedData ?? Array.Empty<byte>()),
+        ContentType = record.Image.ContentType,
+        PixelWidth = record.Image.PixelWidth,
+        PixelHeight = record.Image.PixelHeight,
+        Center = record.Center,
+        MetersPerPixel = record.MetersPerPixel,
+        Opacity = record.Opacity,
+        Visible = record.Visible,
+        AboveScene = record.AboveScene,
+    };
+
+    /// <summary>The stored picture, or null when the entry is unusable (no bytes, or a size that makes no sense).</summary>
+    public ReferenceImageRecord? ToDomain()
+    {
+        if (string.IsNullOrWhiteSpace(Data) || PixelWidth <= 0 || PixelHeight <= 0) return null;
+
+        byte[] bytes;
+        try
+        {
+            bytes = Convert.FromBase64String(Data);
+        }
+        catch (FormatException)
+        {
+            return null; // A corrupted picture must not stop the rest of the design from loading.
+        }
+
+        if (bytes.Length == 0) return null;
+        return new ReferenceImageRecord
+        {
+            Image = Design.ReferenceImage.FromEncoded(bytes, PixelWidth, PixelHeight, ContentType ?? "image/png"),
+            Center = Center,
+            MetersPerPixel = MetersPerPixel,
+            Opacity = Opacity,
+            Visible = Visible,
+            AboveScene = AboveScene,
+        };
+    }
 }
 
 internal sealed class MarinaDto : ExtensibleDto
@@ -291,17 +355,24 @@ internal sealed class BerthDto : ExtensibleDto
 
     public float? MaxDraft { get; set; }
 
-    public BerthStatus Status { get; set; }
+    /// <summary>
+    /// Occupancy and the interaction flags are runtime state: the host application sets them from its own records
+    /// every session, so a design does not carry them. They are still read, for files written before that was so.
+    /// </summary>
+    public BerthStatus? Status { get; set; }
 
     public BoatDto? Boat { get; set; }
 
     public bool HasFingerPiers { get; set; } = true;
 
-    public bool IsVisible { get; set; } = true;
+    /// <inheritdoc cref="Status"/>
+    public bool? IsVisible { get; set; }
 
-    public bool IsDisabled { get; set; }
+    /// <inheritdoc cref="Status"/>
+    public bool? IsDisabled { get; set; }
 
-    public bool IsReadOnly { get; set; }
+    /// <inheritdoc cref="Status"/>
+    public bool? IsReadOnly { get; set; }
 
     public Dictionary<string, string>? Metadata { get; set; }
 
@@ -327,12 +398,8 @@ internal sealed class BerthDto : ExtensibleDto
         Length = berth.Length,
         Width = berth.Width,
         MaxDraft = berth.MaxDraft,
-        Status = berth.Status,
-        Boat = berth.Boat is { } boat ? BoatDto.From(boat) : null,
+        // Status, the flags and any boat are left out on purpose: see the Status property.
         HasFingerPiers = berth.HasFingerPiers,
-        IsVisible = berth.IsVisible,
-        IsDisabled = berth.IsDisabled,
-        IsReadOnly = berth.IsReadOnly,
         Metadata = berth.Metadata.Count == 0 ? null : berth.Metadata.ToDictionary(e => e.Key, e => e.Value),
     };
 
@@ -347,12 +414,12 @@ internal sealed class BerthDto : ExtensibleDto
         {
             Label = Label,
             MaxDraft = MaxDraft,
-            Status = Status,
+            Status = Status ?? BerthStatus.Free,
             Boat = Boat?.ToDomain(),
             HasFingerPiers = LandAreaId is { Length: > 0 } ? false : HasFingerPiers,
-            IsVisible = IsVisible,
-            IsDisabled = IsDisabled,
-            IsReadOnly = IsReadOnly,
+            IsVisible = IsVisible ?? true,
+            IsDisabled = IsDisabled ?? false,
+            IsReadOnly = IsReadOnly ?? false,
             Metadata = Metadata is null ? berth.Metadata : Metadata,
         };
     }
@@ -443,7 +510,7 @@ internal sealed class MultiBerthDto : ExtensibleDto
     {
         Id = entry.Id,
         Boat = entry.Boat,
-        Status = entry.Status,
+        Status = entry.Status ?? BerthStatus.Occupied,
         Style = entry.LegacyMooringStyle ?? MooringStyle.Alongside,
         BerthIds = entry.LegacyMemberIds,
         Extra = entry.Extra,

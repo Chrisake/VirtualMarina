@@ -119,6 +119,31 @@ public class NamingTests
     }
 
     [Fact]
+    public void ASingleSidedPier_LeavesTheSideLetterOutOfItsBerthNames()
+    {
+        var both = new Pier("A", "Pier A", Vector2.Zero, 0f, 40f);
+        var oneSided = both with { BerthingSides = PierSides.Right };
+        var scheme = BerthNamingScheme.Default;
+
+        Assert.Equal("A-R01", scheme.Format(both, PierSide.Right, 1));
+
+        // Nothing to tell apart, so no letter.
+        Assert.Equal("A-01", scheme.Format(oneSided, PierSide.Right, 1));
+    }
+
+    [Fact]
+    public void Designer_NamesBerthsOnASingleSidedPier_WithoutTheSideLetter()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("Q", "Quay pontoon", Vector2.Zero, 0f, 40f) { BerthingSides = PierSides.Left });
+        var designer = marina.Designer;
+        designer.IsActive = true;
+        designer.BerthWidth = 5f;
+
+        Assert.Equal(new[] { "Q-01", "Q-02" }, designer.CreateBerths("Q", PierSide.Left, 0f, 10f).Select(b => b.Id));
+    }
+
+    [Fact]
     public void Designer_NamesDrawnPiers_ByThePattern()
     {
         var marina = new MarinaVisualizer();

@@ -965,6 +965,11 @@ public sealed class MarinaDesigner
         {
             if (!float.IsFinite(value.X) || !float.IsFinite(value.Y)) throw new ArgumentOutOfRangeException(nameof(value), value, "The center must be finite.");
             if (value == _imageCenter) return;
+
+            // The line was measured on the picture, so it goes where the picture goes.
+            var moved = value - _imageCenter;
+            if (_scaleLine is { } line) _scaleLine = (line.Start + moved, line.End + moved);
+
             _imageCenter = value;
             OnImageChanged(ReferenceImageChange.Moved);
         }
@@ -1027,7 +1032,21 @@ public sealed class MarinaDesigner
     public Vector2 ReferenceImageSize => _image is null ? Vector2.Zero : new Vector2(_image.PixelWidth, _image.PixelHeight) * _imageMetersPerPixel;
 
     /// <summary>The last line drawn with <see cref="DesignTool.MeasureScale"/>, or null.</summary>
+    /// <remarks>It is measured on the picture, so it moves and scales with it, and is not saved to a marina file.</remarks>
     public (Vector2 Start, Vector2 End)? ScaleLine => _scaleLine;
+
+    /// <summary>
+    /// Forgets the measuring line, once the image has been scaled by it and the line is only in the way.
+    /// Returns false when there was none.
+    /// </summary>
+    public bool ClearScaleLine()
+    {
+        if (_scaleLine is null) return false;
+        _scaleLine = null;
+        _marina.MarkSceneDirty();
+        RaiseStateChanged();
+        return true;
+    }
 
     /// <summary>
     /// Shows an image to trace (north at the top). Without <paramref name="metersPerPixel"/> it is sized to cover the current layout
@@ -1286,12 +1305,14 @@ public sealed class MarinaDesigner
         var textFloor = _marina.GetLandAreas().Select(l => l.Height).Append(_landHeight).Append(Pier.GetDefaultDeckHeight(PierType.Concrete)).Max() + 0.5f;
         var overlay = new Overlay(output, line, textUp, textFloor);
 
-        if (_scaleLine is { } scale && _image is not null && (_active || _tool == DesignTool.MeasureScale))
+        if (_scaleLine is { } scale && _image is not null && _imageVisible && _imageOpacity > 0.01f && (_active || _tool == DesignTool.MeasureScale))
         {
             var y = ImageDrawHeight() + 0.05f;
-            overlay.Line(scale.Start, scale.End, y, ScaleLineColor);
-            overlay.Dot(scale.Start, y, ScaleLineColor);
-            overlay.Dot(scale.End, y, ScaleLineColor);
+            // The line is drawn on the picture, so it fades with it.
+            var color = ScaleLineColor with { W = ScaleLineColor.W * _imageOpacity };
+            overlay.Line(scale.Start, scale.End, y, color);
+            overlay.Dot(scale.Start, y, color);
+            overlay.Dot(scale.End, y, color);
         }
 
         if (!_active) return;

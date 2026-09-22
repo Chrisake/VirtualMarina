@@ -52,14 +52,17 @@ public class MarinaDocumentTests
         Assert.Equal(0.6f, copy.Designer.BerthGap, 3);
         Assert.Equal(PierServices.PowerAndWater, copy.Designer.BerthServices);
 
-        // Everything that matters for a berth desk survives: status, boat, labels, land berths and pedestals.
+        // The shape of a berth survives; who is in it does not, because that is the host application's to set.
         var occupied = marina.GetBerthsByStatus(BerthStatus.Occupied)[0];
         var loaded = copy.GetBerth(occupied.Id)!;
-        Assert.Equal(occupied.Boat!.Name, loaded.Boat!.Name);
-        Assert.Equal(occupied.Boat.Type, loaded.Boat.Type);
-        Assert.Equal(occupied.Boat.LengthMeters, loaded.Boat.LengthMeters, 3);
         Assert.Equal(occupied.MaxDraft, loaded.MaxDraft);
         Assert.Equal(occupied.Metadata.Count, loaded.Metadata.Count);
+        Assert.Equal(occupied.Center, loaded.Center);
+        Assert.Equal(BerthStatus.Free, loaded.Status);
+        Assert.Null(loaded.Boat);
+        // isVisible belongs to berths alone, so its absence shows the runtime flags were left out. (A multi-berth
+        // still writes its status and boat: it is the boat spanning the berths, and is invalid without one.)
+        Assert.DoesNotContain("\"isVisible\"", json);
         Assert.Equal(marina.GetBerthsByLandArea(MockMarinaFactory.BoatyardId).Count, copy.GetBerthsByLandArea(MockMarinaFactory.BoatyardId).Count);
         Assert.Equal(marina.GetPier("E")!.Services, copy.GetPier("E")!.Services);
     }
@@ -347,5 +350,67 @@ public class MarinaDocumentTests
         // An element without metadata keeps an empty dictionary rather than null, and writes nothing to the file.
         Assert.Empty(reloaded.GetBerth("A-L02")!.Metadata);
         Assert.DoesNotContain("\"metadata\": {}", MarinaDocument.FromVisualizer(reloaded).ToJson());
+    }
+
+    [Fact]
+    public void TheTracingImage_TravelsInTheFile_ButTheMeasuringLineDoesNot()
+    {
+        var marina = new MarinaVisualizer();
+        var designer = marina.Designer;
+
+        // A picture that still knows the file it came from is the kind that can be stored.
+        var png = new byte[] { 137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3 };
+        var image = new ReferenceImage(2, 2, new byte[2 * 2 * 4], png, "image/png");
+        designer.SetReferenceImage(image, metersPerPixel: 0.25f, center: new Vector2(12, -34));
+        designer.ReferenceImageOpacity = 0.4f;
+        designer.ReferenceImageAboveScene = false;
+        designer.CalibrateReferenceImage(new Vector2(0, 0), new Vector2(10, 0), 20f);
+        Assert.NotNull(designer.ScaleLine);
+
+        var reloaded = MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson());
+        var copy = new MarinaVisualizer();
+        reloaded.ApplyTo(copy);
+
+        var stored = copy.Designer.ReferenceImage!;
+        Assert.Equal(png, stored.EncodedData);
+        Assert.Equal("image/png", stored.ContentType);
+        Assert.Equal(2, stored.PixelWidth);
+        Assert.Equal(designer.ReferenceImageMetersPerPixel, copy.Designer.ReferenceImageMetersPerPixel, 5);
+        Assert.Equal(designer.ReferenceImageCenter, copy.Designer.ReferenceImageCenter);
+        Assert.Equal(0.4f, copy.Designer.ReferenceImageOpacity, 3);
+        Assert.False(copy.Designer.ReferenceImageAboveScene);
+
+        // Scaffolding for calibrating, not part of the design.
+        Assert.Null(copy.Designer.ScaleLine);
+        Assert.DoesNotContain("scaleLine", MarinaDocument.FromVisualizer(marina).ToJson());
+    }
+
+    [Fact]
+    public void APictureWithNoFileBehindIt_IsLeftOutRatherThanStoredAsPixels()
+    {
+        var marina = new MarinaVisualizer();
+        marina.Designer.SetReferenceImage(new ReferenceImage(4, 4, new byte[4 * 4 * 4]), metersPerPixel: 1f);
+
+        Assert.Null(MarinaDocument.FromVisualizer(marina).ReferenceImage);
+    }
+
+    [Fact]
+    public void TheMeasuringLine_MovesWithThePictureAndCanBeCleared()
+    {
+        var marina = new MarinaVisualizer();
+        var designer = marina.Designer;
+        designer.SetReferenceImage(new ReferenceImage(4, 4, new byte[4 * 4 * 4]), metersPerPixel: 1f, center: Vector2.Zero);
+        designer.CalibrateReferenceImage(new Vector2(0, 0), new Vector2(10, 0), 10f);
+
+        var before = designer.ScaleLine!.Value;
+        designer.ReferenceImageCenter += new Vector2(25, -8);
+
+        var after = designer.ScaleLine!.Value;
+        Assert.Equal(before.Start + new Vector2(25, -8), after.Start);
+        Assert.Equal(before.End + new Vector2(25, -8), after.End);
+
+        Assert.True(designer.ClearScaleLine());
+        Assert.Null(designer.ScaleLine);
+        Assert.False(designer.ClearScaleLine());
     }
 }

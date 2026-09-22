@@ -266,7 +266,11 @@ public sealed class LandAreaBuilder
 /// <summary>Computes berth and divider geometry relative to a pier. Useful to ERP code that stores only berth numbers.</summary>
 public static class BerthGenerator
 {
-    internal static string SidePrefix(Pier pier, PierSide side) => $"{pier.Id}-{(side == PierSide.Left ? "L" : "R")}";
+    internal static string SidePrefix(Pier pier, PierSide side) =>
+        // A pier that berths boats on one side only has no left and right to distinguish.
+        pier.BerthingSides is PierSides.Left or PierSides.Right
+            ? $"{pier.Id}-"
+            : $"{pier.Id}-{(side == PierSide.Left ? "L" : "R")}";
 
     internal static string DividerPrefix(Pier pier, PierSide side) => $"{SidePrefix(pier, side)}-D";
 

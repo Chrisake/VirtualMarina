@@ -841,6 +841,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     bool CalibrateReferenceImage(float knownLengthMeters)
     bool CanUndo { get; }
     bool CancelDraft()
+    bool ClearScaleLine()
     bool CompleteDraft()
     bool Erase(object element)
     bool FocusReferenceImage(bool immediate = false)
@@ -887,7 +888,8 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     void ViewTopDown(bool immediate = false)
 
 sealed class VirtualMarina.Core.Design.ReferenceImage
-    .ctor(int pixelWidth, int pixelHeight, byte[] rgba)
+    .ctor(int pixelWidth, int pixelHeight, byte[] rgba, byte[] encodedData = null, string contentType = null)
+    bool CanBeSaved { get; }
     byte[] EncodedData { get; }
     byte[] Rgba { get; }
     int Key { get; }
@@ -1656,19 +1658,20 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     VirtualMarina.Core.Design.DesignerSettings Designer { get; set; }
     VirtualMarina.Core.Domain.MarinaLayout Layout { get; set; }
     VirtualMarina.Core.Rendering.MarinaStyle Style { get; set; }
+    VirtualMarina.Core.Serialization.ReferenceImageRecord ReferenceImage { get; set; }
     bool IsFromNewerVersion { get; }
     const string FileDialogFilter = "Marina design (*.marina.json)|*.marina.json|JSON files (*.json)|*.json|All files (*.*)|*.*"
     const string FileExtension = ".marina.json"
     const string FormatName = "virtualmarina.marina"
     static Version CurrentVersion { get; }
-    static VirtualMarina.Core.Serialization.MarinaDocument FromVisualizer(VirtualMarina.Core.Api.MarinaVisualizer marina, string generator = null, bool includeCamera = true, bool includeDesignerSettings = true)
+    static VirtualMarina.Core.Serialization.MarinaDocument FromVisualizer(VirtualMarina.Core.Api.MarinaVisualizer marina, string generator = null, bool includeCamera = true, bool includeDesignerSettings = true, bool includeReferenceImage = true)
     static VirtualMarina.Core.Serialization.MarinaDocument Load(string path, bool allowNewerVersion = false)
     static VirtualMarina.Core.Serialization.MarinaDocument Parse(string json, bool allowNewerVersion = false)
     string Description { get; set; }
     string Generator { get; set; }
     string Name { get; set; }
     string ToJson(bool indented = true)
-    void ApplyTo(VirtualMarina.Core.Api.MarinaVisualizer marina, bool applyStyle = true, bool applyCamera = true, bool applyDesignerSettings = true)
+    void ApplyTo(VirtualMarina.Core.Api.MarinaVisualizer marina, bool applyStyle = true, bool applyCamera = true, bool applyDesignerSettings = true, bool applyReferenceImage = true)
     void Save(string path, bool indented = true)
     void SetExtension<T>(string key, T value)
 
@@ -1679,3 +1682,20 @@ sealed class VirtualMarina.Core.Serialization.MarinaFormatException : Exception,
 static class VirtualMarina.Core.Serialization.MarinaJson
     static JsonSerializerOptions CompactOptions { get; }
     static JsonSerializerOptions Options { get; }
+
+sealed class VirtualMarina.Core.Serialization.ReferenceImageRecord : IEquatable<VirtualMarina.Core.Serialization.ReferenceImageRecord>
+    .ctor()
+    Vector2 Center { get; init; }
+    VirtualMarina.Core.Design.ReferenceImage Image { get; init; }
+    bool AboveScene { get; init; }
+    bool Equals(VirtualMarina.Core.Serialization.ReferenceImageRecord other)
+    bool Visible { get; init; }
+    float MetersPerPixel { get; init; }
+    float Opacity { get; init; }
+    static VirtualMarina.Core.Serialization.ReferenceImageRecord FromDesigner(VirtualMarina.Core.Design.MarinaDesigner designer)
+    static bool op_Equality(VirtualMarina.Core.Serialization.ReferenceImageRecord left, VirtualMarina.Core.Serialization.ReferenceImageRecord right)
+    static bool op_Inequality(VirtualMarina.Core.Serialization.ReferenceImageRecord left, VirtualMarina.Core.Serialization.ReferenceImageRecord right)
+    virtual bool Equals(object obj)
+    virtual int GetHashCode()
+    virtual string ToString()
+    void ApplyTo(VirtualMarina.Core.Design.MarinaDesigner designer)

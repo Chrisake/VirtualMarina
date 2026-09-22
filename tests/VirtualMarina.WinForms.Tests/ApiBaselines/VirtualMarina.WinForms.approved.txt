@@ -26,7 +26,9 @@ sealed class VirtualMarina.WinForms.MarinaViewControl : UserControl, IBindableCo
 
 static class VirtualMarina.WinForms.ReferenceImageLoader
     const int MaxDimension = 8192
+    static VirtualMarina.Core.Design.ReferenceImage Decoded(VirtualMarina.Core.Design.ReferenceImage image)
+    static VirtualMarina.Core.Design.ReferenceImage FromBytes(byte[] encodedData, string contentType = "image/png")
     static VirtualMarina.Core.Design.ReferenceImage FromFile(string path)
-    static VirtualMarina.Core.Design.ReferenceImage FromImage(Image image)
+    static VirtualMarina.Core.Design.ReferenceImage FromImage(Image image, byte[] encodedData = null, string contentType = null)
     static VirtualMarina.Core.Design.ReferenceImage FromStream(Stream stream)
     static string FileDialogFilter { get; }

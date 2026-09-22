@@ -326,8 +326,11 @@ internal static class SceneBuilder
 
         foreach (var side in Sides)
         {
+            // A pier that berths on one side only gets a taller edge there, the kerb boats come alongside.
+            var berthing = pier.HasBerthsOn(side < 0f ? PierSide.Left : PierSide.Right);
+            var height = berthing && pier.BerthingSides is PierSides.Left or PierSides.Right ? 0.34f : 0.16f;
             var curbOffset = pier.Right * side * (pier.Width * 0.5f - 0.14f);
-            output.Add(Box(pier, pier.Center + curbOffset, 0f, new Vector3(0.28f, 0.16f, pier.Length), top + 0.08f, ConcreteCurb));
+            output.Add(Box(pier, pier.Center + curbOffset, 0f, new Vector3(0.28f, height, pier.Length), top + height * 0.5f, ConcreteCurb));
         }
 
         var count = Math.Max(2, (int)MathF.Floor(pier.Length / pier.PilingSpacing) + 1);

@@ -1,4 +1,4 @@
-# Compatibility and versioning
+﻿# Compatibility and versioning
 
 This library is meant to be integrated and left alone. An application that builds against 1.0 should keep building, and keep running, against every later 1.x release without edits. This page says exactly what that promise covers, how it is enforced, and how to add things without breaking it.
 
@@ -7,7 +7,7 @@ This library is meant to be integrated and left alone. An application that build
 | Version change | What may happen |
 |---|---|
 | **Patch** (1.0.0 → 1.0.1) | Fixes only. Nothing is added to or removed from the API |
-| **Minor** (1.0 → 1.1) | Things are **added**: new types, new members, new optional parameters, new enum members. Nothing published is removed, renamed or given a different meaning |
+| **Minor** (1.0 → 1.1) | Things are **added**: new types, new members, new overloads, new enum members. Nothing published is removed, renamed or given a different signature or meaning |
 | **Major** (1.x → 2.0) | The only release allowed to remove or change what is already published |
 
 `AssemblyVersion` stays at `<major>.0.0.0` for a whole major line, so a newer 1.x assembly is a drop-in replacement: no rebuild, no binding redirects. `FileVersion` and `InformationalVersion` carry the exact version for support.
@@ -59,7 +59,7 @@ The baselines also record every enum number and `const` value, because those are
 | To add | Do this | Not this |
 |---|---|---|
 | Data on a domain record | A new `init` property with a default | A new positional parameter on the record |
-| An argument to a method | A new **optional** parameter at the end, or an overload | A new required parameter |
+| An argument to a method | An overload (an optional parameter only before the method has shipped) | A new required parameter, or a changed default |
 | A value to an enum | Append it with the next free number | Insert it in the middle, or renumber |
 | A member to `ISceneRenderer` | Give it a default implementation | A plain abstract member |
 | A member to `IMarinaVisualizer` | Allowed in a minor release — see below | — |
@@ -68,7 +68,7 @@ The baselines also record every enum number and `const` value, because those are
 A few rules behind the table:
 
 - **Records are extended, never re-shaped.** `Berth`, `Pier`, `Divider`, `LandArea` and `MultiBerth` are `sealed record`s whose data is `init`-only. Adding a property is invisible to existing code; adding a constructor parameter is not. Every one of them carries a `Metadata` dictionary for host-owned strings (saved with the design) and berths additionally carry `ExternalData` for live host objects (never saved), so an integration usually has somewhere to put its own data without the library changing at all.
-- **Optional parameters are baked into the caller.** Adding one is source-compatible and, for practical purposes, binary-compatible; *changing a default value* is not — the old default stays compiled into applications until they rebuild, so two versions would disagree. Treat a default as published.
+- **Optional parameters are baked into the caller, and adding one changes the signature.** Code that is recompiled carries on unchanged, but an application compiled against the old signature looks for a method that no longer exists. So a released method grows an **overload**, not another optional parameter; the parameter form is for methods that have not shipped yet. *Changing a default value* is never safe either — the old default stays compiled into applications until they rebuild, so the two versions quietly disagree. Treat a default as published.
 - **`ISceneRenderer` is implemented outside the library**, by whoever writes a graphics backend. Everything added to it therefore has a default implementation, as `DeviceDescription` does, so an existing backend keeps compiling untouched.
 - **`IMarinaVisualizer` is not meant to be implemented outside the library.** It exists so host code can be written and tested against an abstraction; `MarinaVisualizer` is the implementation. Members are added to it in minor releases. A mocking library handles that by itself; a hand-written implementation does not, which is why it isn't supported.
 - **Renaming is removing.** Even a typo fix in a public name is a break; it waits for a major version, with the old name kept and `[Obsolete]` in between.

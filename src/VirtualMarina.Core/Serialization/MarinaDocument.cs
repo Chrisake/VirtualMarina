@@ -74,6 +74,12 @@ public sealed class MarinaDocument
     /// <summary>The designer's tool settings when the file was saved, so a design reopens the way it was left. Null when not stored.</summary>
     public DesignerSettings? Designer { get; set; }
 
+    /// <summary>
+    /// The picture the marina was traced on, with its place and scale, or null. Stored so a design can be reopened
+    /// and corrected against the same photo later; see <see cref="ReferenceImageRecord"/>.
+    /// </summary>
+    public ReferenceImageRecord? ReferenceImage { get; set; }
+
     /// <summary>Version of the format the document was read from; <see cref="CurrentVersion"/> for a new one.</summary>
     public Version Version { get; private set; } = CurrentVersion;
 
@@ -99,7 +105,16 @@ public sealed class MarinaDocument
     /// <param name="generator">Name and version of the application writing the file.</param>
     /// <param name="includeCamera">Store the camera pose so the view opens where the designer left it (default true).</param>
     /// <param name="includeDesignerSettings">Store the designer's tool settings (default true).</param>
-    public static MarinaDocument FromVisualizer(MarinaVisualizer marina, string? generator = null, bool includeCamera = true, bool includeDesignerSettings = true)
+    /// <param name="includeReferenceImage">
+    /// Store the tracing image, when there is one and its original file bytes are known (default true). It is by far
+    /// the largest thing in a marina file, so pass false for a layout-only export.
+    /// </param>
+    public static MarinaDocument FromVisualizer(
+        MarinaVisualizer marina,
+        string? generator = null,
+        bool includeCamera = true,
+        bool includeDesignerSettings = true,
+        bool includeReferenceImage = true)
     {
         ArgumentNullException.ThrowIfNull(marina);
         return new MarinaDocument
@@ -110,6 +125,7 @@ public sealed class MarinaDocument
             BerthLabels = marina.BerthLabelMode,
             Camera = includeCamera ? marina.Camera.DesiredPose : null,
             Designer = includeDesignerSettings ? DesignerSettings.FromDesigner(marina.Designer) : null,
+            ReferenceImage = includeReferenceImage ? ReferenceImageRecord.FromDesigner(marina.Designer) : null,
             Generator = generator,
         };
     }
@@ -122,8 +138,14 @@ public sealed class MarinaDocument
     /// <param name="applyStyle">Apply the stored look and animation (default true).</param>
     /// <param name="applyCamera">Move the camera to the stored pose, if the file has one (default true).</param>
     /// <param name="applyDesignerSettings">Apply the stored designer tool settings, if the file has them (default true).</param>
+    /// <param name="applyReferenceImage">Put the stored tracing image back under the design, if the file has one (default true).</param>
     /// <exception cref="MarinaLayoutException">The layout in the document is not valid (e.g. a berth references a missing pier).</exception>
-    public void ApplyTo(MarinaVisualizer marina, bool applyStyle = true, bool applyCamera = true, bool applyDesignerSettings = true)
+    public void ApplyTo(
+        MarinaVisualizer marina,
+        bool applyStyle = true,
+        bool applyCamera = true,
+        bool applyDesignerSettings = true,
+        bool applyReferenceImage = true)
     {
         ArgumentNullException.ThrowIfNull(marina);
         if (applyStyle) marina.Style = Style;
@@ -132,6 +154,7 @@ public sealed class MarinaDocument
         marina.BerthLabelMode = BerthLabels;
         if (applyCamera && Camera is { } pose) marina.Camera.SetPose(pose, immediate: true);
         if (applyDesignerSettings) Designer?.ApplyTo(marina.Designer);
+        if (applyReferenceImage) ReferenceImage?.ApplyTo(marina.Designer);
     }
 
     /// <summary>Errors in the stored layout, empty when it is valid (the same checks <c>InitializeLayout</c> makes).</summary>
@@ -181,6 +204,7 @@ public sealed class MarinaDocument
             BerthLabels = dto.Presentation?.ReadBerthLabels() ?? BerthLabelMode.None,
             Camera = dto.Camera is { } camera ? new CameraPose(camera.Target, camera.YawDegrees, camera.PitchDegrees, camera.Distance) : null,
             Designer = dto.Designer?.ToDomain(),
+            ReferenceImage = dto.ReferenceImage?.ToDomain(),
         };
 
         document.Name = document.Layout.Name is { Length: > 0 } && dto.Marina?.Name is null ? document.Layout.Name : document.Name;
@@ -211,6 +235,7 @@ public sealed class MarinaDocument
                 ? new CameraDto { Target = pose.Target, YawDegrees = pose.YawDegrees, PitchDegrees = pose.PitchDegrees, Distance = pose.Distance, Extra = Restore("camera") }
                 : null,
             Designer = Designer is { } settings ? DesignerDto.From(settings) : null,
+            ReferenceImage = ReferenceImage is { } image ? ReferenceImageDto.From(image) : null,
             Extra = Extensions.Count == 0 ? null : new Dictionary<string, JsonElement>(Extensions, StringComparer.Ordinal),
         };
 

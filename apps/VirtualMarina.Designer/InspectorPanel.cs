@@ -91,6 +91,8 @@ internal sealed class InspectorPanel : Panel
     private readonly Button _applyScale;
     private readonly Label _imageState = Theme.Hint(string.Empty);
     private readonly CheckBox _imageAbove = Theme.Check(Strings.ImageAbove);
+    private readonly CheckBox _imageShown = Theme.Check(Strings.ImageShown);
+    private Button _clearScaleLine = null!;
 
     // Marina summary
     private readonly Panel _summaryCard;
@@ -216,6 +218,9 @@ internal sealed class InspectorPanel : Panel
             _imageOpacity.Enabled = image is not null;
             _imageAbove.Enabled = image is not null;
             _imageAbove.Checked = designer.ReferenceImageAboveScene;
+            _imageShown.Enabled = image is not null;
+            _imageShown.Checked = designer.ReferenceImageVisible;
+            _clearScaleLine.Enabled = designer.ScaleLine is not null;
             _imageOpacity.Value = (int)MathF.Round(designer.ReferenceImageOpacity * 100f);
             _scaleLength.Enabled = designer.ScaleLine is not null;
             _applyScale.Enabled = designer.ScaleLine is not null;
@@ -406,7 +411,13 @@ internal sealed class InspectorPanel : Panel
         calibrate.Controls.Add(_scaleLength);
         calibrate.Controls.Add(apply);
         Theme.Row(table, Strings.ImageRealLength, calibrate);
+
+        _clearScaleLine = Theme.Action(Strings.ImageClearScaleLine, (_, _) => Apply(d => d.ClearScaleLine()));
+        Theme.Tips.SetToolTip(_clearScaleLine, Strings.ImageClearScaleLineTip);
+        Theme.FullRow(table, _clearScaleLine);
+
         Theme.Row(table, Strings.ImageOpacity, Theme.Slider(_imageOpacity, _imageOpacityValue, v => Strings.Format(Strings.Percent, v)));
+        Theme.FullRow(table, _imageShown);
         Theme.FullRow(table, _imageAbove);
         return card;
     }
@@ -455,6 +466,7 @@ internal sealed class InspectorPanel : Panel
 
         _imageOpacity.ValueChanged += (_, _) => Apply(d => d.ReferenceImageOpacity = _imageOpacity.Value / 100f);
         _imageAbove.CheckedChanged += (_, _) => Apply(d => d.ReferenceImageAboveScene = _imageAbove.Checked);
+        _imageShown.CheckedChanged += (_, _) => Apply(d => d.ReferenceImageVisible = _imageShown.Checked);
     }
 
     /// <summary>Runs a change on the designer, unless the controls are being filled in from it.</summary>

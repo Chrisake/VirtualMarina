@@ -682,6 +682,15 @@ Renderer: {2}</value>
   <data name="ImageAbove">
     <value>Draw over land and piers</value>
   </data>
+  <data name="ImageShown">
+    <value>Show the picture</value>
+  </data>
+  <data name="ImageClearScaleLine">
+    <value>Clear the scale line</value>
+  </data>
+  <data name="ImageClearScaleLineTip">
+    <value>Removes the measuring line once the picture is scaled. The line is never saved with the design.</value>
+  </data>
   <data name="ImageStateEmpty">
     <value>Load a top-down photo or map of the marina (north up) and set its scale, then trace over it.</value>
   </data>

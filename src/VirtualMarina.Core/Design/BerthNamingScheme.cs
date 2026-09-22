@@ -76,8 +76,17 @@ public sealed record BerthNamingScheme
     public string Format(Pier pier, PierSide side, int number)
     {
         ArgumentNullException.ThrowIfNull(pier);
-        return Format(Pattern, pier.Id, pier.Name, side == PierSide.Left ? LeftSide : RightSide, number);
+        return Format(Pattern, pier.Id, pier.Name, SideToken(pier, side), number);
     }
+
+    /// <summary>
+    /// What <c>{side}</c> becomes for a berth on this pier: nothing at all when the pier takes boats on one side
+    /// only, because there is no other side to tell it apart from.
+    /// </summary>
+    private string SideToken(Pier pier, PierSide side) =>
+        pier.BerthingSides is PierSides.Left or PierSides.Right ? string.Empty
+            : side == PierSide.Left ? LeftSide
+            : RightSide;
 
     /// <summary>The name this scheme gives berth number <paramref name="number"/> on a land area.</summary>
     /// <param name="landArea">The land area the boat stands on.</param>

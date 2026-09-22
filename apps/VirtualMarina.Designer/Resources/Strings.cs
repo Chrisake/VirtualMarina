@@ -617,6 +617,15 @@ internal static class Strings
     /// <summary>"Draw over land and piers"</summary>
     internal static string ImageAbove => Get("ImageAbove");
 
+    /// <summary>"Show the picture"</summary>
+    internal static string ImageShown => Get("ImageShown");
+
+    /// <summary>"Clear the scale line"</summary>
+    internal static string ImageClearScaleLine => Get("ImageClearScaleLine");
+
+    /// <summary>"Removes the measuring line once the picture is scaled. The line is never saved with the design."</summary>
+    internal static string ImageClearScaleLineTip => Get("ImageClearScaleLineTip");
+
     /// <summary>"Load a top-down photo or map of the marina (north up) and set its scale, then trace over it."</summary>
     internal static string ImageStateEmpty => Get("ImageStateEmpty");
 

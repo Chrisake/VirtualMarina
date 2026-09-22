@@ -383,6 +383,7 @@ internal sealed class MainForm : Form
         {
             var document = MarinaDocument.Load(dialog.FileName);
             document.ApplyTo(Marina);
+            DecodeReferenceImage();
             _filePath = dialog.FileName;
             _dirty = false;
             Designer.ClearHistory();
@@ -483,6 +484,28 @@ internal sealed class MainForm : Form
         Marina.BerthLabelMode = Marina.BerthLabelMode == BerthLabelMode.None ? BerthLabelMode.All : BerthLabelMode.None;
         MarkDirty();
         Log(Marina.BerthLabelMode == BerthLabelMode.None ? Strings.LogBerthLabelsHidden : Strings.LogBerthLabelsShown);
+    }
+
+    /// <summary>
+    /// A design stores its tracing picture as the original PNG or JPEG, which the OpenGL renderer cannot upload.
+    /// This decodes it to pixels once, after loading, keeping the file bytes so the next save still carries it.
+    /// </summary>
+    private void DecodeReferenceImage()
+    {
+        if (Designer.ReferenceImage is not { Rgba: null } stored) return;
+
+        try
+        {
+            var center = Designer.ReferenceImageCenter;
+            var metersPerPixel = Designer.ReferenceImageMetersPerPixel;
+            Designer.SetReferenceImage(ReferenceImageLoader.Decoded(stored), metersPerPixel, center);
+        }
+        catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException)
+        {
+            // The design still opens; only the picture behind it is lost.
+            Designer.ClearReferenceImage();
+            Log(Strings.Format(Strings.LogFailed, Strings.ImageLoadFailed, ex.Message));
+        }
     }
 
     /// <summary>Answers the designer's rename request with a name typed by the user.</summary>
