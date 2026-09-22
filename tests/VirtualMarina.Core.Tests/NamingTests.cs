@@ -337,4 +337,66 @@ public class NamingTests
         Assert.Equal(BerthNamingScheme.Default, designer.BerthNaming);
         Assert.Equal("Pier {pier}", designer.PierNamePattern);
     }
+
+    [Fact]
+    public void ChangePierId_TakesTheBerthsAndDividersWithIt_AndCanBeUndone()
+    {
+        var marina = WithPier(out var designer);
+        marina.AddDivider(new Divider("A-D1", new Vector2(-2, 4), 90f, 9f, DividerType.Piles) { PierId = "A" });
+        var berths = designer.CreateBerths("A", PierSide.Left, 0f, 10f);
+
+        var changes = new List<LayoutChangedEventArgs>();
+        marina.LayoutChanged += (_, e) => changes.Add(e);
+
+        var moved = designer.ChangePierId("A", "WEST");
+
+        Assert.Equal("WEST", moved.Id);
+        Assert.Equal("Pier A", moved.Name); // the display name is untouched
+        Assert.Null(marina.GetPier("A"));
+        Assert.Equal(berths.Count, marina.GetBerthsByPier("WEST").Count);
+        Assert.Equal("WEST", marina.GetBerth(berths[0].Id)!.PierId);
+        Assert.Equal("WEST", marina.GetDivider("A-D1")!.PierId);
+
+        // Berth names keep the old letter on purpose: they may already be printed on the pier.
+        Assert.StartsWith("A-", berths[0].Id);
+
+        var change = Assert.Single(changes);
+        Assert.Equal(LayoutChangeKind.PierRenamed, change.Kind);
+        Assert.Equal("WEST", change.PierId);
+
+        Assert.True(designer.Undo());
+        Assert.NotNull(marina.GetPier("A"));
+        Assert.Equal("A", marina.GetBerth(berths[0].Id)!.PierId);
+    }
+
+    [Fact]
+    public void ChangePierId_RefusesAnIdAlreadyTaken()
+    {
+        var marina = WithPier(out var designer);
+        marina.AddPier(new Pier("B", "Pier B", new Vector2(50, 0), 0f, 40f));
+
+        Assert.Throws<InvalidOperationException>(() => marina.ChangePierId("A", "B"));
+        Assert.Throws<KeyNotFoundException>(() => marina.ChangePierId("nope", "C"));
+        Assert.Equal("a", marina.ChangePierId("A", "a").Id); // a different spelling is not a clash
+    }
+
+    [Fact]
+    public void EraseBerthsOfPier_ClearsTheRowButLeavesThePier_AndCanBeUndone()
+    {
+        var marina = WithPier(out var designer);
+        designer.BerthSeparators = BerthSeparator.Piles;
+        var left = designer.CreateBerths("A", PierSide.Left, 0f, 15f);
+        Assert.NotEmpty(marina.GetDividers());
+
+        Assert.True(designer.EraseBerthsOfPier("A"));
+
+        Assert.NotNull(marina.GetPier("A"));
+        Assert.Empty(marina.GetBerthsByPier("A"));
+        Assert.Empty(marina.GetDividers()); // the separators only served those berths
+        Assert.False(designer.EraseBerthsOfPier("A")); // nothing left to clear
+        Assert.False(designer.EraseBerthsOfPier("nope"));
+
+        Assert.True(designer.Undo());
+        Assert.Equal(left.Count, marina.GetBerthsByPier("A").Count);
+    }
 }

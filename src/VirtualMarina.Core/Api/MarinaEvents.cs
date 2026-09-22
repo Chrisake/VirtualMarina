@@ -358,6 +358,9 @@ public enum LayoutChangeKind
     /// <summary>A pier was removed.</summary>
     PierRemoved = 4,
 
+    /// <summary>A pier was given another id (<see cref="LayoutChangedEventArgs.PierId"/> is the new one).</summary>
+    PierRenamed = 19,
+
     /// <summary>A berth was added (<see cref="LayoutChangedEventArgs.BerthId"/>).</summary>
     BerthAdded = 5,
 

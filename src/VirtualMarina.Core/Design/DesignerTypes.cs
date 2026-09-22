@@ -102,6 +102,7 @@ public sealed class DesignElementRenamingEventArgs : EventArgs
         Pier = pier;
         CurrentName = currentName;
         NewName = currentName;
+        NewPierId = pier?.Id;
     }
 
     /// <summary>The berth being renamed, or null when a pier is.</summary>
@@ -115,6 +116,12 @@ public sealed class DesignElementRenamingEventArgs : EventArgs
 
     /// <summary>The name to give it. Starts as <see cref="CurrentName"/>; leaving it unchanged does nothing.</summary>
     public string NewName { get; set; }
+
+    /// <summary>
+    /// For a pier, the id to give it, which its berths and dividers follow. Starts as the pier's current id;
+    /// leaving it unchanged moves nothing. Ignored for a berth, whose name is its id.
+    /// </summary>
+    public string? NewPierId { get; set; }
 
     /// <summary>Set to true to leave the element alone.</summary>
     public bool Cancel { get; set; }

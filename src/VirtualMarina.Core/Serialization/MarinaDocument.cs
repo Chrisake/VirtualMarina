@@ -71,6 +71,13 @@ public sealed class MarinaDocument
     /// <summary>Where the camera should start, or null to use the automatic overview.</summary>
     public CameraPose? Camera { get; set; }
 
+    /// <summary>
+    /// Named viewpoints saved with the design, offered by the host as "go to this view". The ones generated from
+    /// the layout (Overview, Top Down, one per pier) are not stored: they are rebuilt from the piers on load, so
+    /// they stay right when the marina changes.
+    /// </summary>
+    public IReadOnlyList<CameraPreset> CameraPresets { get; set; } = Array.Empty<CameraPreset>();
+
     /// <summary>The designer's tool settings when the file was saved, so a design reopens the way it was left. Null when not stored.</summary>
     public DesignerSettings? Designer { get; set; }
 
@@ -124,6 +131,7 @@ public sealed class MarinaDocument
             Style = marina.Style,
             BerthLabels = marina.BerthLabelMode,
             Camera = includeCamera ? marina.Camera.DesiredPose : null,
+            CameraPresets = includeCamera ? marina.CameraPresets.Where(preset => !preset.IsBuiltIn).ToArray() : Array.Empty<CameraPreset>(),
             Designer = includeDesignerSettings ? DesignerSettings.FromDesigner(marina.Designer) : null,
             ReferenceImage = includeReferenceImage ? ReferenceImageRecord.FromDesigner(marina.Designer) : null,
             Generator = generator,
@@ -152,7 +160,12 @@ public sealed class MarinaDocument
 
         marina.InitializeLayout(Layout with { Name = Name });
         marina.BerthLabelMode = BerthLabels;
-        if (applyCamera && Camera is { } pose) marina.Camera.SetPose(pose, immediate: true);
+        if (applyCamera)
+        {
+            foreach (var preset in CameraPresets) marina.AddCameraPreset(preset with { IsBuiltIn = false });
+            if (Camera is { } pose) marina.Camera.SetPose(pose, immediate: true);
+        }
+
         if (applyDesignerSettings) Designer?.ApplyTo(marina.Designer);
         if (applyReferenceImage) ReferenceImage?.ApplyTo(marina.Designer);
     }
@@ -205,6 +218,7 @@ public sealed class MarinaDocument
             Camera = dto.Camera is { } camera ? new CameraPose(camera.Target, camera.YawDegrees, camera.PitchDegrees, camera.Distance) : null,
             Designer = dto.Designer?.ToDomain(),
             ReferenceImage = dto.ReferenceImage?.ToDomain(),
+            CameraPresets = dto.CameraPresets?.Select(preset => preset.ToDomain()).ToArray() ?? Array.Empty<CameraPreset>(),
         };
 
         document.Name = document.Layout.Name is { Length: > 0 } && dto.Marina?.Name is null ? document.Layout.Name : document.Name;
@@ -236,6 +250,7 @@ public sealed class MarinaDocument
                 : null,
             Designer = Designer is { } settings ? DesignerDto.From(settings) : null,
             ReferenceImage = ReferenceImage is { } image ? ReferenceImageDto.From(image) : null,
+            CameraPresets = CameraPresets.Count == 0 ? null : CameraPresets.Select(CameraPresetDto.From).ToList(),
             Extra = Extensions.Count == 0 ? null : new Dictionary<string, JsonElement>(Extensions, StringComparer.Ordinal),
         };
 

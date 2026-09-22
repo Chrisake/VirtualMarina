@@ -512,10 +512,14 @@ internal sealed class MainForm : Form
     private void AskForName(DesignElementRenamingEventArgs e)
     {
         var berth = e.Berth is not null;
+
+        // A pier has a display name and an id its berths point at, so it is asked for both.
         using var form = new TextInputForm(
             berth ? Strings.RenameBerthTitle : Strings.RenamePierTitle,
             berth ? Strings.RenameBerthQuestion : Strings.RenamePierQuestion,
-            e.CurrentName);
+            e.CurrentName,
+            berth ? null : Strings.RenamePierIdQuestion,
+            e.Pier?.Id);
 
         if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
         {
@@ -529,6 +533,25 @@ internal sealed class MainForm : Form
             e.Cancel = true;
             Log(Strings.Format(Strings.LogRenameRefused, name, e.CurrentName));
             return;
+        }
+
+        if (!berth && e.Pier is { } pier)
+        {
+            var id = form.SecondValue.Trim();
+            if (string.IsNullOrEmpty(id)) id = pier.Id;
+            if (!string.Equals(id, pier.Id, StringComparison.OrdinalIgnoreCase) && Marina.GetPier(id) is not null)
+            {
+                e.Cancel = true;
+                Log(Strings.Format(Strings.LogRenameRefused, id, pier.Id));
+                return;
+            }
+
+            e.NewPierId = id;
+            if (!string.Equals(id, pier.Id, StringComparison.Ordinal))
+            {
+                MarkDirty();
+                Log(Strings.Format(Strings.LogPierIdChanged, pier.Id, id));
+            }
         }
 
         e.NewName = name;

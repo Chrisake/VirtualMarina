@@ -234,20 +234,36 @@ internal sealed class AppearanceForm : Form
 internal sealed class TextInputForm : Form
 {
     private readonly TextBox _box = new() { Dock = DockStyle.Top, Font = Theme.Body, BorderStyle = BorderStyle.FixedSingle, Height = 26 };
+    private readonly TextBox _second = new() { Dock = DockStyle.Top, Font = Theme.Body, BorderStyle = BorderStyle.FixedSingle, Height = 26 };
 
-    public TextInputForm(string title, string question, string value)
+    /// <summary>Asks for one value, or for two when <paramref name="secondQuestion"/> is given.</summary>
+    /// <param name="title">Dialog caption.</param>
+    /// <param name="question">Label above the first field.</param>
+    /// <param name="value">Initial text of the first field.</param>
+    /// <param name="secondQuestion">Label above the second field, or null for a one-field dialog.</param>
+    /// <param name="secondValue">Initial text of the second field.</param>
+    public TextInputForm(string title, string question, string value, string? secondQuestion = null, string? secondValue = null)
     {
         Text = title;
         StartPosition = FormStartPosition.CenterParent;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MinimizeBox = false;
         MaximizeBox = false;
-        ClientSize = new Size(380, 130);
+        ClientSize = new Size(380, secondQuestion is null ? 130 : 186);
         BackColor = Theme.Surface;
         Font = Theme.Body;
         _box.Text = value;
+        _second.Text = secondValue ?? string.Empty;
 
         var content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 8) };
+
+        // Docked top, so they stack in the reverse order they are added.
+        if (secondQuestion is not null)
+        {
+            content.Controls.Add(_second);
+            content.Controls.Add(new Label { Text = secondQuestion, Dock = DockStyle.Top, AutoSize = true, ForeColor = Theme.TextSoft, Margin = new Padding(0, 8, 0, 8), Height = 22 });
+        }
+
         content.Controls.Add(_box);
         content.Controls.Add(new Label { Text = question, Dock = DockStyle.Top, AutoSize = true, ForeColor = Theme.TextSoft, Margin = new Padding(0, 0, 0, 8), Height = 22 });
 
@@ -264,4 +280,7 @@ internal sealed class TextInputForm : Form
     }
 
     public string Value => _box.Text;
+
+    /// <summary>Text of the second field, empty for a one-field dialog.</summary>
+    public string SecondValue => _second.Text;
 }

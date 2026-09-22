@@ -230,6 +230,7 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     abstract VirtualMarina.Core.Api.MarinaStatistics GetStatistics()
     abstract VirtualMarina.Core.Api.SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, VirtualMarina.Core.Camera.CameraAngle? focusAngle = null)
     abstract VirtualMarina.Core.Api.SelectionResult SetSelection(string[] berthIds)
+    abstract VirtualMarina.Core.Camera.CameraPreset SaveCameraPreset(string name, string description = null)
     abstract VirtualMarina.Core.Domain.Berth AddBerth(string berthId, string pierId, Vector2 center, float headingDegrees, float length, float width, string label = null)
     abstract VirtualMarina.Core.Domain.Berth AssignBoat(string berthId, VirtualMarina.Core.Domain.Boat boat)
     abstract VirtualMarina.Core.Domain.Berth GetBerth(string berthId)
@@ -251,6 +252,7 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     abstract VirtualMarina.Core.Domain.MultiBerth MoorAlongside(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, string multiBerthId = null)
     abstract VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(VirtualMarina.Core.Domain.MultiBerth berth)
     abstract VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(string multiBerthId, VirtualMarina.Core.Domain.Boat boat = null, VirtualMarina.Core.Domain.BerthStatus? status = null, VirtualMarina.Core.Domain.MooringStyle? style = null, IEnumerable<string> berthIds = null)
+    abstract VirtualMarina.Core.Domain.Pier ChangePierId(string pierId, string newPierId)
     abstract VirtualMarina.Core.Domain.Pier GetPier(string pierId)
     abstract VirtualMarina.Core.Domain.Pier UpdatePier(VirtualMarina.Core.Api.PierUpdate update)
     abstract VirtualMarina.Core.Picking.BerthHit? HitTest(float x, float y)
@@ -260,6 +262,7 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     abstract bool FocusBerth(string berthId, VirtualMarina.Core.Camera.CameraAngle angle, bool immediate = false)
     abstract bool FocusBerth(string berthId, bool immediate = false)
     abstract bool FocusBerths(IEnumerable<string> berthIds, VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
+    abstract bool FocusPier(string pierId, VirtualMarina.Core.Camera.CameraAngle? angle, bool immediate = false)
     abstract bool FocusPier(string pierId, bool immediate = false)
     abstract bool FocusSelection(VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
     abstract bool InvokeBerthAction(string actionId)
@@ -332,6 +335,7 @@ enum VirtualMarina.Core.Api.LayoutChangeKind : IComparable, IConvertible, IForma
     MultiBerthUpdated = 14
     PierAdded = 2
     PierRemoved = 4
+    PierRenamed = 19
     PierUpdated = 3
 
 sealed class VirtualMarina.Core.Api.LayoutChangedEventArgs : EventArgs
@@ -390,6 +394,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     VirtualMarina.Core.Api.StatusColorScheme Colors { get; }
     VirtualMarina.Core.Camera.CameraAngle? DefaultFocusAngle { get; set; }
     VirtualMarina.Core.Camera.CameraPose ComputeFocusPose(IReadOnlyCollection<VirtualMarina.Core.Domain.Berth> berths, VirtualMarina.Core.Camera.CameraAngle? angle = null)
+    VirtualMarina.Core.Camera.CameraPreset SaveCameraPreset(string name, string description = null)
     VirtualMarina.Core.Camera.OrbitCamera Camera { get; }
     VirtualMarina.Core.Design.MarinaDesigner Designer { get; }
     VirtualMarina.Core.Domain.Berth AddBerth(string berthId, string pierId, Vector2 center, float headingDegrees, float length, float width, string label = null)
@@ -416,6 +421,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     VirtualMarina.Core.Domain.MultiBerth MoorAlongside(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, string multiBerthId = null)
     VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(VirtualMarina.Core.Domain.MultiBerth multiBerth)
     VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(string multiBerthId, VirtualMarina.Core.Domain.Boat boat = null, VirtualMarina.Core.Domain.BerthStatus? status = null, VirtualMarina.Core.Domain.MooringStyle? style = null, IEnumerable<string> berthIds = null)
+    VirtualMarina.Core.Domain.Pier ChangePierId(string pierId, string newPierId)
     VirtualMarina.Core.Domain.Pier GetPier(string pierId)
     VirtualMarina.Core.Domain.Pier UpdatePier(VirtualMarina.Core.Api.PierUpdate update)
     VirtualMarina.Core.Geometry.MeshLibrary Meshes { get; }
@@ -432,6 +438,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     bool FocusBerth(string berthId, VirtualMarina.Core.Camera.CameraAngle angle, bool immediate = false)
     bool FocusBerth(string berthId, bool immediate = false)
     bool FocusBerths(IEnumerable<string> berthIds, VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
+    bool FocusPier(string pierId, VirtualMarina.Core.Camera.CameraAngle? angle, bool immediate = false)
     bool FocusPier(string pierId, bool immediate = false)
     bool FocusSelection(VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
     bool InvokeBerthAction(string actionId)
@@ -762,6 +769,7 @@ sealed class VirtualMarina.Core.Design.DesignElementRenamingEventArgs : EventArg
     bool Cancel { get; set; }
     string CurrentName { get; }
     string NewName { get; set; }
+    string NewPierId { get; set; }
 
 enum VirtualMarina.Core.Design.DesignTool : IComparable, IConvertible, IFormattable, ISpanFormattable
     AddBerths = 3
@@ -831,6 +839,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     VirtualMarina.Core.Domain.LandArea PlantTrees(string landAreaId, float? treesPer1000SquareMeters = null)
     VirtualMarina.Core.Domain.LandArea RemoveTrees(string landAreaId)
     VirtualMarina.Core.Domain.LandKind LandKind { get; set; }
+    VirtualMarina.Core.Domain.Pier ChangePierId(string pierId, string newPierId)
     VirtualMarina.Core.Domain.Pier CreatePier(Vector2 start, Vector2 end)
     VirtualMarina.Core.Domain.Pier RenamePier(string pierId, string name)
     VirtualMarina.Core.Domain.PierServices BerthServices { get; set; }
@@ -844,6 +853,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     bool ClearScaleLine()
     bool CompleteDraft()
     bool Erase(object element)
+    bool EraseBerthsOfPier(string pierId)
     bool FocusReferenceImage(bool immediate = false)
     bool HasDraft { get; }
     bool IsActive { get; set; }
@@ -1650,6 +1660,7 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     .ctor()
     DateTimeOffset? SavedUtc { get; set; }
     IDictionary<string, JsonElement> Extensions { get; }
+    IReadOnlyList<VirtualMarina.Core.Camera.CameraPreset> CameraPresets { get; set; }
     IReadOnlyList<string> Validate()
     T GetExtension<T>(string key)
     Version Version { get; }

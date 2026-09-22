@@ -413,4 +413,55 @@ public class MarinaDocumentTests
         Assert.Null(designer.ScaleLine);
         Assert.False(designer.ClearScaleLine());
     }
+
+    [Fact]
+    public void SavedViewpoints_TravelInTheFile_ButGeneratedOnesAreRebuilt()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -20), 0f, 40f));
+
+        marina.Camera.SetPose(new CameraPose(new Vector3(10, 0, -5), 33f, 41f, 180f), immediate: true);
+        var saved = marina.SaveCameraPreset("Entrance", "Looking in from the sea");
+        Assert.Equal("Entrance", saved.Name);
+
+        var generated = marina.CameraPresets.Count(p => p.IsBuiltIn);
+        Assert.True(generated > 0);
+
+        var document = MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson());
+
+        // Only what a person saved is stored; the rest is rebuilt from the piers.
+        var stored = Assert.Single(document.CameraPresets);
+        Assert.Equal("Entrance", stored.Name);
+        Assert.Equal("Looking in from the sea", stored.Description);
+        Assert.Equal(33f, stored.Pose.YawDegrees, 2);
+
+        var copy = new MarinaVisualizer();
+        document.ApplyTo(copy);
+        Assert.Contains(copy.CameraPresets, p => p is { Name: "Entrance", IsBuiltIn: false });
+        Assert.Equal(generated, copy.CameraPresets.Count(p => p.IsBuiltIn));
+        Assert.True(copy.ApplyCameraPreset("Entrance", immediate: true));
+    }
+
+    [Fact]
+    public void FocusPier_FramesTheWholePierAndItsBerths()
+    {
+        var marina = new MarinaVisualizer();
+        marina.SetViewportSize(1000, 800);
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
+        var designer = marina.Designer;
+        designer.IsActive = true;
+        var berths = designer.CreateBerths("A", PierSide.Left, 0f, 40f);
+        Assert.NotEmpty(berths);
+
+        Assert.True(marina.FocusPier("A", CameraAngle.TopDown, immediate: true));
+
+        var pose = marina.Camera.DesiredPose;
+        Assert.Equal(89f, pose.PitchDegrees, 1);
+
+        // The target sits on the pier, and the view is wide enough to hold the pier and the berths beside it.
+        Assert.InRange(pose.Target.Z, -32f, 32f);
+        Assert.True(pose.Distance > 60f, $"expected the whole pier framed, got {pose.Distance:0} m");
+
+        Assert.False(marina.FocusPier("nope", CameraAngle.TopDown));
+    }
 }

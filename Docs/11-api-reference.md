@@ -14,7 +14,7 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [BerthHit](#berthhit), [Ray](#ray)
 - **VirtualMarina.Core.Rendering**: [ColorRgba](#colorrgba), [ISceneRenderer](#iscenerenderer), [LabelStyle](#labelstyle), [LandStyle](#landstyle), [LightingSettings](#lightingsettings), [MarinaStyle](#marinastyle), [ReferenceImageLayer](#referenceimagelayer), [RenderAnimation](#renderanimation), [RenderFrame](#renderframe), [RenderObject](#renderobject), [SelectionStyle](#selectionstyle), [ShaderDialect](#shaderdialect), [ShaderSources](#shadersources), [StructureStyle](#structurestyle), [StyleSection](#stylesection), [ViewStyle](#viewstyle), [WaterSettings](#watersettings)
-- **VirtualMarina.Core.Serialization**: [MarinaDocument](#marinadocument), [MarinaFormatException](#marinaformatexception), [MarinaJson](#marinajson)
+- **VirtualMarina.Core.Serialization**: [MarinaDocument](#marinadocument), [MarinaFormatException](#marinaformatexception), [MarinaJson](#marinajson), [ReferenceImageRecord](#referenceimagerecord)
 - **VirtualMarina.Rendering.OpenGL**: [OpenGlSceneRenderer](#openglscenerenderer)
 - **VirtualMarina.WinForms**: [MarinaDesignerPanel](#marinadesignerpanel), [MarinaViewControl](#marinaviewcontrol), [ReferenceImageLoader](#referenceimageloader)
 
@@ -484,6 +484,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `MultiBerth AssignBoatToBerths(IEnumerable<string> berthIds, Boat boat, BerthStatus status = BerthStatus.Occupied, MooringStyle style = MooringStyle.Alongside, string? multiBerthId = null)` | Puts a single boat in several berths at once. Every member berth takes `status` and `boat` and gets `Berth.MultiBerthId`; the boat is drawn once across them and finger piers between them are hidden. |
 | `BatchUpdateResult BatchUpdate(IEnumerable<BerthUpdate> updates)` | Applies many partial updates with a single scene rebuild and one `IMarinaVisualizer.LayoutChanged`. Failing updates (unknown berth, invalid values) are collected in the result instead of throwing; the others are applied. |
 | `IDisposable BeginUpdate()` | Starts a batch: `IMarinaVisualizer.LayoutChanged` notifications are coalesced and popup refreshes deferred until the returned scope is disposed. Scopes can be nested. |
+| `Pier ChangePierId(string pierId, string newPierId)` | Gives a pier another id. Its berths and dividers are re-pointed at the new id, and the pier keeps everything else, including its place in the order and its display name. Returns the renamed pier and raises `LayoutChangeKind.PierRenamed`. |
 | `void ClearLayout()` | Removes everything (piers, berths, dividers, berths, land) and clears the selection. |
 | `void ClearSelection()` | Clears the selection and closes the popup. |
 | `void ClosePopup()` | Closes the tooltip or actions window (the selection is kept). |
@@ -491,6 +492,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `bool FocusBerth(string berthId, bool immediate = false)` | Centers the camera on a berth at `IMarinaVisualizer.DefaultFocusAngle`, zoomed to show it whole. False when the berth doesn't exist. |
 | `bool FocusBerth(string berthId, CameraAngle angle, bool immediate = false)` | Centers the camera on a berth from a specific angle, zoomed to show it whole. False when the berth doesn't exist. |
 | `bool FocusBerths(IEnumerable<string> berthIds, CameraAngle? angle = null, bool immediate = false)` | Moves the camera so every listed berth (and its boat) is in view: the target is the middle of the berths and the distance is the closest that fits them all, with a margin. Unknown ids are ignored; disabled and hidden berths are included. |
+| `bool FocusPier(string pierId, CameraAngle? angle, bool immediate = false)` | Moves the camera so the whole pier is in view, with every berth along it, at `angle` (or `IMarinaVisualizer.DefaultFocusAngle` when null — pass `CameraAngle.TopDown` for a plan view of the pier). |
 | `bool FocusPier(string pierId, bool immediate = false)` | Moves the camera to the pier's close-up view. False when the pier doesn't exist. |
 | `bool FocusSelection(CameraAngle? angle = null, bool immediate = false)` | Frames the selected berths (see `IMarinaVisualizer.FocusBerths`). False when nothing is selected. |
 | `Berth? GetBerth(string berthId)` | The berth with this id, or null. |
@@ -530,6 +532,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `Berth ReserveBerth(string berthId, Boat? expectedBoat = null)` | Marks the berth Reserved (blue), optionally for a known incoming boat (drawn as a translucent ghost). |
 | `void ResetCamera(bool immediate = false)` | Moves the camera to the Overview preset. |
 | `void ResetStatusColors()` | Restores the default status colors and overlay opacities. |
+| `CameraPreset SaveCameraPreset(string name, string? description = null)` | Saves where the camera is now as a custom preset, so a host can offer "go back to this view" later. Replaces a custom preset of the same name. |
 | `bool SelectBerth(string berthId, bool focusCamera = false)` | Makes one berth the only selected berth (raising `IMarinaVisualizer.BerthSelected`), optionally focusing the camera on it. Returns false, changing nothing, when the berth doesn't exist or is hidden, disabled or filtered out. |
 | `int SelectBerths(IEnumerable<string> berthIds)` | Replaces the selection with the selectable berths among `berthIds`. Returns how many were selected. |
 | `Berth SetBerthDisabled(string berthId, bool disabled)` | Disables or enables a berth. Disabled berths are drawn in gray (boat desaturated) and cannot be hovered, selected, right-clicked or acted on. Disabling a selected berth removes it from the selection. |
@@ -568,6 +571,7 @@ What changed in a `IMarinaVisualizer.LayoutChanged` notification.
 | `PierAdded` = 2 | A pier was added (`LayoutChangedEventArgs.PierId`). |
 | `PierUpdated` = 3 | A pier was updated. |
 | `PierRemoved` = 4 | A pier was removed. |
+| `PierRenamed` = 19 | A pier was given another id (`LayoutChangedEventArgs.PierId` is the new one). |
 | `BerthAdded` = 5 | A berth was added (`LayoutChangedEventArgs.BerthId`). |
 | `BerthUpdated` = 6 | A berth was updated (geometry, status, boat, flags, ...). |
 | `BerthRemoved` = 7 | A berth was removed. |
@@ -696,6 +700,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `BatchUpdateResult BatchUpdate(IEnumerable<BerthUpdate> updates)` | *(See the interface member.)* |
 | `IDisposable BeginUpdate()` | *(See the interface member.)* |
 | `RenderFrame BuildRenderFrame()` | Builds the frame description for a renderer. Rebuilds instance data only when the scene changed. |
+| `Pier ChangePierId(string pierId, string newPierId)` | *(See the interface member.)* |
 | `void ClearLayout()` | *(See the interface member.)* |
 | `void ClearSelection()` | *(See the interface member.)* |
 | `void ClosePopup()` | *(See the interface member.)* |
@@ -705,6 +710,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `bool FocusBerth(string berthId, CameraAngle angle, bool immediate = false)` | Centers the camera on a berth, seen from `angle`, zoomed to show it whole. |
 | `bool FocusBerths(IEnumerable<string> berthIds, CameraAngle? angle = null, bool immediate = false)` | Moves the camera so every listed berth (and its boat) is in view: the target is the middle of the berths and the distance is the closest that fits them, with `MarinaVisualizer.FocusMargin` around them. |
 | `bool FocusPier(string pierId, bool immediate = false)` | *(See the interface member.)* |
+| `bool FocusPier(string pierId, CameraAngle? angle, bool immediate = false)` | *(See the interface member.)* |
 | `bool FocusSelection(CameraAngle? angle = null, bool immediate = false)` | Focuses on the current selection. Returns false when nothing is selected. |
 | `Berth? GetBerth(string berthId)` | *(See the interface member.)* |
 | `IReadOnlyList<Berth> GetBerths()` | *(See the interface member.)* |
@@ -746,6 +752,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `Berth ReserveBerth(string berthId, Boat? expectedBoat = null)` | *(See the interface member.)* |
 | `void ResetCamera(bool immediate = false)` | *(See the interface member.)* |
 | `void ResetStatusColors()` | *(See the interface member.)* |
+| `CameraPreset SaveCameraPreset(string name, string? description = null)` | *(See the interface member.)* |
 | `bool SelectBerth(string berthId, bool focusCamera = false)` | Makes `berthId` the only selected berth and raises `MarinaVisualizer.BerthSelected`. Returns false (and changes nothing) when the berth doesn't exist, is hidden, disabled or filtered out. |
 | `int SelectBerths(IEnumerable<string> berthIds)` | Replaces the selection with the selectable berths among `berthIds` (the last one becomes primary) and raises `MarinaVisualizer.BerthSelected` or `MarinaVisualizer.MultiBerthSelected`. Returns the number of selected berths. |
 | `Berth SetBerthDisabled(string berthId, bool disabled)` | Disabled berths are drawn in gray and cannot be hovered, selected, right-clicked or acted on. |
@@ -1173,6 +1180,7 @@ A berth or pier is about to be renamed (`MarinaDesigner.ElementRenaming`). Put t
 | `Pier? Pier { get; }` | The pier being renamed, or null when a berth is. |
 | `string CurrentName { get; }` | The name the element has now: a berth's id, or a pier's display name. |
 | `string NewName { get; set; }` | The name to give it. Starts as `DesignElementRenamingEventArgs.CurrentName`; leaving it unchanged does nothing. |
+| `string? NewPierId { get; set; }` | For a pier, the id to give it, which its berths and dividers follow. Starts as the pier's current id; leaving it unchanged moves nothing. Ignored for a berth, whose name is its id. |
 | `bool Cancel { get; set; }` | Set to true to leave the element alone. |
 
 <a id="designtool"></a>
@@ -1316,14 +1324,17 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `bool CalibrateReferenceImage(float knownLengthMeters)` | Rescales the reference image so the last `MarinaDesigner.ScaleLine` becomes `knownLengthMeters` long. The image scales about the line's first end, which stays put. Returns false without an image or scale line. |
 | `bool CalibrateReferenceImage(Vector2 start, Vector2 end, float knownLengthMeters)` | Rescales the reference image so the segment `start`–`end` (in plan coordinates, drawn over the image at its current scale) becomes `knownLengthMeters` long. `start` stays put. |
 | `bool CancelDraft()` | Abandons the drawing in progress. Returns false when there was none. |
+| `Pier ChangePierId(string pierId, string newPierId)` | Gives a pier another id, which its berths and dividers follow, and records the change for `MarinaDesigner.Undo`. Returns the pier under its new id. |
 | `void ClearHistory()` | Forgets every recorded change, so `MarinaDesigner.Undo` does nothing until the designer changes something again. |
 | `void ClearReferenceImage()` | Removes the reference image and the scale line. |
+| `bool ClearScaleLine()` | Forgets the measuring line, once the image has been scaled by it and the line is only in the way. Returns false when there was none. |
 | `bool CompleteDraft()` | Finishes the drawing in progress: closes a land outline (3+ points), ends a pier at the pointer, or adds the anchored berth. Returns true when an element was created. |
 | `IReadOnlyList<Berth> CreateBerths(string pierId, PierSide side, float fromAlong, float toAlong)` | Adds a row of berths of the current `MarinaDesigner.BerthWidth`, `MarinaDesigner.BerthLength` and `MarinaDesigner.BerthDepth` on one side of a pier, covering the stretch between two distances from the pier's start (equal distances add one berth), separated by `MarinaDesigner.BerthSeparators` and `MarinaDesigner.BerthGap`. With `MarinaDesigner.AlignBerthsToExisting` the row lines up with existing berths on that side; otherwise it starts exactly at `fromAlong`. Places already taken are skipped, and `MarinaDesigner.BerthServices` switches the pier's pedestals on. Returns the berths added (empty when none fit or a handler cancels). |
 | `LandArea? CreateLandArea(IReadOnlyList<Vector2> outline)` | Adds a land area with the given outline and the current `MarinaDesigner.LandKind` and `MarinaDesigner.LandHeight`, raising `MarinaDesigner.ElementCreating` and `MarinaDesigner.ElementCreated`. Returns null when a handler cancels. |
 | `Berth? CreateLandBerth(string landAreaId, Vector2 position, float? headingDegrees = null)` | Adds a land berth (`Berth.OnLand`) of the current `MarinaDesigner.BerthWidth` and `MarinaDesigner.BerthLength` to a land area, where a boat is stored or worked on ashore. Raises `MarinaDesigner.ElementCreating` and `MarinaDesigner.ElementCreated`; returns null when a handler cancels. |
 | `Pier? CreatePier(Vector2 start, Vector2 end)` | Adds a pier from `start` (shore end) to `end` with the current `MarinaDesigner.PierType`, `MarinaDesigner.PierWidth` and `MarinaDesigner.PierBerthingSides`. Returns null when a handler cancels. |
 | `bool Erase(object element)` | Removes a berth, or a pier or land area with its berths, and raises `MarinaDesigner.ElementErased`. Dividers left without a berth on either side go too (a pier takes all of its dividers). Returns false when the element doesn't exist. |
+| `bool EraseBerthsOfPier(string pierId)` | Removes every berth on a pier, and the separators that only served them, leaving the pier itself in place. This is what the eraser does when Alt is held over one of the pier's berths. Records one step for `MarinaDesigner.Undo` and raises `MarinaDesigner.ElementErased` with the pier as the element. |
 | `bool FocusReferenceImage(bool immediate = false)` | Looks straight down, north up, at the whole reference image. Returns false without an image. |
 | `LandArea? PlantTrees(string landAreaId, float? treesPer1000SquareMeters = null)` | Replaces the trees of a lawn with new, randomly placed ones (kept clear of its land berths) and raises `MarinaDesigner.TreesPlanted`. Returns the updated land area, or null when it doesn't exist or is not a `LandKind.Grass` area. |
 | `bool RemoveLastPoint()` | Removes the last placed point. Returns false when there was none. |
@@ -1345,12 +1356,13 @@ The core library has no image codecs, so the host supplies the pixels: either de
 
 | Member | Description |
 |---|---|
-| `ReferenceImage(int pixelWidth, int pixelHeight, byte[] rgba)` | Creates an image from decoded pixels. |
+| `ReferenceImage(int pixelWidth, int pixelHeight, byte[] rgba, byte[]? encodedData = null, string? contentType = null)` | Creates an image from decoded pixels. |
 | `int PixelWidth { get; }` | Width in pixels. |
 | `int PixelHeight { get; }` | Height in pixels. |
 | `byte[]? Rgba { get; }` | Decoded pixels (RGBA, top row first), or null for an encoded image. |
-| `byte[]? EncodedData { get; }` | Original file bytes, or null for a decoded image. |
-| `string? ContentType { get; }` | MIME type of `ReferenceImage.EncodedData`, or null for a decoded image. |
+| `byte[]? EncodedData { get; }` | The original file bytes when they are known, whether or not `ReferenceImage.Rgba` is also set. |
+| `string? ContentType { get; }` | MIME type of `ReferenceImage.EncodedData`, or null when there is none. |
+| `bool CanBeSaved { get; }` | True when the original file bytes are present, so this image can be stored in a marina file. |
 | `int Key { get; }` | Process-unique number identifying this image; renderers upload a texture once per key. |
 | `static ReferenceImage FromEncoded(byte[] encodedData, int pixelWidth, int pixelHeight, string contentType = "image/png")` | Creates an image from PNG, JPEG or WebP file bytes whose pixel size the host already knows. Only renderers that can decode images themselves (the WebGL renderer) can draw it; desktop hosts should decode to RGBA instead. |
 
@@ -2599,14 +2611,16 @@ The format is `{ "format": "virtualmarina.marina", "formatVersion": "1.0", ... }
 | `MarinaStyle Style { get; set; }` | How the marina is drawn and animated: water and waves, lighting, status colors, land, piers, labels, selection, camera optics. |
 | `BerthLabelMode BerthLabels { get; set; }` | Which berths show their name on the water. |
 | `CameraPose? Camera { get; set; }` | Where the camera should start, or null to use the automatic overview. |
+| `IReadOnlyList<CameraPreset> CameraPresets { get; set; }` | Named viewpoints saved with the design, offered by the host as "go to this view". The ones generated from the layout (Overview, Top Down, one per pier) are not stored: they are rebuilt from the piers on load, so they stay right when the marina changes. |
 | `DesignerSettings? Designer { get; set; }` | The designer's tool settings when the file was saved, so a design reopens the way it was left. Null when not stored. |
+| `ReferenceImageRecord? ReferenceImage { get; set; }` | The picture the marina was traced on, with its place and scale, or null. Stored so a design can be reopened and corrected against the same photo later; see `ReferenceImageRecord`. |
 | `Version Version { get; }` | Version of the format the document was read from; `MarinaDocument.CurrentVersion` for a new one. |
 | `string? Generator { get; set; }` | What wrote the file, e.g. "VirtualMarina Designer 1.0". |
 | `DateTimeOffset? SavedUtc { get; set; }` | When the file was written. |
 | `IDictionary<string, JsonElement> Extensions { get; }` | Anything else stored in the file: your own sections, and sections written by a newer version of the format. Keys here are written back exactly as they came in. |
 | `bool IsFromNewerVersion { get; }` | True when the file came from a newer minor version, so it may contain settings this build ignores. |
-| `void ApplyTo(MarinaVisualizer marina, bool applyStyle = true, bool applyCamera = true, bool applyDesignerSettings = true)` | Loads the document into a visualizer: the style and label mode first (so the water grid is built at the stored size), then the layout, then the camera and the designer's settings. |
-| `static MarinaDocument FromVisualizer(MarinaVisualizer marina, string? generator = null, bool includeCamera = true, bool includeDesignerSettings = true)` | Captures a visualizer: its layout, style, label mode, camera and (optionally) the designer's settings. |
+| `void ApplyTo(MarinaVisualizer marina, bool applyStyle = true, bool applyCamera = true, bool applyDesignerSettings = true, bool applyReferenceImage = true)` | Loads the document into a visualizer: the style and label mode first (so the water grid is built at the stored size), then the layout, then the camera and the designer's settings. |
+| `static MarinaDocument FromVisualizer(MarinaVisualizer marina, string? generator = null, bool includeCamera = true, bool includeDesignerSettings = true, bool includeReferenceImage = true)` | Captures a visualizer: its layout, style, label mode, camera and (optionally) the designer's settings. |
 | `T? GetExtension<T>(string key)` | Reads back data stored with `MarinaDocument.SetExtension` (or written by another application), or the default when missing or unreadable. |
 | `static MarinaDocument Load(string path, bool allowNewerVersion = false)` | Reads a document from a file. |
 | `static MarinaDocument Parse(string json, bool allowNewerVersion = false)` | Reads a document from JSON. |
@@ -2640,6 +2654,27 @@ Reading is deliberately tolerant, because a file may come from a newer version o
 |---|---|
 | `static JsonSerializerOptions Options { get; }` | The options marina files are written with (indented). |
 | `static JsonSerializerOptions CompactOptions { get; }` | The same options without indentation, for compact storage (e.g. a database column). |
+
+<a id="referenceimagerecord"></a>
+### ReferenceImageRecord
+
+`sealed record ReferenceImageRecord`
+
+The tracing image stored inside a marina file: the picture itself plus where it sits and how it is shown, so a design reopens on the same photo, at the same place and the same scale, months later.
+
+The picture is stored as the original PNG/JPEG file, not as pixels, so it costs roughly what the file costs on disk. A `ReferenceImage` can only be written when it still knows those bytes (`ReferenceImage.CanBeSaved`); one built from raw pixels alone is skipped rather than bloating the file with a bitmap. The measuring line is deliberately not part of this: it is scaffolding for calibrating the picture, and once the scale is right it has no meaning.
+
+| Member | Description |
+|---|---|
+| `ReferenceImageRecord()` | Creates an instance with default values. |
+| `ReferenceImage Image { get; init; }` | The picture, with its original file bytes. |
+| `Vector2 Center { get; init; }` | Center of the picture in plan coordinates. |
+| `float MetersPerPixel { get; init; }` | Ground size of one pixel, in meters: the scale the picture was calibrated to. |
+| `float Opacity { get; init; }` | How solid the picture is drawn, 0–1. |
+| `bool Visible { get; init; }` | Whether the picture is shown at all. |
+| `bool AboveScene { get; init; }` | Whether it is drawn over land and piers rather than under them. |
+| `void ApplyTo(MarinaDesigner designer)` | Puts the picture back under a designer, where it was and at the scale it was. |
+| `static ReferenceImageRecord? FromDesigner(MarinaDesigner designer)` | Reads the tracing image out of a designer, or null when there is none worth storing. |
 
 ## VirtualMarina.Rendering.OpenGL
 
@@ -2722,7 +2757,9 @@ Decodes image files into `ReferenceImage`s for the designer (GDI+: PNG, JPEG, BM
 |---|---|
 | `const int MaxDimension = 8192` | Largest width or height kept; bigger images are scaled down to stay within common GPU texture limits. |
 | `static string FileDialogFilter { get; }` | File filter for an `OpenFileDialog`, with the descriptions in the current language. |
-| `static ReferenceImage FromFile(string path)` | Loads and decodes an image file. |
-| `static ReferenceImage FromImage(Image image)` | Converts a GDI+ image to RGBA pixels (scaled down when larger than `ReferenceImageLoader.MaxDimension`). |
-| `static ReferenceImage FromStream(Stream stream)` | Decodes an image from a stream. |
+| `static ReferenceImage Decoded(ReferenceImage image)` | The same picture with pixels a desktop renderer can draw. A picture loaded from a marina file arrives as an undecoded PNG; this turns it into one the OpenGL backend can upload, keeping the bytes for the next save. Returns the image unchanged when it already has pixels. |
+| `static ReferenceImage FromBytes(byte[] encodedData, string contentType = "image/png")` | Decodes image file bytes, keeping them on the result so it can be written to a marina file. This is also how a picture that came out of a design is made drawable: a desktop renderer needs pixels, not a PNG. |
+| `static ReferenceImage FromFile(string path)` | Loads and decodes an image file, keeping the file itself so a design can store the picture. |
+| `static ReferenceImage FromImage(Image image, byte[]? encodedData = null, string? contentType = null)` | Converts a GDI+ image to RGBA pixels (scaled down when larger than `ReferenceImageLoader.MaxDimension`). |
+| `static ReferenceImage FromStream(Stream stream)` | Decodes an image from a stream. The bytes are kept, so the picture can be stored in a design. |
 

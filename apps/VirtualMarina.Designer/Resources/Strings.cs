@@ -570,6 +570,12 @@ internal static class Strings
     /// <summary>"What should this pier be called?"</summary>
     internal static string RenamePierQuestion => Get("RenamePierQuestion");
 
+    /// <summary>"Its id, which its berths and dividers point at:"</summary>
+    internal static string RenamePierIdQuestion => Get("RenamePierIdQuestion");
+
+    /// <summary>"Pier id {0} is now {1}"</summary>
+    internal static string LogPierIdChanged => Get("LogPierIdChanged");
+
     /// <summary>"Rename"</summary>
     internal static string TitleRename => Get("TitleRename");
 

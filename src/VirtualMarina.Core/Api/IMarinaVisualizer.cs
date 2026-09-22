@@ -271,6 +271,22 @@ public interface IMarinaVisualizer
     /// <summary>The berth with this id, or null.</summary>
     Berth? GetBerth(string berthId);
 
+    /// <summary>
+    /// Gives a pier another id. Its berths and dividers are re-pointed at the new id, and the pier keeps everything
+    /// else, including its place in the order and its display name. Returns the renamed pier and raises
+    /// <see cref="LayoutChangeKind.PierRenamed"/>.
+    /// </summary>
+    /// <param name="pierId">The pier to move.</param>
+    /// <param name="newPierId">Its new id; it must not be taken (ids are case-insensitive).</param>
+    /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
+    /// <exception cref="InvalidOperationException">Another pier already has the new id.</exception>
+    /// <remarks>
+    /// Berth ids are not rebuilt from the new pier id: a berth called <c>A-L01</c> stays <c>A-L01</c>, because that
+    /// name may already be printed on a finger pier and stored against a contract. Rename the berths as well if the
+    /// old pier letter should disappear.
+    /// </remarks>
+    Pier ChangePierId(string pierId, string newPierId);
+
     /// <summary>All berths, in the order they were added.</summary>
     IReadOnlyList<Berth> GetBerths();
 
@@ -537,6 +553,15 @@ public interface IMarinaVisualizer
     void AddCameraPreset(CameraPreset preset);
 
     /// <summary>
+    /// Saves where the camera is now as a custom preset, so a host can offer "go back to this view" later.
+    /// Replaces a custom preset of the same name.
+    /// </summary>
+    /// <param name="name">Name to save it under.</param>
+    /// <param name="description">Optional line describing the view.</param>
+    /// <returns>The preset that was stored.</returns>
+    CameraPreset SaveCameraPreset(string name, string? description = null);
+
+    /// <summary>
     /// Angle used by focus calls that don't pass one, by <c>SelectBerth(id, focusCamera: true)</c> and by double-click.
     /// Null (default) keeps the current yaw and looks down at least 35°. Set <see cref="CameraAngle.TopDown"/> for a plan view.
     /// </summary>
@@ -560,6 +585,21 @@ public interface IMarinaVisualizer
 
     /// <summary>Frames the selected berths (see <see cref="FocusBerths"/>). False when nothing is selected.</summary>
     bool FocusSelection(CameraAngle? angle = null, bool immediate = false);
+
+    /// <summary>
+    /// Moves the camera so the whole pier is in view, with every berth along it, at
+    /// <paramref name="angle"/> (or <see cref="DefaultFocusAngle"/> when null — pass
+    /// <see cref="CameraAngle.TopDown"/> for a plan view of the pier).
+    /// </summary>
+    /// <param name="pierId">The pier to frame.</param>
+    /// <param name="angle">Viewing angle; null uses <see cref="DefaultFocusAngle"/>.</param>
+    /// <param name="immediate">Jump instead of animating.</param>
+    /// <returns>False when no pier has this id.</returns>
+    /// <remarks>
+    /// This fits the pier and its berths in the view. The parameterless <see cref="FocusPier(string, bool)"/> is
+    /// the tighter close-up from the pier's shore end instead.
+    /// </remarks>
+    bool FocusPier(string pierId, CameraAngle? angle, bool immediate = false);
 
     /// <summary>Moves the camera to the pier's close-up view. False when the pier doesn't exist.</summary>
     bool FocusPier(string pierId, bool immediate = false);

@@ -323,7 +323,7 @@
     <value>Click where the bow should point (Shift: 15° steps; same spot: the set heading). Esc cancels.</value>
   </data>
   <data name="HintErase">
-    <value>Click a berth, pier or land area to remove it.</value>
+    <value>Click a berth, pier or land area to remove it. Alt+click a berth to clear that whole pier.</value>
   </data>
   <data name="HintRename">
     <value>Click a berth or a pier to give it another name.</value>
@@ -380,6 +380,10 @@
     <value>{0} on {1}</value>
     <comment>{0} = "Plant trees" or "Remove trees", {1} = name of the land area.</comment>
   </data>
+  <data name="UndoEraseBerthsOfPier">
+    <value>Erase {0} berths from {1}</value>
+    <comment>{0} = how many, {1} = the pier name.</comment>
+  </data>
   <data name="UndoErase">
     <value>Erase {0}</value>
     <comment>{0} = the element described by ElementBerth, ElementPier or a land area name.</comment>
@@ -387,6 +391,10 @@
   <data name="UndoRenameBerth">
     <value>Rename {0} to {1}</value>
     <comment>{0} = the old berth name, {1} = the new one.</comment>
+  </data>
+  <data name="UndoChangePierId">
+    <value>Change pier id {0} to {1}</value>
+    <comment>{0} = the old id, {1} = the new one.</comment>
   </data>
   <data name="UndoRenamePier">
     <value>Rename pier {0} to {1}</value>

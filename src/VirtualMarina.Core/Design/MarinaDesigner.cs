@@ -699,6 +699,65 @@ public sealed class MarinaDesigner
     }
 
     /// <summary>
+    /// Gives a pier another id, which its berths and dividers follow, and records the change for <see cref="Undo"/>.
+    /// Returns the pier under its new id.
+    /// </summary>
+    /// <param name="pierId">The pier to move.</param>
+    /// <param name="newPierId">Its new id. Leading and trailing spaces are dropped.</param>
+    /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
+    /// <exception cref="InvalidOperationException">Another pier already has the new id.</exception>
+    /// <remarks>Berth names are left as they are; see <see cref="IMarinaVisualizer.ChangePierId"/>.</remarks>
+    public Pier ChangePierId(string pierId, string newPierId)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        var before = _marina.GetPier(pierId)?.Id ?? throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
+        var moved = _marina.ChangePierId(before, newPierId);
+        if (!string.Equals(before, moved.Id, StringComparison.Ordinal))
+        {
+            var action = new DesignAction(Strings.Format(Strings.UndoChangePierId, before, moved.Id));
+            action.RenamedPiers.Add((before, moved.Id));
+            Record(action);
+            RaiseStateChanged();
+        }
+
+        return moved;
+    }
+
+    /// <summary>
+    /// Removes every berth on a pier, and the separators that only served them, leaving the pier itself in place.
+    /// This is what the eraser does when Alt is held over one of the pier's berths. Records one step for
+    /// <see cref="Undo"/> and raises <see cref="ElementErased"/> with the pier as the element.
+    /// </summary>
+    /// <param name="pierId">The pier to clear.</param>
+    /// <returns>False when no pier has this id, or it had no berths.</returns>
+    public bool EraseBerthsOfPier(string pierId)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        if (_marina.GetPier(pierId) is not { } pier) return false;
+
+        var berths = _marina.GetBerthsByPier(pier.Id);
+        if (berths.Count == 0) return false;
+
+        var dividers = OrphanedDividers(berths);
+        using (_marina.BeginUpdate())
+        {
+            foreach (var berth in berths) _marina.RemoveBerth(berth.Id);
+            foreach (var divider in dividers) _marina.RemoveDivider(divider.Id);
+        }
+
+        var action = new DesignAction(Strings.Format(Strings.UndoEraseBerthsOfPier, berths.Count, pier.Name));
+        action.RemovedBerths.AddRange(berths);
+        action.RemovedDividers.AddRange(dividers);
+        Record(action);
+
+        _eraseTarget = null;
+        _marina.MarkSceneDirty();
+        ElementErased?.Invoke(this, new DesignElementErasedEventArgs(pier, berths, dividers));
+        RaiseStateChanged();
+        return true;
+    }
+
+    /// <summary>
     /// Gives one berth another name, keeping everything else about it, and records the change for <see cref="Undo"/>.
     /// Returns the renamed berth.
     /// </summary>
@@ -768,16 +827,33 @@ public sealed class MarinaDesigner
 
         if (args is null) return;
         ElementRenaming(this, args);
-        if (args.Cancel || string.IsNullOrWhiteSpace(args.NewName) || string.Equals(args.NewName.Trim(), args.CurrentName, StringComparison.Ordinal)) return;
+        var nameChanged = !string.IsNullOrWhiteSpace(args.NewName) && !string.Equals(args.NewName.Trim(), args.CurrentName, StringComparison.Ordinal);
+        var idChanged = args.Pier is { } owner && args.NewPierId is { } wanted && !string.Equals(wanted.Trim(), owner.Id, StringComparison.Ordinal);
+        if (args.Cancel || (!nameChanged && !idChanged)) return;
+        if (!nameChanged) args.NewName = args.CurrentName;
 
         try
         {
-            if (args.Berth is { } target) RenameBerth(target.Id, args.NewName);
-            else if (args.Pier is { } pier) RenamePier(pier.Id, args.NewName);
+            if (args.Berth is { } target)
+            {
+                RenameBerth(target.Id, args.NewName);
+            }
+            else if (args.Pier is { } pier)
+            {
+                // The id moves first, so the display name is applied to the pier under its new id.
+                var current = args.NewPierId is { } id && !string.Equals(id.Trim(), pier.Id, StringComparison.Ordinal)
+                    ? ChangePierId(pier.Id, id).Id
+                    : pier.Id;
+                RenamePier(current, args.NewName);
+            }
         }
         catch (InvalidOperationException)
         {
-            // The name is taken; the host can offer another one on the next click.
+            // The name or id is taken; the host can offer another one on the next click.
+        }
+        catch (ArgumentException)
+        {
+            // An empty id: same story.
         }
     }
 
@@ -922,6 +998,7 @@ public sealed class MarinaDesigner
                 foreach (var pier in action.ChangedPiers.Where(pier => _marina.GetPier(pier.Id) is not null)) _marina.UpdatePier(pier);
 
                 foreach (var (from, to) in action.RenamedBerths.Where(r => _marina.GetBerth(r.To) is not null)) _marina.RenameBerth(to, from);
+                foreach (var (from, to) in action.RenamedPiers.Where(r => _marina.GetPier(r.To) is not null)) _marina.ChangePierId(to, from);
             }
         }
         finally
@@ -1217,7 +1294,13 @@ public sealed class MarinaDesigner
                 break;
 
             case DesignTool.Erase:
-                if (FindEraseTarget(x, y) is { } target) Erase(target);
+                // Alt over a berth clears the pier it belongs to, rather than that one berth.
+                if (FindEraseTarget(x, y) is { } target)
+                {
+                    if ((modifiers & InputModifiers.Alt) != 0 && target is Berth { PierId: { } owner }) EraseBerthsOfPier(owner);
+                    else Erase(target);
+                }
+
                 break;
 
             case DesignTool.Rename:
@@ -1468,8 +1551,14 @@ public sealed class MarinaDesigner
         switch (_eraseTarget)
         {
             case Berth berth:
-                var ground = SceneBuilder.GroundHeight(berth, _marina.GetLandArea);
-                overlay.Pad(berth, BerthPlacement.PadHeightFor(ground) + 0.04f, EraseColor);
+                // With Alt down the eraser takes the whole row, so show the whole row.
+                var sweeping = (_modifiers & InputModifiers.Alt) != 0 && berth.PierId is not null;
+                foreach (var doomed in sweeping ? _marina.GetBerthsByPier(berth.PierId!) : new[] { berth })
+                {
+                    var height = SceneBuilder.GroundHeight(doomed, _marina.GetLandArea);
+                    overlay.Pad(doomed, BerthPlacement.PadHeightFor(height) + 0.04f, EraseColor);
+                }
+
                 break;
             case Pier pier:
                 overlay.Box(pier.Center, pier.HeadingDegrees, new Vector3(pier.Width + 0.4f, 0.5f, pier.Length + 0.4f), pier.DeckHeight + 0.1f, EraseColor);
@@ -2105,10 +2194,13 @@ public sealed class MarinaDesigner
         /// <summary>Berths that were renamed, as (old name, new name); undoing names them back.</summary>
         public List<(string From, string To)> RenamedBerths { get; } = new();
 
+        /// <summary>Piers that were given another id, as (old id, new id); undoing moves them back.</summary>
+        public List<(string From, string To)> RenamedPiers { get; } = new();
+
         public bool IsEmpty =>
             AddedLandAreas.Count + AddedPiers.Count + AddedDividers.Count + AddedBerths.Count +
             RemovedLandAreas.Count + RemovedPiers.Count + RemovedDividers.Count + RemovedBerths.Count +
-            ChangedLandAreas.Count + ChangedPiers.Count + RenamedBerths.Count == 0;
+            ChangedLandAreas.Count + ChangedPiers.Count + RenamedBerths.Count + RenamedPiers.Count == 0;
     }
 
     /// <summary>Emits preview geometry (thin boxes, dots, pads and text) into the transparent pass, so it shows above the reference image.</summary>

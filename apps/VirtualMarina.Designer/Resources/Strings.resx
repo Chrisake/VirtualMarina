@@ -634,6 +634,13 @@ Renderer: {2}</value>
   <data name="RenamePierQuestion">
     <value>What should this pier be called?</value>
   </data>
+  <data name="RenamePierIdQuestion">
+    <value>Its id, which its berths and dividers point at:</value>
+  </data>
+  <data name="LogPierIdChanged">
+    <value>Pier id {0} is now {1}</value>
+    <comment>{0} = the old id, {1} = the new one.</comment>
+  </data>
   <data name="TitleRename">
     <value>Rename</value>
   </data>

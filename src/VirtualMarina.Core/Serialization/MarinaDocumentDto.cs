@@ -3,6 +3,7 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VirtualMarina.Core.Api;
+using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Rendering;
@@ -67,6 +68,37 @@ internal sealed class DocumentDto : ExtensibleDto
     public DesignerDto? Designer { get; set; }
 
     public ReferenceImageDto? ReferenceImage { get; set; }
+
+    public List<CameraPresetDto>? CameraPresets { get; set; }
+}
+
+/// <summary>A viewpoint saved with the design.</summary>
+internal sealed class CameraPresetDto : ExtensibleDto
+{
+    public string Name { get; set; } = "View";
+
+    public string? Description { get; set; }
+
+    public Vector3 Target { get; set; }
+
+    public float YawDegrees { get; set; }
+
+    public float PitchDegrees { get; set; } = 40f;
+
+    public float Distance { get; set; } = 150f;
+
+    public static CameraPresetDto From(CameraPreset preset) => new()
+    {
+        Name = preset.Name,
+        Description = preset.Description,
+        Target = preset.Pose.Target,
+        YawDegrees = preset.Pose.YawDegrees,
+        PitchDegrees = preset.Pose.PitchDegrees,
+        Distance = preset.Pose.Distance,
+    };
+
+    public CameraPreset ToDomain() =>
+        new(Name, new CameraPose(Target, YawDegrees, PitchDegrees, Distance), Description);
 }
 
 /// <summary>The traced-over picture: the original file in base64, and where it sits.</summary>

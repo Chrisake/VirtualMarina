@@ -324,6 +324,54 @@ public sealed partial class MarinaVisualizer
     }
 
     /// <inheritdoc/>
+    public Pier ChangePierId(string pierId, string newPierId)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newPierId);
+        var existing = _piers.TryGetValue(pierId, out var found) ? found : throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
+        newPierId = newPierId.Trim();
+
+        if (!IdComparer.Equals(existing.Id, newPierId) && _piers.ContainsKey(newPierId))
+        {
+            throw new InvalidOperationException($"Pier '{newPierId}' already exists.");
+        }
+
+        if (existing.Id == newPierId) return existing;
+
+        var renamed = existing with { Id = newPierId };
+        using (BeginUpdate())
+        {
+            _piers.Remove(existing.Id);
+            _piers[renamed.Id] = renamed;
+
+            var position = _pierOrder.FindIndex(id => IdComparer.Equals(id, existing.Id));
+            if (position >= 0) _pierOrder[position] = renamed.Id;
+
+            // Everything that pointed at the old id now points at the new one.
+            foreach (var berthId in _berthOrder.ToArray())
+            {
+                if (_berths.TryGetValue(berthId, out var berth) && IdComparer.Equals(berth.PierId, existing.Id))
+                {
+                    _berths[berthId] = berth with { PierId = renamed.Id };
+                }
+            }
+
+            foreach (var dividerId in _dividerOrder.ToArray())
+            {
+                if (_dividers.TryGetValue(dividerId, out var divider) && IdComparer.Equals(divider.PierId, existing.Id))
+                {
+                    _dividers[dividerId] = divider with { PierId = renamed.Id };
+                }
+            }
+
+            MarkSceneDirty();
+        }
+
+        RaiseLayoutChanged(LayoutChangeKind.PierRenamed, renamed.Id);
+        return renamed;
+    }
+
+    /// <inheritdoc/>
     public Berth? GetBerth(string berthId) => berthId is not null && _berths.TryGetValue(berthId, out var berth) ? berth : null;
 
     /// <inheritdoc/>

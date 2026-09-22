@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Mathematics;
@@ -274,13 +274,53 @@ public sealed partial class MarinaVisualizer
         return true;
     }
 
-    private CameraPose CreatePierPose(Pier pier)
+    /// <inheritdoc/>
+    public bool FocusPier(string pierId, CameraAngle? angle, bool immediate = false)
+    {
+        if (GetPier(pierId) is not { } pier) return false;
+
+        var (min, max) = PierBounds(pier);
+        var extent = MathF.Max(max.X - min.X, max.Y - min.Y);
+        var view = angle ?? DefaultFocusAngle;
+        var pose = new CameraPose(
+            MarinaMath.ToWorld((min + max) * 0.5f),
+            view?.YawDegrees ?? Camera.DesiredPose.YawDegrees,
+            view?.PitchDegrees ?? MathF.Max(Camera.DesiredPose.PitchDegrees, 35f),
+            FitDistance(extent));
+
+        Camera.SetPose(pose, immediate);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public CameraPreset SaveCameraPreset(string name, string? description = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var preset = new CameraPreset(name.Trim(), Camera.DesiredPose, description);
+        AddCameraPreset(preset);
+        return preset with { IsBuiltIn = false };
+    }
+
+    /// <summary>The pier and everything berthed along it.</summary>
+    private (Vector2 Min, Vector2 Max) PierBounds(Pier pier)
     {
         var berths = OrderedBerths().Where(s => IdComparer.Equals(s.PierId, pier.Id)).Select(s => s.Bounds).Append(pier.Bounds);
-        var (min, max) = MarinaLayout.ComputeBounds(berths);
+        return MarinaLayout.ComputeBounds(berths);
+    }
+
+    /// <summary>
+    /// The stored viewpoint for a pier: the camera stands off the pier's shore end and looks down it, so the whole
+    /// pier and its berths recede into the view.
+    /// </summary>
+    private CameraPose CreatePierPose(Pier pier)
+    {
+        var (min, max) = PierBounds(pier);
         var center = (min + max) * 0.5f;
         var extent = MathF.Max(max.X - min.X, max.Y - min.Y);
-        return new CameraPose(MarinaMath.ToWorld(center), pier.HeadingDegrees + 215f, 40f, MathF.Max(45f, FitDistance(extent) * 0.62f));
+
+        // Yaw is the compass direction the camera sits in from its target; the shore end is back down the pier.
+        var fromTheShore = MarinaMath.DeltaAngle(0f, pier.HeadingDegrees + 180f);
+        return new CameraPose(MarinaMath.ToWorld(center), fromTheShore, 38f, MathF.Max(45f, FitDistance(extent) * 0.85f));
     }
 
     private float FitDistance(float extent) =>

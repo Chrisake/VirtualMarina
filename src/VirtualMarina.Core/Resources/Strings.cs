@@ -297,7 +297,7 @@ internal static class Strings
     /// <summary>"Click where the bow should point (Shift: 15° steps; same spot: the set heading). Esc cancels."</summary>
     internal static string HintAddLandBerthsHeading => Get("HintAddLandBerthsHeading");
 
-    /// <summary>"Click a berth, pier or land area to remove it."</summary>
+    /// <summary>"Click a berth, pier or land area to remove it. Alt+click a berth to clear that whole pier."</summary>
     internal static string HintErase => Get("HintErase");
 
     /// <summary>"Click a berth or a pier to give it another name."</summary>
@@ -350,11 +350,17 @@ internal static class Strings
     /// <summary>"{0} on {1}"</summary>
     internal static string UndoTreesOn => Get("UndoTreesOn");
 
+    /// <summary>"Erase {0} berths from {1}"</summary>
+    internal static string UndoEraseBerthsOfPier => Get("UndoEraseBerthsOfPier");
+
     /// <summary>"Erase {0}"</summary>
     internal static string UndoErase => Get("UndoErase");
 
     /// <summary>"Rename {0} to {1}"</summary>
     internal static string UndoRenameBerth => Get("UndoRenameBerth");
+
+    /// <summary>"Change pier id {0} to {1}"</summary>
+    internal static string UndoChangePierId => Get("UndoChangePierId");
 
     /// <summary>"Rename pier {0} to {1}"</summary>
     internal static string UndoRenamePier => Get("UndoRenamePier");
