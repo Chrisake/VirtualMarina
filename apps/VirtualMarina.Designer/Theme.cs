@@ -155,6 +155,53 @@ internal static class Theme
         return label;
     }
 
+    /// <summary>
+    /// The small round-arrow button that puts one setting back to its default. An icon rather than a word, because
+    /// a panel of settings would otherwise carry the same label a dozen times over.
+    /// </summary>
+    /// <param name="onClick">What to put back.</param>
+    public static Button Reset(EventHandler onClick)
+    {
+        var button = new Button
+        {
+            Text = Resources.Strings.ResetGlyph,
+            Width = 24,
+            Height = 22,
+            FlatStyle = FlatStyle.Flat,
+            Font = Body,
+            BackColor = Surface,
+            ForeColor = TextSoft,
+            Margin = new Padding(6, 4, 0, 4),
+            Cursor = Cursors.Hand,
+            TabStop = false,
+        };
+        button.FlatAppearance.BorderColor = Border;
+        button.Click += onClick;
+        Tips.SetToolTip(button, Resources.Strings.ResetTip);
+        return button;
+    }
+
+    /// <summary>Adds a labelled row with a reset button after the control.</summary>
+    /// <param name="table">The card's table.</param>
+    /// <param name="label">Row label.</param>
+    /// <param name="control">The control itself.</param>
+    /// <param name="onReset">What the reset button puts back.</param>
+    /// <param name="tooltip">Optional explanation on the control.</param>
+    public static T Row<T>(TableLayoutPanel table, string label, T control, EventHandler onReset, string? tooltip = null)
+        where T : Control
+    {
+        var host = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, Margin = Padding.Empty };
+        host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        host.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        control.Margin = new Padding(0, 4, 0, 4);
+        control.Dock = DockStyle.Fill;
+        host.Controls.Add(control, 0, 0);
+        host.Controls.Add(Reset(onReset), 1, 0);
+
+        Row(table, label, host, tooltip);
+        return control;
+    }
+
     public static CheckBox Check(string text) => new()
     {
         Text = text,
@@ -193,7 +240,7 @@ internal static class Theme
     {
         var host = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top, Margin = Padding.Empty };
         host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        host.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 62f));
+        host.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84f));
         bar.Dock = DockStyle.Fill;
         bar.AutoSize = false;
         bar.Height = 26;

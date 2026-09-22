@@ -319,6 +319,122 @@ internal static class Strings
     /// <summary>"{0} {1}  Draw a marina to scale and save it as a .marina.json design. The host application lo..."</summary>
     internal static string AboutBody => Get("AboutBody");
 
+    // ---- Look panel ----------------------------------------------------------------------------------
+
+    /// <summary>"Look"</summary>
+    internal static string ToolLook => Get("ToolLook");
+
+    /// <summary>"Water, light, colours and labels, with the marina still live beside them"</summary>
+    internal static string ToolLookTip => Get("ToolLookTip");
+
+    /// <summary>"Look"</summary>
+    internal static string TitleLook => Get("TitleLook");
+
+    /// <summary>"Change how the marina is drawn. The view stays live, so you can turn and zoom while you work."</summary>
+    internal static string LookHint => Get("LookHint");
+
+    /// <summary>"Back to the default"</summary>
+    internal static string ResetTip => Get("ResetTip");
+
+    /// <summary>"↺"</summary>
+    internal static string ResetGlyph => Get("ResetGlyph");
+
+    /// <summary>"Land and trees"</summary>
+    internal static string CardLand => Get("CardLand");
+
+    /// <summary>"Quay top"</summary>
+    internal static string LandQuay => Get("LandQuay");
+
+    /// <summary>"Quay wall"</summary>
+    internal static string LandQuayWall => Get("LandQuayWall");
+
+    /// <summary>"Lawn"</summary>
+    internal static string LandGrass => Get("LandGrass");
+
+    /// <summary>"Lawn edge"</summary>
+    internal static string LandGrassBank => Get("LandGrassBank");
+
+    /// <summary>"Rocks"</summary>
+    internal static string LandRock => Get("LandRock");
+
+    /// <summary>"Rock variation"</summary>
+    internal static string LandRockVariation => Get("LandRockVariation");
+
+    /// <summary>"How much single rocks differ in brightness from one another."</summary>
+    internal static string LandRockVariationTip => Get("LandRockVariationTip");
+
+    /// <summary>"Broadleaf"</summary>
+    internal static string LandFoliage => Get("LandFoliage");
+
+    /// <summary>"Conifer"</summary>
+    internal static string LandConifer => Get("LandConifer");
+
+    /// <summary>"Palm fronds"</summary>
+    internal static string LandPalm => Get("LandPalm");
+
+    /// <summary>"Cherry blossom"</summary>
+    internal static string LandBlossom => Get("LandBlossom");
+
+    /// <summary>"Trunks"</summary>
+    internal static string LandTrunk => Get("LandTrunk");
+
+    /// <summary>"Draw the trees"</summary>
+    internal static string LandShowTrees => Get("LandShowTrees");
+
+    /// <summary>"Berth labels"</summary>
+    internal static string CardLabels => Get("CardLabels");
+
+    /// <summary>"Face"</summary>
+    internal static string LabelFace => Get("LabelFace");
+
+    /// <summary>"Weight and width of the lettering painted on the water."</summary>
+    internal static string LabelFaceTip => Get("LabelFaceTip");
+
+    /// <summary>"Normal"</summary>
+    internal static string LabelColorNormal => Get("LabelColorNormal");
+
+    /// <summary>"Selected"</summary>
+    internal static string LabelColorHighlight => Get("LabelColorHighlight");
+
+    /// <summary>"Disabled"</summary>
+    internal static string LabelColorDisabled => Get("LabelColorDisabled");
+
+    /// <summary>"Regular"</summary>
+    internal static string FaceRegular => Get("FaceRegular");
+
+    /// <summary>"Bold"</summary>
+    internal static string FaceBold => Get("FaceBold");
+
+    /// <summary>"Condensed"</summary>
+    internal static string FaceCondensed => Get("FaceCondensed");
+
+    /// <summary>"Wide"</summary>
+    internal static string FaceWide => Get("FaceWide");
+
+    /// <summary>"Preview boats"</summary>
+    internal static string CardPreview => Get("CardPreview");
+
+    /// <summary>"Marina full"</summary>
+    internal static string PreviewFill => Get("PreviewFill");
+
+    /// <summary>"How many of the berths get a boat when you press Add boats."</summary>
+    internal static string PreviewFillTip => Get("PreviewFillTip");
+
+    /// <summary>"Add boats"</summary>
+    internal static string PreviewAdd => Get("PreviewAdd");
+
+    /// <summary>"Clear boats"</summary>
+    internal static string PreviewClear => Get("PreviewClear");
+
+    /// <summary>"Boats to judge the settings against. They are never saved with the design — the host applicat..."</summary>
+    internal static string PreviewHint => Get("PreviewHint");
+
+    /// <summary>"Put {0} preview boats in the marina"</summary>
+    internal static string LogPreviewBoats => Get("LogPreviewBoats");
+
+    /// <summary>"Cleared the preview boats"</summary>
+    internal static string LogPreviewCleared => Get("LogPreviewCleared");
+
     // ---- Inspector: headings -------------------------------------------------------------------------
 
     /// <summary>"Land area"</summary>

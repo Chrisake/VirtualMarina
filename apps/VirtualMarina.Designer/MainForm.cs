@@ -20,6 +20,9 @@ internal sealed class MainForm : Form
 
     private readonly MarinaViewControl _view = new() { Dock = DockStyle.Fill };
     private readonly InspectorPanel _inspector;
+    private readonly AppearancePanel _appearance;
+    private ToolStripButton _lookButton = null!;
+    private SplitContainer _split = null!;
     private readonly ToolStrip _toolbar = new();
     private readonly Dictionary<DesignTool, ToolStripButton> _toolButtons = new();
     private readonly ToolStripButton _undoButton = new();
@@ -47,6 +50,7 @@ internal sealed class MainForm : Form
         Marina.Designer.IsActive = true;
         Marina.Designer.Tool = DesignTool.Navigate;
         _inspector = new InspectorPanel(Marina, LoadReferenceImage);
+        _appearance = new AppearancePanel(Marina, Log) { Visible = false };
 
         BuildMenu();
         BuildToolbar();
@@ -60,6 +64,12 @@ internal sealed class MainForm : Form
     private MarinaVisualizer Marina => _view.Marina;
 
     private MarinaDesigner Designer => Marina.Designer;
+
+    /// <summary>
+    /// How much of the scene's haze is drawn while the marina is being drawn. Damped, so distant shapes being traced
+    /// stay crisp; the look settings put it back to full while they are open.
+    /// </summary>
+    private const float DesigningFogFactor = 0.15f;
 
     /// <summary>Narrowest the settings panel may be dragged: below this its rows stop fitting.</summary>
     private const int MinInspectorWidth = 300;
@@ -84,7 +94,9 @@ internal sealed class MainForm : Form
             Panel1MinSize = MinViewWidth,
             Panel2MinSize = MinInspectorWidth,
         };
+        _split = split;
         split.Panel1.Controls.Add(_view);
+        split.Panel2.Controls.Add(_appearance);
         split.Panel2.Controls.Add(_inspector);
 
         var logHeader = new Label
@@ -146,7 +158,7 @@ internal sealed class MainForm : Form
         view.DropDownItems.Add(_logMenuItem);
 
         var marina = new ToolStripMenuItem(Strings.MenuMarina);
-        marina.DropDownItems.Add(Menu(Strings.MenuAppearance, Keys.None, ShowAppearance));
+        marina.DropDownItems.Add(Menu(Strings.MenuAppearance, Keys.None, () => _lookButton.Checked = true));
         marina.DropDownItems.Add(Menu(Strings.MenuBerthLabels, Keys.None, ToggleLabels));
 
         var help = new ToolStripMenuItem(Strings.MenuHelp);
@@ -188,6 +200,19 @@ internal sealed class MainForm : Form
         AddToolButton(DesignTool.Erase, Strings.ToolErase, Strings.ToolEraseTip);
         AddToolButton(DesignTool.Rename, Strings.ToolRename, Strings.ToolRenameTip);
         AddToolButton(DesignTool.EditServices, Strings.ToolServices, Strings.ToolServicesTip);
+        _toolbar.Items.Add(new ToolStripSeparator());
+
+        // Not a drawing tool: it swaps the panel beside the view for the look settings.
+        _lookButton = new ToolStripButton(Strings.ToolLook)
+        {
+            DisplayStyle = ToolStripItemDisplayStyle.Text,
+            Padding = new Padding(12, 4, 12, 4),
+            ToolTipText = Strings.ToolLookTip,
+            ForeColor = Theme.Text,
+            CheckOnClick = true,
+        };
+        _lookButton.CheckedChanged += (_, _) => ShowAppearance(_lookButton.Checked);
+        _toolbar.Items.Add(_lookButton);
         _toolbar.Items.Add(new ToolStripSeparator());
 
         _undoButton.Text = Strings.Undo;
@@ -473,11 +498,22 @@ internal sealed class MainForm : Form
 
     // ---- Dialogs -------------------------------------------------------------------------------
 
-    private void ShowAppearance()
+    /// <summary>
+    /// Swaps the panel beside the view between the drawing tools and the look settings. While the look settings are
+    /// up the scene is drawn with its full atmosphere — the haze the designer normally damps down so the shapes it
+    /// is tracing stay crisp — because that haze is one of the things being set.
+    /// </summary>
+    /// <param name="showing">True for the look settings, false for the tools.</param>
+    private void ShowAppearance(bool showing)
     {
-        using var form = new AppearanceForm(Marina);
-        form.ShowDialog(this);
-        MarkDirty();
+        _appearance.Visible = showing;
+        _inspector.Visible = !showing;
+        if (showing) _appearance.BringToFront();
+        else _inspector.BringToFront();
+
+        Designer.FogFactor = showing ? 1f : DesigningFogFactor;
+        if (showing) MarkDirty();
+        RefreshUi();
     }
 
     private void ToggleLabels()

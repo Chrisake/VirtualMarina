@@ -423,8 +423,8 @@ internal sealed class InspectorPanel : Panel
         tools.Controls.Add(move);
         Theme.FullRow(table, tools);
 
-        var calibrate = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
-        _scaleLength.Width = 90;
+        var calibrate = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Margin = Padding.Empty, MaximumSize = new Size(180, 0) };
+        _scaleLength.Width = 84;
         apply = Theme.Action(Strings.ImageApply, (_, _) => Apply(d => d.CalibrateReferenceImage((float)_scaleLength.Value)));
         calibrate.Controls.Add(_scaleLength);
         calibrate.Controls.Add(apply);

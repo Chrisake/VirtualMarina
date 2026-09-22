@@ -387,6 +387,124 @@ which brings the layout, the water and light settings, the berth labels and the 
 Renderer: {2}</value>
     <comment>{0} = application name, {1} = version, {2} = the graphics backend.</comment>
   </data>
+  <!-- Look panel -->
+  <data name="ToolLook">
+    <value>Look</value>
+  </data>
+  <data name="ToolLookTip">
+    <value>Water, light, colours and labels, with the marina still live beside them</value>
+  </data>
+  <data name="TitleLook">
+    <value>Look</value>
+  </data>
+  <data name="LookHint">
+    <value>Change how the marina is drawn. The view stays live, so you can turn and zoom while you work.</value>
+  </data>
+  <data name="ResetTip">
+    <value>Back to the default</value>
+    <comment>Tooltip on the small reset button beside a setting.</comment>
+  </data>
+  <data name="ResetGlyph">
+    <value>↺</value>
+    <comment>The reset button face. A symbol, not words; leave it as it is.</comment>
+  </data>
+  <data name="CardLand">
+    <value>Land and trees</value>
+  </data>
+  <data name="LandQuay">
+    <value>Quay top</value>
+  </data>
+  <data name="LandQuayWall">
+    <value>Quay wall</value>
+  </data>
+  <data name="LandGrass">
+    <value>Lawn</value>
+  </data>
+  <data name="LandGrassBank">
+    <value>Lawn edge</value>
+  </data>
+  <data name="LandRock">
+    <value>Rocks</value>
+  </data>
+  <data name="LandRockVariation">
+    <value>Rock variation</value>
+  </data>
+  <data name="LandRockVariationTip">
+    <value>How much single rocks differ in brightness from one another.</value>
+  </data>
+  <data name="LandFoliage">
+    <value>Broadleaf</value>
+  </data>
+  <data name="LandConifer">
+    <value>Conifer</value>
+  </data>
+  <data name="LandPalm">
+    <value>Palm fronds</value>
+  </data>
+  <data name="LandBlossom">
+    <value>Cherry blossom</value>
+  </data>
+  <data name="LandTrunk">
+    <value>Trunks</value>
+  </data>
+  <data name="LandShowTrees">
+    <value>Draw the trees</value>
+  </data>
+  <data name="CardLabels">
+    <value>Berth labels</value>
+  </data>
+  <data name="LabelFace">
+    <value>Face</value>
+  </data>
+  <data name="LabelFaceTip">
+    <value>Weight and width of the lettering painted on the water.</value>
+  </data>
+  <data name="LabelColorNormal">
+    <value>Normal</value>
+  </data>
+  <data name="LabelColorHighlight">
+    <value>Selected</value>
+  </data>
+  <data name="LabelColorDisabled">
+    <value>Disabled</value>
+  </data>
+  <data name="FaceRegular">
+    <value>Regular</value>
+  </data>
+  <data name="FaceBold">
+    <value>Bold</value>
+  </data>
+  <data name="FaceCondensed">
+    <value>Condensed</value>
+  </data>
+  <data name="FaceWide">
+    <value>Wide</value>
+  </data>
+  <data name="CardPreview">
+    <value>Preview boats</value>
+  </data>
+  <data name="PreviewFill">
+    <value>Marina full</value>
+  </data>
+  <data name="PreviewFillTip">
+    <value>How many of the berths get a boat when you press Add boats.</value>
+  </data>
+  <data name="PreviewAdd">
+    <value>Add boats</value>
+  </data>
+  <data name="PreviewClear">
+    <value>Clear boats</value>
+  </data>
+  <data name="PreviewHint">
+    <value>Boats to judge the settings against. They are never saved with the design — the host application decides who is in the marina.</value>
+  </data>
+  <data name="LogPreviewBoats">
+    <value>Put {0} preview boats in the marina</value>
+    <comment>{0} = how many.</comment>
+  </data>
+  <data name="LogPreviewCleared">
+    <value>Cleared the preview boats</value>
+  </data>
   <!-- Inspector: headings -->
   <data name="CardLandArea">
     <value>Land area</value>
