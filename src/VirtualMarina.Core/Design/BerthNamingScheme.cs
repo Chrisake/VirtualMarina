@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text;
 using VirtualMarina.Core.Domain;
 
@@ -41,9 +41,18 @@ public sealed record BerthNamingScheme
     /// <summary>Pattern for a berth on a pier. Default <c>{pier}-{side}{number}</c>.</summary>
     public string Pattern { get; init; } = "{pier}-{side}{number}";
 
-    /// <summary>Pattern for a berth ashore; null (the default) uses <see cref="Pattern"/>, where <c>{side}</c> is empty.</summary>
+    /// <summary>Pattern for a slot ashore; null (the default) uses <see cref="Pattern"/>, where <c>{side}</c> is empty.</summary>
     /// <example><code>new BerthNamingScheme { LandPattern = "YARD-{number}" }</code></example>
     public string? LandPattern { get; init; }
+
+    /// <summary>The first number offered to a slot ashore; null (the default) counts from <see cref="StartNumber"/>.</summary>
+    public int? LandStartNumber { get; init; }
+
+    /// <summary>Step between slots ashore; null (the default) uses <see cref="Increment"/>.</summary>
+    public int? LandIncrement { get; init; }
+
+    /// <summary>Digits a slot ashore is padded to; null (the default) uses <see cref="NumberDigits"/>.</summary>
+    public int? LandNumberDigits { get; init; }
 
     /// <summary>The first number offered. Default 1.</summary>
     public int StartNumber { get; init; } = 1;
@@ -76,8 +85,11 @@ public sealed record BerthNamingScheme
     public string Format(LandArea landArea, int number)
     {
         ArgumentNullException.ThrowIfNull(landArea);
-        return Format(LandPattern ?? Pattern, landArea.Id, landArea.DisplayName, string.Empty, number);
+        return Format(LandPattern ?? Pattern, landArea.Id, landArea.DisplayName, string.Empty, number, LandNumberDigits ?? NumberDigits);
     }
+
+    /// <summary>Where the numbering of the slots ashore starts, and the step between them.</summary>
+    internal (int Start, int Step) AshoreNumbering => (LandStartNumber ?? StartNumber, LandIncrement ?? Increment);
 
     /// <summary>Problems that would stop the scheme from naming anything, empty when it is sound.</summary>
     public IEnumerable<string> Validate()
@@ -86,10 +98,16 @@ public sealed record BerthNamingScheme
         if (LandPattern is not null && string.IsNullOrWhiteSpace(LandPattern)) yield return "The land berth naming pattern must not be empty.";
         if (Increment == 0) yield return "The berth numbering increment must not be 0.";
         if (NumberDigits is < 1 or > 9) yield return "The berth numbering must be padded to between 1 and 9 digits.";
+        if (LandIncrement == 0) yield return "The numbering increment of the slots ashore must not be 0.";
+        if (LandNumberDigits is < 1 or > 9) yield return "The slots ashore must be padded to between 1 and 9 digits.";
     }
 
-    private string Format(string pattern, string pierId, string pierName, string side, int number)
+    private string Format(string pattern, string pierId, string pierName, string side, int number) =>
+        Format(pattern, pierId, pierName, side, number, NumberDigits);
+
+    private static string Format(string pattern, string pierId, string pierName, string side, int number, int digits)
     {
+        var numberFormat = new string('0', Math.Clamp(digits, 1, 9));
         var text = new StringBuilder(pattern.Length + 8);
         for (var i = 0; i < pattern.Length; i++)
         {
@@ -111,15 +129,13 @@ public sealed record BerthNamingScheme
             if (token.Equals("pier", StringComparison.OrdinalIgnoreCase)) text.Append(pierId);
             else if (token.Equals("pierName", StringComparison.OrdinalIgnoreCase)) text.Append(pierName);
             else if (token.Equals("side", StringComparison.OrdinalIgnoreCase)) text.Append(side);
-            else if (token.Equals("number", StringComparison.OrdinalIgnoreCase)) text.Append(number.ToString(NumberFormat, CultureInfo.InvariantCulture));
+            else if (token.Equals("number", StringComparison.OrdinalIgnoreCase)) text.Append(number.ToString(numberFormat, CultureInfo.InvariantCulture));
             else text.Append(pattern.AsSpan(i, close - i + 1));
 
             i = close;
         }
 
         var name = text.ToString().Trim();
-        return name.Length == 0 ? number.ToString(NumberFormat, CultureInfo.InvariantCulture) : name;
+        return name.Length == 0 ? number.ToString(numberFormat, CultureInfo.InvariantCulture) : name;
     }
-
-    private string NumberFormat => new('0', Math.Clamp(NumberDigits, 1, 9));
 }

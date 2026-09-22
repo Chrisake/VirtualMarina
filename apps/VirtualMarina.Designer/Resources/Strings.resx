@@ -472,7 +472,7 @@ Renderer: {2}</value>
     <value>A pier along a quay wall or a mole only takes boats on its water side.</value>
   </data>
   <data name="PierHint">
-    <value>Click the shore end, then the far end. Hold Shift to snap the direction to 15° steps.</value>
+    <value>Click the shore end, then the far end. The pier squares up with the quay and the piers already there — hold Alt to draw it at any angle, Shift for 15° steps.</value>
   </data>
   <data name="PierName">
     <value>Name</value>
@@ -588,6 +588,12 @@ Renderer: {2}</value>
   </data>
   <data name="LandBerthHeadingTip">
     <value>Direction the stored boat faces: 0° = north, 90° = east.</value>
+  </data>
+  <data name="LandNamePatternTip">
+    <value>Name of each new slot ashore. {pier} is the land area, {pierName} its name and {number} the running number.</value>
+  </data>
+  <data name="LandStartNumberTip">
+    <value>Number the first new slot ashore gets. Counts separately from the berths on the water.</value>
   </data>
   <data name="LandBerthHint">
     <value>Click the spot on a land area, then click where the bow should point. Click the same spot twice to use the direction above.</value>

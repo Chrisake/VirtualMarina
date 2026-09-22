@@ -51,6 +51,12 @@ namespace VirtualMarina.Core.Design;
 /// </example>
 public sealed class MarinaDesigner
 {
+    /// <summary>How close a pier's direction must be to a square one before it snaps, in degrees.</summary>
+    private const float PierAngleSnapDegrees = 6f;
+
+    /// <summary>How far from the pier's shore end a land edge still counts as the quay it springs from, in meters.</summary>
+    private const float PierAngleReferenceRange = 40f;
+
     /// <summary>Shortest pier the <see cref="DesignTool.DrawPier"/> tool creates, in meters.</summary>
     public const float MinimumPierLength = 1f;
 
@@ -83,6 +89,7 @@ public sealed class MarinaDesigner
     private DesignTool _tool;
     private Vector2? _pointer;
     private bool _pointerSnapped;
+    private bool _headingSnapped;
     private InputModifiers _modifiers;
     private string? _berthPierId;
     private PierSide _berthSide;
@@ -630,7 +637,8 @@ public sealed class MarinaDesigner
         ArgumentNullException.ThrowIfNull(landAreaId);
         var land = _marina.GetLandArea(landAreaId) ?? throw new KeyNotFoundException($"Land area '{landAreaId}' does not exist.");
 
-        var id = new BerthNames(_berthNaming, _marina.GetBerths().Select(existing => existing.Id))
+        var ashore = _berthNaming.AshoreNumbering;
+        var id = new BerthNames(_berthNaming, _marina.GetBerths().Select(existing => existing.Id), ashore.Start, ashore.Step)
             .Next(number => _berthNaming.Format(land, number));
 
         var berth = Berth.OnLand(id, land.Id, position, headingDegrees ?? _landBerthHeading, _berthLength, _berthWidth);
@@ -1354,6 +1362,8 @@ public sealed class MarinaDesigner
         var heading = MarinaMath.DirectionToHeading(pointer - start);
         var center = (start + pointer) * 0.5f;
         var color = length >= MinimumPierLength ? new Vector4(PierPreviewColor(_pierType), 0.7f) : InvalidColor;
+        // A line back along the pier marks the direction as squared up rather than freehand.
+        if (_headingSnapped) overlay.Line(start - MarinaMath.HeadingToDirection(heading) * 4f, start, deck + 0.1f, SnapColor);
         overlay.Box(center, heading, new Vector3(_pierWidth, 0.3f, length), deck - 0.15f, color);
         overlay.Line(start, pointer, deck + 0.1f, DraftColor);
 
@@ -1593,6 +1603,7 @@ public sealed class MarinaDesigner
     private void UpdatePointer(float x, float y)
     {
         _pointerSnapped = false;
+        _headingSnapped = false;
         if (GroundPoint(x, y) is not { } ground)
         {
             _pointer = null;
@@ -1602,15 +1613,67 @@ public sealed class MarinaDesigner
         var point = ground;
         if (_tool is DesignTool.DrawLandArea or DesignTool.DrawPier) point = Snap(point, new Vector2(x, y), out _pointerSnapped);
 
-        // Shift constrains a pier's direction to 15° steps.
-        if (_tool == DesignTool.DrawPier && _points.Count == 1 && (_modifiers & InputModifiers.Shift) != 0 && !_pointerSnapped)
+        // A pier lines up square with what is already there; Shift asks for 15° steps instead.
+        if (_tool == DesignTool.DrawPier && _points.Count == 1 && !_pointerSnapped)
         {
             var offset = point - _points[0];
-            var heading = MathF.Round(MarinaMath.DirectionToHeading(offset) / 15f) * 15f;
-            point = _points[0] + MarinaMath.HeadingToDirection(heading) * offset.Length();
+            if (offset.LengthSquared() > 1e-6f)
+            {
+                var heading = MarinaMath.DirectionToHeading(offset);
+                var aligned = (_modifiers & InputModifiers.Shift) != 0
+                    ? MathF.Round(heading / 15f) * 15f
+                    : SquareWithSurroundings(heading, _points[0]);
+
+                _headingSnapped = aligned is not null;
+                if (aligned is { } snapped) point = _points[0] + MarinaMath.HeadingToDirection(snapped) * offset.Length();
+            }
         }
 
         _pointer = point;
+    }
+
+    /// <summary>
+    /// The direction a pier should really take: square (a multiple of 90°) with the piers already in the marina and
+    /// with the shore it springs from, when <paramref name="heading"/> is within <see cref="PierAngleSnapDegrees"/> of
+    /// one. Null when nothing is close enough, or when Alt asks for the exact direction drawn.
+    /// </summary>
+    /// <param name="heading">The direction the pointer is actually indicating.</param>
+    /// <param name="start">The pier's shore end, which decides which land edges count as its quay.</param>
+    private float? SquareWithSurroundings(float heading, Vector2 start)
+    {
+        if ((_modifiers & InputModifiers.Alt) != 0) return null;
+
+        float? best = null;
+        var bestDelta = PierAngleSnapDegrees;
+
+        void Consider(float reference)
+        {
+            // Along the reference, across it, and both the other ways round: the four square directions.
+            for (var quarter = 0; quarter < 4; quarter++)
+            {
+                var candidate = MarinaMath.DeltaAngle(0f, reference + quarter * 90f);
+                var delta = MathF.Abs(MarinaMath.DeltaAngle(candidate, heading));
+                if (delta >= bestDelta) continue;
+                bestDelta = delta;
+                best = candidate;
+            }
+        }
+
+        foreach (var pier in _marina.GetPiers()) Consider(pier.HeadingDegrees);
+
+        foreach (var land in _marina.GetLandAreas())
+        {
+            for (var i = 0; i < land.Points.Count; i++)
+            {
+                var from = land.Points[i];
+                var to = land.Points[(i + 1) % land.Points.Count];
+                // Only the edges near the shore end: the far side of a big quay says nothing about this pier.
+                if (Vector2.Distance(ClosestOnSegment(start, from, to), start) > PierAngleReferenceRange) continue;
+                Consider(MarinaMath.DirectionToHeading(to - from));
+            }
+        }
+
+        return best;
     }
 
     /// <summary>Snaps to land corners, pier ends and draft points, then to land edges, within <see cref="SnapDistancePixels"/>.</summary>
@@ -1904,11 +1967,16 @@ public sealed class MarinaDesigner
         private readonly int _increment;
         private int _number;
 
-        public BerthNames(BerthNamingScheme scheme, IEnumerable<string> existingIds)
+        /// <param name="scheme">The naming scheme in force.</param>
+        /// <param name="existingIds">Names already taken, which are skipped.</param>
+        /// <param name="start">First number to offer; null counts from the scheme's own start.</param>
+        /// <param name="step">Step between names; null uses the scheme's own increment.</param>
+        public BerthNames(BerthNamingScheme scheme, IEnumerable<string> existingIds, int? start = null, int? step = null)
         {
             _used = new HashSet<string>(existingIds, StringComparer.OrdinalIgnoreCase);
-            _increment = scheme.Increment == 0 ? 1 : scheme.Increment;
-            _number = scheme.StartNumber;
+            var increment = step ?? scheme.Increment;
+            _increment = increment == 0 ? 1 : increment;
+            _number = start ?? scheme.StartNumber;
         }
 
         public string Next(Func<int, string> format)

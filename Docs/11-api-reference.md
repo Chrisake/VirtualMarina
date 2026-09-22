@@ -1041,7 +1041,10 @@ The pattern is plain text with tokens in braces, written into every new berth's 
 | `BerthNamingScheme()` | Creates an instance with default values. |
 | `static readonly BerthNamingScheme Default` | The default scheme: `{pier}-{side}{number}` from 1 upward, two digits, e.g. `A-L01`. |
 | `string Pattern { get; init; }` | Pattern for a berth on a pier. Default `{pier}-{side}{number}`. |
-| `string? LandPattern { get; init; }` | Pattern for a berth ashore; null (the default) uses `BerthNamingScheme.Pattern`, where `{side}` is empty. |
+| `string? LandPattern { get; init; }` | Pattern for a slot ashore; null (the default) uses `BerthNamingScheme.Pattern`, where `{side}` is empty. |
+| `int? LandStartNumber { get; init; }` | The first number offered to a slot ashore; null (the default) counts from `BerthNamingScheme.StartNumber`. |
+| `int? LandIncrement { get; init; }` | Step between slots ashore; null (the default) uses `BerthNamingScheme.Increment`. |
+| `int? LandNumberDigits { get; init; }` | Digits a slot ashore is padded to; null (the default) uses `BerthNamingScheme.NumberDigits`. |
 | `int StartNumber { get; init; }` | The first number offered. Default 1. |
 | `int Increment { get; init; }` | Step from one berth to the next. Default 1. |
 | `int NumberDigits { get; init; }` | Digits the number is padded to with leading zeros; 1 writes it as it is. Default 2, so 1 becomes `01`. |

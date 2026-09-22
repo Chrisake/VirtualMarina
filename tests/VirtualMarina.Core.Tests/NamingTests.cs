@@ -77,6 +77,48 @@ public class NamingTests
     }
 
     [Fact]
+    public void Designer_NumbersSlotsAshore_SeparatelyFromTheBerths()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddLandArea(new LandArea("yard", new[] { new Vector2(0, 0), new Vector2(60, 0), new Vector2(60, 40), new Vector2(0, 40) }, 1.5f, LandKind.Quay));
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(-20, 0), 0f, 40f));
+        var designer = marina.Designer;
+        designer.IsActive = true;
+        designer.BerthWidth = 5f;
+        designer.BerthLength = 12f;
+
+        // The berths on the water count one way, the slots ashore another.
+        designer.BerthNaming = new BerthNamingScheme
+        {
+            Pattern = "{number}",
+            StartNumber = 101,
+            Increment = 2,
+            NumberDigits = 3,
+            LandPattern = "YARD-{number}",
+            LandStartNumber = 1,
+            LandIncrement = 10,
+            LandNumberDigits = 2,
+        };
+
+        Assert.Equal(new[] { "101", "103" }, designer.CreateBerths("A", PierSide.Left, 0f, 10f).Select(b => b.Id));
+        Assert.Equal("YARD-01", designer.CreateLandBerth("yard", new Vector2(10, 10))!.Id);
+        Assert.Equal("YARD-11", designer.CreateLandBerth("yard", new Vector2(25, 10))!.Id);
+        Assert.Equal("YARD-21", designer.CreateLandBerth("yard", new Vector2(40, 10))!.Id);
+    }
+
+    [Fact]
+    public void AshoreNaming_FallsBackToTheBerthNumbering_WhenItIsNotSetSeparately()
+    {
+        var scheme = new BerthNamingScheme { StartNumber = 7, Increment = 3, NumberDigits = 1, LandPattern = "Y{number}" };
+        var land = new LandArea("yard", new[] { new Vector2(0, 0), new Vector2(10, 0), new Vector2(10, 10) }, 1f);
+
+        Assert.Equal("Y7", scheme.Format(land, 7));
+
+        // Padding is the berths' until the slots ashore ask for their own.
+        Assert.Equal("Y007", (scheme with { LandNumberDigits = 3 }).Format(land, 7));
+    }
+
+    [Fact]
     public void Designer_NamesDrawnPiers_ByThePattern()
     {
         var marina = new MarinaVisualizer();

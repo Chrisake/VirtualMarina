@@ -406,7 +406,7 @@ internal static class Strings
     /// <summary>"A pier along a quay wall or a mole only takes boats on its water side."</summary>
     internal static string PierBerthsTip => Get("PierBerthsTip");
 
-    /// <summary>"Click the shore end, then the far end. Hold Shift to snap the direction to 15° steps."</summary>
+    /// <summary>"Click the shore end, then the far end. The pier squares up with the quay and the piers alread..."</summary>
     internal static string PierHint => Get("PierHint");
 
     /// <summary>"Name"</summary>
@@ -523,6 +523,12 @@ internal static class Strings
 
     /// <summary>"Direction the stored boat faces: 0° = north, 90° = east."</summary>
     internal static string LandBerthHeadingTip => Get("LandBerthHeadingTip");
+
+    /// <summary>"Name of each new slot ashore. {pier} is the land area, {pierName} its name and {number} the r..."</summary>
+    internal static string LandNamePatternTip => Get("LandNamePatternTip");
+
+    /// <summary>"Number the first new slot ashore gets. Counts separately from the berths on the water."</summary>
+    internal static string LandStartNumberTip => Get("LandStartNumberTip");
 
     /// <summary>"Click the spot on a land area, then click where the bow should point. Click the same spot twi..."</summary>
     internal static string LandBerthHint => Get("LandBerthHint");

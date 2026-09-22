@@ -690,6 +690,9 @@ sealed class VirtualMarina.Core.Design.BerthNamingScheme : IEquatable<VirtualMar
     int Increment { get; init; }
     int NumberDigits { get; init; }
     int StartNumber { get; init; }
+    int? LandIncrement { get; init; }
+    int? LandNumberDigits { get; init; }
+    int? LandStartNumber { get; init; }
     static VirtualMarina.Core.Design.BerthNamingScheme Default
     static bool op_Equality(VirtualMarina.Core.Design.BerthNamingScheme left, VirtualMarina.Core.Design.BerthNamingScheme right)
     static bool op_Inequality(VirtualMarina.Core.Design.BerthNamingScheme left, VirtualMarina.Core.Design.BerthNamingScheme right)

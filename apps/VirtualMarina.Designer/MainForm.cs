@@ -61,6 +61,15 @@ internal sealed class MainForm : Form
 
     private MarinaDesigner Designer => Marina.Designer;
 
+    /// <summary>Narrowest the settings panel may be dragged: below this its rows stop fitting.</summary>
+    private const int MinInspectorWidth = 300;
+
+    /// <summary>Widest it may be dragged: past this it takes room from the marina without gaining anything.</summary>
+    private const int MaxInspectorWidth = 560;
+
+    /// <summary>Least width left for the marina view.</summary>
+    private const int MinViewWidth = 360;
+
     // ---- Shell ---------------------------------------------------------------------------------
 
     private void BuildLayout()
@@ -72,7 +81,8 @@ internal sealed class MainForm : Form
             SplitterWidth = 1,
             BackColor = Theme.Border,
             Width = 1200,
-            Panel1MinSize = 360,
+            Panel1MinSize = MinViewWidth,
+            Panel2MinSize = MinInspectorWidth,
         };
         split.Panel1.Controls.Add(_view);
         split.Panel2.Controls.Add(_inspector);
@@ -98,10 +108,11 @@ internal sealed class MainForm : Form
         Controls.Add(_status);
 
         // The inspector keeps its width while the window is resized; the splitter can only be set once the form has a size.
+        split.SizeChanged += (_, _) => LimitInspectorWidth(split);
         Shown += (_, _) =>
         {
-            split.Panel2MinSize = 300;
-            split.SplitterDistance = Math.Max(split.Panel1MinSize, split.Width - 316);
+            LimitInspectorWidth(split);
+            SetInspectorWidth(split, 316);
         };
     }
 
@@ -189,6 +200,32 @@ internal sealed class MainForm : Form
         _toolbar.Items.Add(Command(Strings.CommandTopView, Strings.CommandTopViewTip, () => Designer.ViewTopDown()));
         _toolbar.Items.Add(Command(Strings.CommandFitMarina, Strings.CommandFitMarinaTip, () => Marina.ResetCamera()));
         _toolbar.Items.Add(Command(Strings.CommandReferenceImage, Strings.CommandReferenceImageTip, LoadReferenceImage));
+    }
+
+    /// <summary>
+    /// Holds the settings panel between <see cref="MinInspectorWidth"/> and <see cref="MaxInspectorWidth"/>. The
+    /// maximum is expressed as a minimum width for the marina view, so the splitter simply stops there while being
+    /// dragged instead of springing back.
+    /// </summary>
+    private static void LimitInspectorWidth(SplitContainer split)
+    {
+        var available = split.Width - split.SplitterWidth;
+        if (available <= MinInspectorWidth) return; // The window is too narrow to honour anything; leave it alone.
+
+        // Both minimums have to fit, whatever the window size, or SplitContainer throws.
+        var viewMinimum = Math.Max(MinViewWidth, available - MaxInspectorWidth);
+        split.Panel2MinSize = Math.Min(MinInspectorWidth, available - MinViewWidth);
+        split.Panel1MinSize = Math.Min(viewMinimum, available - split.Panel2MinSize);
+
+        // A window that shrank can leave the splitter outside the new bounds.
+        SetInspectorWidth(split, available - split.SplitterDistance);
+    }
+
+    private static void SetInspectorWidth(SplitContainer split, int width)
+    {
+        var available = split.Width - split.SplitterWidth;
+        var distance = Math.Clamp(available - width, split.Panel1MinSize, Math.Max(split.Panel1MinSize, available - split.Panel2MinSize));
+        if (distance != split.SplitterDistance) split.SplitterDistance = distance;
     }
 
     private void AddToolButton(DesignTool tool, string text, string tip)

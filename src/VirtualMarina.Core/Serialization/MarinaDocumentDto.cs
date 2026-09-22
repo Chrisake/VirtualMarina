@@ -554,6 +554,12 @@ internal sealed class BerthNamingDto : ExtensibleDto
 
     public string? LandPattern { get; set; }
 
+    public int? LandStartNumber { get; set; }
+
+    public int? LandIncrement { get; set; }
+
+    public int? LandNumberDigits { get; set; }
+
     public int StartNumber { get; set; } = 1;
 
     public int Increment { get; set; } = 1;
@@ -568,6 +574,9 @@ internal sealed class BerthNamingDto : ExtensibleDto
     {
         Pattern = scheme.Pattern,
         LandPattern = scheme.LandPattern,
+        LandStartNumber = scheme.LandStartNumber,
+        LandIncrement = scheme.LandIncrement,
+        LandNumberDigits = scheme.LandNumberDigits,
         StartNumber = scheme.StartNumber,
         Increment = scheme.Increment,
         NumberDigits = scheme.NumberDigits,
@@ -581,6 +590,9 @@ internal sealed class BerthNamingDto : ExtensibleDto
         {
             Pattern = string.IsNullOrWhiteSpace(Pattern) ? BerthNamingScheme.Default.Pattern : Pattern,
             LandPattern = string.IsNullOrWhiteSpace(LandPattern) ? null : LandPattern,
+            LandStartNumber = LandStartNumber,
+            LandIncrement = LandIncrement == 0 ? null : LandIncrement,
+            LandNumberDigits = LandNumberDigits is null ? null : Math.Clamp(LandNumberDigits.Value, 1, 9),
             StartNumber = StartNumber,
             Increment = Increment == 0 ? 1 : Increment,
             NumberDigits = Math.Clamp(NumberDigits, 1, 9),

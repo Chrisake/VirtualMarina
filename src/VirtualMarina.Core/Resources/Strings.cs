@@ -282,7 +282,7 @@ internal static class Strings
     /// <summary>"Click the shore end of the pier."</summary>
     internal static string HintDrawPierStart => Get("HintDrawPierStart");
 
-    /// <summary>"Click the far end of the pier (Shift: 15° steps). Esc cancels."</summary>
+    /// <summary>"Click the far end of the pier. It squares up with the quay and the piers already there; hold ..."</summary>
     internal static string HintDrawPierEnd => Get("HintDrawPierEnd");
 
     /// <summary>"Click beside a pier where the first berth goes."</summary>

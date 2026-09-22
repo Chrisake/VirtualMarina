@@ -42,7 +42,7 @@ While `IsActive` is true, clicks go to the designer instead of selecting berths.
 |---|---|---|
 | `Navigate` | Nothing (camera only) | |
 | `DrawLandArea` | Click to add corners. Finish with a double-click, a right-click or a click on the first corner | Enter finishes, Backspace removes the last corner, Esc cancels |
-| `DrawPier` | Click the shore end, then the far end. Shift snaps the direction to 15° steps | Esc cancels |
+| `DrawPier` | Click the shore end, then the far end. The direction squares up with the quay and the other piers; Alt draws it free, Shift snaps to 15° steps | Esc cancels |
 | `AddBerths` | Click beside a pier where the row starts, then where it ends. Clicking the same spot twice adds one berth | Esc cancels |
 | `AddLandBerths` | Click a land area where the boat should stand, then click where its bow should point (Shift snaps to 15°; the same spot twice uses `LandBerthHeading`) | Esc cancels |
 | `PlantTrees` | Click a lawn to scatter trees on it, replacing the ones it has. Ctrl+click or right-click removes them | |
@@ -52,6 +52,8 @@ While `IsActive` is true, clicks go to the designer instead of selecting berths.
 | `MeasureScale` | Click both ends of the image's scale bar | |
 
 Ctrl+Z undoes the last change, with any tool (see [Undo](#undo)). When there's nothing to cancel, Esc switches back to `Navigate`. Corners and pier ends snap to existing land corners, pier ends and land edges within `SnapDistancePixels` (default 12). Holding Alt turns snapping off.
+
+**Piers square up.** A pier being drawn takes a direction at right angles to what is already there: the piers in the marina, and the land edges within 40 m of its shore end — the quay it springs from. A direction within 6° of square is corrected; anything further is left as drawn, so a deliberately angled pier still works. The preview marks a squared-up direction with a short line back along the pier. Alt draws exactly what the pointer says, and Shift asks for 15° steps instead.
 
 While drawing, the view shows a preview on top of everything: outline and rubber band, the ghost pier with its length, the berths a click would add, and the element the eraser would remove. Invalid drawings (a crossing outline, a closed pier side) are shown in red.
 
@@ -141,7 +143,7 @@ designer.BerthNaming = new BerthNamingScheme
 };
 ```
 
-Numbering starts at `StartNumber` and goes up by `Increment`. Names already taken are skipped, so a second row on the same pier carries on after the first instead of clashing with it. `Validate()` reports a scheme that could not name anything (an empty pattern, a zero increment); the setter throws on one. An unknown token is written out as it stands, so a stray brace never swallows part of a name.
+Slots ashore have a numbering of their own: `LandStartNumber`, `LandIncrement` and `LandNumberDigits` each fall back to the berths’ setting when left null, so a yard can run `YARD-01, YARD-02` while the berths run `101, 103, 105`. Numbering starts at `StartNumber` and goes up by `Increment`. Names already taken are skipped, so a second row on the same pier carries on after the first instead of clashing with it. `Validate()` reports a scheme that could not name anything (an empty pattern, a zero increment); the setter throws on one. An unknown token is written out as it stands, so a stray brace never swallows part of a name.
 
 `PierNamePattern` does the same, more simply, for a pier's display name: `{pier}` stands for its generated id, so `"Pontoon {pier}"` gives "Pontoon A". Both settings are part of `DesignerSettings`, so a marina file reopens with the naming it was saved with.
 

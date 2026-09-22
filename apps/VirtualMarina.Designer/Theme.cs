@@ -98,12 +98,15 @@ internal static class Theme
         return control;
     }
 
-    /// <summary>Explanatory line inside a card.</summary>
+    /// <summary>
+    /// Explanatory line inside a card. Docked, so the cell it sits in decides how wide it is and the text
+    /// wraps to whatever width the panel has been dragged to.
+    /// </summary>
     public static Label Hint(string text) => new()
     {
         Text = text,
         AutoSize = true,
-        MaximumSize = new Size(268, 0),
+        Dock = DockStyle.Fill,
         ForeColor = TextSoft,
         Font = Small,
         Margin = new Padding(0, 2, 0, 2),

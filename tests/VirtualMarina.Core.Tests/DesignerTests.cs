@@ -156,6 +156,47 @@ public class DesignerTests
     }
 
     [Fact]
+    public void DrawPier_SquaresUpWithTheQuayAndTheOtherPiers_UnlessAltIsHeld()
+    {
+        // A quay running east-west, so the square directions are 0, 90, 180 and 270.
+        var marina = CreateDesigner(DesignTool.DrawPier);
+        marina.AddLandArea(new LandArea("quay", new[] { new Vector2(-50, -40), new Vector2(50, -40), new Vector2(50, -20), new Vector2(-50, -20) }, 1f));
+
+        // Drawn a few degrees off square, it comes out square.
+        Click(marina, new Vector2(0, -19));
+        Click(marina, new Vector2(3, 40));
+        var pier = Assert.Single(marina.GetPiers());
+        Assert.Equal(0f, pier.HeadingDegrees, 1);
+
+        // A second pier lines up with the first one the same way.
+        Click(marina, new Vector2(-30, -19));
+        Click(marina, new Vector2(-27, 20), modifiers: InputModifiers.None);
+        Assert.Equal(0f, marina.GetPiers()[1].HeadingDegrees, 1);
+
+        // Alt draws exactly what the pointer says.
+        Click(marina, new Vector2(30, -19), modifiers: InputModifiers.Alt);
+        Click(marina, new Vector2(33, 21), modifiers: InputModifiers.Alt);
+        var free = marina.GetPiers()[2];
+        Assert.Equal(MarinaMath.DirectionToHeading(new Vector2(3, 40)), free.HeadingDegrees, 1);
+        Assert.NotEqual(0f, free.HeadingDegrees, 1);
+    }
+
+    [Fact]
+    public void DrawPier_SquaringUp_LeavesAClearlyDifferentDirectionAlone()
+    {
+        var marina = CreateDesigner(DesignTool.DrawPier);
+        marina.AddLandArea(new LandArea("quay", new[] { new Vector2(-50, -40), new Vector2(50, -40), new Vector2(50, -20), new Vector2(-50, -20) }, 1f));
+
+        // 30° off square is a direction the user means; only small slips are corrected.
+        // The first click snaps to the quay edge at y = -20, so this second one is exactly 30° from there.
+        Click(marina, new Vector2(0, -19));
+        Click(marina, new Vector2(30f, 31.96f));
+
+        var pier = Assert.Single(marina.GetPiers());
+        Assert.Equal(30f, pier.HeadingDegrees, 1);
+    }
+
+    [Fact]
     public void AddBerths_RowBetweenTwoClicks_UsesSizeAndDepth_AlignsWithExistingBerths_AndSkipsTakenPlaces()
     {
         var marina = CreateDesigner(DesignTool.AddBerths);

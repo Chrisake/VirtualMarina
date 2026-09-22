@@ -50,6 +50,8 @@ The Berths panel has a **Names** section that decides what the berths drawn next
 
 A line under the fields shows the next few names as you type, so the pattern is never a guess. Numbers already taken are skipped, so filling a second pier carries on where the first left off.
 
+The **Ashore** panel has the same four fields for the slots on land, counted separately from the berths on the water: the berths can run 101, 103, 105 while the yard runs YARD-01, YARD-02. Left alone, the slots ashore follow the berths’ numbering.
+
 The **Rename** tool (or Edit ▸ Rename, F2) gives one element another name: click a berth or a pier, type the name, press Enter. A berth's name is also its id, so a name already used is refused and the log says so; a pier's name is only a title, so any name will do. Ctrl+Z puts the old name back.
 
 ## What it saves

@@ -308,7 +308,7 @@
     <value>Click the shore end of the pier.</value>
   </data>
   <data name="HintDrawPierEnd">
-    <value>Click the far end of the pier (Shift: 15° steps). Esc cancels.</value>
+    <value>Click the far end of the pier. It squares up with the quay and the piers already there; hold Alt to draw it free, Shift for 15° steps. Esc cancels.</value>
   </data>
   <data name="HintAddBerthsStart">
     <value>Click beside a pier where the first berth goes.</value>

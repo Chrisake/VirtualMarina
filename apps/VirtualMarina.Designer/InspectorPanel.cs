@@ -15,15 +15,20 @@ internal sealed class InspectorPanel : Panel
     private readonly MarinaVisualizer _marina;
     private readonly Action _loadImage;
     private readonly Label _toolName = new() { Font = new Font("Segoe UI Semibold", 13f), ForeColor = Theme.Text, AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
-    private readonly Label _toolHint = new() { Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, MaximumSize = new Size(272, 0), Margin = new Padding(0, 0, 0, 10) };
-    private readonly FlowLayoutPanel _stack = new()
+    private readonly Label _toolHint = new() { Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) };
+    /// <summary>
+    /// The cards, stacked in a single column that is always the full width of the panel. A card docked into that
+    /// column is given its width by the layout engine, so dragging the splitter resizes the cards and the text
+    /// inside them without anything being measured here.
+    /// </summary>
+    private readonly TableLayoutPanel _stack = new()
     {
-        FlowDirection = FlowDirection.TopDown,
-        WrapContents = false,
+        ColumnCount = 1,
         AutoScroll = true,
         Dock = DockStyle.Fill,
         BackColor = Theme.Background,
         Padding = new Padding(12, 12, 12, 12),
+        GrowStyle = TableLayoutPanelGrowStyle.AddRows,
     };
 
     // Land area
@@ -59,6 +64,11 @@ internal sealed class InspectorPanel : Panel
     private readonly NumericUpDown _landBerthWidth = Theme.Number(1m, 50m, 0.25m);
     private readonly NumericUpDown _landBerthLength = Theme.Number(1m, 150m, 0.5m);
     private readonly NumericUpDown _landBerthHeading = Theme.Number(-180m, 180m, 15m, 0);
+    private readonly TextBox _landPattern = Theme.Field();
+    private readonly NumericUpDown _landStartNumber = Theme.Number(-99999m, 99999m, 1m, 0);
+    private readonly NumericUpDown _landIncrement = Theme.Number(-999m, 999m, 1m, 0);
+    private readonly NumericUpDown _landDigits = Theme.Number(1m, 9m, 1m, 0);
+    private readonly Label _landNameExample = Theme.Hint(string.Empty);
 
     // Rename
     private readonly Panel _renameCard;
@@ -95,11 +105,21 @@ internal sealed class InspectorPanel : Panel
         BackColor = Theme.Background;
         Dock = DockStyle.Fill;
 
-        var header = new Panel { Dock = DockStyle.Top, AutoSize = true, BackColor = Theme.Background, Padding = new Padding(12, 12, 12, 0) };
-        var headerStack = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Dock = DockStyle.Top, Margin = Padding.Empty };
-        headerStack.Controls.Add(_toolName);
-        headerStack.Controls.Add(_toolHint);
-        header.Controls.Add(headerStack);
+        // One full-width column again, so the hint under the tool's name wraps instead of being clipped.
+        var header = new TableLayoutPanel
+        {
+            ColumnCount = 1,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Dock = DockStyle.Top,
+            BackColor = Theme.Background,
+            Padding = new Padding(12, 12, 12, 0),
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        header.Controls.Add(_toolName, 0, 0);
+        header.Controls.Add(_toolHint, 0, 1);
 
         _landCard = BuildLandCard();
         _pierCard = BuildPierCard();
@@ -111,14 +131,18 @@ internal sealed class InspectorPanel : Panel
         _imageCard = BuildImageCard(out _imageMove, out _imageMeasure, out _applyScale);
         _summaryCard = BuildSummaryCard();
 
+        _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
         foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _treeCard, _eraseCard, _renameCard, _imageCard, _summaryCard })
         {
-            // Fixed width, height from the contents: the cards stack down the panel without ever going sideways.
-            card.Dock = DockStyle.None;
-            card.MinimumSize = new Size(282, 0);
-            card.MaximumSize = new Size(282, 0);
-            _stack.Controls.Add(card);
+            // Top, not Fill: the column still decides the width, but the height stays the card's own.
+            card.Dock = DockStyle.Top;
+            _stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _stack.Controls.Add(card, 0, _stack.RowCount++);
         }
+
+        // A last row that soaks up the space left over, so the cards stay at the top instead of spreading out.
+        _stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+        _stack.RowCount++;
 
         Controls.Add(_stack);
         Controls.Add(header);
@@ -177,6 +201,13 @@ internal sealed class InspectorPanel : Panel
             SetNumber(_landBerthWidth, designer.BerthWidth);
             SetNumber(_landBerthLength, designer.BerthLength);
             SetNumber(_landBerthHeading, designer.LandBerthHeading);
+
+            var ashore = designer.BerthNaming;
+            SetText(_landPattern, ashore.LandPattern ?? ashore.Pattern);
+            SetNumber(_landStartNumber, ashore.LandStartNumber ?? ashore.StartNumber);
+            SetNumber(_landIncrement, ashore.LandIncrement ?? ashore.Increment);
+            SetNumber(_landDigits, ashore.LandNumberDigits ?? ashore.NumberDigits);
+            _landNameExample.Text = AshoreNameExample(ashore);
             _treeDensity.Value = Math.Clamp((int)MathF.Round(designer.TreeDensity), _treeDensity.Minimum, _treeDensity.Maximum);
 
             var image = designer.ReferenceImage;
@@ -318,6 +349,13 @@ internal sealed class InspectorPanel : Panel
 
         Theme.FullRow(table, compass);
         Theme.FullRow(table, Theme.Hint(Strings.LandBerthHint));
+
+        Theme.Section(table, Strings.BerthNamingHeading);
+        Theme.Row(table, Strings.BerthNamePattern, _landPattern, Strings.LandNamePatternTip);
+        Theme.Row(table, Strings.BerthStartNumber, _landStartNumber, Strings.LandStartNumberTip);
+        Theme.Row(table, Strings.BerthIncrement, _landIncrement, Strings.BerthIncrementTip);
+        Theme.Row(table, Strings.BerthNumberDigits, _landDigits, Strings.BerthNumberDigitsTip);
+        Theme.FullRow(table, _landNameExample);
         return card;
     }
 
@@ -409,6 +447,10 @@ internal sealed class InspectorPanel : Panel
         _landBerthWidth.ValueChanged += (_, _) => Apply(d => d.BerthWidth = (float)_landBerthWidth.Value);
         _landBerthLength.ValueChanged += (_, _) => Apply(d => d.BerthLength = (float)_landBerthLength.Value);
         _landBerthHeading.ValueChanged += (_, _) => Apply(d => d.LandBerthHeading = (float)_landBerthHeading.Value);
+        _landPattern.TextChanged += (_, _) => ApplyNaming(n => string.IsNullOrWhiteSpace(_landPattern.Text) ? n : n with { LandPattern = _landPattern.Text });
+        _landStartNumber.ValueChanged += (_, _) => ApplyNaming(n => n with { LandStartNumber = (int)_landStartNumber.Value });
+        _landIncrement.ValueChanged += (_, _) => ApplyNaming(n => (int)_landIncrement.Value == 0 ? n : n with { LandIncrement = (int)_landIncrement.Value });
+        _landDigits.ValueChanged += (_, _) => ApplyNaming(n => n with { LandNumberDigits = (int)_landDigits.Value });
         _treeDensity.ValueChanged += (_, _) => Apply(d => d.TreeDensity = _treeDensity.Value);
 
         _imageOpacity.ValueChanged += (_, _) => Apply(d => d.ReferenceImageOpacity = _imageOpacity.Value / 100f);
@@ -437,6 +479,17 @@ internal sealed class InspectorPanel : Panel
         var naming = change(d.BerthNaming);
         if (!naming.Validate().Any()) d.BerthNaming = naming;
     });
+
+    /// <summary>The first three names the slots ashore would get, mirroring the preview on the berth card.</summary>
+    private string AshoreNameExample(BerthNamingScheme naming)
+    {
+        var land = _marina.GetLandAreas().FirstOrDefault()
+            ?? new LandArea("yard", new[] { new System.Numerics.Vector2(0, 0), new System.Numerics.Vector2(10, 0), new System.Numerics.Vector2(10, 10) }, 1f);
+        var start = naming.LandStartNumber ?? naming.StartNumber;
+        var step = naming.LandIncrement ?? naming.Increment;
+        var numbers = Enumerable.Range(0, 3).Select(i => start + i * step);
+        return Strings.Format(Strings.BerthNamingExample, string.Join(", ", numbers.Select(n => naming.Format(land, n))));
+    }
 
     /// <summary>The first three names the scheme would give, so the effect of a pattern is visible while typing it.</summary>
     private string NamingExample(BerthNamingScheme naming)
