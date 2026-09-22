@@ -186,6 +186,46 @@ named by hand alone. Renaming a pier's id runs it.
 
 The side token is read from `BerthNaming`, since nothing in a name says which letter stood for the side.
 
+The API behind all of it:
+
+| Member | What it does |
+|---|---|
+| `RenameBerth(berthId, newBerthId)` | Gives a berth another name, keeping its place, boat, status, external data, selection and multi-berth |
+| `RenamePier(pierId, name)` | Gives a pier another display name; its id, and the berth names built from it, stay |
+| `ChangePierId(pierId, newPierId)` | Moves a pier's id, taking its berths with it |
+| `DefaultBerthPattern(pierId)` | The pattern a pier's berths are named by when nothing else is asked for |
+| `PlanBerthNames(pierId, pattern)` / `ApplyBerthNames(plan)` | Name a whole pier from scratch, checking for clashes first |
+| `RenumberBerths(pierId)` / `RenumberBerths(pierId, pattern)` | Rebuild the names, keeping the number each berth has |
+
+All of them are undoable. `DesignTool.Rename` raises `ElementRenaming` for the new name, so the application decides
+how to ask:
+
+```csharp
+designer.ElementRenaming += (s, e) =>
+{
+    if (e.Scope == DesignRenameScope.BerthsOfPier)
+    {
+        e.NewBerthPattern = Prompt($"Name the berths on pier {e.Pier!.Id}", e.BerthPattern);
+        return;
+    }
+
+    var name = Prompt(e.Berth is not null ? "Rename berth" : "Name the pier", e.CurrentName);
+    if (name is null) e.Cancel = true;
+    else e.NewName = name;
+};
+
+designer.Tool = DesignTool.Rename;
+```
+
+Without a handler the tool does nothing, and a name already taken is refused, so the host can offer another on the
+next click. `IMarinaVisualizer.RenameBerth` is the same rename without the undo step, for a host renaming from its
+own UI; it raises `LayoutChangeKind.BerthRenamed`. A berth's id is what an ERP stores against a contract, so
+renaming one already in use means updating that reference too — `Berth.Label` is the alternative, a display name
+that leaves the id alone.
+
+The names of elements the designer is about to add can also be replaced in `ElementCreating` (see
+[Events](#events)).
+
 ### The mainland
 
 `DrawShoreline` draws the coast behind the marina, so it stops looking like an island in an empty sea. Click along the
@@ -245,29 +285,6 @@ designer.BerthNaming = new BerthNamingScheme
 Slots ashore have a numbering of their own: `LandStartNumber`, `LandIncrement` and `LandNumberDigits` each fall back to the berths’ setting when left null, so a yard can run `YARD-01, YARD-02` while the berths run `101, 103, 105`. Numbering starts at `StartNumber` and goes up by `Increment`. Names already taken are skipped, so a second row on the same pier carries on after the first instead of clashing with it. `Validate()` reports a scheme that could not name anything (an empty pattern, a zero increment); the setter throws on one. An unknown token is written out as it stands, so a stray brace never swallows part of a name.
 
 `PierNamePattern` does the same, more simply, for a pier's display name: `{pier}` stands for its generated id, so `"Pontoon {pier}"` gives "Pontoon A". Both settings are part of `DesignerSettings`, so a marina file reopens with the naming it was saved with.
-
-#### Renaming one element
-
-| Member | What it does |
-|---|---|
-| `RenameBerth(berthId, newBerthId)` | Gives a berth another name, keeping its place, boat, status, external data, selection and multi-berth. Undoable |
-| `RenamePier(pierId, name)` | Gives a pier another display name. Its id, and the berth names built from it, stay. Undoable |
-| `DesignTool.Rename` | Click a berth or pier in the view; the designer raises `ElementRenaming` for the new name |
-
-```csharp
-designer.ElementRenaming += (s, e) =>
-{
-    var name = Prompt(e.Berth is not null ? "Rename berth" : "Name the pier", e.CurrentName);
-    if (name is null) e.Cancel = true;
-    else e.NewName = name;
-};
-
-designer.Tool = DesignTool.Rename;
-```
-
-Without a handler the tool does nothing, and a name already taken is refused (the host can offer another one on the next click). `IMarinaVisualizer.RenameBerth` is the same rename without the undo step, for a host that renames from its own UI; it raises `LayoutChangeKind.BerthRenamed`. A berth's id is what an ERP stores against a contract, so renaming one that is already in use means updating that reference too — `Berth.Label` is the alternative, a display name that leaves the id alone.
-
-The names of the elements the designer is about to add can also be replaced in `ElementCreating` (see below).
 
 ## Undo
 

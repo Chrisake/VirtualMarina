@@ -85,43 +85,28 @@ Every element — land area, pier, divider, berth and multi-berth — can carry 
 
 Conventions: points are `[x, y]` in plan coordinates (meters, north is −y), colors are `#RRGGBB` (or `#RRGGBBAA`), light colors are `[r, g, b]` in 0–1, enums are written by name, and lengths are meters and angles degrees throughout — the same units as the API ([coordinates and conventions](02-coordinates-and-conventions.md)).
 
-### The shoreline
+### The shoreline and the passing traffic
 
-`shoreline` is the mainland behind the marina, and it is optional: a file without it is a marina in open water, which
-is how every file written before it existed reads back.
+Both are optional, and a file without them is a marina in open water — which is how every file written before they
+existed reads back. What each setting *means* is in [The sea and the shore](17-sea-and-shore.md); what matters here
+is how little of it reaches the file.
 
-Only the drawn line is saved. `line` is the coast the designer clicked, and `landOnLeft` says which half of the plan is
-land — the left of the line walked from its first point to its last. The first and last stretches run on without end,
-so the shape covering that half is worked out on load and its far edge is never written down. Two points are enough:
-that is a straight coast.
+`shoreline` stores **only the drawn line**: `line` is the coast the designer clicked and `landOnLeft` says which half
+of the plan is land. The first and last stretches of that line run on without end, so the shape covering the land is
+worked out on load and its far edge is never written down. `scenery` and `scenerySeed` say what covers the land and
+fix the arrangement; the scenery itself is drawn from the seed, so a wooded coast costs no more than a bare one.
 
-The one rule is that those two endless stretches must not cross each other, or neither side of the line is "the land".
-`Shoreline.Validate` reports that, and a file whose line breaks it fails `ApplyTo` like any other unsound layout.
+A shoreline whose two endless stretches cross each other leaves neither side of the line as "the land".
+`Shoreline.Validate` reports it, and such a file fails `ApplyTo` like any other unsound layout.
 
-`scenery` is what is scattered over the land — `None`, `Countryside`, `Fields` or `Town` — and `scenerySeed` keeps that
-scattering the same between sessions. The scenery itself is never written out: it is drawn from the seed, so the file
-stays small however much of it there is.
-
-### The passing traffic
-
-`marineTraffic` is the shipping out at sea, and it is optional in the same way: a file without it is an empty sea, and
-it is only written once the traffic has been switched on.
-
-Only the settings are stored. The lanes, the vessels on them and where each one started are worked out from `seed`
-and from the shoreline when the file is loaded, so a busy sea costs no more to store than an empty one and looks the
-same every time it is opened. Nothing about the lanes themselves is written, so moving the coast moves the shipping
-with it.
-
-`clearance` is how near the middle of the marina the nearest lane comes, and `edgeClearance` how far off the coast a
-lane sits where it leaves the map; `laneCount` and `laneSpacing` say how many lanes there are and how far each steps
-out to sea beyond the first. `speedPercent` scales what each kind of vessel really does rather than setting one speed
-for all of them, `maximumVessels` caps how many are out at once, and `spawnDelaySeconds` is roughly how long after a
-vessel leaves the map before another appears. `reach` is only used when there is no shoreline to take the lane ends
-from.
+`marineTraffic` stores **only the settings** — `clearance`, `edgeClearance`, `laneCount`, `laneSpacing`,
+`speedPercent`, `maximumVessels`, `spawnDelaySeconds`, `reach`, `seed` and the vessel mix. The lanes are worked out
+from the shoreline and the traffic from the seed, so a busy sea costs no more to store than an empty one, and moving
+the coast moves the shipping with it.
 
 A setting a file does not carry falls back to its default on load, so a design written by an earlier version opens
-with sensible traffic rather than none. Whether the lanes are *drawn* is not stored: that is a working aid for
-setting the clearances, and a reloaded design always has it off.
+with sensible traffic rather than none. Whether the lanes are *drawn* is not stored: that is a working aid, and a
+reloaded design always has it off.
 
 The vessels are decoration: they are not berths, they cannot be clicked, and they never appear in `berths`.
 

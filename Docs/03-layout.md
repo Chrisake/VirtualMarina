@@ -10,6 +10,8 @@ A marina is a `MarinaLayout`:
 | `Dividers` | Finger piers, pile rows, booms and single piles between berths |
 | `MultiBerths` | Boats spanning several berths (see [Multi-berths](05-multi-berths.md)) |
 | `LandAreas` | Polygon quays, breakwaters and lawns (see [Land areas](#land-areas)) |
+| `Shoreline` | The mainland behind the marina, or null (see [The sea and the shore](17-sea-and-shore.md)) |
+| `MarineTraffic` | Vessels passing out at sea, or null (see [The sea and the shore](17-sea-and-shore.md)) |
 
 Load it with `InitializeLayout(layout)`. This replaces everything, clears the selection, rebuilds the camera presets and resets the camera. Save the current state with `GetLayout()`, which round-trips through `InitializeLayout`.
 
@@ -259,7 +261,7 @@ IReadOnlyList<Berth> stored = marina.GetBerthsByLandArea("yard");
 
 - **`RemovePier`** also removes the pier's dividers. With `removeBerths: false` it throws if berths remain.
 - **`RemoveBerth`** drops the berth from the selection and shrinks or dissolves its multi-berth.
-- **`RenameBerth`** gives a berth another id, keeping its place, boat, status, `ExternalData`, place in the selection and multi-berth, and raises `BerthRenamed`. It throws when the new id is taken. The id is what an ERP stores against a contract, so `Berth.Label` — a display name that leaves the id alone — is often the better answer; the [designer](12-designer.md#renaming-one-element) renames berths this way with an undo step.
+- **`RenameBerth`** gives a berth another id, keeping its place, boat, status, `ExternalData`, place in the selection and multi-berth, and raises `BerthRenamed`. It throws when the new id is taken. The id is what an ERP stores against a contract, so `Berth.Label` — a display name that leaves the id alone — is often the better answer; the [designer](12-designer.md#renaming) renames berths this way with an undo step.
 
 ## Batching changes
 

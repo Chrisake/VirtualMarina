@@ -1,5 +1,12 @@
 ﻿# Appearance
 
+How the marina itself is drawn: the names on the water, the status colours, the light, the sea and the shadows, and
+the boat models. Everything here lives on `marina.Style` or on the visualizer directly, and all of it is saved with
+the design, so a host loading a `.marina.json` gets the look it was drawn with and need not configure anything.
+
+What surrounds the marina — the mainland and the passing shipping — is in
+[The sea and the shore](17-sea-and-shore.md).
+
 ## Berth labels on the water
 
 ```csharp
@@ -23,6 +30,8 @@ marina.BerthLabelMode = BerthLabelMode.NonOccupied;
 - **Waves:** the text sits just above the highest point the waves can reach (the sum of wave amplitudes × `Water.WaveAmplitude`), so waves never cover it from any camera position.
 - **Which berths:** hidden and filtered-out berths get no label.
 - **Characters:** labels use a built-in stroke font (no textures) covering `A–Z`, `0–9` and `- _ + . , : / ( ) # ?`. Lowercase is drawn as uppercase and other characters as `?`.
+
+`BerthLabelModeExtensions.Includes(mode, status)` and `GetDisplayName(mode)` help build a mode picker.
 
 ### How the letters look
 
@@ -48,8 +57,6 @@ The letters are **drawn as strokes**, not set in an installed font: they are mes
 OpenGL and WebGL render exactly the same thing, the library carries no font files, and the text stays crisp at any
 zoom. Real font names such as Arial or Times are therefore not among the choices, and there is no monospaced one:
 every glyph already sits on the same grid and advances by the same step, so it would be `Sans` under another name.
-
-`BerthLabelModeExtensions.Includes(mode, status)` and `GetDisplayName(mode)` help build a mode picker.
 
 ## Status colors and overlays
 
@@ -143,11 +150,6 @@ What projected shadows cannot do:
   for something like a tree crown, which is several rounded blobs on top of one another — and can look blotchy past
   about 0.4.
 - **Nothing below about 4° of elevation**, where a shadow would stretch to the horizon.
-
-## The sea and the shore
-
-The mainland behind the marina and the shipping that passes it have their own guide:
-[The sea and the shore](17-sea-and-shore.md).
 
 ## Replacing boat models
 
