@@ -245,7 +245,7 @@ internal sealed class TextInputForm : Form
     /// <param name="secondValue">Initial text of the second field.</param>
     /// <param name="thirdQuestion">Label above the third field, or null to leave it out.</param>
     /// <param name="thirdValue">Initial text of the third field.</param>
-    /// <param name="thirdHint">A line of explanation under the third field, or null for none.</param>
+    /// <param name="thirdHint">A line of explanation under the last field shown, or null for none.</param>
     public TextInputForm(
         string title,
         string question,
@@ -271,14 +271,15 @@ internal sealed class TextInputForm : Form
 
         var content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(16, 16, 16, 8) };
 
-        // Docked top, so they stack in the reverse order they are added.
+        // Docked top, so they stack in the reverse order they are added: the hint first, since it goes below
+        // whichever field turns out to be the last one.
+        if (thirdHint is not null)
+        {
+            content.Controls.Add(new Label { Text = thirdHint, Dock = DockStyle.Top, AutoSize = true, ForeColor = Theme.TextSoft, Margin = new Padding(0, 4, 0, 8), Height = 30, MaximumSize = new Size(360, 0) });
+        }
+
         if (thirdQuestion is not null)
         {
-            if (thirdHint is not null)
-            {
-                content.Controls.Add(new Label { Text = thirdHint, Dock = DockStyle.Top, AutoSize = true, ForeColor = Theme.TextSoft, Margin = new Padding(0, 4, 0, 8), Height = 30, MaximumSize = new Size(360, 0) });
-            }
-
             content.Controls.Add(_third);
             content.Controls.Add(new Label { Text = thirdQuestion, Dock = DockStyle.Top, AutoSize = true, ForeColor = Theme.TextSoft, Margin = new Padding(0, 8, 0, 8), Height = 22 });
         }

@@ -780,6 +780,14 @@ Runtime      {4}
   <data name="RenamePierIdQuestion">
     <value>Its id, which its berths and dividers point at:</value>
   </data>
+  <data name="RenameBerthsTitle">
+    <value>Rename the berths on pier {0}</value>
+    <comment>{0} = the pier id.</comment>
+  </data>
+  <data name="RenameBerthsQuestion">
+    <value>Name all {0} berths on pier {1} by:</value>
+    <comment>{0} = how many berths, {1} = the pier id.</comment>
+  </data>
   <data name="RenamePatternQuestion">
     <value>Name its berths by:</value>
   </data>

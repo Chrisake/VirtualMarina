@@ -708,6 +708,10 @@ internal static class Strings
     /// <summary>"Its id, which its berths and dividers point at:"</summary>
     internal static string RenamePierIdQuestion => Get("RenamePierIdQuestion");
 
+    internal static string RenameBerthsTitle => Get("RenameBerthsTitle");
+
+    internal static string RenameBerthsQuestion => Get("RenameBerthsQuestion");
+
     internal static string RenamePatternQuestion => Get("RenamePatternQuestion");
 
     internal static string RenamePatternHint => Get("RenamePatternHint");

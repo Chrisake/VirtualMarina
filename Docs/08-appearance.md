@@ -207,6 +207,10 @@ marina.ShowTrafficLanes = true;   // draws the lanes on the water while the clea
 `ShowTrafficLanes` is a working aid, not a style: it draws the lanes, tinted by which way each runs. It is not saved
 with the design. The Designer offers it as **Show the lanes** in the traffic card of the Look panel.
 
+`Reach` is only consulted when there is no shoreline. A reach shorter than `Clearance` is not an error: the lane is
+simply run out far enough to be worth crossing. It used to be refused, which meant a design carrying a short reach
+from an older version threw the moment the clearance slider was pushed past it.
+
 ### How fast they go
 
 Every kind of vessel travels at its own speed, from `MarineTraffic.CruisingKnots`: a fishing boat plods at 7 knots

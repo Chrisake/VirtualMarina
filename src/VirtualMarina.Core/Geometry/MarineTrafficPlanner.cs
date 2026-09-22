@@ -46,7 +46,7 @@ public static class MarineTrafficPlanner
         var center = (marina.Min + marina.Max) * 0.5f;
         var shape = shoreline is { } shore && shore.Points.Count >= 2 && shore.EndsAtTheMapEdge() is { } ends
             ? AlongTheCoast(shore, ends, center)
-            : AcrossOpenWater(center, traffic.Reach, traffic.Seed);
+            : AcrossOpenWater(center, traffic.Reach, traffic.Clearance, traffic.Seed);
 
         var random = new Random(traffic.Seed);
         var lanes = new List<TrafficLane>(traffic.EffectiveLanes);
@@ -114,13 +114,16 @@ public static class MarineTrafficPlanner
     }
 
     /// <summary>A straight run past the marina, for a marina with no coast behind it.</summary>
-    private static LaneShape AcrossOpenWater(Vector2 center, float reach, int seed)
+    private static LaneShape AcrossOpenWater(Vector2 center, float reach, float clearance, int seed)
     {
         var heading = (float)new Random(seed).NextDouble() * MathF.Tau;
         var direction = new Vector2(MathF.Cos(heading), MathF.Sin(heading));
         var seaward = new Vector2(-direction.Y, direction.X);
 
-        return new LaneShape(center - direction * reach, seaward, center, seaward, center + direction * reach, seaward);
+        // Long enough to be worth crossing even when the reach is shorter than the clearance, which a design saved
+        // by an older version may well be.
+        var run = MathF.Max(reach, clearance * 3f + 200f);
+        return new LaneShape(center - direction * run, seaward, center, seaward, center + direction * run, seaward);
     }
 
     /// <summary>

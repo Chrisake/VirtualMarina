@@ -89,6 +89,10 @@ The **Ashore** panel has the same four fields for the slots on land, counted sep
 
 The **Rename** tool (or Edit ▸ Rename, F2) gives one element another name: click a berth or a pier, type the name, press Enter. A berth's name is also its id, so a name already used is refused and the log says so; a pier's name is only a title, so any name will do. Ctrl+Z puts the old name back.
 
+Hold **Alt** and click a berth to rename its whole row instead of the one berth: the dialog asks for the naming
+pattern alone, filled in with the one those berths follow now, and the pier keeps its own name and id. It is the same
+modifier that makes the eraser take a whole row.
+
 Renaming a **pier** asks for three things, because it renames every berth on it as well: the pier's name, its id, and the pattern its berths are named by. The pattern comes filled in with the one those berths follow now — `{pier}-{side}{number}` for berths called `A-L01` — so leaving it alone changes nothing. Type a different one and the whole pier is renamed to match, keeping the number each berth already has. A berth whose new name is already taken keeps the one it has, so a pattern that would give two berths the same name renames neither.
 
 ## What it saves
@@ -119,5 +123,6 @@ The WinForms test host has **Open design…** and **Save design…** buttons on 
 | Shift while drawing | Snap a pier, or a bow direction, to 15° steps |
 | Alt while drawing | Ignore the snapping to corners and edges |
 | Alt while erasing | Take the whole row of berths, not just the one under the pointer |
+| Alt while renaming | Rename the whole row of berths by a pattern, not just the one under the pointer |
 | Ctrl+N / O / S / Shift+S / I | New, open, save, save as, load reference image |
 | Ctrl+T / Ctrl+F | Top view north up / fit the marina |

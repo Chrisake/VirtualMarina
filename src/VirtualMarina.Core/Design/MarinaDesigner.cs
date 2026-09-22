@@ -1170,24 +1170,58 @@ public sealed class MarinaDesigner
         return renamed;
     }
 
+    /// <summary>True when the modifiers ask for the whole row rather than the one thing under the pointer.</summary>
+    /// <param name="modifiers">The modifier keys held.</param>
+    private static bool WholeRowWanted(InputModifiers modifiers) => (modifiers & InputModifiers.Alt) != 0;
+
     /// <summary>
     /// Asks the host for a new name through <see cref="ElementRenaming"/> and applies it. Used by
-    /// <see cref="DesignTool.Rename"/>; does nothing without a handler, or when the handler cancels or leaves the name as it was.
+    /// <see cref="DesignTool.Rename"/>; does nothing without a handler, or when the handler cancels or leaves
+    /// everything as it was.
     /// </summary>
     /// <param name="element">A <see cref="Domain.Berth"/> or a <see cref="Domain.Pier"/>; anything else is ignored.</param>
-    private void AskToRename(object element)
+    /// <param name="wholeRow">
+    /// True to rename every berth on the clicked berth's pier by a pattern, rather than the one berth. Ignored when
+    /// a pier was clicked, which always asks about the pier.
+    /// </param>
+    private void AskToRename(object element, bool wholeRow)
     {
         if (ElementRenaming is null) return;
+
+        // A berth with Alt held means its whole row: one pattern for the pier rather than one name for one berth.
+        if (wholeRow && element is Berth swept && swept.PierId is { } sweptPier && _marina.GetPier(sweptPier) is { } sweptOwner)
+        {
+            element = sweptOwner;
+        }
+        else
+        {
+            wholeRow = false;
+        }
 
         var args = element switch
         {
             Berth berth => new DesignElementRenamingEventArgs(berth, null, berth.Id),
-            Pier pier => new DesignElementRenamingEventArgs(null, pier, pier.Name, InferBerthPattern(pier)?.Pattern),
+            Pier pier => new DesignElementRenamingEventArgs(
+                wholeRow ? _marina.GetBerthsByPier(pier.Id).FirstOrDefault() : null,
+                pier,
+                pier.Name,
+                InferBerthPattern(pier)?.Pattern ?? _berthNaming.Pattern,
+                wholeRow ? DesignRenameScope.BerthsOfPier : DesignRenameScope.Element),
             _ => null,
         };
 
         if (args is null) return;
         ElementRenaming(this, args);
+
+        // A whole-row rename touches nothing but the berth names, so the pier keeps its own name and id.
+        if (args.Scope == DesignRenameScope.BerthsOfPier)
+        {
+            var pattern = args.NewBerthPattern?.Trim();
+            if (args.Cancel || args.Pier is not { } target || string.IsNullOrEmpty(pattern)) return;
+            RenumberBerths(target.Id, pattern);
+            return;
+        }
+
         var nameChanged = !string.IsNullOrWhiteSpace(args.NewName) && !string.Equals(args.NewName.Trim(), args.CurrentName, StringComparison.Ordinal);
         var idChanged = args.Pier is { } owner && args.NewPierId is { } wanted && !string.Equals(wanted.Trim(), owner.Id, StringComparison.Ordinal);
         var patternChanged = args.Pier is not null && !string.IsNullOrWhiteSpace(args.NewBerthPattern)
@@ -1837,7 +1871,7 @@ public sealed class MarinaDesigner
                 break;
 
             case DesignTool.Rename:
-                if (FindEraseTarget(x, y) is { } toRename) AskToRename(toRename);
+                if (FindEraseTarget(x, y) is { } toRename) AskToRename(toRename, WholeRowWanted(modifiers));
                 break;
 
             case DesignTool.EditServices:

@@ -793,6 +793,8 @@ sealed class VirtualMarina.Core.Design.DesignElementErasedEventArgs : EventArgs
 sealed class VirtualMarina.Core.Design.DesignElementRenamingEventArgs : EventArgs
     .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, string currentName)
     .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, string currentName, string berthPattern)
+    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, string currentName, string berthPattern, VirtualMarina.Core.Design.DesignRenameScope scope)
+    VirtualMarina.Core.Design.DesignRenameScope Scope { get; }
     VirtualMarina.Core.Domain.Berth Berth { get; }
     VirtualMarina.Core.Domain.Pier Pier { get; }
     bool Cancel { get; set; }
@@ -801,6 +803,10 @@ sealed class VirtualMarina.Core.Design.DesignElementRenamingEventArgs : EventArg
     string NewBerthPattern { get; set; }
     string NewName { get; set; }
     string NewPierId { get; set; }
+
+enum VirtualMarina.Core.Design.DesignRenameScope : IComparable, IConvertible, IFormattable, ISpanFormattable
+    BerthsOfPier = 1
+    Element = 0
 
 enum VirtualMarina.Core.Design.DesignTool : IComparable, IConvertible, IFormattable, ISpanFormattable
     AddBerths = 3

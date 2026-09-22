@@ -377,11 +377,46 @@ public class MarineTrafficTests
     }
 
     [Fact]
+    public void AClearanceBeyondTheReach_IsFineRatherThanFatal()
+    {
+        // A design saved by an older version carries a short reach, and reach used to have to be further out than
+        // the clearance or the settings were refused outright. Since SetMarineTraffic throws on settings it will
+        // not take, pushing the clearance slider past the stored reach brought the whole application down.
+        var stored = MarineTraffic.None with { IsEnabled = true, Reach = 600f, LaneCount = 5, Clearance = 342f };
+        Assert.Empty(stored.Validate());
+
+        var marina = new MarinaVisualizer();
+        marina.AddLandArea(Quay());
+        marina.SetShoreline(StraightCoast());
+        marina.SetMarineTraffic(stored);
+
+        foreach (var clearance in new[] { 500f, 600f, 601f, 900f, 1200f, 5000f })
+        {
+            var wanted = stored with { Clearance = clearance };
+            Assert.Empty(wanted.Validate());
+
+            marina.SetMarineTraffic(wanted);
+            Assert.Equal(5, marina.TrafficLanes.Count);
+            Assert.Equal(clearance, NearestApproach(marina.TrafficLanes), tolerance: clearance * 0.05f);
+        }
+
+        // The same with no coast to take the lane ends from, where the reach is what the lane is built out of.
+        var open = new MarinaVisualizer();
+        open.AddLandArea(Quay());
+        foreach (var clearance in new[] { 500f, 900f, 1200f, 5000f })
+        {
+            open.SetMarineTraffic(stored with { Clearance = clearance });
+            var lanes = open.TrafficLanes;
+            Assert.NotEmpty(lanes);
+
+            // The lane is still long enough to be worth crossing, rather than a stub far out at sea.
+            Assert.All(lanes, lane => Assert.True(lane.Length > clearance * 2f, $"a lane is only {lane.Length:0} m long at a clearance of {clearance:0} m"));
+        }
+    }
+
+    [Fact]
     public void SettingsThatMakeNoSense_LeaveNoLanesRatherThanBadOnes()
     {
-        Assert.NotEmpty((Busy() with { Clearance = 9000f }).Validate());
-        Assert.Empty(MarineTrafficPlanner.Plan(Busy() with { Clearance = 9000f }, MarinaBounds(), null));
-
         Assert.NotEmpty((Busy() with { LaneCount = 0 }).Validate());
         Assert.NotEmpty((Busy() with { LaneCount = MarineTraffic.LaneLimit + 1 }).Validate());
         Assert.NotEmpty((Busy() with { LaneSpacing = 0f }).Validate());

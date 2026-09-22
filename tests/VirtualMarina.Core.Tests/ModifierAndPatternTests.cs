@@ -255,12 +255,120 @@ public class ModifierAndPatternTests
         Assert.Null(seen.BerthPattern);
     }
 
-    private static void ClickWhereThePointerIs(MarinaVisualizer marina)
+
+    [Fact]
+    public void AltOverABerth_RenamesTheWholePierByAPattern()
+    {
+        var marina = WithARowOfBerths(out var designer, out var berths);
+        var before = berths.Select(berth => berth.Id).ToArray();
+
+        DesignElementRenamingEventArgs? asked = null;
+        designer.ElementRenaming += (_, e) =>
+        {
+            asked = e;
+            e.NewBerthPattern = "{pier}.{number}";
+        };
+
+        designer.Tool = DesignTool.Rename;
+        PointAt(marina, berths[0].Center);
+        marina.Input.ModifiersChanged(InputModifiers.Alt);
+        ClickWhereThePointerIs(marina, InputModifiers.Alt);
+
+        // It asked about the pier's berths, not about the one berth that was clicked.
+        Assert.NotNull(asked);
+        Assert.Equal(DesignRenameScope.BerthsOfPier, asked!.Scope);
+        Assert.NotNull(asked.Pier);
+        Assert.Equal("{pier}-{side}{number}", asked.BerthPattern);
+
+        // And the whole row followed, not just the one under the pointer.
+        var after = marina.GetBerthsByPier("A").Select(berth => berth.Id).ToArray();
+        Assert.Equal(before.Length, after.Length);
+        Assert.All(after, id => Assert.StartsWith("A.", id, StringComparison.Ordinal));
+        Assert.All(before, id => Assert.Null(marina.GetBerth(id)));
+    }
+
+    [Fact]
+    public void AltOverABerth_LeavesThePiersOwnNameAndIdAlone()
+    {
+        var marina = WithARowOfBerths(out var designer, out var berths);
+        var pier = marina.GetPier("A")!;
+
+        designer.ElementRenaming += (_, e) =>
+        {
+            // A host that fills in everything must still only change the berths.
+            e.NewName = "Something else";
+            e.NewPierId = "Z";
+            e.NewBerthPattern = "{pier}.{number}";
+        };
+
+        designer.Tool = DesignTool.Rename;
+        PointAt(marina, berths[0].Center);
+        ClickWhereThePointerIs(marina, InputModifiers.Alt);
+
+        Assert.NotNull(marina.GetPier("A"));
+        Assert.Null(marina.GetPier("Z"));
+        Assert.Equal(pier.Name, marina.GetPier("A")!.Name);
+        Assert.All(marina.GetBerthsByPier("A"), berth => Assert.StartsWith("A.", berth.Id, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void WithoutAlt_ItIsStillTheOneBerthThatIsRenamed()
+    {
+        var marina = WithARowOfBerths(out var designer, out var berths);
+        var others = marina.GetBerthsByPier("A").Where(b => b.Id != berths[0].Id).Select(b => b.Id).ToArray();
+
+        designer.ElementRenaming += (_, e) =>
+        {
+            Assert.Equal(DesignRenameScope.Element, e.Scope);
+            e.NewName = "VIP";
+        };
+
+        designer.Tool = DesignTool.Rename;
+        PointAt(marina, berths[0].Center);
+        ClickWhereThePointerIs(marina);
+
+        Assert.NotNull(marina.GetBerth("VIP"));
+        Assert.All(others, id => Assert.NotNull(marina.GetBerth(id)));
+    }
+
+    [Fact]
+    public void RenamingABerth_TakesItsLabelWithIt()
+    {
+        var marina = WithARowOfBerths(out var designer, out var berths);
+        var berth = berths[0];
+        Assert.Equal(berth.Id, berth.DisplayName);
+
+        var renamed = designer.RenameBerth(berth.Id, "VIP-01");
+
+        // The name on the water is the new one, not the old one it was drawn with.
+        Assert.Equal("VIP-01", renamed.Id);
+        Assert.Equal("VIP-01", renamed.DisplayName);
+        Assert.Equal("VIP-01", marina.GetBerth("VIP-01")!.DisplayName);
+
+        // And one undo puts both back.
+        designer.Undo();
+        Assert.Equal(berth.Id, marina.GetBerth(berth.Id)!.DisplayName);
+    }
+
+    [Fact]
+    public void ALabelSomeoneWroteIsTheirs_AndSurvivesARename()
+    {
+        var marina = WithARowOfBerths(out var designer, out var berths);
+        var berth = berths[0];
+        marina.UpdateBerth(berth with { Label = "Harbourmaster" });
+
+        var renamed = designer.RenameBerth(berth.Id, "VIP-01");
+
+        Assert.Equal("VIP-01", renamed.Id);
+        Assert.Equal("Harbourmaster", renamed.DisplayName);
+    }
+
+    private static void ClickWhereThePointerIs(MarinaVisualizer marina, InputModifiers modifiers = InputModifiers.None)
     {
         var at = marina.Designer.PointerPosition;
         Assert.NotNull(at);
         Assert.True(marina.TryProjectToScreen(MarinaMath.ToWorld(at!.Value), out var screen));
-        marina.Input.PointerDown(screen.X, screen.Y, PointerButton.Left);
-        marina.Input.PointerUp(screen.X, screen.Y, PointerButton.Left);
+        marina.Input.PointerDown(screen.X, screen.Y, PointerButton.Left, modifiers);
+        marina.Input.PointerUp(screen.X, screen.Y, PointerButton.Left, modifiers);
     }
 }

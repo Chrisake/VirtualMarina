@@ -146,6 +146,11 @@ public sealed record MarineTraffic
     /// How far the lanes run when there is no shoreline to take their ends from, in meters (default 8000). With a
     /// shoreline the ends come from where its endless segments reach the edge of the map instead.
     /// </summary>
+    /// <remarks>
+    /// A reach shorter than <see cref="Clearance"/> is not an error: the planner simply runs the lane out far enough
+    /// to be worth having. It used to be refused, which meant a design carrying a short reach from an older version
+    /// threw the moment the clearance slider was pushed past it.
+    /// </remarks>
     public float Reach { get; init; } = 8000f;
 
     /// <summary>Keeps the lanes and the traffic on them the same between sessions. Any number will do.</summary>
@@ -189,10 +194,6 @@ public sealed record MarineTraffic
         if (!float.IsFinite(SpeedPercent) || SpeedPercent <= 0f) yield return "Marine traffic speed must be a positive percentage.";
         if (!float.IsFinite(SpawnDelaySeconds) || SpawnDelaySeconds < 0f) yield return "Marine traffic spawn delay must not be negative.";
         if (!float.IsFinite(Reach) || Reach <= 0f) yield return "Marine traffic reach must be a positive distance.";
-        if (float.IsFinite(Reach) && float.IsFinite(Clearance) && Reach <= Clearance)
-        {
-            yield return "Marine traffic reach must be further out than its clearance, or no lane fits.";
-        }
 
         foreach (var vessel in Vessels.Where(vessel => !Enum.IsDefined(vessel)).Distinct())
         {

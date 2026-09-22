@@ -130,9 +130,29 @@ A berth someone named by hand keeps that name, as does one whose new name is alr
 reported through `LayoutChanged`, so a host tracking berths by id can follow them, and one Ctrl+Z puts the whole move
 back.
 
+**The label follows the name.** A berth's `Label` is what is written on the water, and the designer sets it to the
+generated name as the berth is drawn. Renaming a berth whose label merely repeated its old id carries the label
+along, so the water shows the new name rather than the old one; a label the host wrote is theirs and stays. That is
+`RenameBerth` on the visualizer, so it holds however the rename was asked for, and it is still one
+`BerthRenamed` notification.
+
 `RenumberBerths(pierId)` does the same on its own, without changing the id. It is the repair for berths whose names
 no longer match their pier — one that used to take boats on both sides and now takes them on one, or berths still
 carrying a prefix from an id the pier had long ago. Renaming a pier in the designer runs it too.
+
+#### Renaming a whole row at once
+
+Clicking a berth with **Alt** held renames every berth on its pier, the same modifier that sweeps a whole row with
+the eraser. `ElementRenaming` says so through `Scope`:
+
+| `Scope` | |
+|---|---|
+| `Element` | The one thing clicked: a berth's name, or a pier's name and id |
+| `BerthsOfPier` | Every berth on the clicked berth's pier. Only `NewBerthPattern` is read; the pier keeps its own name and id |
+
+`Berth` and `Pier` are both set for a `BerthsOfPier` rename, so a host can say which pier and how many berths are
+about to change. `BerthPattern` comes filled in as ever, falling back to `BerthNaming.Pattern` when the pier's berths
+were all named by hand.
 
 #### Renaming a whole pier to a pattern
 
@@ -302,7 +322,7 @@ The camera limits and the water surface grow to cover the image.
 | `ElementCreating` | A drawing is complete and about to be added | `LandArea`, `Pier`, `Berths`, `Dividers` (all settable), `Cancel` |
 | `ElementCreated` | The element was added | `LandArea`, `Pier`, `Berths`, `Dividers` |
 | `ElementErased` | Something was removed with the eraser (or `Erase(element)`) | `Element`, `RemovedBerths`, `RemovedDividers` |
-| `ElementRenaming` | A berth or pier was clicked with `DesignTool.Rename` | `Berth`, `Pier`, `CurrentName`, `BerthPattern`, settable `NewName`, `NewPierId`, `NewBerthPattern`, `Cancel` |
+| `ElementRenaming` | A berth or pier was clicked with `DesignTool.Rename` | `Scope`, `Berth`, `Pier`, `CurrentName`, `BerthPattern`, settable `NewName`, `NewPierId`, `NewBerthPattern`, `Cancel` |
 | `TreesPlanted` | Trees were scattered or removed | `LandArea`, `PreviousCount` |
 | `ActionUndone` | `Undo()` reverted a change | `Description`, `RemainingSteps` |
 | `ScaleLineDrawn` | A scale line was drawn | `Start`, `End`, `MeasuredLength`, settable `KnownLengthMeters` |

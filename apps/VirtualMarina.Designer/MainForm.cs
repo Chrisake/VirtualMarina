@@ -640,6 +640,14 @@ internal sealed class MainForm : Form
     /// </summary>
     private void AskForName(DesignElementRenamingEventArgs e)
     {
+        // Alt over a berth renames the whole row, so it asks for the pattern alone and leaves the pier's own name
+        // and id where they are.
+        if (e.Scope == DesignRenameScope.BerthsOfPier)
+        {
+            AskForBerthPattern(e);
+            return;
+        }
+
         var berth = e.Berth is not null;
         var name = e.CurrentName;
         var pierId = e.Pier?.Id ?? string.Empty;
@@ -708,6 +716,40 @@ internal sealed class MainForm : Form
             MarkDirty();
             Log(Strings.Format(Strings.LogRenamed, e.CurrentName, name));
         }
+    }
+
+    /// <summary>
+    /// Asks for one pattern and renames every berth on the pier to it. Used when a berth is clicked with Alt held,
+    /// the same modifier that sweeps a whole row with the eraser.
+    /// </summary>
+    private void AskForBerthPattern(DesignElementRenamingEventArgs e)
+    {
+        if (e.Pier is not { } pier) return;
+
+        var berths = Marina.GetBerthsByPier(pier.Id).Count;
+        using var form = new TextInputForm(
+            Strings.Format(Strings.RenameBerthsTitle, pier.Id),
+            Strings.Format(Strings.RenameBerthsQuestion, berths, pier.Id),
+            e.BerthPattern ?? string.Empty,
+            thirdQuestion: null,
+            thirdHint: Strings.RenamePatternHint);
+
+        if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        var pattern = form.Value.Trim();
+        if (string.Equals(pattern, e.BerthPattern, StringComparison.Ordinal))
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        e.NewBerthPattern = pattern;
+        MarkDirty();
+        Log(Strings.Format(Strings.LogBerthPattern, pier.Id, pattern));
     }
 
     private void EditMarinaProperties()

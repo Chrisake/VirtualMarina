@@ -617,7 +617,13 @@ public sealed partial class MarinaVisualizer
     /// <summary>Moves a berth to another id, taking its place in the order, the selection and its multi-berth with it.</summary>
     private Berth ReplaceBerthId(Berth existing, string newBerthId)
     {
-        var renamed = Normalize(existing with { Id = newBerthId });
+        // A label that merely repeated the old id is the id showing on the water, so it goes with the name. One the
+        // host wrote is theirs and stays. Without this a renamed berth went on displaying the name it used to have.
+        var label = existing.Label is null || string.Equals(existing.Label, existing.Id, StringComparison.Ordinal)
+            ? null
+            : existing.Label;
+
+        var renamed = Normalize(existing with { Id = newBerthId, Label = label });
         using (BeginUpdate())
         {
             _berths.Remove(existing.Id);

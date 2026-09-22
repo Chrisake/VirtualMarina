@@ -126,6 +126,17 @@ public sealed class DesignElementRenamingEventArgs : EventArgs
     /// <param name="currentName">The name it has now.</param>
     /// <param name="berthPattern">The pattern the pier's berths follow now, or null when there is none to show.</param>
     public DesignElementRenamingEventArgs(Berth? berth, Pier? pier, string currentName, string? berthPattern)
+        : this(berth, pier, currentName, berthPattern, DesignRenameScope.Element)
+    {
+    }
+
+    /// <summary>Creates the arguments for a rename of a given scope.</summary>
+    /// <param name="berth">The berth being renamed, or the one that was clicked for a whole-pier rename.</param>
+    /// <param name="pier">The pier being renamed, or the one the clicked berth is on.</param>
+    /// <param name="currentName">The name it has now.</param>
+    /// <param name="berthPattern">The pattern the pier's berths follow now, or null when there is none to show.</param>
+    /// <param name="scope">What the rename is about to change.</param>
+    public DesignElementRenamingEventArgs(Berth? berth, Pier? pier, string currentName, string? berthPattern, DesignRenameScope scope)
     {
         Berth = berth;
         Pier = pier;
@@ -134,6 +145,7 @@ public sealed class DesignElementRenamingEventArgs : EventArgs
         NewPierId = pier?.Id;
         BerthPattern = berthPattern;
         NewBerthPattern = berthPattern;
+        Scope = scope;
     }
 
     /// <summary>The berth being renamed, or null when a pier is.</summary>
@@ -171,8 +183,27 @@ public sealed class DesignElementRenamingEventArgs : EventArgs
     /// </remarks>
     public string? NewBerthPattern { get; set; }
 
+    /// <summary>
+    /// What this rename is about to change. <see cref="DesignRenameScope.BerthsOfPier"/> means only
+    /// <see cref="NewBerthPattern"/> is read: the pier's own name and id are left alone.
+    /// </summary>
+    public DesignRenameScope Scope { get; }
+
     /// <summary>Set to true to leave the element alone.</summary>
     public bool Cancel { get; set; }
+}
+
+/// <summary>What a rename is about to change (<see cref="DesignElementRenamingEventArgs.Scope"/>).</summary>
+public enum DesignRenameScope
+{
+    /// <summary>The one element that was clicked: a berth's name, or a pier's name and id.</summary>
+    Element = 0,
+
+    /// <summary>
+    /// Every berth on the pier that was clicked, renamed to a pattern rather than one at a time. Raised when a
+    /// berth is clicked with Alt held, the same modifier that sweeps a whole row with the eraser.
+    /// </summary>
+    BerthsOfPier = 1,
 }
 
 /// <summary>What happened to the drawing in progress (<see cref="MarinaDesigner.DraftChanged"/>).</summary>
