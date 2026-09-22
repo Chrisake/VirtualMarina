@@ -50,6 +50,12 @@ internal sealed class AppearancePanel : UserControl
     private readonly Random _random = new();
     private Label? _trafficLanes;
 
+    /// <summary>One per control: puts the value the marina holds back into it. Run by <see cref="Sync"/>.</summary>
+    private readonly List<Action> _refresh = new();
+
+    /// <summary>True while values are being read back, so the controls do not write what they are being given.</summary>
+    private bool _updating;
+
     /// <summary>Creates the panel over a visualizer.</summary>
     /// <param name="marina">The marina whose look is being changed.</param>
     /// <param name="log">Where to note what happened, for the activity log.</param>
@@ -112,6 +118,24 @@ internal sealed class AppearancePanel : UserControl
 
     private ShadowStyle Shadows => _marina.Style.Shadows;
 
+    private StatusColorScheme Status => _marina.Style.Status;
+
+    private LabelStyle Labels => _marina.Style.Labels;
+
+    /// <summary>Where the sun is round the compass, taken back out of its direction.</summary>
+    private float SunAzimuth
+    {
+        get
+        {
+            var sun = Lighting.SunDirection;
+            var degrees = MathF.Atan2(sun.X, sun.Z) * 180f / MathF.PI;
+            return degrees < 0f ? degrees + 360f : degrees;
+        }
+    }
+
+    /// <summary>How high the sun stands, taken back out of its direction.</summary>
+    private float SunElevation => MathF.Asin(Math.Clamp(Lighting.SunDirection.Y, -1f, 1f)) * 180f / MathF.PI;
+
     // ---- Cards --------------------------------------------------------------------------------
 
     private Panel BuildWaterCard()
@@ -140,20 +164,13 @@ internal sealed class AppearancePanel : UserControl
     private Panel BuildLightCard()
     {
         var card = Theme.Card(Strings.CardLight, out var table);
-        var azimuth = 0f;
-        var elevation = 40f;
 
-        Percent(table, Strings.SunDirection, 0, 359, () => azimuth, v =>
-        {
-            azimuth = v;
-            Lighting.SetSunAngles(azimuth, elevation);
-        }, 0f, v => Strings.Format(Strings.ValueDegreesFromNorth, v));
+        // Read from the sun itself rather than from numbers kept beside it, so an opened design moves the sliders.
+        Percent(table, Strings.SunDirection, 0, 359, () => SunAzimuth,
+            v => Lighting.SetSunAngles(v, SunElevation), 0f, v => Strings.Format(Strings.ValueDegreesFromNorth, v));
 
-        Percent(table, Strings.SunHeight, 5, 89, () => elevation, v =>
-        {
-            elevation = v;
-            Lighting.SetSunAngles(azimuth, elevation);
-        }, 40f, v => Strings.Format(Strings.ValueDegreesAboveHorizon, v));
+        Percent(table, Strings.SunHeight, 5, 89, () => SunElevation,
+            v => Lighting.SetSunAngles(SunAzimuth, v), 40f, v => Strings.Format(Strings.ValueDegreesAboveHorizon, v));
 
         Percent(table, Strings.Haze, 0, 100, () => Lighting.FogDensity * 20000f, v => Lighting.FogDensity = v / 20000f, Defaults.Lighting.FogDensity * 20000f, Percentage);
         Color(table, Strings.Sky, () => Vector(Lighting.SkyColor), c => Lighting.SkyColor = Value(c), Vector(Defaults.Lighting.SkyColor));
@@ -164,17 +181,13 @@ internal sealed class AppearancePanel : UserControl
     private Panel BuildStatusCard()
     {
         var card = Theme.Card(Strings.CardBerthColors, out var table);
-        var status = _marina.Style.Status;
-        Color(table, Strings.ColorFree, () => status.FreeColor, c => status.FreeColor = c, Defaults.Status.FreeColor);
-        Color(table, Strings.ColorOccupied, () => status.OccupiedColor, c => status.OccupiedColor = c, Defaults.Status.OccupiedColor);
-        Color(table, Strings.ColorReserved, () => status.ReservedColor, c => status.ReservedColor = c, Defaults.Status.ReservedColor);
-        Color(table, Strings.ColorOwnerAway, () => status.TemporarilyFreeColor, c => status.TemporarilyFreeColor = c, Defaults.Status.TemporarilyFreeColor);
-        Percent(table, Strings.PadStrength, 0, 100, () => status.PadOpacity * 100f, v => status.PadOpacity = v / 100f, Defaults.Status.PadOpacity * 100f, Percentage);
+        Color(table, Strings.ColorFree, () => Status.FreeColor, c => Status.FreeColor = c, Defaults.Status.FreeColor);
+        Color(table, Strings.ColorOccupied, () => Status.OccupiedColor, c => Status.OccupiedColor = c, Defaults.Status.OccupiedColor);
+        Color(table, Strings.ColorReserved, () => Status.ReservedColor, c => Status.ReservedColor = c, Defaults.Status.ReservedColor);
+        Color(table, Strings.ColorOwnerAway, () => Status.TemporarilyFreeColor, c => Status.TemporarilyFreeColor = c, Defaults.Status.TemporarilyFreeColor);
+        Percent(table, Strings.PadStrength, 0, 100, () => Status.PadOpacity * 100f, v => Status.PadOpacity = v / 100f, Defaults.Status.PadOpacity * 100f, Percentage);
 
-        var markers = Theme.Check(Strings.ShowStatusBuoys);
-        markers.Checked = status.ShowStatusMarkers;
-        markers.CheckedChanged += (_, _) => Changed(() => status.ShowStatusMarkers = markers.Checked);
-        Theme.FullRow(table, markers);
+        var markers = Check(table, Strings.ShowStatusBuoys, () => Status.ShowStatusMarkers, v => Status.ShowStatusMarkers = v);
         return card;
     }
 
@@ -197,10 +210,7 @@ internal sealed class AppearancePanel : UserControl
         Color(table, Strings.LandBuilding, () => Land.BuildingColor, c => Land.BuildingColor = c, Defaults.Land.BuildingColor);
         Color(table, Strings.LandRoof, () => Land.RoofColor, c => Land.RoofColor = c, Defaults.Land.RoofColor);
 
-        var trees = Theme.Check(Strings.LandShowTrees);
-        trees.Checked = Land.ShowTrees;
-        trees.CheckedChanged += (_, _) => Changed(() => Land.ShowTrees = trees.Checked);
-        Theme.FullRow(table, trees);
+        Check(table, Strings.LandShowTrees, () => Land.ShowTrees, v => Land.ShowTrees = v);
         return card;
     }
 
@@ -209,10 +219,7 @@ internal sealed class AppearancePanel : UserControl
     {
         var card = Theme.Card(Strings.CardShadows, out var table);
 
-        var show = Theme.Check(Strings.ShadowsShow);
-        show.Checked = Shadows.IsEnabled;
-        show.CheckedChanged += (_, _) => Changed(() => Shadows.IsEnabled = show.Checked);
-        Theme.Tips.SetToolTip(Theme.FullRow(table, show), Strings.ShadowsShowTip);
+        Check(table, Strings.ShadowsShow, () => Shadows.IsEnabled, v => Shadows.IsEnabled = v, Strings.ShadowsShowTip);
 
         Percent(table, Strings.ShadowStrength, 0, 100, () => Shadows.Strength * 100f,
             v => Shadows.Strength = v / 100f, Defaults.Shadows.Strength * 100f, Percentage, Strings.ShadowStrengthTip);
@@ -229,10 +236,7 @@ internal sealed class AppearancePanel : UserControl
         var card = Theme.Card(Strings.CardTraffic, out var table);
         var lanes = Theme.Hint(string.Empty);
 
-        var show = Theme.Check(Strings.TrafficShow);
-        show.Checked = Traffic.IsEnabled;
-        show.CheckedChanged += (_, _) => SetTraffic(t => t with { IsEnabled = show.Checked });
-        Theme.Tips.SetToolTip(Theme.FullRow(table, show), Strings.TrafficShowTip);
+        Check(table, Strings.TrafficShow, () => Traffic.IsEnabled, v => SetTraffic(t => t with { IsEnabled = v }), Strings.TrafficShowTip);
 
         Percent(table, Strings.TrafficIntensity, 0, 100, () => Traffic.Intensity * 100f,
             v => SetTraffic(t => t with { Intensity = v / 100f }), MarineTraffic.None.Intensity * 100f, Percentage, Strings.TrafficIntensityTip);
@@ -270,20 +274,20 @@ internal sealed class AppearancePanel : UserControl
     private Panel BuildLabelCard()
     {
         var card = Theme.Card(Strings.CardLabels, out var table);
-        var labels = _marina.Style.Labels;
 
         var face = Theme.Choice();
         face.Items.AddRange(new object[] { Strings.FaceRegular, Strings.FaceBold, Strings.FaceCondensed, Strings.FaceWide });
-        face.SelectedIndex = (int)labels.FontFamily;
-        face.SelectedIndexChanged += (_, _) => Changed(() => labels.FontFamily = (LabelFont)face.SelectedIndex);
+        face.SelectedIndex = (int)Labels.FontFamily;
+        face.SelectedIndexChanged += (_, _) => Changed(() => Labels.FontFamily = (LabelFont)face.SelectedIndex);
+        _refresh.Add(() => face.SelectedIndex = (int)Labels.FontFamily);
         Theme.Row(table, Strings.LabelFace, face, (_, _) =>
         {
             face.SelectedIndex = (int)Defaults.Labels.FontFamily;
         }, Strings.LabelFaceTip);
 
-        Color(table, Strings.LabelColorNormal, () => labels.Color, c => labels.Color = c, Defaults.Labels.Color);
-        Color(table, Strings.LabelColorHighlight, () => labels.HighlightColor, c => labels.HighlightColor = c, Defaults.Labels.HighlightColor);
-        Color(table, Strings.LabelColorDisabled, () => labels.DisabledColor, c => labels.DisabledColor = c, Defaults.Labels.DisabledColor);
+        Color(table, Strings.LabelColorNormal, () => Labels.Color, c => Labels.Color = c, Defaults.Labels.Color);
+        Color(table, Strings.LabelColorHighlight, () => Labels.HighlightColor, c => Labels.HighlightColor = c, Defaults.Labels.HighlightColor);
+        Color(table, Strings.LabelColorDisabled, () => Labels.DisabledColor, c => Labels.DisabledColor = c, Defaults.Labels.DisabledColor);
         return card;
     }
 
@@ -306,7 +310,9 @@ internal sealed class AppearancePanel : UserControl
         Theme.FullRow(table, Theme.Action(Strings.AppearanceReset, (_, _) =>
         {
             _marina.Style = new MarinaStyle();
-            Rebuild();
+            _marina.SetMarineTraffic(MarineTraffic.None);
+            Sync();
+            _marina.InvalidateScene();
         }));
 
         return card;
@@ -372,7 +378,20 @@ internal sealed class AppearancePanel : UserControl
     {
         var bar = new TrackBar { Minimum = min, Maximum = max, Value = Clamp(read(), min, max) };
         bar.ValueChanged += (_, _) => Changed(() => write(bar.Value));
+        _refresh.Add(() => bar.Value = Clamp(read(), min, max));
         Theme.Row(table, label, Theme.Slider(bar, new Label(), format), (_, _) => bar.Value = Clamp(fallback, min, max), tooltip);
+    }
+
+    /// <summary>A tick box that reads itself back from the marina when the panel is synced.</summary>
+    private CheckBox Check(TableLayoutPanel table, string label, Func<bool> read, Action<bool> write, string? tooltip = null)
+    {
+        var box = Theme.Check(label);
+        box.Checked = read();
+        box.CheckedChanged += (_, _) => Changed(() => write(box.Checked));
+        _refresh.Add(() => box.Checked = read());
+        Theme.FullRow(table, box);
+        if (tooltip is not null) Theme.Tips.SetToolTip(box, tooltip);
+        return box;
     }
 
     /// <summary>A colour swatch row that can be put back to its default on its own.</summary>
@@ -395,6 +414,7 @@ internal sealed class AppearancePanel : UserControl
             Changed(() => write(FromColor(picker.Color)));
         };
 
+        _refresh.Add(() => swatch.BackColor = ToColor(read()));
         Theme.Row(table, label, swatch, (_, _) =>
         {
             swatch.BackColor = ToColor(fallback);
@@ -405,24 +425,28 @@ internal sealed class AppearancePanel : UserControl
     /// <summary>Applies a change and redraws, so the effect shows the moment the slider moves.</summary>
     private void Changed(Action change)
     {
+        if (_updating) return;
         change();
         _marina.InvalidateScene();
     }
 
-    /// <summary>Builds the cards again, after the whole style was replaced.</summary>
-    private void Rebuild()
+    /// <summary>
+    /// Reads every setting back out of the marina and into the controls. Called when a design is opened, so the
+    /// panel shows what the file held rather than what it was built with, and after the whole style is replaced.
+    /// </summary>
+    public void Sync()
     {
-        var replacement = new AppearancePanel(_marina, _log) { Dock = Dock, Bounds = Bounds };
-        if (Parent is { } parent)
+        if (_updating) return;
+        _updating = true;
+        try
         {
-            var index = parent.Controls.GetChildIndex(this);
-            parent.Controls.Remove(this);
-            parent.Controls.Add(replacement);
-            parent.Controls.SetChildIndex(replacement, index);
+            foreach (var refresh in _refresh) refresh();
+            UpdateTrafficLanes();
         }
-
-        _marina.InvalidateScene();
-        Dispose();
+        finally
+        {
+            _updating = false;
+        }
     }
 
     private static int Clamp(float value, int min, int max) => Math.Clamp((int)MathF.Round(value), min, max);

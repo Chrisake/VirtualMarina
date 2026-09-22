@@ -84,7 +84,7 @@ The **Rename** tool (or Edit ▸ Rename, F2) gives one element another name: cli
 
 ## What it saves
 
-**File ▸ Save** writes a `.marina.json` file holding the layout, the appearance and motion settings, the berth labels, the camera position and the designer's tool settings. The title bar shows the file name and marks unsaved changes with `*`; closing with unsaved work asks first.
+**File ▸ Save** writes a `.marina.json` file holding the layout, the appearance and motion settings, the berth labels, the camera position and the designer's tool settings. Opening one puts all of it back on screen: the Look and Cameras panels and the tool settings read themselves out of the file, so the sliders, colours and ticks show what the design was saved with rather than what the window started with. The title bar shows the file name and marks unsaved changes with `*`; closing with unsaved work asks first.
 
 The host application loads that one file:
 

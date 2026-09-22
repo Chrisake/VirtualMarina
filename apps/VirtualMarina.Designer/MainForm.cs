@@ -397,6 +397,7 @@ internal sealed class MainForm : Form
         _statusCamera.Text = string.Format(CultureInfo.CurrentCulture, Strings.StatusCamera, pose.Distance, pose.PitchDegrees);
         _inspector.Sync();
         if (_cameras.Visible) _cameras.Sync();
+        if (_appearance.Visible) _appearance.Sync();
     }
 
     private void ShowPointer(Point location)
@@ -440,6 +441,10 @@ internal sealed class MainForm : Form
         _filePath = null;
         _dirty = false;
         UpdateTitle();
+
+        // A new marina means a fresh style and no traffic, so the look settings are read back too.
+        _appearance.Sync();
+        _cameras.Sync();
         RefreshUi();
         Log(Strings.LogNewMarina);
     }
@@ -461,6 +466,10 @@ internal sealed class MainForm : Form
             Designer.IsActive = true;
             Designer.Tool = DesignTool.Navigate;
             UpdateTitle();
+
+            // The document brings its own style, traffic and designer settings; the panels still show the old ones.
+            _appearance.Sync();
+            _cameras.Sync();
             RefreshUi();
             Log(Strings.Format(Strings.LogOpened, Path.GetFileName(dialog.FileName), document.Layout.Berths.Count, document.Layout.Piers.Count) +
                 (document.IsFromNewerVersion ? Strings.Format(Strings.LogOpenedNewerVersion, document.Version) : string.Empty));
