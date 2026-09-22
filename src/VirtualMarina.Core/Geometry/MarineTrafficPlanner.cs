@@ -49,6 +49,7 @@ public static class MarineTrafficPlanner
             : AcrossOpenWater(center, traffic.Reach, traffic.Clearance, traffic.Seed);
 
         var random = new Random(traffic.Seed);
+        var directions = Directions(traffic.EffectiveLanes, traffic.Seed);
         var lanes = new List<TrafficLane>(traffic.EffectiveLanes);
         var offset = 0f;
 
@@ -73,9 +74,7 @@ public static class MarineTrafficPlanner
                 points = Draw(middleOffset);
             }
 
-            // One or two lanes are a separation scheme and run opposite ways; more than that is a stretch of open
-            // water with shipping crossing it, and always alternating would look like a diagram.
-            var reversed = traffic.EffectiveLanes <= 2 ? index % 2 == 1 : random.Next(2) == 0;
+            var reversed = directions[index];
             if (reversed) points.Reverse();
             lanes.Add(new TrafficLane(points, reversed));
 
@@ -84,6 +83,35 @@ public static class MarineTrafficPlanner
         }
 
         return lanes;
+    }
+
+    /// <summary>
+    /// Which way each lane runs: half of them one way and half the other, in an order drawn at random.
+    /// </summary>
+    /// <remarks>
+    /// Tossing a coin per lane gives a 50-50 split on average but not in any one marina, and a marina only ever
+    /// sees its own: one seed in seven sent all three lanes the same way, which reads as a bug rather than as
+    /// chance. Dealing out a balanced set and shuffling it keeps both halves of what a separation scheme is —
+    /// traffic going both ways, in no particular arrangement.
+    /// </remarks>
+    /// <param name="count">How many lanes there are.</param>
+    /// <param name="seed">The traffic's seed, so a marina looks the same every time it is opened.</param>
+    private static bool[] Directions(int count, int seed)
+    {
+        // With one or two there is nothing to arrange: the near lane out, the next one back.
+        var directions = new bool[count];
+        for (var i = 0; i < count; i++) directions[i] = i % 2 == 1;
+        if (count <= 2) return directions;
+
+        // Its own random, so the order does not shift when anything else about a lane changes.
+        var random = new Random(seed * 397 + 11);
+        for (var i = count - 1; i > 0; i--)
+        {
+            var swap = random.Next(i + 1);
+            (directions[i], directions[swap]) = (directions[swap], directions[i]);
+        }
+
+        return directions;
     }
 
     /// <summary>The three points a lane is built from, and which way out to sea is at each of them.</summary>

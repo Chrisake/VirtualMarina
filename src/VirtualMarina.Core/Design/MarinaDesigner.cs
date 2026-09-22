@@ -1045,6 +1045,130 @@ public sealed class MarinaDesigner
     }
 
     /// <summary>
+    /// The pattern a pier's berths are named by when nothing else is asked for: <c>{pier}-{side}{number}</c>, or
+    /// <c>{pier}-{number}</c> on a pier that takes boats on one side only, where there is no other side to tell a
+    /// berth apart from.
+    /// </summary>
+    /// <param name="pierId">The pier.</param>
+    /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
+    public string DefaultBerthPattern(string pierId)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        var pier = _marina.GetPier(pierId) ?? throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
+        return pier.BerthingSides is PierSides.Left or PierSides.Right ? "{pier}-{number}" : "{pier}-{side}{number}";
+    }
+
+    /// <summary>
+    /// Works out what naming a pier's berths by a pattern would call each of them, and what would go wrong, without
+    /// changing anything.
+    /// </summary>
+    /// <param name="pierId">The pier whose berths to name.</param>
+    /// <param name="pattern">
+    /// The pattern, in the form <see cref="BerthNamingScheme.Pattern"/> takes. Null or blank uses
+    /// <see cref="DefaultBerthPattern"/>.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// Unlike <see cref="RenumberBerths(string, string?)"/>, which keeps the number each berth already has, this
+    /// throws the old names away and counts from <see cref="BerthNamingScheme.StartNumber"/> along the pier. A berth
+    /// named by hand is renamed with the rest: asking for a whole pier to be named by a pattern means all of it.
+    /// </para>
+    /// <para>
+    /// Berths are numbered down one side and then the other when the pattern tells the sides apart, and straight
+    /// through when it does not, so <c>{pier}-{number}</c> on a pier that berths both sides gives one run of
+    /// numbers rather than two sets of the same ones.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
+    /// <example><code>
+    /// var plan = designer.PlanBerthNames("A", "{pier}.{side}{number}");
+    /// if (!plan.IsClear) Warn(string.Join(", ", plan.Clashes));
+    /// else designer.ApplyBerthNames(plan);
+    /// </code></example>
+    public BerthNamePlan PlanBerthNames(string pierId, string? pattern)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        var pier = _marina.GetPier(pierId) ?? throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
+        var wanted = string.IsNullOrWhiteSpace(pattern) ? DefaultBerthPattern(pier.Id) : pattern.Trim();
+        var scheme = _berthNaming with { Pattern = wanted };
+
+        // Down one side and then the other, each side in the order the berths lie along the pier.
+        var ordered = _marina.GetBerthsByPier(pier.Id)
+            .Select(berth => (Berth: berth, Side: SideOf(pier, berth), Along: Vector2.Dot(berth.Center - pier.Start, pier.Direction)))
+            .OrderBy(entry => entry.Side == PierSide.Left ? 0 : 1)
+            .ThenBy(entry => entry.Along)
+            .ToArray();
+
+        // One run of numbers when the pattern gives both sides the same name, two when it tells them apart.
+        var perSide = !string.Equals(
+            scheme.Format(pier, PierSide.Left, scheme.StartNumber),
+            scheme.Format(pier, PierSide.Right, scheme.StartNumber),
+            StringComparison.Ordinal);
+
+        var renames = new List<(string From, string To)>(ordered.Length);
+        var counters = new Dictionary<PierSide, int> { [PierSide.Left] = 0, [PierSide.Right] = 0 };
+        var running = 0;
+
+        foreach (var entry in ordered)
+        {
+            var index = perSide ? counters[entry.Side]++ : running++;
+            renames.Add((entry.Berth.Id, scheme.Format(pier, entry.Side, scheme.StartNumber + index * scheme.Increment)));
+        }
+
+        // A name is a clash when two of these berths want it, or when a berth that is not one of them already has it.
+        var mine = new HashSet<string>(renames.Select(rename => rename.From), StringComparer.OrdinalIgnoreCase);
+        var clashes = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (_, to) in renames)
+        {
+            var taken = _marina.GetBerth(to) is { } other && !mine.Contains(other.Id);
+            if ((!seen.Add(to) || taken) && !clashes.Contains(to, StringComparer.OrdinalIgnoreCase)) clashes.Add(to);
+        }
+
+        return new BerthNamePlan(pier.Id, wanted, renames, clashes);
+    }
+
+    /// <summary>
+    /// Applies a plan from <see cref="PlanBerthNames"/>, renaming every berth on the pier in one undoable step.
+    /// </summary>
+    /// <param name="plan">The plan. It must be clear of clashes.</param>
+    /// <remarks>
+    /// The berths go to temporary names first and then to the ones asked for, so a pattern that shuffles names
+    /// around a pier — every berth moving up one — does not collide with itself half way through.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The plan has clashes, or the pier has gone.</exception>
+    /// <returns>Every berth that actually changed name, as (old name, new name).</returns>
+    public IReadOnlyList<(string From, string To)> ApplyBerthNames(BerthNamePlan plan)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        if (!plan.IsClear) throw new InvalidOperationException($"The names {string.Join(", ", plan.Clashes)} are already taken.");
+        if (_marina.GetPier(plan.PierId) is null) throw new InvalidOperationException($"Pier '{plan.PierId}' does not exist.");
+
+        var moving = plan.Renames.Where(rename => !string.Equals(rename.From, rename.To, StringComparison.Ordinal)).ToArray();
+        if (moving.Length == 0) return Array.Empty<(string, string)>();
+
+        var action = new DesignAction(Strings.Format(Strings.UndoRenumberBerths, moving.Length, plan.PierId));
+        var parked = new List<(string Temporary, string To)>(moving.Length);
+
+        // Out of the way first, so nothing is renamed onto a name another of them is still using.
+        var stamp = Guid.NewGuid().ToString("N")[..8];
+        for (var i = 0; i < moving.Length; i++)
+        {
+            var temporary = $"~{stamp}-{i}";
+            _marina.RenameBerth(moving[i].From, temporary);
+            parked.Add((temporary, moving[i].To));
+        }
+
+        foreach (var (temporary, to) in parked) _marina.RenameBerth(temporary, to);
+        foreach (var (from, to) in moving) action.RenamedBerths.Add((from, to));
+
+        Record(action);
+        RaiseStateChanged();
+        return moving;
+    }
+
+    /// <summary>
     /// The naming scheme a pattern asked for by the host stands for: the one in use, with that pattern and with the
     /// padding the pier's berths already have, so putting the pattern back unchanged renames nothing.
     /// </summary>
@@ -1205,7 +1329,7 @@ public sealed class MarinaDesigner
                 wholeRow ? _marina.GetBerthsByPier(pier.Id).FirstOrDefault() : null,
                 pier,
                 pier.Name,
-                InferBerthPattern(pier)?.Pattern ?? _berthNaming.Pattern,
+                wholeRow ? DefaultBerthPattern(pier.Id) : InferBerthPattern(pier)?.Pattern ?? _berthNaming.Pattern,
                 wholeRow ? DesignRenameScope.BerthsOfPier : DesignRenameScope.Element),
             _ => null,
         };
@@ -1218,7 +1342,11 @@ public sealed class MarinaDesigner
         {
             var pattern = args.NewBerthPattern?.Trim();
             if (args.Cancel || args.Pier is not { } target || string.IsNullOrEmpty(pattern)) return;
-            RenumberBerths(target.Id, pattern);
+
+            // The host is expected to have checked the plan; one that still clashes is left alone rather than
+            // half-applied.
+            var plan = PlanBerthNames(target.Id, pattern);
+            if (plan.IsClear) ApplyBerthNames(plan);
             return;
         }
 

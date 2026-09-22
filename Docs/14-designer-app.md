@@ -27,26 +27,26 @@ host application can come back to it. *Automatic views* — the whole marina, st
 point, and one per pier — each have a tick: untick one to leave it out of the list the host application offers. That
 choice is saved with the design. Saved views can be gone to or deleted.
 
-**Look** shows the appearance settings, so the marina stays visible while they are changed. Among them is
-**Shadows**: whether the boats and piers cast any, and how dark. They follow the sun above them, so the two sets
-of settings are worth using together. Water
-and waves, light and air, berth colours, the land and its trees, berth labels — each setting has a small ↺ beside it
-that puts only that one back to its default, and a full reset sits at the bottom.
+**Look** shows the appearance settings while the marina stays visible, so the effect of each one can be seen as it
+is changed. Water and waves, light and air, shadows, berth colours, the land and its trees, berth labels: each
+setting has a small ↺ beside it that puts only that one back to its default, and a full reset sits at the bottom.
 
-Two of its cards are about what surrounds the marina rather than the marina itself:
+The **labels** card sets how berth names are drawn: *Letters* picks the shape (Sans, Serif or Slab) and the face
+below it the weight and width. They are drawn as strokes rather than set in an installed font, so they look the same
+everywhere and stay sharp at any zoom — which is why the list names shapes rather than Arial or Times.
 
-- **The mainland**, drawn with the **Coast** tool, takes its colours from the land card, including the walls and roofs
-  of a town behind the shore.
-- **Passing traffic** puts vessels out in the bay, on lanes that sweep in past the marina and back out to the edge of
-  the map: tick *Vessels out at sea*, then set *Keep clear by* (how near the marina the nearest lane passes),
-  *Clear of land at the edge* (how far off the coast it leaves the map), *Lanes* and *Space between lanes*. The card
-  says where the nearest lane actually ended up. *Speed* is a percentage: every kind of vessel keeps its own speed, so
-  a fishing boat still plods and a jet ski still tears past, and the slider moves the lot. *Vessels* caps how many are
-  out at once and *Wait before the next one* sets how long after one leaves the map before another appears. Tick
-  *Show the lanes* to draw them while setting it, tinted by which way each one runs; that is a working aid and is not
-  saved with the design.
+Two cards are about what surrounds the marina rather than the marina itself:
 
-The **labels** card sets how berth names are drawn: *Letters* picks the shape (Sans, Serif or Slab) and the face below it the weight and width. They are drawn as strokes rather than set in an installed font, so they look the same everywhere and stay sharp however far you zoom in — which is why the list names shapes rather than Arial or Times.
+- **The mainland**, drawn with the **Coast** tool, takes its colours from the land card, including the walls and
+  roofs of a town behind the shore.
+- **Passing traffic** puts vessels out in the bay, on lanes that sweep in past the marina and back out to the edge
+  of the map. Tick *Vessels out at sea*, then set *Keep clear by* (how near the marina the nearest lane passes),
+  *Clear of land at the edge*, *Lanes* and *Space between lanes*; the card reports where the nearest lane ended up.
+  *Speed* is a percentage — every kind of vessel keeps its own, so a fishing boat still plods and a jet ski still
+  tears past — while *Vessels* caps how many are out at once and *Wait before the next one* sets how long after one
+  leaves before another appears. *Show the lanes* draws them while you set it, tinted by which way each runs.
+
+Both are described in full in [The sea and the shore](17-sea-and-shore.md).
 
 **Add preview boats** fills empty berths with a random mix so the colours and the water can be judged against a full
 marina. Those boats are not saved with the design.
@@ -89,15 +89,18 @@ The **Ashore** panel has the same four fields for the slots on land, counted sep
 
 The **Rename** tool (or Edit ▸ Rename, F2) gives one element another name: click a berth or a pier, type the name, press Enter. A berth's name is also its id, so a name already used is refused and the log says so; a pier's name is only a title, so any name will do. Ctrl+Z puts the old name back.
 
-Hold **Alt** and click a berth to rename its whole row instead of the one berth: the dialog asks for the naming
-pattern alone, filled in with the one those berths follow now, and the pier keeps its own name and id. It is the same
-modifier that makes the eraser take a whole row.
+Hold **Alt** and click a berth to rename its whole pier instead of the one berth: the dialog asks for a naming
+pattern and the pier keeps its own name and id. The pattern comes filled in from the kind of pier —
+`{pier}-{side}{number}`, or `{pier}-{number}` where boats berth on one side only — and you can put anything around
+the tokens. Every berth on the pier is renamed and renumbered along it, whatever it was called before. If the
+pattern would give two berths the same name, or a name something else already has, the dialog says which names and
+asks again rather than renaming half the pier.
 
 Renaming a **pier** asks for three things, because it renames every berth on it as well: the pier's name, its id, and the pattern its berths are named by. The pattern comes filled in with the one those berths follow now — `{pier}-{side}{number}` for berths called `A-L01` — so leaving it alone changes nothing. Type a different one and the whole pier is renamed to match, keeping the number each berth already has. A berth whose new name is already taken keeps the one it has, so a pattern that would give two berths the same name renames neither.
 
 ## What it saves
 
-**File ▸ Save** writes a `.marina.json` file holding the layout, the appearance and motion settings, the berth labels, the camera position and the designer's tool settings. Opening one puts all of it back on screen: the Look and Cameras panels and the tool settings read themselves out of the file, so the sliders, colours and ticks show what the design was saved with rather than what the window started with. The title bar shows the file name and marks unsaved changes with `*`; closing with unsaved work asks first.
+**File ▸ Save** writes a `.marina.json` file holding the layout, the appearance and motion settings, the berth labels, the camera position and the designer's tool settings. Opening one puts all of it back on screen, panels included, so the sliders, colours and ticks show what the design was saved with. The title bar shows the file name and marks unsaved changes with `*`; closing with unsaved work asks first.
 
 The host application loads that one file:
 

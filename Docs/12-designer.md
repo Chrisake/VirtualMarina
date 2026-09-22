@@ -55,10 +55,10 @@ While `IsActive` is true, clicks go to the designer instead of selecting berths.
 
 Ctrl+Z undoes the last change, with any tool (see [Undo](#undo)). When there's nothing to cancel, Esc switches back to `Navigate`. Corners and pier ends snap to existing land corners, pier ends and land edges within `SnapDistancePixels` (default 12). Holding Alt turns snapping off.
 
-**Modifiers show at once.** What Alt and Shift are about to do shows in the preview the moment the key goes down —
-the eraser sweeping a whole row rather than one berth, a point that has stopped snapping — and goes back the moment
-it is released. Modifiers otherwise only arrive with a pointer event, so a host that can see keys go down and up
-calls `marina.Input.ModifiersChanged(modifiers)` to keep the preview honest; `MarinaViewControl` already does.
+**Modifiers show at once.** What Alt and Shift are about to do appears in the preview the moment the key goes down
+— the eraser sweeping a whole row, a point that has stopped snapping — and goes back when it is released. Modifiers
+otherwise arrive only with a pointer event, so a host that can see keys go down and up calls
+`marina.Input.ModifiersChanged(modifiers)`; `MarinaViewControl` does this already.
 
 **Piers square up.** A pier being drawn takes a direction at right angles to what is already there: the piers in the marina, and the land edges within 40 m of its shore end — the quay it springs from. A direction within 6° of square is corrected; anything further is left as drawn, so a deliberately angled pier still works. The preview marks a squared-up direction with a short line back along the pier. Alt draws exactly what the pointer says, and Shift asks for 15° steps instead.
 
@@ -115,66 +115,76 @@ Berths are perpendicular to the pier, bows toward it, on the side you click. A r
 
 ### Renaming
 
-`Rename` asks the host for the new name through `ElementRenaming`, so the application decides how to ask. A berth's
-name is also its id, so each one has to be free.
+`Rename` asks the host for a new name through `ElementRenaming`, so the application decides how to ask. A berth's
+name is also its id, so each one has to be free; `IsBerthNameAvailable` and `IsPierIdAvailable` say whether one is,
+and `ChangePierId` throws on a clash.
 
-Giving a **pier** another id takes its berths with it, and the names are built again from the naming scheme rather
-than having the old prefix swapped out. That matters on a pier that berths to one side: the scheme leaves the side
-letter out, so `K-R07` becomes `T-07`, not `T-R07`. The running number each berth already has is kept.
+There are three things a click can rename, and `ElementRenaming` tells them apart through `Scope`:
 
-The pier's own name follows too, when it is still the generated one — `Pier K` becomes `Pier T` — while a name
-someone chose is left as it is. `IsPierIdAvailable` and `IsBerthNameAvailable` say whether a name is free; the
-designer application asks again rather than letting a clash through, and `ChangePierId` throws on one.
+| Click | `Scope` | What changes |
+|---|---|---|
+| A berth | `Element` | That berth's name |
+| A pier | `Element` | The pier's name and id, and every berth on it |
+| A berth with **Alt** held | `BerthsOfPier` | Every berth on that berth's pier, by a naming pattern |
 
-A berth someone named by hand keeps that name, as does one whose new name is already taken. Every id that moved is
-reported through `LayoutChanged`, so a host tracking berths by id can follow them, and one Ctrl+Z puts the whole move
-back.
+**One berth.** Its `Label` — what is written on the water — follows the name when it merely repeated the old id, so
+the water shows the new name; a label the host wrote is theirs and stays. That lives in `RenameBerth` on the
+visualizer, so it holds however the rename was asked for, and it is a single `BerthRenamed` notification.
 
-**The label follows the name.** A berth's `Label` is what is written on the water, and the designer sets it to the
-generated name as the berth is drawn. Renaming a berth whose label merely repeated its old id carries the label
-along, so the water shows the new name rather than the old one; a label the host wrote is theirs and stays. That is
-`RenameBerth` on the visualizer, so it holds however the rename was asked for, and it is still one
-`BerthRenamed` notification.
+**A whole pier.** Giving a pier another id takes its berths with it, and their names are built again from the naming
+scheme rather than having the old prefix swapped out. That matters on a pier that berths to one side: the scheme
+leaves the side letter out, so `K-R07` becomes `T-07`, not `T-R07`. The running number each berth has is kept. The
+pier's own name follows when it is still the generated one — `Pier K` becomes `Pier T` — while a name someone chose
+is left alone. A berth named by hand keeps its name, as does one whose new name is already taken.
 
-`RenumberBerths(pierId)` does the same on its own, without changing the id. It is the repair for berths whose names
-no longer match their pier — one that used to take boats on both sides and now takes them on one, or berths still
-carrying a prefix from an id the pier had long ago. Renaming a pier in the designer runs it too.
+Every id that moved is reported through `LayoutChanged`, so a host tracking berths by id can follow them, and one
+Ctrl+Z puts the whole move back.
 
-#### Renaming a whole row at once
+#### Renaming berths by a pattern
 
-Clicking a berth with **Alt** held renames every berth on its pier, the same modifier that sweeps a whole row with
-the eraser. `ElementRenaming` says so through `Scope`:
+Holding **Alt** over a berth renames the whole pier by a naming pattern, leaving the pier's own name and id where
+they are — the same modifier that makes the eraser sweep a whole row.
 
-| `Scope` | |
-|---|---|
-| `Element` | The one thing clicked: a berth's name, or a pier's name and id |
-| `BerthsOfPier` | Every berth on the clicked berth's pier. Only `NewBerthPattern` is read; the pier keeps its own name and id |
+The pattern offered comes from the **kind of pier**: `{pier}-{side}{number}`, or `{pier}-{number}` on a pier that
+takes boats on one side only, where there is no other side to tell a berth apart from. That is
+`DefaultBerthPattern(pierId)`. The user can put anything around the tokens and try as many patterns as they like
+before settling on one.
 
-`Berth` and `Pier` are both set for a `BerthsOfPier` rename, so a host can say which pier and how many berths are
-about to change. `BerthPattern` comes filled in as ever, falling back to `BerthNaming.Pattern` when the pier's berths
-were all named by hand.
+This throws the old names away. Every berth on the pier is renamed and renumbered along it from
+`BerthNaming.StartNumber`, whatever it was called before — including berths named entirely by hand, with no number
+and no prefix to read a pattern out of. Berths are counted down one side and then the other when the pattern tells
+the sides apart, and straight through when it does not, so `{pier}-{number}` on a pier that berths both sides gives
+one run of numbers rather than two sets of the same ones.
 
-#### Renaming a whole pier to a pattern
-
-Because renaming a pier renames every berth on it, `ElementRenaming` also offers the **pattern** those berths are
-named by. `BerthPattern` is read back out of the names they actually have — `{pier}-{side}{number}` for berths called
-`A-L01` — rather than being whatever `BerthNaming` happens to be set to, so it describes the pier in front of the
-user. It is null for a berth, and for a pier whose berths were all named by hand.
-
-Setting `NewBerthPattern` renames every numbered berth on the pier to match, keeping the number and the padding each
-one already has, so putting the same pattern back changes nothing. `RenumberBerths(pierId, pattern)` does it directly:
+Work it out first, then apply it:
 
 ```csharp
+var plan = designer.PlanBerthNames("A", "{pier}.{side}{number}");
+if (plan.IsClear) designer.ApplyBerthNames(plan);
+else Warn(string.Join(", ", plan.Clashes));
+```
+
+`PlanBerthNames` changes nothing. `Renames` lists every berth and the name it would get, and `Clashes` names what
+stops it: names two berths on the pier would share, and names a berth elsewhere in the marina already has. The
+designer application shows those names and asks for another pattern rather than renaming part of the pier;
+`ApplyBerthNames` refuses a plan that still clashes.
+
+Applying one renames the whole pier in a single step for Ctrl+Z. The berths go to temporary names first and then to
+the ones asked for, so a pattern that shuffles names around the pier — every berth moving up one — does not collide
+with itself half way through.
+
+`RenumberBerths` is the narrower operation, and **keeps** the number each berth already has:
+
+```csharp
+designer.RenumberBerths("E");                      // rebuild the names from BerthNaming
 designer.RenumberBerths("E", "{pier}.{number}");   // E-R01 becomes E.01
 ```
 
-A berth whose new name is already taken is left alone rather than overwritten, so a pattern that would give two
-berths the same name — dropping `{side}` from a pier that berths on both — renames neither of them. The whole pier is
-one step for Ctrl+Z.
+It is the repair for berths whose names no longer match their pier — one that used to take boats on both sides and
+now takes them on one, or berths still carrying a prefix from an id the pier had long ago — and it leaves a berth
+named by hand alone. Renaming a pier's id runs it.
 
-The side token is still read from `BerthNaming`, since nothing in a name says which letter stood for the side, and it
-is only looked for right next to the number. A berth named under a scheme whose side letters differed comes back with
-that letter as plain text, which still reproduces the name it has.
+The side token is read from `BerthNaming`, since nothing in a name says which letter stood for the side.
 
 ### The mainland
 

@@ -363,6 +363,144 @@ public class ModifierAndPatternTests
         Assert.Equal("Harbourmaster", renamed.DisplayName);
     }
 
+
+    [Fact]
+    public void AWholePierRename_ScrapsNamesThatFollowNoPatternAtAll()
+    {
+        var marina = WithARowOfBerths(out var designer, out var berths);
+
+        // Named by hand, with nothing a pattern could be read out of: no number, no pier prefix.
+        marina.Designer.RenameBerth(berths[0].Id, "HARBOURMASTER");
+        marina.Designer.RenameBerth(berths[1].Id, "VISITOR");
+        marina.Designer.RenameBerth(berths[2].Id, "FUEL");
+
+        var plan = designer.PlanBerthNames("A", "{pier}-{side}{number}");
+        Assert.True(plan.IsClear);
+        Assert.Equal(berths.Count, plan.Renames.Count);
+        Assert.Contains(plan.Renames, rename => rename.From == "HARBOURMASTER");
+
+        designer.ApplyBerthNames(plan);
+
+        // Every one of them, however it was named before.
+        var after = marina.GetBerthsByPier("A").Select(berth => berth.Id).ToArray();
+        Assert.Equal(berths.Count, after.Length);
+        Assert.All(after, id => Assert.StartsWith("A-L", id, StringComparison.Ordinal));
+        Assert.Contains("A-L01", after);
+        Assert.Null(marina.GetBerth("HARBOURMASTER"));
+    }
+
+    [Fact]
+    public void TheNamesAreCountedAlongThePier_FromTheStart()
+    {
+        var marina = WithARowOfBerths(out var designer, out _);
+        designer.ApplyBerthNames(designer.PlanBerthNames("A", null));
+
+        var pier = marina.GetPier("A")!;
+        var ordered = marina.GetBerthsByPier("A")
+            .OrderBy(berth => Vector2.Dot(berth.Center - pier.Start, pier.Direction))
+            .Select(berth => berth.Id)
+            .ToArray();
+
+        // Numbered in the order they lie along the pier, not in whatever order they happen to be stored.
+        Assert.Equal(ordered, ordered.OrderBy(id => id, StringComparer.Ordinal).ToArray());
+        Assert.Equal("A-L01", ordered[0]);
+    }
+
+    [Fact]
+    public void ThePatternOfferedComesFromThePierType()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
+        marina.AddPier(new Pier("E", "Pier E", new Vector2(80, -30), 0f, 60f) { BerthingSides = PierSides.Left });
+
+        var designer = marina.Designer;
+        designer.IsActive = true;
+
+        // A pier that takes boats on one side has no other side to tell a berth apart from.
+        Assert.Equal("{pier}-{side}{number}", designer.DefaultBerthPattern("A"));
+        Assert.Equal("{pier}-{number}", designer.DefaultBerthPattern("E"));
+
+        designer.CreateBerths("E", PierSide.Left, 0f, 60f);
+        designer.ApplyBerthNames(designer.PlanBerthNames("E", null));
+
+        // No side letter on a pier that has only one side.
+        var named = marina.GetBerthsByPier("E").Select(berth => berth.Id).ToArray();
+        Assert.All(named, id => Assert.Matches(@"^E-\d+$", id));
+        Assert.Contains("E-01", named);
+    }
+
+    [Fact]
+    public void APatternThatWouldRepeatAName_IsReportedRatherThanApplied()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
+        var designer = marina.Designer;
+        designer.IsActive = true;
+        designer.CreateBerths("A", PierSide.Left, 0f, 60f);
+        designer.CreateBerths("A", PierSide.Right, 0f, 60f);
+
+        // A pattern with no number gives every berth the same name.
+        var plan = designer.PlanBerthNames("A", "{pier}-QUAY");
+        Assert.False(plan.IsClear);
+        Assert.Contains("A-QUAY", plan.Clashes);
+
+        // Nothing is touched, and applying it anyway is refused rather than half-done.
+        var before = marina.GetBerthsByPier("A").Select(berth => berth.Id).ToArray();
+        Assert.Throws<InvalidOperationException>(() => designer.ApplyBerthNames(plan));
+        Assert.Equal(before, marina.GetBerthsByPier("A").Select(berth => berth.Id).ToArray());
+
+        // Dropping {side} numbers straight through instead of twice over, so it is sound.
+        var straight = designer.PlanBerthNames("A", "{pier}-{number}");
+        Assert.True(straight.IsClear);
+        Assert.Equal(before.Length, straight.Renames.Select(rename => rename.To).Distinct().Count());
+    }
+
+    [Fact]
+    public void ANameAnotherPierAlreadyHas_IsReportedToo()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
+        marina.AddPier(new Pier("B", "Pier B", new Vector2(80, -30), 0f, 60f));
+        var designer = marina.Designer;
+        designer.IsActive = true;
+        designer.CreateBerths("A", PierSide.Left, 0f, 60f);
+        designer.CreateBerths("B", PierSide.Left, 0f, 60f);
+
+        // Naming pier A's berths as if they were pier B's runs straight into pier B.
+        var plan = designer.PlanBerthNames("A", "B-{side}{number}");
+        Assert.False(plan.IsClear);
+        Assert.Contains("B-L01", plan.Clashes);
+
+        // And the report names them, so the user can be told which.
+        Assert.All(plan.Clashes, name => Assert.NotNull(marina.GetBerth(name)));
+    }
+
+    [Fact]
+    public void ShufflingTheNamesAroundAPier_DoesNotCollideWithItself()
+    {
+        var marina = WithARowOfBerths(out var designer, out var berths);
+        var count = berths.Count;
+
+        // Every berth takes the name of the one before it, so a straight pass would collide at every step.
+        var shifted = designer.PlanBerthNames("A", "{pier}-{side}{number}");
+        Assert.True(shifted.IsClear);
+
+        designer.BerthNaming = designer.BerthNaming with { StartNumber = 2 };
+        var plan = designer.PlanBerthNames("A", "{pier}-{side}{number}");
+        Assert.True(plan.IsClear, "moving every berth up one was reported as a clash");
+        designer.ApplyBerthNames(plan);
+
+        var after = marina.GetBerthsByPier("A").Select(berth => berth.Id).ToArray();
+        Assert.Equal(count, after.Length);
+        Assert.Equal(count, after.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Contains("A-L02", after);
+        Assert.DoesNotContain("A-L01", after);
+
+        // And one undo puts the whole pier back.
+        designer.Undo();
+        Assert.Contains("A-L01", marina.GetBerthsByPier("A").Select(berth => berth.Id));
+    }
+
     private static void ClickWhereThePointerIs(MarinaVisualizer marina, InputModifiers modifiers = InputModifiers.None)
     {
         var at = marina.Designer.PointerPosition;

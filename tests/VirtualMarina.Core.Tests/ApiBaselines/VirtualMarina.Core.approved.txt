@@ -716,6 +716,14 @@ sealed class VirtualMarina.Core.Camera.OrbitCamera
     void Update(float deltaSeconds)
     void Zoom(float factor, Vector3? focusPoint = null)
 
+sealed class VirtualMarina.Core.Design.BerthNamePlan
+    .ctor(string pierId, string pattern, IEnumerable<ValueTuple<string, string>> renames, IEnumerable<string> clashes)
+    IReadOnlyList<ValueTuple<string, string>> Renames { get; }
+    IReadOnlyList<string> Clashes { get; }
+    bool IsClear { get; }
+    string Pattern { get; }
+    string PierId { get; }
+
 sealed class VirtualMarina.Core.Design.BerthNamingScheme : IEquatable<VirtualMarina.Core.Design.BerthNamingScheme>
     .ctor()
     IEnumerable<string> Validate()
@@ -862,6 +870,7 @@ sealed class VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMari
     void ApplyTo(VirtualMarina.Core.Design.MarinaDesigner designer)
 
 sealed class VirtualMarina.Core.Design.MarinaDesigner
+    IReadOnlyList<ValueTuple<string, string>> ApplyBerthNames(VirtualMarina.Core.Design.BerthNamePlan plan)
     IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId)
     IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId, string pattern)
     IReadOnlyList<Vector2> DraftPoints { get; }
@@ -877,6 +886,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     Vector2 ReferenceImageCenter { get; set; }
     Vector2 ReferenceImageSize { get; }
     Vector2? PointerPosition { get; }
+    VirtualMarina.Core.Design.BerthNamePlan PlanBerthNames(string pierId, string pattern)
     VirtualMarina.Core.Design.BerthNamingScheme BerthNaming { get; set; }
     VirtualMarina.Core.Design.BerthSeparator BerthSeparators { get; set; }
     VirtualMarina.Core.Design.DesignTool Tool { get; set; }
@@ -943,6 +953,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     float SnapDistancePixels { get; set; }
     float TreeDensity { get; set; }
     int UndoCount { get; }
+    string DefaultBerthPattern(string pierId)
     string GeneratedPierName(string pierId)
     string PierNamePattern { get; set; }
     string ToolHint { get; }

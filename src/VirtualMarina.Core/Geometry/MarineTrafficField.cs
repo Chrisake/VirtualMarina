@@ -62,12 +62,10 @@ public sealed class MarineTrafficField
 
         if (Lanes.Count == 0 || settings.VesselCount == 0) return;
 
-        // However many happen to be about, rather than always the most allowed: an empty-ish sea on one opening and
-        // a busy one on the next is the point of it.
-        var afloat = _random.Next(Math.Max(1, settings.VesselCount / 3), settings.VesselCount + 1);
-        for (var i = 0; i < afloat; i++)
+        // The full complement to begin with, scattered along the lanes rather than queued at one end, so the sea
+        // is busy the moment the marina opens instead of filling up over the first few minutes.
+        for (var i = 0; i < settings.VesselCount; i++)
         {
-            // Already under way, so the marina does not open with a row of vessels sitting on the horizon.
             _sailings.Add(NewSailing((float)_random.NextDouble()));
         }
 

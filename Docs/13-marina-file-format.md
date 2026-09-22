@@ -112,23 +112,16 @@ and from the shoreline when the file is loaded, so a busy sea costs no more to s
 same every time it is opened. Nothing about the lanes themselves is written, so moving the coast moves the shipping
 with it.
 
-`clearance` is how near the middle of the marina the nearest lane comes, in meters, and `edgeClearance` how far off
-the coast a lane sits where it leaves the map. The two ends of a lane are set by the second and its middle by the
-first, so together they say how sharply it sweeps in. `laneCount` and `laneSpacing` say how many lanes there are and
-how far each steps out to sea beyond the first.
+`clearance` is how near the middle of the marina the nearest lane comes, and `edgeClearance` how far off the coast a
+lane sits where it leaves the map; `laneCount` and `laneSpacing` say how many lanes there are and how far each steps
+out to sea beyond the first. `speedPercent` scales what each kind of vessel really does rather than setting one speed
+for all of them, `maximumVessels` caps how many are out at once, and `spawnDelaySeconds` is roughly how long after a
+vessel leaves the map before another appears. `reach` is only used when there is no shoreline to take the lane ends
+from.
 
-`speedPercent` scales what each kind of vessel really does rather than setting one speed for all of them, and
-`spawnDelaySeconds` is roughly how long after a vessel leaves the map before another appears. `maximumVessels` caps
-how many are out at once.
-
-A file written before any of these settings existed has none of them; each falls back to its default on load, since
-zero lanes or zero speed would fail validation and leave an empty sea. A file written when the speed was in knots
-loses that setting rather than being converted, because it no longer means the same thing.
-
-`reach` is only used when there is no shoreline to take the lane ends from.
-
-Whether the lanes are *drawn* is not stored: it is a working aid for setting the clearances, and a reloaded design
-always has it off.
+A setting a file does not carry falls back to its default on load, so a design written by an earlier version opens
+with sensible traffic rather than none. Whether the lanes are *drawn* is not stored: that is a working aid for
+setting the clearances, and a reloaded design always has it off.
 
 The vessels are decoration: they are not berths, they cannot be clicked, and they never appear in `berths`.
 

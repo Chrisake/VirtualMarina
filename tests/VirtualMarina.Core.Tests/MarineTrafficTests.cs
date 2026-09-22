@@ -180,22 +180,30 @@ public class MarineTrafficTests
     }
 
     [Fact]
-    public void OneOrTwoLanesRunOppositeWays_AndMoreThanThatAreMixed()
+    public void EveryMarinaHasTrafficBothWays_InNoParticularOrder()
     {
         // Two lanes are a separation scheme: one each way.
         var pair = MarineTrafficPlanner.Plan(Busy() with { LaneCount = 2 }, MarinaBounds(), StraightCoast());
         Assert.Equal(new[] { false, true }, pair.Select(lane => lane.Reversed).ToArray());
         Assert.True(Vector2.Dot(pair[0].At(0.5f).Direction, pair[1].At(0.5f).Direction) < -0.9f, "the two lanes run the same way");
 
-        // Beyond that the directions are drawn at random, so over a spread of seeds they are not all alternating.
-        var patterns = new HashSet<string>();
-        for (var seed = 1; seed <= 12; seed++)
+        // Beyond that the order is drawn at random, but the split is not: tossing a coin per lane sent one marina
+        // in seven all the same way, which reads as a bug rather than as chance.
+        foreach (var count in new[] { 3, 4, 5, 6, 8 })
         {
-            var lanes = MarineTrafficPlanner.Plan(Busy(seed) with { LaneCount = 5 }, MarinaBounds(), StraightCoast());
-            patterns.Add(string.Concat(lanes.Select(lane => lane.Reversed ? "<" : ">")));
-        }
+            var patterns = new HashSet<string>();
+            for (var seed = 1; seed <= 30; seed++)
+            {
+                var lanes = MarineTrafficPlanner.Plan(Busy(seed) with { LaneCount = count }, MarinaBounds(), StraightCoast());
+                Assert.Equal(count, lanes.Count);
 
-        Assert.True(patterns.Count > 2, $"the directions of five lanes only ever came out as {patterns.Count} pattern(s)");
+                var back = lanes.Count(lane => lane.Reversed);
+                Assert.True(Math.Abs(back - (count - back)) <= 1, $"{count} lanes came out {back} one way and {count - back} the other at seed {seed}");
+                patterns.Add(string.Concat(lanes.Select(lane => lane.Reversed ? "<" : ">")));
+            }
+
+            Assert.True(patterns.Count > 2, $"the directions of {count} lanes only ever came out as {patterns.Count} pattern(s)");
+        }
     }
 
     [Fact]
@@ -260,30 +268,32 @@ public class MarineTrafficTests
     }
 
     [Fact]
-    public void TheSeaStartsWithARandomNumberOfVessels_AndKeepsItself()
+    public void TheSeaStartsFull_ScatteredAlongTheLanes_AndKeepsItself()
     {
         var traffic = Busy() with { MaximumVessels = 12, SpawnDelaySeconds = 5f, LaneCount = 3 };
         var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
+        var field = new MarineTrafficField(traffic, lanes);
 
-        var counts = new HashSet<int>();
-        for (var seed = 1; seed <= 10; seed++)
-        {
-            var field = new MarineTrafficField(traffic with { Seed = seed }, lanes);
-            Assert.InRange(field.Vessels.Count, 1, traffic.MaximumVessels);
-            counts.Add(field.Vessels.Count);
-        }
+        // Every vessel it is allowed, out there from the first frame.
+        Assert.Equal(traffic.MaximumVessels, field.Vessels.Count);
 
-        Assert.True(counts.Count > 1, "the sea always starts with exactly the same number of vessels");
+        // Scattered along the lanes rather than queued at one end, and over all of them rather than one.
+        var along = field.Vessels
+            .Select(vessel => lanes.Select((lane, i) => (Lane: i, Distance: lane.DistanceTo(vessel.Position))).MinBy(x => x.Distance))
+            .ToArray();
+
+        Assert.True(along.Select(x => x.Lane).Distinct().Count() > 1, "every vessel started on the same lane");
+        var starts = field.Vessels.Select(vessel => Vector2.Distance(vessel.Position, lanes[0].Points[0])).ToArray();
+        Assert.True(starts.Max() - starts.Min() > lanes[0].Length * 0.3f, "the vessels all started bunched together");
 
         // Left running, it neither empties nor overflows.
-        var running = new MarineTrafficField(traffic, lanes);
         for (var step = 0; step < 400; step++)
         {
-            running.Advance(30d);
-            Assert.InRange(running.Vessels.Count, 0, traffic.MaximumVessels);
+            field.Advance(30d);
+            Assert.InRange(field.Vessels.Count, 0, traffic.MaximumVessels);
         }
 
-        Assert.NotEmpty(running.Vessels);
+        Assert.NotEmpty(field.Vessels);
     }
 
     [Fact]

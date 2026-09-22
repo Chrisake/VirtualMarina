@@ -46,9 +46,8 @@ marina.Style.Labels.FontFamily = LabelFont.Bold;       // their weight and width
 
 The letters are **drawn as strokes**, not set in an installed font: they are meshes lying flat on the water, so
 OpenGL and WebGL render exactly the same thing, the library carries no font files, and the text stays crisp at any
-zoom. That is also why real font names such as Arial or Times are not among the choices, and why there is no
-monospaced one — every glyph already sits on the same grid and advances by the same step, so it would be the same
-letters as `Sans`.
+zoom. Real font names such as Arial or Times are therefore not among the choices, and there is no monospaced one:
+every glyph already sits on the same grid and advances by the same step, so it would be `Sans` under another name.
 
 `BerthLabelModeExtensions.Includes(mode, status)` and `GetDisplayName(mode)` help build a mode picker.
 
@@ -131,114 +130,24 @@ Each shadow is the object itself squashed onto the ground along the sun's rays, 
 `Lighting.SunDirection` — move the sun and the shadows move with it. It lands on the ground the object stands over:
 a boat afloat shades the water, a boat ashore shades the yard it is cradled in, a tree shades its own lawn.
 
-That costs one extra instance per object that casts, which is why the toggle is there: on a marina of several hundred
-berths it roughly doubles the scene. It needs no depth pass and no shadow map, so it behaves the same in the OpenGL
-and WebGL views.
+Each shadow costs one extra instance, so on a marina of several hundred berths shadows roughly double the scene —
+hence the toggle. They need no depth pass and no shadow map, and behave identically in the OpenGL and WebGL views.
 
-What it does not do, by construction:
+What projected shadows cannot do:
 
 - **One plane per object.** A boat's shadow falls on the water, not up the side of the pier beside it.
 - **No self-shadowing.** A cabin does not shade its own deck.
-- **The ground casts none**, being what the shadows land on. The trees and the hinterland are separate meshes for
-  exactly this reason, so they do.
+- **The ground casts none**, being what the shadows land on. Trees and the mainland scenery are separate meshes, so
+  they do.
 - **Overlap darkens.** A flattened object covers itself, so a shadow is darker than `Strength` alone — much darker
   for something like a tree crown, which is several rounded blobs on top of one another — and can look blotchy past
   about 0.4.
 - **Nothing below about 4° of elevation**, where a shadow would stretch to the horizon.
 
-## Passing traffic
+## The sea and the shore
 
-Vessels crossing the bay beyond the marina, so the sea is not empty. It is off until it is asked for:
-
-```csharp
-marina.SetMarineTraffic(MarineTraffic.None with
-{
-    IsEnabled = true,
-    Clearance = 300f,          // meters: how near the marina the nearest lane passes
-    EdgeClearance = 700f,      // meters: how far off the coast it leaves the map
-    LaneCount = 3,
-    LaneSpacing = 160f,
-    SpeedPercent = 120f,       // a share of what each kind of vessel really does
-    MaximumVessels = 16,
-    SpawnDelaySeconds = 25f,
-});
-```
-
-| Property | Default | Notes |
-|---|---|---|
-| `IsEnabled` | false | Off until asked for |
-| `Clearance` | 300 m | How near the middle of the marina the nearest lane passes |
-| `EdgeClearance` | 700 m | How far off the coast a lane sits where it leaves the map |
-| `LaneCount` | 2 | How many lanes, up to `MarineTraffic.LaneLimit` (8) |
-| `LaneSpacing` | 160 m | Between one lane and the next, on average |
-| `SpeedPercent` | 100 | Scales every vessel's own speed up or down |
-| `MaximumVessels` | 16 | The most on the water at once, up to `MarineTraffic.VesselLimit` (60) |
-| `SpawnDelaySeconds` | 25 | Roughly how long after one leaves before another appears |
-| `Reach` | 8000 m | How far the lanes run when there is no shoreline to take their ends from |
-| `Seed` | 1 | Fixes the lanes and the traffic on them |
-| `Vessels` | empty | The mix to draw from; empty means `MarineTraffic.DefaultVessels` |
-
-### Where the lanes go
-
-A lane is drawn through **three points** and curved smoothly between them:
-
-- one at each edge of the map, out where the [mainland](07-land-and-shoreline.md) ends, sitting `EdgeClearance` off
-  the coast;
-- one in the middle, passing the marina at `Clearance`.
-
-So a lane sweeps in towards the marina and back out again, and both its ends are far enough away that a vessel
-appears and disappears out of sight. `Clearance` is the closest approach to the middle of the marina, not a margin
-added to the size of it, so 300 m means 300 m whether the marina is 100 m across or 2 km. The two settings together
-say how sharply a lane sweeps in.
-
-Three points is the whole of it, and that is the point. Pushing the coastline itself out to sea -- which is what this
-used to do -- folds over on itself wherever the coast turns in, since a bay narrower than the push becomes a loop.
-Lanes came out with a right-angle kink in them and a six-kilometre jump between the first two points.
-
-Lanes beyond the first step out to sea by `LaneSpacing` on average, give or take, so they are not ruled parallel.
-Every vessel in a lane runs the same way and nothing meets head-on; one or two lanes run opposite ways as a traffic
-separation scheme does, and beyond that the directions are drawn at random. `TrafficLanes` gives the planned lanes
-back, nearest first, each with its `Points`, `Length`, `Reversed`, `DistanceTo(point)` and `At(along)`.
-
-```csharp
-marina.ShowTrafficLanes = true;   // draws the lanes on the water while the clearances are being set
-```
-
-`ShowTrafficLanes` is a working aid, not a style: it draws the lanes, tinted by which way each runs. It is not saved
-with the design. The Designer offers it as **Show the lanes** in the traffic card of the Look panel.
-
-`Reach` is only consulted when there is no shoreline. A reach shorter than `Clearance` is not an error: the lane is
-simply run out far enough to be worth crossing. It used to be refused, which meant a design carrying a short reach
-from an older version threw the moment the clearance slider was pushed past it.
-
-### How fast they go
-
-Every kind of vessel travels at its own speed, from `MarineTraffic.CruisingKnots`: a fishing boat plods at 7 knots
-and a jet ski tears past at 30. One figure for the whole sea had them all keeping station, which reads as wrong
-immediately.
-
-| | Fishing | Monohull | Catamaran | Day motor | Cat. motor | Ferry | Motor yacht | Jet ski |
-|---|---|---|---|---|---|---|---|---|
-| knots | 7 | 8 | 9.5 | 14 | 15 | 18 | 22 | 30 |
-
-`SpeedPercent` scales all of them together rather than replacing them, so the mix keeps its character however fast
-the sea is turned up. Each vessel then differs from its kind by up to a sixth either way, so no two keep station
-while the average across the sea is still the real figure.
-
-### How they come and go
-
-A random number of vessels, up to `MaximumVessels`, is out there to begin with, already under way so the marina does
-not open with a row of them on the horizon. Each crosses its lane **once** and is gone off the far edge. About
-`SpawnDelaySeconds` after one leaves, another appears at the start of a lane -- a lane of its own choosing, of its own
-kind, at its own speed and its own offset within the lane. So the sea stays near the number it started with rather
-than filling to the cap, and it never repeats itself.
-
-`MarineTrafficField` holds that: `Advance(seconds)` moves it on, `Vessels` says where everything is. The visualizer
-keeps one and advances it as time passes; `GetTrafficVessels()` returns the same snapshot for a host that wants to
-draw its own marker. They are decoration: not berths, not clickable, and they take no part in selection.
-
-Because the vessels move, the scene's instance data is rebuilt on every frame while traffic is on. Switching it off
-hands the renderer the still scene again, which it can leave uploaded.
+The mainland behind the marina and the shipping that passes it have their own guide:
+[The sea and the shore](17-sea-and-shore.md).
 
 ## Replacing boat models
 

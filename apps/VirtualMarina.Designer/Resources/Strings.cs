@@ -716,6 +716,14 @@ internal static class Strings
 
     internal static string RenamePatternHint => Get("RenamePatternHint");
 
+    internal static string RenameClashTitle => Get("RenameClashTitle");
+
+    internal static string RenameClashBody => Get("RenameClashBody");
+
+    internal static string RenameClashMore => Get("RenameClashMore");
+
+    internal static string LogRenameClash => Get("LogRenameClash");
+
     /// <summary>"Pier id {0} is now {1}"</summary>
     internal static string LogPierIdChanged => Get("LogPierIdChanged");
 

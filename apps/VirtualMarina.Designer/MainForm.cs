@@ -727,24 +727,36 @@ internal sealed class MainForm : Form
         if (e.Pier is not { } pier) return;
 
         var berths = Marina.GetBerthsByPier(pier.Id).Count;
-        using var form = new TextInputForm(
-            Strings.Format(Strings.RenameBerthsTitle, pier.Id),
-            Strings.Format(Strings.RenameBerthsQuestion, berths, pier.Id),
-            e.BerthPattern ?? string.Empty,
-            thirdQuestion: null,
-            thirdHint: Strings.RenamePatternHint);
+        var pattern = e.BerthPattern ?? string.Empty;
 
-        if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
+        // Keep asking while the pattern would give two berths the same name, or a name something else already has.
+        // The names are worked out from scratch, so every berth on the pier is renamed whatever it was called.
+        while (true)
         {
-            e.Cancel = true;
-            return;
-        }
+            using var form = new TextInputForm(
+                Strings.Format(Strings.RenameBerthsTitle, pier.Id),
+                Strings.Format(Strings.RenameBerthsQuestion, berths, pier.Id),
+                pattern,
+                thirdQuestion: null,
+                thirdHint: Strings.RenamePatternHint);
 
-        var pattern = form.Value.Trim();
-        if (string.Equals(pattern, e.BerthPattern, StringComparison.Ordinal))
-        {
-            e.Cancel = true;
-            return;
+            if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            pattern = form.Value.Trim();
+            var plan = Designer.PlanBerthNames(pier.Id, pattern);
+            if (plan.IsClear) break;
+
+            var clashes = string.Join(", ", plan.Clashes.Take(8));
+            if (plan.Clashes.Count > 8) clashes += Strings.Format(Strings.RenameClashMore, plan.Clashes.Count - 8);
+
+            Log(Strings.Format(Strings.LogRenameClash, pier.Id, clashes));
+            MessageBox.Show(
+                this, Strings.Format(Strings.RenameClashBody, clashes), Strings.RenameClashTitle,
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         e.NewBerthPattern = pattern;

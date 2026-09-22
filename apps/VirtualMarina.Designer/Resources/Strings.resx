@@ -792,7 +792,24 @@ Runtime      {4}
     <value>Name its berths by:</value>
   </data>
   <data name="RenamePatternHint">
-    <value>Use {pier}, {side} and {number}. Every numbered berth on the pier is renamed to match, keeping the number it has.</value>
+    <value>Use {pier}, {side} and {number}. Every berth on the pier is renamed and renumbered along it, whatever it is called now.</value>
+  </data>
+  <data name="RenameClashTitle">
+    <value>Those names are taken</value>
+  </data>
+  <data name="RenameClashBody">
+    <value>This pattern would give more than one berth the same name, or a name something else already has: {0}
+
+Change the pattern and try again.</value>
+    <comment>{0} = the names that clash.</comment>
+  </data>
+  <data name="RenameClashMore">
+    <value> and {0} more</value>
+    <comment>{0} = how many further names clash.</comment>
+  </data>
+  <data name="LogRenameClash">
+    <value>Pier {0} not renamed; these names are taken: {1}</value>
+    <comment>{0} = the pier id, {1} = the names that clash.</comment>
   </data>
   <data name="LogPierIdChanged">
     <value>Pier id {0} is now {1}</value>
