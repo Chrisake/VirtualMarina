@@ -671,6 +671,18 @@ internal static class Strings
     /// <summary>"Pedestals"</summary>
     internal static string TitleServices => Get("TitleServices");
 
+    /// <summary>"Select"</summary>
+    internal static string TitleSelect => Get("TitleSelect");
+
+    /// <summary>"Select"</summary>
+    internal static string CardSelect => Get("CardSelect");
+
+    /// <summary>"Drag a box over the water. Every berth whose middle falls inside it is selected; hold Shift o..."</summary>
+    internal static string SelectHint => Get("SelectHint");
+
+    /// <summary>"{0} berth(s) selected"</summary>
+    internal static string SelectCount => Get("SelectCount");
+
     /// <summary>"Pick what the pedestals offer, then click a berth. Hold Alt or Ctrl to change every berth dow..."</summary>
     internal static string ServicesHint => Get("ServicesHint");
 
@@ -715,6 +727,12 @@ internal static class Strings
 
     /// <summary>"Give berths power and water; Alt or Ctrl changes a whole side of a pier"</summary>
     internal static string ToolServicesTip => Get("ToolServicesTip");
+
+    /// <summary>"Select"</summary>
+    internal static string ToolSelect => Get("ToolSelect");
+
+    /// <summary>"Drag a box over the water to select the berths inside it"</summary>
+    internal static string ToolSelectTip => Get("ToolSelectTip");
 
     /// <summary>"Click a berth or a pier to give it another name"</summary>
     internal static string ToolRenameTip => Get("ToolRenameTip");

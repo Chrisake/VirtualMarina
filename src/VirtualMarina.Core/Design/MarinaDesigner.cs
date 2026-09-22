@@ -82,6 +82,7 @@ public sealed class MarinaDesigner
     private static readonly Vector4 ImageOutlineColor = new(1f, 0.6f, 0.15f, 0.95f);
     private static readonly Vector4 ScaleLineColor = new(1f, 0.35f, 0.85f, 0.95f);
     private static readonly Vector4 ServicePreviewColor = new(0.99f, 0.78f, 0.15f, 0.6f);
+    private static readonly Vector4 SelectionBoxColor = new(0.35f, 0.78f, 1f, 0.95f);
     private static readonly Vector4 TextColor = new(1f, 1f, 1f, 0.97f);
 
     private readonly MarinaVisualizer _marina;
@@ -98,6 +99,9 @@ public sealed class MarinaDesigner
     private string? _berthLandId;
     private object? _eraseTarget;
     private Vector2? _imageDragLast;
+    private Vector2? _selectFrom;
+    private Vector2? _selectTo;
+    private InputModifiers _selectModifiers;
     private float _overlayDistance = -1f;
     private float _overlayYaw;
 
@@ -248,6 +252,7 @@ public sealed class MarinaDesigner
         DesignTool.Erase => Strings.HintErase,
         DesignTool.Rename => Strings.HintRename,
         DesignTool.EditServices => Strings.HintEditServices,
+        DesignTool.SelectArea => Strings.HintSelectArea,
         DesignTool.PlantTrees => _treeDensity > 0f ? Strings.HintPlantTrees : Strings.HintPlantTreesNone,
         DesignTool.MoveReferenceImage => _image is null ? Strings.HintReferenceImageMissing : Strings.HintMoveReferenceImage,
         DesignTool.MeasureScale when _image is null => Strings.HintReferenceImageMissing,
@@ -1282,20 +1287,78 @@ public sealed class MarinaDesigner
 
     // ---- Input (called by MarinaInputController) ------------------------------------------------
 
-    /// <summary>True when a left drag should move the reference image instead of the camera.</summary>
-    internal bool CapturesDrag(PointerButton button) =>
-        _active && _tool == DesignTool.MoveReferenceImage && button == PointerButton.Left && _image is not null;
+    /// <summary>The box being dragged with <see cref="DesignTool.SelectArea"/>, in plan coordinates, or null.</summary>
+    public (Vector2 Min, Vector2 Max)? SelectionBox =>
+        _selectFrom is { } from && _selectTo is { } to
+            ? (Vector2.Min(from, to), Vector2.Max(from, to))
+            : null;
 
-    internal void BeginImageDrag(float x, float y) => _imageDragLast = GroundPoint(x, y);
+    /// <summary>
+    /// Selects every berth whose middle lies inside a box in plan coordinates. This is what
+    /// <see cref="DesignTool.SelectArea"/> does when the drag ends.
+    /// </summary>
+    /// <param name="from">One corner of the box.</param>
+    /// <param name="to">The opposite corner.</param>
+    /// <param name="add">True to add to the selection already made, false to replace it.</param>
+    /// <returns>The berths now selected.</returns>
+    public IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)
+    {
+        var min = Vector2.Min(from, to);
+        var max = Vector2.Max(from, to);
+        var inside = _marina.GetBerths()
+            .Where(berth => berth.IsInteractive)
+            .Where(berth => berth.Center.X >= min.X && berth.Center.X <= max.X && berth.Center.Y >= min.Y && berth.Center.Y <= max.Y)
+            .Select(berth => berth.Id);
+
+        var ids = add ? _marina.SelectedBerths.Select(berth => berth.Id).Concat(inside).Distinct(StringComparer.OrdinalIgnoreCase) : inside;
+        return _marina.SetSelection(ids.ToArray()).SelectedBerthIds;
+    }
+
+    /// <summary>True when a left drag belongs to a tool — moving the picture or dragging a selection box — not the camera.</summary>
+    internal bool CapturesDrag(PointerButton button) =>
+        _active && button == PointerButton.Left &&
+        (_tool == DesignTool.SelectArea || (_tool == DesignTool.MoveReferenceImage && _image is not null));
+
+    internal void BeginImageDrag(float x, float y)
+    {
+        if (_tool == DesignTool.SelectArea)
+        {
+            _selectFrom = GroundPoint(x, y);
+            _selectTo = _selectFrom;
+            _selectModifiers = _modifiers;
+            return;
+        }
+
+        _imageDragLast = GroundPoint(x, y);
+    }
 
     internal void DragImage(float x, float y)
     {
+        if (_tool == DesignTool.SelectArea)
+        {
+            if (GroundPoint(x, y) is { } corner) _selectTo = corner;
+            _marina.MarkSceneDirty();
+            return;
+        }
+
         if (_image is null || _imageDragLast is not { } last || GroundPoint(x, y) is not { } current) return;
         _imageDragLast = current;
         ReferenceImageCenter = _imageCenter + (current - last);
     }
 
-    internal void EndImageDrag() => _imageDragLast = null;
+    internal void EndImageDrag()
+    {
+        _imageDragLast = null;
+        if (_selectFrom is { } from && _selectTo is { } to)
+        {
+            var dragged = Vector2.Distance(from, to) > 0.5f;
+            if (dragged) SelectBerthsInArea(from, to, (_selectModifiers & (InputModifiers.Shift | InputModifiers.Control)) != 0);
+        }
+
+        _selectFrom = null;
+        _selectTo = null;
+        _marina.MarkSceneDirty();
+    }
 
     internal void HandlePointerMove(float x, float y, InputModifiers modifiers)
     {
@@ -1491,6 +1554,11 @@ public sealed class MarinaDesigner
                 var outlineY = target.Height + 0.1f;
                 for (var i = 0; i < target.Points.Count; i++) overlay.Line(target.Points[i], target.Points[(i + 1) % target.Points.Count], outlineY, BerthPreviewColor with { W = 0.95f });
                 overlay.Text($"{target.Trees.Count} TREES", _pointer ?? target.Points[0], outlineY, TextColor);
+                break;
+            case DesignTool.SelectArea when SelectionBox is { } box:
+                var boxY = textFloor - 0.4f;
+                var corners = new[] { box.Min, new Vector2(box.Max.X, box.Min.Y), box.Max, new Vector2(box.Min.X, box.Max.Y) };
+                for (var i = 0; i < 4; i++) overlay.Line(corners[i], corners[(i + 1) % 4], boxY, SelectionBoxColor);
                 break;
             case DesignTool.MoveReferenceImage:
             case DesignTool.MeasureScale:

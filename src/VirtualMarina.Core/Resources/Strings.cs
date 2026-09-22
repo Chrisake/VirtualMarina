@@ -192,6 +192,9 @@ internal static class Strings
     /// <summary>"Pedestals"</summary>
     internal static string ToolEditServices => Get("ToolEditServices");
 
+    /// <summary>"Select"</summary>
+    internal static string ToolSelectArea => Get("ToolSelectArea");
+
     /// <summary>"Move image"</summary>
     internal static string ToolMoveReferenceImage => Get("ToolMoveReferenceImage");
 
@@ -305,6 +308,9 @@ internal static class Strings
 
     /// <summary>"Click a berth or a pier to give it another name."</summary>
     internal static string HintRename => Get("HintRename");
+
+    /// <summary>"Drag a box over the water to select the berths inside it; hold Shift or Ctrl to add to the on..."</summary>
+    internal static string HintSelectArea => Get("HintSelectArea");
 
     /// <summary>"Click a berth to give it the pedestals chosen above; Alt or Ctrl changes that whole side of t..."</summary>
     internal static string HintEditServices => Get("HintEditServices");

@@ -719,4 +719,52 @@ public class DesignerTests
         Assert.Equal(layout.Berths.Select(s => s.Id).OrderBy(x => x), rebuilt.Berths.Select(s => s.Id).OrderBy(x => x));
         Assert.Throws<ArgumentException>(() => MarinaLayout.FromObjects(new object[] { "not an element" }));
     }
+
+    [Fact]
+    public void SelectArea_DraggingABox_SelectsTheBerthsInside()
+    {
+        var marina = CreateDesigner(DesignTool.SelectArea);
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
+        var designer = marina.Designer;
+        var berths = designer.CreateBerths("A", PierSide.Left, 0f, 40f);
+        Assert.True(berths.Count >= 4);
+
+        // A box around the first two berths takes those two and nothing else.
+        var first = berths[0].Center;
+        var second = berths[1].Center;
+        var selected = designer.SelectBerthsInArea(first - new Vector2(3, 3), second + new Vector2(3, 3));
+
+        Assert.Equal(new[] { berths[0].Id, berths[1].Id }.OrderBy(id => id), selected.OrderBy(id => id));
+        Assert.True(marina.IsBerthSelected(berths[0].Id));
+        Assert.False(marina.IsBerthSelected(berths[3].Id));
+
+        // Adding keeps what was already selected.
+        var added = designer.SelectBerthsInArea(berths[3].Center - new Vector2(2, 2), berths[3].Center + new Vector2(2, 2), add: true);
+        Assert.Contains(berths[0].Id, added);
+        Assert.Contains(berths[3].Id, added);
+
+        // Without adding, the earlier ones drop away.
+        var replaced = designer.SelectBerthsInArea(berths[3].Center - new Vector2(2, 2), berths[3].Center + new Vector2(2, 2));
+        Assert.Equal(new[] { berths[3].Id }, replaced);
+    }
+
+    [Fact]
+    public void SelectArea_DraggingInTheView_ShowsTheBoxAndSelects()
+    {
+        var marina = CreateDesigner(DesignTool.SelectArea);
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
+        var designer = marina.Designer;
+        var berths = designer.CreateBerths("A", PierSide.Left, 0f, 20f);
+
+        var from = Screen(marina, berths[0].Center - new Vector2(4, 4));
+        var to = Screen(marina, berths[0].Center + new Vector2(4, 4));
+
+        marina.Input.PointerDown(from.X, from.Y, PointerButton.Left);
+        marina.Input.PointerMove(to.X, to.Y);
+        Assert.NotNull(designer.SelectionBox); // drawn while the drag is live
+
+        marina.Input.PointerUp(to.X, to.Y, PointerButton.Left);
+        Assert.Null(designer.SelectionBox);
+        Assert.True(marina.IsBerthSelected(berths[0].Id));
+    }
 }

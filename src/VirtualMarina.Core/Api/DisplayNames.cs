@@ -27,6 +27,7 @@ public static class DisplayNames
         DesignTool.Erase => Strings.ToolErase,
         DesignTool.Rename => Strings.ToolRename,
         DesignTool.EditServices => Strings.ToolEditServices,
+        DesignTool.SelectArea => Strings.ToolSelectArea,
         DesignTool.MoveReferenceImage => Strings.ToolMoveReferenceImage,
         DesignTool.MeasureScale => Strings.ToolMeasureScale,
         _ => tool.ToString(),

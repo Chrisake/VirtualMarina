@@ -59,6 +59,12 @@ public enum DesignTool
     /// change every berth down that side of the pier at once. The berths about to change are highlighted.
     /// </summary>
     EditServices = 10,
+
+    /// <summary>
+    /// Drag a box over the water to select every berth whose middle falls inside it. Hold Shift or Ctrl to add to
+    /// the selection already made instead of replacing it.
+    /// </summary>
+    SelectArea = 11,
 }
 
 /// <summary>

@@ -1203,6 +1203,7 @@ What clicks in the 3D view do while `MarinaDesigner.IsActive` is true.
 | `AddLandBerths` = 8 | Click a land area to put a land berth (`Berth.OnLand`) there, then click again to aim its bow (Shift snaps to 15°). Clicking the same spot twice uses `MarinaDesigner.LandBerthHeading`. |
 | `Rename` = 9 | Click a berth or a pier to give it another name. The designer asks the host for the new name through `MarinaDesigner.ElementRenaming`, so the application decides how to ask for it. |
 | `EditServices` = 10 | Click a berth to give it the pedestals in `MarinaDesigner.BerthServices`; hold Alt or Ctrl to change every berth down that side of the pier at once. The berths about to change are highlighted. |
+| `SelectArea` = 11 | Drag a box over the water to select every berth whose middle falls inside it. Hold Shift or Ctrl to add to the selection already made instead of replacing it. |
 
 <a id="designtoolchangedeventargs"></a>
 ### DesignToolChangedEventArgs
@@ -1310,6 +1311,7 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `Vector2 ReferenceImageSize { get; }` | Ground size of the reference image in meters (X = east–west, Y = north–south), or zero without an image. |
 | `ValueTuple<Vector2, Vector2>? ScaleLine { get; }` | The last line drawn with `DesignTool.MeasureScale`, or null. |
 | `ValueTuple<Vector2, Vector2>? ReferenceImageBounds { get; }` | Plan-view bounds of the reference image (north-west and south-east corners), or null without an image. |
+| `ValueTuple<Vector2, Vector2>? SelectionBox { get; }` | The box being dragged with `DesignTool.SelectArea`, in plan coordinates, or null. |
 | `event EventHandler? ActiveChanged` | `MarinaDesigner.IsActive` changed. |
 | `event EventHandler<DesignToolChangedEventArgs>? ToolChanged` | `MarinaDesigner.Tool` changed. |
 | `event EventHandler<DesignDraftChangedEventArgs>? DraftChanged` | The user placed or removed a point, or finished or abandoned a drawing. |
@@ -1342,6 +1344,7 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `LandArea? RemoveTrees(string landAreaId)` | Removes every tree from a land area (of any kind) and raises `MarinaDesigner.TreesPlanted` with an empty `LandArea.Trees`. Returns the updated land area, or null when it doesn't exist or has no trees. |
 | `Berth RenameBerth(string berthId, string newBerthId)` | Gives one berth another name, keeping everything else about it, and records the change for `MarinaDesigner.Undo`. Returns the renamed berth. |
 | `Pier RenamePier(string pierId, string name)` | Gives a pier a display name (`Pier.Name`), the one shown in tooltips and the camera preset, and records the change for `MarinaDesigner.Undo`. The pier's id, and the berth names built from it, stay as they are. Returns the renamed pier. |
+| `IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)` | Selects every berth whose middle lies inside a box in plan coordinates. This is what `DesignTool.SelectArea` does when the drag ends. |
 | `IReadOnlyList<Berth> SetBerthServices(string berthId, bool wholeSide = false)` | Gives berths the pedestals in `MarinaDesigner.BerthServices`, and records one step for `MarinaDesigner.Undo`. This is what `DesignTool.EditServices` does when a berth is clicked. |
 | `void SetReferenceImage(ReferenceImage image, float? metersPerPixel = null, Vector2? center = null)` | Shows an image to trace (north at the top). Without `metersPerPixel` it is sized to cover the current layout (at least 300 m wide) until calibrated; without `center` it is centered on the camera target. |
 | `bool Undo()` | Reverts the last change the designer made: a drawn land area, pier, berth row or land berth is removed again, erased elements come back with their dividers, and trees are restored. Raises `MarinaDesigner.ActionUndone` (and the usual `LayoutChanged` notifications). Returns false when there is nothing to undo. |

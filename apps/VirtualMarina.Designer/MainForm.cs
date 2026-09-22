@@ -200,6 +200,7 @@ internal sealed class MainForm : Form
         AddToolButton(DesignTool.Erase, Strings.ToolErase, Strings.ToolEraseTip);
         AddToolButton(DesignTool.Rename, Strings.ToolRename, Strings.ToolRenameTip);
         AddToolButton(DesignTool.EditServices, Strings.ToolServices, Strings.ToolServicesTip);
+        AddToolButton(DesignTool.SelectArea, Strings.ToolSelect, Strings.ToolSelectTip);
         _toolbar.Items.Add(new ToolStripSeparator());
 
         // Not a drawing tool: it swaps the panel beside the view for the look settings.
@@ -297,6 +298,9 @@ internal sealed class MainForm : Form
     {
         var designer = Designer;
         designer.StateChanged += (_, _) => RefreshUi();
+
+        // The box-select tool changes the selection without touching the designer's own state.
+        Marina.SelectionChanged += (_, _) => RefreshUi();
         designer.ElementCreated += (_, e) =>
         {
             MarkDirty();

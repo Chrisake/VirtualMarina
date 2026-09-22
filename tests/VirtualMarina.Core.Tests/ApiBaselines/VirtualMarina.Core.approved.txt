@@ -783,6 +783,7 @@ enum VirtualMarina.Core.Design.DesignTool : IComparable, IConvertible, IFormatta
     Navigate = 0
     PlantTrees = 7
     Rename = 9
+    SelectArea = 11
 
 sealed class VirtualMarina.Core.Design.DesignToolChangedEventArgs : EventArgs
     .ctor(VirtualMarina.Core.Design.DesignTool previous, VirtualMarina.Core.Design.DesignTool current)
@@ -826,8 +827,10 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     IReadOnlyList<Vector2> DraftPoints { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> CreateBerths(string pierId, VirtualMarina.Core.Domain.PierSide side, float fromAlong, float toAlong)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> SetBerthServices(string berthId, bool wholeSide = false)
+    IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)
     ValueTuple<Vector2, Vector2>? ReferenceImageBounds { get; }
     ValueTuple<Vector2, Vector2>? ScaleLine { get; }
+    ValueTuple<Vector2, Vector2>? SelectionBox { get; }
     Vector2 ReferenceImageCenter { get; set; }
     Vector2 ReferenceImageSize { get; }
     Vector2? PointerPosition { get; }

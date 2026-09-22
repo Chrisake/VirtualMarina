@@ -223,6 +223,9 @@
   <data name="ToolEditServices">
     <value>Pedestals</value>
   </data>
+  <data name="ToolSelectArea">
+    <value>Select</value>
+  </data>
   <data name="ToolMoveReferenceImage">
     <value>Move image</value>
   </data>
@@ -330,6 +333,9 @@
   </data>
   <data name="HintRename">
     <value>Click a berth or a pier to give it another name.</value>
+  </data>
+  <data name="HintSelectArea">
+    <value>Drag a box over the water to select the berths inside it; hold Shift or Ctrl to add to the ones already selected.</value>
   </data>
   <data name="HintEditServices">
     <value>Click a berth to give it the pedestals chosen above; Alt or Ctrl changes that whole side of the pier.</value>

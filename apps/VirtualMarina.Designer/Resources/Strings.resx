@@ -737,6 +737,19 @@ Renderer: {2}</value>
   <data name="TitleServices">
     <value>Pedestals</value>
   </data>
+  <data name="TitleSelect">
+    <value>Select</value>
+  </data>
+  <data name="CardSelect">
+    <value>Select</value>
+  </data>
+  <data name="SelectHint">
+    <value>Drag a box over the water. Every berth whose middle falls inside it is selected; hold Shift or Ctrl to add to the ones already selected.</value>
+  </data>
+  <data name="SelectCount">
+    <value>{0} berth(s) selected</value>
+    <comment>{0} = how many.</comment>
+  </data>
   <data name="ServicesHint">
     <value>Pick what the pedestals offer, then click a berth. Hold Alt or Ctrl to change every berth down that side of the pier.</value>
   </data>
@@ -782,6 +795,12 @@ Renderer: {2}</value>
   </data>
   <data name="ToolServicesTip">
     <value>Give berths power and water; Alt or Ctrl changes a whole side of a pier</value>
+  </data>
+  <data name="ToolSelect">
+    <value>Select</value>
+  </data>
+  <data name="ToolSelectTip">
+    <value>Drag a box over the water to select the berths inside it</value>
   </data>
   <data name="ToolRenameTip">
     <value>Click a berth or a pier to give it another name</value>

@@ -73,6 +73,10 @@ internal sealed class InspectorPanel : Panel
     // Rename
     private readonly Panel _renameCard;
 
+    // Select
+    private readonly Panel _selectCard;
+    private readonly Label _selectCount = Theme.Hint(string.Empty);
+
     // Pedestals
     private readonly Panel _servicesCard;
     private readonly ComboBox _servicesChoice = Theme.Choice();
@@ -135,11 +139,12 @@ internal sealed class InspectorPanel : Panel
         _eraseCard = BuildEraseCard();
         _renameCard = BuildRenameCard();
         _servicesCard = BuildServicesCard();
+        _selectCard = BuildSelectCard();
         _imageCard = BuildImageCard(out _imageMove, out _imageMeasure, out _applyScale);
         _summaryCard = BuildSummaryCard();
 
         _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _treeCard, _eraseCard, _renameCard, _servicesCard, _imageCard, _summaryCard })
+        foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _treeCard, _eraseCard, _renameCard, _servicesCard, _selectCard, _imageCard, _summaryCard })
         {
             // Top, not Fill: the column still decides the width, but the height stays the card's own.
             card.Dock = DockStyle.Top;
@@ -180,6 +185,8 @@ internal sealed class InspectorPanel : Panel
             _eraseCard.Visible = tool == DesignTool.Erase;
             _renameCard.Visible = tool == DesignTool.Rename;
             _servicesCard.Visible = tool == DesignTool.EditServices;
+            _selectCard.Visible = tool == DesignTool.SelectArea;
+            _selectCount.Text = Strings.Format(Strings.SelectCount, _marina.SelectedBerths.Count);
             _imageCard.Visible = tool is DesignTool.Navigate or DesignTool.MoveReferenceImage or DesignTool.MeasureScale;
             _summaryCard.Visible = tool is DesignTool.Navigate or DesignTool.Erase;
 
@@ -272,6 +279,7 @@ internal sealed class InspectorPanel : Panel
         DesignTool.Erase => Strings.TitleErase,
         DesignTool.Rename => Strings.TitleRename,
         DesignTool.EditServices => Strings.TitleServices,
+        DesignTool.SelectArea => Strings.TitleSelect,
         DesignTool.MoveReferenceImage => Strings.TitleMoveImage,
         DesignTool.MeasureScale => Strings.TitleMeasureScale,
         _ => Strings.TitleNavigate,
@@ -385,6 +393,14 @@ internal sealed class InspectorPanel : Panel
         var card = Theme.Card(Strings.CardErase, out var table);
         Theme.FullRow(table, Theme.Hint(Strings.EraseHint));
         Theme.FullRow(table, Theme.Hint(Strings.EraseUndoHint));
+        return card;
+    }
+
+    private Panel BuildSelectCard()
+    {
+        var card = Theme.Card(Strings.CardSelect, out var table);
+        Theme.FullRow(table, Theme.Hint(Strings.SelectHint));
+        Theme.FullRow(table, _selectCount);
         return card;
     }
 
