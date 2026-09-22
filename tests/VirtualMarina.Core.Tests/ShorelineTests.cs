@@ -163,7 +163,11 @@ public class ShorelineTests
         // The mainland is the first thing drawn, so the quay traced along the shore sits on top of it.
         var frame = marina.BuildRenderFrame();
         Assert.Equal(MeshIds.Shoreline, frame.Objects[0].MeshId);
-        Assert.Equal(MeshIds.ForLand(0), frame.Objects[1].MeshId);
+
+        var ground = frame.Objects.Select((o, i) => (o.MeshId, i)).ToList();
+        var mainland = ground.First(e => e.MeshId == MeshIds.Shoreline).i;
+        var quay = ground.First(e => e.MeshId == MeshIds.ForLand(0)).i;
+        Assert.True(mainland < quay, "the quay is drawn under the mainland instead of on it");
 
         var reloaded = new MarinaVisualizer();
         MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina, generator: "tests").ToJson()).ApplyTo(reloaded);
@@ -179,6 +183,7 @@ public class ShorelineTests
         Assert.True(marina.RemoveShoreline());
         Assert.False(marina.RemoveShoreline());
         Assert.Equal(MeshIds.ForLand(0), marina.BuildRenderFrame().Objects[0].MeshId);
+        Assert.DoesNotContain(marina.BuildRenderFrame().Objects, o => o.MeshId == MeshIds.ShorelineScenery);
     }
 
     [Fact]

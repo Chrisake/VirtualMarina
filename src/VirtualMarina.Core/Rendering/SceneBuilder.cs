@@ -24,6 +24,12 @@ internal sealed class SceneState
 
     public required Func<LandArea, int> LandMeshId { get; init; }
 
+    /// <summary>The trees of a land area, drawn over its ground and squashed onto it for a shadow.</summary>
+    public required Func<LandArea, int> LandTreesMeshId { get; init; }
+
+    /// <summary>World Y of the mainland's surface, which its scenery casts its shadow on.</summary>
+    public float ShorelineGroundHeight { get; init; }
+
     /// <summary>True when there is a mainland to draw, beneath every land area.</summary>
     public required bool HasShoreline { get; init; }
 
@@ -143,6 +149,10 @@ internal static class SceneBuilder
         }
     }
 
+    /// <summary>True when a mesh is registered under this id and has anything in it to draw.</summary>
+    private static bool HasGeometry(MeshLibrary meshes, int id) =>
+        meshes.TryGet(id, out var mesh) && mesh.Indices.Length > 0;
+
     /// <summary>Height of the land under a land berth, or null for a water berth (or a land berth whose land area is missing).</summary>
     public static float? GroundHeight(Berth berth, Func<string, LandArea?> landLookup) =>
         berth.LandAreaId is { } id && landLookup(id) is { } land ? land.Height : null;
@@ -164,8 +174,30 @@ internal static class SceneBuilder
         var shadows = new List<RenderObject>();
 
         // The mainland goes down first, so the land areas traced along the shore sit on top of it.
-        if (state.HasShoreline) output.Add(new RenderObject(MeshIds.Shoreline, Matrix4x4.Identity, White));
-        foreach (var land in state.Land) output.Add(new RenderObject(state.LandMeshId(land), Matrix4x4.Identity, White));
+        if (state.HasShoreline)
+        {
+            output.Add(new RenderObject(MeshIds.Shoreline, Matrix4x4.Identity, White));
+
+            if (HasGeometry(state.Meshes, MeshIds.ShorelineScenery))
+            {
+                var sceneryFrom = output.Count;
+                output.Add(new RenderObject(MeshIds.ShorelineScenery, Matrix4x4.Identity, White));
+                if (casting) CastShadows(shadows, output, sceneryFrom, state.ShorelineGroundHeight, sun, shadowStyle.Strength);
+            }
+        }
+
+        foreach (var land in state.Land)
+        {
+            output.Add(new RenderObject(state.LandMeshId(land), Matrix4x4.Identity, White));
+
+            // Trees stand on their land area, so that is the ground their shadow falls on.
+            var trees = state.LandTreesMeshId(land);
+            if (!HasGeometry(state.Meshes, trees)) continue;
+
+            var treesFrom = output.Count;
+            output.Add(new RenderObject(trees, Matrix4x4.Identity, White));
+            if (casting) CastShadows(shadows, output, treesFrom, land.Height, sun, shadowStyle.Strength);
+        }
         var structureFrom = output.Count;
         foreach (var pier in state.Piers)
         {

@@ -98,9 +98,12 @@ marina.Style.Shadows.IsEnabled = false;   // off
 marina.Style.Shadows.Strength = 0.35f;    // darker (0-1, default 0.25)
 ```
 
+Everything standing on the marina casts one: the boats, the piers and their kerbs, piles, bollards and service
+pedestals, the cradles ashore, the trees on the land areas, and the trees and town on the mainland behind the shore.
+
 Each shadow is the object itself squashed onto the ground along the sun's rays, so it follows
 `Lighting.SunDirection` — move the sun and the shadows move with it. It lands on the ground the object stands over:
-a boat afloat shades the water, a boat ashore shades the yard it is cradled in.
+a boat afloat shades the water, a boat ashore shades the yard it is cradled in, a tree shades its own lawn.
 
 That costs one extra instance per object that casts, which is why the toggle is there: on a marina of several hundred
 berths it roughly doubles the scene. It needs no depth pass and no shadow map, so it behaves the same in the OpenGL
@@ -110,10 +113,11 @@ What it does not do, by construction:
 
 - **One plane per object.** A boat's shadow falls on the water, not up the side of the pier beside it.
 - **No self-shadowing.** A cabin does not shade its own deck.
-- **No shadows from the land.** Trees and hinterland buildings are baked into the land mesh, which is the ground the
-  shadows fall on, so they cast none.
-- **Overlap darkens.** A flattened hull covers itself, so a shadow is darker than `Strength` alone and can look
-  blotchy past about 0.4.
+- **The ground casts none**, being what the shadows land on. The trees and the hinterland are separate meshes for
+  exactly this reason, so they do.
+- **Overlap darkens.** A flattened object covers itself, so a shadow is darker than `Strength` alone — much darker
+  for something like a tree crown, which is several rounded blobs on top of one another — and can look blotchy past
+  about 0.4.
 - **Nothing below about 4° of elevation**, where a shadow would stretch to the horizon.
 
 ## Passing traffic

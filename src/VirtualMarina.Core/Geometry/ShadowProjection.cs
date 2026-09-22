@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace VirtualMarina.Core.Geometry;
 
@@ -13,8 +13,8 @@ namespace VirtualMarina.Core.Geometry;
 /// </para>
 /// <para>
 /// What it does not do: a shadow lands on one plane, so a boat's shadow falls on the water rather than up the side of
-/// the pier beside it, and nothing shadows itself. Trees and hinterland buildings are baked into the land mesh, which
-/// is the ground the shadows fall on, so they cast none.
+/// the pier beside it, and nothing shadows itself. The ground casts none — it is what the shadows land on — which is
+/// why the trees and the hinterland are meshes of their own rather than part of it.
 /// </para>
 /// </remarks>
 public static class ShadowProjection

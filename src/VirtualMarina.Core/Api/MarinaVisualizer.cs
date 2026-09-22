@@ -274,6 +274,8 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
                 Land = OrderedLandAreas(),
                 HasShoreline = _shoreline is not null,
                 LandMeshId = land => MeshIds.ForLand(_landMeshSlots.TryGetValue(land.Id, out var slot) ? slot : -1),
+                LandTreesMeshId = land => MeshIds.ForLandTrees(_landMeshSlots.TryGetValue(land.Id, out var slot) ? slot : -1),
+                ShorelineGroundHeight = _shoreline is { } shore ? LandMeshFactory.ShorelineGroundHeight(shore) : 0f,
                 LandLookup = GetLandArea,
                 BerthLookup = GetBerth,
                 PierLookup = GetPier,
@@ -503,7 +505,12 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// <summary>Drops every land mesh and builds one per current land area, in layout order (slots 0, 1, ...).</summary>
     private void RebuildLandMeshes()
     {
-        foreach (var slot in _landMeshSlots.Values) Meshes.Unregister(MeshIds.ForLand(slot));
+        foreach (var slot in _landMeshSlots.Values)
+        {
+            Meshes.Unregister(MeshIds.ForLand(slot));
+            Meshes.Unregister(MeshIds.ForLandTrees(slot));
+        }
+
         _landMeshSlots.Clear();
         _nextLandMeshSlot = 0;
         foreach (var land in OrderedLandAreas()) RegisterLandMesh(land);
@@ -513,8 +520,15 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// <summary>Builds the mainland's mesh, or drops it when there is no shoreline.</summary>
     private void RegisterShorelineMesh()
     {
-        if (_shoreline is null) Meshes.Unregister(MeshIds.Shoreline);
-        else Meshes.Register(LandMeshFactory.CreateShoreline(MeshIds.Shoreline, _shoreline, _style.Land));
+        if (_shoreline is null)
+        {
+            Meshes.Unregister(MeshIds.Shoreline);
+            Meshes.Unregister(MeshIds.ShorelineScenery);
+            return;
+        }
+
+        Meshes.Register(LandMeshFactory.CreateShorelineGround(MeshIds.Shoreline, _shoreline, _style.Land));
+        Meshes.Register(LandMeshFactory.CreateShorelineScenery(MeshIds.ShorelineScenery, _shoreline, _style.Land));
     }
 
     /// <summary>
@@ -546,12 +560,16 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             _landMeshSlots[land.Id] = slot;
         }
 
-        Meshes.Register(LandMeshFactory.Create(MeshIds.ForLand(slot), land, _style.Land));
+        // Ground and trees are separate meshes: the trees are squashed onto the ground to cast their shadow.
+        Meshes.Register(LandMeshFactory.CreateGround(MeshIds.ForLand(slot), land, _style.Land));
+        Meshes.Register(LandMeshFactory.CreateTrees(MeshIds.ForLandTrees(slot), land, _style.Land));
     }
 
     private void UnregisterLandMesh(string landAreaId)
     {
-        if (_landMeshSlots.Remove(landAreaId, out var slot)) Meshes.Unregister(MeshIds.ForLand(slot));
+        if (!_landMeshSlots.Remove(landAreaId, out var slot)) return;
+        Meshes.Unregister(MeshIds.ForLand(slot));
+        Meshes.Unregister(MeshIds.ForLandTrees(slot));
     }
 
     private IEnumerable<Pier> OrderedPiers() => _pierOrder.Select(id => _piers[id]);

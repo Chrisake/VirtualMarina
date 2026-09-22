@@ -1428,9 +1428,14 @@ enum VirtualMarina.Core.Geometry.LabelFont : IComparable, IConvertible, IFormatt
 static class VirtualMarina.Core.Geometry.LandMeshFactory
     const float WallDepth = 3
     static VirtualMarina.Core.Geometry.MeshData Create(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateGround(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
     static VirtualMarina.Core.Geometry.MeshData CreateRockPile(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
     static VirtualMarina.Core.Geometry.MeshData CreateShoreline(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateShorelineGround(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateShorelineScenery(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle style = null)
     static VirtualMarina.Core.Geometry.MeshData CreateSlab(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateTrees(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
+    static float ShorelineGroundHeight(VirtualMarina.Core.Domain.Shoreline shoreline)
 
 static class VirtualMarina.Core.Geometry.MarinaMeshFactory
     const float SeaReach = 30000
@@ -1482,13 +1487,16 @@ static class VirtualMarina.Core.Geometry.MeshIds
     const int Cylinder = 7
     const int GlyphBase = 300
     const int LandBase = 10000
+    const int LandTreesBase = 20000
     const int Piling = 3
     const int SelectionMarker = 5
     const int Shoreline = 9000
+    const int ShorelineScenery = 9001
     const int UnitBox = 2
     const int Water = 1
     static int ForBoat(VirtualMarina.Core.Domain.BoatType type)
     static int ForLand(int slot)
+    static int ForLandTrees(int slot)
 
 sealed class VirtualMarina.Core.Geometry.MeshLibrary
     .ctor()

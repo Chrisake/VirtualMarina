@@ -29,6 +29,39 @@ public static class LandMeshFactory
         return b.Build(id, $"{(area.Kind == LandKind.Breakwater ? "Breakwater" : "Land")}:{area.Id}");
     }
 
+    /// <summary>
+    /// The ground of a land area on its own, without its trees: a rock pile for <see cref="LandKind.Breakwater"/>,
+    /// otherwise a solid slab.
+    /// </summary>
+    /// <param name="id">Mesh id (see <see cref="MeshIds.ForLand"/>).</param>
+    /// <param name="area">The land area. Vertices are in world space.</param>
+    /// <param name="style">Colors; the defaults when null.</param>
+    public static MeshData CreateGround(int id, LandArea area, LandStyle? style = null)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        style ??= new LandStyle();
+        var b = new MeshBuilder();
+        if (area.Kind == LandKind.Breakwater) AddRockPile(b, area, style);
+        else AddSlab(b, area, style);
+        return b.Build(id, $"{(area.Kind == LandKind.Breakwater ? "Breakwater" : "Land")}:{area.Id}");
+    }
+
+    /// <summary>
+    /// Just the trees of a land area, as a mesh of their own so they can be drawn over the ground and squashed onto
+    /// it for a shadow. Empty when the style hides them or the area has none.
+    /// </summary>
+    /// <param name="id">Mesh id (see <see cref="MeshIds.ForLandTrees"/>).</param>
+    /// <param name="area">The land area whose trees to build.</param>
+    /// <param name="style">Colors and tree visibility; the defaults when null.</param>
+    public static MeshData CreateTrees(int id, LandArea area, LandStyle? style = null)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+        style ??= new LandStyle();
+        var b = new MeshBuilder();
+        if (style.ShowTrees) AddTrees(b, area, style);
+        return b.Build(id, $"Trees:{area.Id}");
+    }
+
     /// <summary>The outline extruded from <see cref="WallDepth"/> below the water up to the land height, with a flat top.</summary>
     public static MeshData CreateSlab(int id, LandArea area, LandStyle? style = null)
     {
@@ -220,11 +253,54 @@ public static class LandMeshFactory
         var outline = shoreline.BuildOutline();
         if (outline.Count < 3) return b.Build(id, "Shoreline");
 
-        var ground = shoreline.Height - Underlap;
-        var (top, wall) = shoreline.Kind == LandKind.Grass ? (style.GrassColor, style.GrassBankColor) : (style.QuayColor, style.QuayWallColor);
-        AddPrism(b, outline, -WallDepth, ground, top.ToVector3(), wall.ToVector3());
-        AddScenery(b, shoreline, style, ground);
+        AddShorelineGround(b, shoreline, outline, style);
+        AddScenery(b, shoreline, style, ShorelineGroundHeight(shoreline));
         return b.Build(id, "Shoreline");
+    }
+
+    /// <summary>The mainland's ground on its own, without whatever is scattered over it.</summary>
+    /// <param name="id">Mesh id (see <see cref="MeshIds.Shoreline"/>).</param>
+    /// <param name="shoreline">The shoreline.</param>
+    /// <param name="style">Colors; the defaults when null.</param>
+    public static MeshData CreateShorelineGround(int id, Shoreline shoreline, LandStyle? style = null)
+    {
+        ArgumentNullException.ThrowIfNull(shoreline);
+        var b = new MeshBuilder();
+        var outline = shoreline.BuildOutline();
+        if (outline.Count >= 3) AddShorelineGround(b, shoreline, outline, style ?? new LandStyle());
+        return b.Build(id, "Shoreline");
+    }
+
+    /// <summary>
+    /// Just what stands on the mainland — trees, crops or a town — as a mesh of its own, so it can cast a shadow on
+    /// the ground it stands on.
+    /// </summary>
+    /// <param name="id">Mesh id (see <see cref="MeshIds.ShorelineScenery"/>).</param>
+    /// <param name="shoreline">The shoreline whose scenery to build.</param>
+    /// <param name="style">Colors and tree visibility; the defaults when null.</param>
+    public static MeshData CreateShorelineScenery(int id, Shoreline shoreline, LandStyle? style = null)
+    {
+        ArgumentNullException.ThrowIfNull(shoreline);
+        var b = new MeshBuilder();
+        if (shoreline.BuildOutline().Count >= 3)
+        {
+            AddScenery(b, shoreline, style ?? new LandStyle(), ShorelineGroundHeight(shoreline));
+        }
+
+        return b.Build(id, "ShorelineScenery");
+    }
+
+    /// <summary>World Y of the mainland's surface: a hair under the land areas, so a quay on the shore wins.</summary>
+    public static float ShorelineGroundHeight(Shoreline shoreline)
+    {
+        ArgumentNullException.ThrowIfNull(shoreline);
+        return shoreline.Height - Underlap;
+    }
+
+    private static void AddShorelineGround(MeshBuilder b, Shoreline shoreline, IReadOnlyList<Vector2> outline, LandStyle style)
+    {
+        var (top, wall) = shoreline.Kind == LandKind.Grass ? (style.GrassColor, style.GrassBankColor) : (style.QuayColor, style.QuayWallColor);
+        AddPrism(b, outline, -WallDepth, ShorelineGroundHeight(shoreline), top.ToVector3(), wall.ToVector3());
     }
 
     /// <summary>Whatever stands on the mainland: trees, crops or a town, in a band along the coast.</summary>

@@ -2147,9 +2147,14 @@ World-space meshes for the ground: solid slabs for quays and lawns, rock piles f
 |---|---|
 | `const float WallDepth = 3f` | How far land walls reach below the water surface, in meters. |
 | `static MeshData Create(int id, LandArea area, LandStyle? style = null)` | The mesh for a land area: a rock pile for `LandKind.Breakwater`, otherwise a solid slab; plus its trees. |
+| `static MeshData CreateGround(int id, LandArea area, LandStyle? style = null)` | The ground of a land area on its own, without its trees: a rock pile for `LandKind.Breakwater`, otherwise a solid slab. |
 | `static MeshData CreateRockPile(int id, LandArea area, LandStyle? style = null)` | A rubble mound: the area filled with irregular rocks (low-poly squashed spheres), reaching the land height in the middle and sloping down to the water along the outline, over a dark core that hides the gaps between rocks. |
 | `static MeshData CreateShoreline(int id, Shoreline shoreline, LandStyle? style = null)` | The mainland behind the marina: the shoreline's shape as one slab, with whatever scenery it asks for scattered in a band along the coast. |
+| `static MeshData CreateShorelineGround(int id, Shoreline shoreline, LandStyle? style = null)` | The mainland's ground on its own, without whatever is scattered over it. |
+| `static MeshData CreateShorelineScenery(int id, Shoreline shoreline, LandStyle? style = null)` | Just what stands on the mainland — trees, crops or a town — as a mesh of its own, so it can cast a shadow on the ground it stands on. |
 | `static MeshData CreateSlab(int id, LandArea area, LandStyle? style = null)` | The outline extruded from `LandMeshFactory.WallDepth` below the water up to the land height, with a flat top. |
+| `static MeshData CreateTrees(int id, LandArea area, LandStyle? style = null)` | Just the trees of a land area, as a mesh of their own so they can be drawn over the ground and squashed onto it for a shadow. Empty when the style hides them or the area has none. |
+| `static float ShorelineGroundHeight(Shoreline shoreline)` | World Y of the mainland's surface: a hair under the land areas, so a quay on the shore wins. |
 
 <a id="marinameshfactory"></a>
 ### MarinaMeshFactory
@@ -2251,9 +2256,12 @@ Well-known mesh ids referenced by render objects.
 | `const int Cylinder = 7` | White cylinder, 1 m diameter, Y 0–1 (steel piles, bollards). |
 | `const int GlyphBase = 300` | First id of the text glyph meshes (see `GlyphFont`). |
 | `const int Shoreline = 9000` | The mainland behind the shore (see `Shoreline`), drawn beneath the land areas. |
+| `const int ShorelineScenery = 9001` | What stands on the mainland — trees, crops, a town — kept apart from the ground so it can cast a shadow. |
 | `const int LandBase = 10000` | First id of the per-land-area meshes (see `MeshIds.ForLand`). |
+| `const int LandTreesBase = 20000` | First id of the per-land-area tree meshes (see `MeshIds.ForLandTrees`). |
 | `static int ForBoat(BoatType type)` | Mesh id of a boat model (100 + type). Register a `MeshData` under this id to replace the model. |
 | `static int ForLand(int slot)` | Mesh id of a land area's mesh slot (world-space geometry built by `LandMeshFactory`). Loading a layout assigns slots 0, 1, ... in layout order; land areas added later get the next free slot. |
+| `static int ForLandTrees(int slot)` | Mesh id of the trees standing on a land area. They are a mesh of their own rather than part of the ground, so that they can be squashed onto it to cast a shadow. |
 
 <a id="meshlibrary"></a>
 ### MeshLibrary
@@ -2280,7 +2288,7 @@ The set of meshes a scene can reference. Renderers upload each mesh once, keyed 
 
 Flattens geometry onto a horizontal plane along the sun's rays, which is how the marina casts its shadows.
 
-A marina is almost all flat ground: water at nought, quays and yards a meter or two above it. Squashing the boats and the piers onto that ground and drawing them dark is enough to read as sunlight, and it costs one extra instance per object rather than a depth pass and a shadow map in every backend. What it does not do: a shadow lands on one plane, so a boat's shadow falls on the water rather than up the side of the pier beside it, and nothing shadows itself. Trees and hinterland buildings are baked into the land mesh, which is the ground the shadows fall on, so they cast none.
+A marina is almost all flat ground: water at nought, quays and yards a meter or two above it. Squashing the boats and the piers onto that ground and drawing them dark is enough to read as sunlight, and it costs one extra instance per object rather than a depth pass and a shadow map in every backend. What it does not do: a shadow lands on one plane, so a boat's shadow falls on the water rather than up the side of the pier beside it, and nothing shadows itself. The ground casts none — it is what the shadows land on — which is why the trees and the hinterland are meshes of their own rather than part of it.
 
 | Member | Description |
 |---|---|

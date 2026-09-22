@@ -164,4 +164,57 @@ public class ShadowTests
         Assert.Equal(north.Count, south.Count);
         Assert.NotEqual(north, south);
     }
+
+    [Fact]
+    public void TreesOnALandArea_CastShadowsOnIt()
+    {
+        const float lawnHeight = 1.2f;
+        var marina = new MarinaVisualizer();
+        var lawn = new LandArea(
+            "lawn",
+            new[] { new Vector2(-40, -40), new Vector2(40, -40), new Vector2(40, 40), new Vector2(-40, 40) },
+            lawnHeight,
+            LandKind.Grass);
+
+        marina.AddLandArea(lawn with { Trees = LandArea.GenerateTrees(lawn.Points, 8f, new Random(4)) });
+        marina.Lighting.SetSunAngles(0f, 40f);
+        Assert.NotEmpty(marina.GetLandArea("lawn")!.Trees);
+
+        // The trees are a mesh of their own, drawn over the ground rather than baked into it.
+        var objects = marina.BuildRenderFrame().Objects;
+        Assert.Contains(objects, o => o.MeshId == MeshIds.ForLandTrees(0));
+
+        var treeShadow = Shadows(marina).SingleOrDefault(o => o.MeshId == MeshIds.ForLandTrees(0));
+        Assert.True(treeShadow != default, "the trees cast no shadow");
+        Assert.Equal(0f, treeShadow.World.M22, 4);
+        Assert.InRange(treeShadow.World.Translation.Y, lawnHeight, lawnHeight + 0.5f);
+
+        // Hiding the trees takes their shadow with them.
+        marina.Style.Land.ShowTrees = false;
+        Assert.DoesNotContain(marina.BuildRenderFrame().Objects, o => o.MeshId == MeshIds.ForLandTrees(0));
+    }
+
+    [Fact]
+    public void EverythingStandingOnTheMarinaCastsAShadow()
+    {
+        var marina = new MarinaVisualizer();
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+        marina.Lighting.SetSunAngles(30f, 45f);
+
+        var cast = Shadows(marina).Select(o => o.MeshId).ToHashSet();
+
+        // The piers and their fittings, the boats, and the trees ashore.
+        Assert.Contains(MeshIds.UnitBox, cast);                       // decks, kerbs, pedestals, cradles
+        Assert.Contains(MeshIds.Piling, cast);                        // piles
+        Assert.Contains(MeshIds.Cylinder, cast);                      // bollards and cleats
+        Assert.Contains(MeshIds.ForBoat(BoatType.MotorYacht), cast);  // boats
+        Assert.Contains(cast, id => id >= MeshIds.LandTreesBase);     // trees on the land areas
+
+        // The ground itself does not shadow itself, and neither do the labels or the markers.
+        Assert.DoesNotContain(MeshIds.Water, cast);
+        Assert.DoesNotContain(MeshIds.Shoreline, cast);
+        Assert.DoesNotContain(MeshIds.SelectionMarker, cast);
+        Assert.DoesNotContain(cast, id => id >= MeshIds.GlyphBase && id < MeshIds.Shoreline);
+        Assert.DoesNotContain(cast, id => id >= MeshIds.LandBase && id < MeshIds.LandTreesBase);
+    }
 }

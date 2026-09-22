@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Domain;
 
 namespace VirtualMarina.Core.Geometry;
@@ -33,8 +33,14 @@ public static class MeshIds
     /// <summary>The mainland behind the shore (see <see cref="Domain.Shoreline"/>), drawn beneath the land areas.</summary>
     public const int Shoreline = 9_000;
 
+    /// <summary>What stands on the mainland — trees, crops, a town — kept apart from the ground so it can cast a shadow.</summary>
+    public const int ShorelineScenery = 9_001;
+
     /// <summary>First id of the per-land-area meshes (see <see cref="ForLand"/>).</summary>
     public const int LandBase = 10_000;
+
+    /// <summary>First id of the per-land-area tree meshes (see <see cref="ForLandTrees"/>).</summary>
+    public const int LandTreesBase = 20_000;
 
     private const int BoatBase = 100;
 
@@ -43,6 +49,13 @@ public static class MeshIds
     /// slots 0, 1, ... in layout order; land areas added later get the next free slot.
     /// </summary>
     public static int ForLand(int slot) => LandBase + slot;
+
+    /// <summary>
+    /// Mesh id of the trees standing on a land area. They are a mesh of their own rather than part of the ground, so
+    /// that they can be squashed onto it to cast a shadow.
+    /// </summary>
+    /// <param name="slot">The same slot the land area's ground uses (see <see cref="ForLand"/>).</param>
+    public static int ForLandTrees(int slot) => LandTreesBase + slot;
 
     /// <summary>Mesh id of a boat model (100 + type). Register a <see cref="MeshData"/> under this id to replace the model.</summary>
     public static int ForBoat(BoatType type) => BoatBase + (int)type;
