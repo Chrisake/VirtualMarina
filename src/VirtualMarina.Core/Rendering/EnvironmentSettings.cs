@@ -44,7 +44,10 @@ public sealed class LightingSettings
     }
 }
 
-/// <summary>Water surface look and wave animation. Grid size and resolution are fixed at construction.</summary>
+/// <summary>
+/// Water surface look and wave animation (<see cref="MarinaStyle.Water"/>). Applied every frame. <see cref="Size"/> and
+/// <see cref="GridResolution"/> are only read when the visualizer is created.
+/// </summary>
 public sealed class WaterSettings
 {
     /// <summary>Edge length of the square water grid in meters.</summary>
@@ -59,12 +62,29 @@ public sealed class WaterSettings
     /// <summary>Water color where the sun lights it (RGB, linear).</summary>
     public Vector3 ShallowColor { get; set; } = new(0.10f, 0.42f, 0.48f);
 
-    /// <summary>Base wave height in meters.</summary>
+    /// <summary>How big the waves are: base wave height in meters (default 0.08; 0 = flat water).</summary>
     public float WaveAmplitude { get; set; } = 0.08f;
 
-    /// <summary>Multiplier on wave spatial frequency (larger = shorter waves).</summary>
+    /// <summary>How close together the waves are: multiplier on wave frequency (larger = shorter, choppier waves; default 1).</summary>
     public float WaveFrequency { get; set; } = 1f;
 
-    /// <summary>Multiplier on wave speed. Set to 0 to freeze the water and floating boats.</summary>
+    /// <summary>How fast the waves travel: multiplier on wave speed. Set to 0 to freeze the water and floating boats (default 1).</summary>
     public float WaveSpeed { get; set; } = 1f;
+
+    /// <summary>
+    /// Strength of the sky reflected on the water, 0–1 (default 1). These reflections form the bright, cloud-like patches that
+    /// appear on the water toward the horizon and when seen from high above; lower it for a calmer, darker surface.
+    /// </summary>
+    public float SkyReflection { get; set; } = 1f;
+
+    /// <summary>Strength of the small ripples that break up the reflections, 0–2 (default 1; 0 gives a smooth, glassy surface).</summary>
+    public float Ripples { get; set; } = 1f;
+
+    /// <summary>Strength of the sparkling sun glints on the water, 0–2 (default 1).</summary>
+    public float SunGlints { get; set; } = 1f;
+
+    /// <summary>
+    /// How much boats, buoys and boom floats rise, fall and roll with the waves, 0–3 (default 1; 0 keeps them still while the water moves).
+    /// </summary>
+    public float BoatMotion { get; set; } = 1f;
 }

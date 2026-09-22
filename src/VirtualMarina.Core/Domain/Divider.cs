@@ -1,9 +1,9 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Mathematics;
 
 namespace VirtualMarina.Core.Domain;
 
-/// <summary>How a divider between slips is built.</summary>
+/// <summary>How a divider between berths is built.</summary>
 public enum DividerType
 {
     /// <summary>Narrow walkable pier with a pile at its outer end.</summary>
@@ -14,25 +14,28 @@ public enum DividerType
 
     /// <summary>A floating boom: a line of floats on the water.</summary>
     Boom = 2,
+
+    /// <summary>A single mooring pile standing at the outer end of the boundary (Mediterranean mooring), with nothing in between.</summary>
+    SinglePile = 3,
 }
 
 /// <summary>
-/// A structure that separates slips: a finger pier, a row of piles or a floating boom. It starts at
-/// <see cref="Start"/> (usually at the dock edge) and runs <see cref="Length"/> meters along <see cref="HeadingDegrees"/>.
+/// A structure that separates berths: a finger pier, a row of piles, a floating boom or a single pile. It starts at
+/// <see cref="Start"/> (usually at the pier edge) and runs <see cref="Length"/> meters along <see cref="HeadingDegrees"/>.
 /// </summary>
 /// <remarks>
-/// Dividers are independent of <see cref="Slip.HasFingerPiers"/>, which draws simple finger piers
-/// automatically. Turn that off on slips whose separators you define explicitly.
+/// Dividers are independent of <see cref="Berth.HasFingerPiers"/>, which draws simple finger piers
+/// automatically. Turn that off on berths whose separators you define explicitly.
 /// </remarks>
 public sealed record Divider
 {
     /// <summary>Creates a divider from its start point, heading and length.</summary>
     /// <param name="id">Unique id (case-insensitive).</param>
-    /// <param name="start">Start point in plan coordinates, usually at the dock edge.</param>
-    /// <param name="headingDegrees">Direction from the start, usually away from the dock (0° = +Z, 90° = +X).</param>
+    /// <param name="start">Start point in plan coordinates, usually at the pier edge.</param>
+    /// <param name="headingDegrees">Direction from the start, usually away from the pier (0° = +Z, 90° = +X).</param>
     /// <param name="length">Length in meters.</param>
-    /// <param name="type">Finger pier, row of piles or floating boom.</param>
-    /// <example><code>new Divider("A-D1", start: new Vector2(81.75f, 2), headingDegrees: 90, length: 10, DividerType.Piles) { DockId = "A" }</code></example>
+    /// <param name="type">Finger pier, row of piles, floating boom or single pile.</param>
+    /// <example><code>new Divider("A-D1", start: new Vector2(81.75f, 2), headingDegrees: 90, length: 10, DividerType.Piles) { PierId = "A" }</code></example>
     public Divider(string id, Vector2 start, float headingDegrees, float length, DividerType type = DividerType.FingerPier)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -51,12 +54,12 @@ public sealed record Divider
     public string Id { get; init; }
 
     /// <summary>
-    /// Optional owning dock. Sets the deck height and material of finger piers, and the divider is
-    /// removed together with the dock.
+    /// Optional owning pier. Sets the deck height and material of finger piers, and the divider is
+    /// removed together with the pier.
     /// </summary>
-    public string? DockId { get; init; }
+    public string? PierId { get; init; }
 
-    /// <summary>Start point in plan coordinates (usually at the dock edge).</summary>
+    /// <summary>Start point in plan coordinates (usually at the pier edge).</summary>
     public Vector2 Start { get; init; }
 
     /// <summary>Direction from <see cref="Start"/>, in degrees (0° = +Z, 90° = +X).</summary>
@@ -68,7 +71,7 @@ public sealed record Divider
     /// <summary>Width of a finger pier or boom, or pile diameter.</summary>
     public float Width { get; init; } = 0.8f;
 
-    /// <summary>Finger pier, row of piles or floating boom.</summary>
+    /// <summary>Finger pier, row of piles, floating boom or a single pile at the outer end.</summary>
     public DividerType Type { get; init; }
 
     /// <summary>Distance between piles (<see cref="DividerType.Piles"/>) or floats (<see cref="DividerType.Boom"/>).</summary>
@@ -80,7 +83,7 @@ public sealed record Divider
     /// <summary>Unit plan-view vector across the divider: the heading's local +X axis, <c>(cos h, −sin h)</c>.</summary>
     public Vector2 Right => MarinaMath.HeadingToRight(HeadingDegrees);
 
-    /// <summary>End point (a finger pier's end pile stands here).</summary>
+    /// <summary>End point (the pile of a finger pier or a <see cref="DividerType.SinglePile"/> divider stands here).</summary>
     public Vector2 End => Start + Direction * Length;
 
     /// <summary>Middle point.</summary>

@@ -8,7 +8,7 @@ namespace VirtualMarina.Core.Rendering;
 /// <param name="G">Green.</param>
 /// <param name="B">Blue.</param>
 /// <param name="A">Alpha (1 = opaque).</param>
-/// <example><code>marina.SetStatusColor(SlipStatus.Reserved, ColorRgba.FromHex("#8A4FFF"));</code></example>
+/// <example><code>marina.SetStatusColor(BerthStatus.Reserved, ColorRgba.FromHex("#8A4FFF"));</code></example>
 public readonly record struct ColorRgba(float R, float G, float B, float A = 1f)
 {
     /// <summary>Creates a color from 0–255 components.</summary>

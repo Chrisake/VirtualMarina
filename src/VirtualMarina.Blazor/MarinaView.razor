@@ -15,11 +15,11 @@
             var showTooltip = tooltip.IsVisible;
             <div class="vm-popup__accent"></div>
             <div class="vm-popup__body">
-                @if (showTooltip && (!string.IsNullOrWhiteSpace(tooltip.Title) || !string.IsNullOrWhiteSpace(tooltip.Subtitle)) || popup.Kind == SlipPopupKind.Actions)
+                @if (showTooltip && (!string.IsNullOrWhiteSpace(tooltip.Title) || !string.IsNullOrWhiteSpace(tooltip.Subtitle)) || popup.Kind == BerthPopupKind.Actions)
                 {
                     <div class="vm-popup__head">
                         <div class="vm-popup__titles">
-                            <div class="vm-popup__title">@(showTooltip && !string.IsNullOrWhiteSpace(tooltip.Title) ? tooltip.Title : popup.PrimarySlip.DisplayName)</div>
+                            <div class="vm-popup__title">@(showTooltip && !string.IsNullOrWhiteSpace(tooltip.Title) ? tooltip.Title : popup.PrimaryBerth.DisplayName)</div>
                             @if (showTooltip && !string.IsNullOrWhiteSpace(tooltip.Subtitle))
                             {
                                 <div class="vm-popup__subtitle">@tooltip.Subtitle</div>
@@ -52,7 +52,7 @@
                     <div class="vm-popup__footer">@tooltip.Footer</div>
                 }
 
-                @if (popup.Kind == SlipPopupKind.Actions && popup.Actions.Count > 0)
+                @if (popup.Kind == BerthPopupKind.Actions && popup.Actions.Count > 0)
                 {
                     <div class="vm-popup__actions">
                         @foreach (var action in popup.Actions)
@@ -65,7 +65,7 @@
                             <button class="vm-popup__action @ActionStyleClass(action)"
                                     disabled="@(!action.Enabled)"
                                     title="@action.Description"
-                                    @onclick="() => Marina.InvokeSlipAction(action.ActionId)">
+                                    @onclick="() => Marina.InvokeBerthAction(action.ActionId)">
                                 <span class="vm-popup__icon">@action.Icon</span>
                                 <span class="vm-popup__caption">@action.Caption</span>
                                 @if (!string.IsNullOrEmpty(action.ShortcutText))

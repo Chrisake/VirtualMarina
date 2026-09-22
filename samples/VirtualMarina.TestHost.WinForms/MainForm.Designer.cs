@@ -47,7 +47,7 @@ namespace VirtualMarina.TestHost.WinForms
             btnResetFlags = new Button();
             btnReadOnly = new Button();
             btnMaintenance = new Button();
-            btnSelectDock = new Button();
+            btnSelectPier = new Button();
             btnShowActions = new Button();
             btnFocus = new Button();
             btnCheckOut = new Button();
@@ -100,12 +100,12 @@ namespace VirtualMarina.TestHost.WinForms
             marinaView.Size = new Size(1024, 839);
             marinaView.TabIndex = 0;
             marinaView.RenderError += OnMarinaViewRenderError;
-            marinaView.SlipSelected += OnSlipSelected;
-            marinaView.MultiSlipSelected += OnMultiSlipSelected;
+            marinaView.BerthSelected += OnBerthSelected;
+            marinaView.MultiBerthSelected += OnMultiBerthSelected;
             marinaView.SelectionChanged += OnSelectionChanged;
-            marinaView.SlipActionInvoked += OnSlipActionInvoked;
-            marinaView.SlipHoverChanged += OnSlipHoverChanged;
-            marinaView.SlipStatusChanged += OnSlipStatusChanged;
+            marinaView.BerthActionInvoked += OnBerthActionInvoked;
+            marinaView.BerthHoverChanged += OnBerthHoverChanged;
+            marinaView.BerthStatusChanged += OnBerthStatusChanged;
             marinaView.LayoutChanged += OnLayoutChanged;
             // 
             // grpEvents
@@ -191,7 +191,7 @@ namespace VirtualMarina.TestHost.WinForms
             // cmbLabelMode
             // 
             cmbLabelMode.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbLabelMode.Items.AddRange(new object[] { "None", "Only free slips", "Non-occupied slips", "All slips" });
+            cmbLabelMode.Items.AddRange(new object[] { "None", "Only free berths", "Non-occupied berths", "All berths" });
             cmbLabelMode.Location = new Point(90, 57);
             cmbLabelMode.Name = "cmbLabelMode";
             cmbLabelMode.Size = new Size(236, 23);
@@ -205,7 +205,7 @@ namespace VirtualMarina.TestHost.WinForms
             lblLabels.Name = "lblLabels";
             lblLabels.Size = new Size(67, 15);
             lblLabels.TabIndex = 4;
-            lblLabels.Text = "Slip names:";
+            lblLabels.Text = "Berth names:";
             // 
             // chkTemporarilyFree
             // 
@@ -266,7 +266,7 @@ namespace VirtualMarina.TestHost.WinForms
             grpBerth.Controls.Add(btnResetFlags);
             grpBerth.Controls.Add(btnReadOnly);
             grpBerth.Controls.Add(btnMaintenance);
-            grpBerth.Controls.Add(btnSelectDock);
+            grpBerth.Controls.Add(btnSelectPier);
             grpBerth.Controls.Add(btnShowActions);
             grpBerth.Controls.Add(btnFocus);
             grpBerth.Controls.Add(btnCheckOut);
@@ -288,7 +288,7 @@ namespace VirtualMarina.TestHost.WinForms
             btnReleaseBerth.Name = "btnReleaseBerth";
             btnReleaseBerth.Size = new Size(208, 27);
             btnReleaseBerth.TabIndex = 12;
-            btnReleaseBerth.Text = "Release multi-slip berth";
+            btnReleaseBerth.Text = "Release multi-berth";
             btnReleaseBerth.UseVisualStyleBackColor = true;
             btnReleaseBerth.Click += OnReleaseBerthClick;
             // 
@@ -332,15 +332,15 @@ namespace VirtualMarina.TestHost.WinForms
             btnMaintenance.UseVisualStyleBackColor = true;
             btnMaintenance.Click += OnMaintenanceClick;
             // 
-            // btnSelectDock
+            // btnSelectPier
             // 
-            btnSelectDock.Location = new Point(292, 238);
-            btnSelectDock.Name = "btnSelectDock";
-            btnSelectDock.Size = new Size(138, 27);
-            btnSelectDock.TabIndex = 7;
-            btnSelectDock.Text = "Select dock / land";
-            btnSelectDock.UseVisualStyleBackColor = true;
-            btnSelectDock.Click += OnSelectDockClick;
+            btnSelectPier.Location = new Point(292, 238);
+            btnSelectPier.Name = "btnSelectPier";
+            btnSelectPier.Size = new Size(138, 27);
+            btnSelectPier.TabIndex = 7;
+            btnSelectPier.Text = "Select pier / land";
+            btnSelectPier.UseVisualStyleBackColor = true;
+            btnSelectPier.Click += OnSelectPierClick;
             // 
             // btnShowActions
             // 
@@ -483,7 +483,7 @@ namespace VirtualMarina.TestHost.WinForms
         private Button btnCheckOut;
         private Button btnFocus;
         private Button btnShowActions;
-        private Button btnSelectDock;
+        private Button btnSelectPier;
         private Button btnMaintenance;
         private Button btnReadOnly;
         private Button btnResetFlags;

@@ -23,9 +23,9 @@ public readonly record struct Ray(Vector3 Origin, Vector3 Direction)
     }
 }
 
-/// <summary>Result of a slip hit test (<see cref="Api.IMarinaVisualizer.HitTest"/>).</summary>
-/// <param name="SlipId">Slip that was hit. For a boat spanning several slips, the member slip nearest the hit point.</param>
+/// <summary>Result of a berth hit test (<see cref="Api.IMarinaVisualizer.HitTest"/>).</summary>
+/// <param name="BerthId">Berth that was hit. For a boat spanning several berths, the member berth nearest the hit point.</param>
 /// <param name="Distance">Distance from the camera along the ray.</param>
 /// <param name="WorldPoint">World-space point that was hit.</param>
-/// <param name="HitBoat">True when the boat was hit rather than the slip's water area.</param>
-public readonly record struct SlipHit(string SlipId, float Distance, Vector3 WorldPoint, bool HitBoat);
+/// <param name="HitBoat">True when the boat was hit rather than the berth's water area.</param>
+public readonly record struct BerthHit(string BerthId, float Distance, Vector3 WorldPoint, bool HitBoat);

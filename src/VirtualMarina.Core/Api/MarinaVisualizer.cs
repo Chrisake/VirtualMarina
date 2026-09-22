@@ -1,5 +1,6 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Camera;
+using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Input;
@@ -28,6 +29,12 @@ public sealed class MarinaVisualizerOptions
 
     /// <summary>Center of the water grid in plan coordinates.</summary>
     public Vector2 WaterCenter { get; init; } = Vector2.Zero;
+
+    /// <summary>
+    /// The initial style (colors, waves, opacities, ...). When set, its <see cref="MarinaStyle.Lighting"/> and <see cref="MarinaStyle.Water"/>
+    /// are used instead of <see cref="Lighting"/> and <see cref="Water"/>.
+    /// </summary>
+    public MarinaStyle? Style { get; init; }
 }
 
 /// <summary>
@@ -50,30 +57,34 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
 {
     private static readonly StringComparer IdComparer = StringComparer.OrdinalIgnoreCase;
 
-    private readonly Dictionary<string, Dock> _docks = new(IdComparer);
-    private readonly List<string> _dockOrder = new();
-    private readonly Dictionary<string, Slip> _slips = new(IdComparer);
-    private readonly List<string> _slipOrder = new();
+    private readonly Dictionary<string, Pier> _piers = new(IdComparer);
+    private readonly List<string> _pierOrder = new();
+    private readonly Dictionary<string, Berth> _berths = new(IdComparer);
+    private readonly List<string> _berthOrder = new();
     private readonly Dictionary<string, Divider> _dividers = new(IdComparer);
     private readonly List<string> _dividerOrder = new();
-    private readonly Dictionary<string, MultiSlipBerth> _berths = new(IdComparer);
-    private readonly List<string> _berthOrder = new();
+    private readonly Dictionary<string, MultiBerth> _multiBerths = new(IdComparer);
+    private readonly List<string> _multiBerthOrder = new();
     private readonly Dictionary<string, LandArea> _landAreas = new(IdComparer);
     private readonly List<string> _landOrder = new();
-    private int _registeredLandMeshes;
+    private readonly Dictionary<string, int> _landMeshSlots = new(IdComparer);
+    private int _nextLandMeshSlot;
     private readonly List<CameraPreset> _presets = new();
     private readonly List<RenderObject> _renderObjects = new();
-    private readonly StatusColorScheme _colors = new();
+    private MarinaStyle _style;
 
-    private string? _hoveredSlipId;
-    private SlipStatusFilter _statusFilter = SlipStatusFilter.All;
-    private SlipLabelMode _slipLabelMode = SlipLabelMode.None;
+    private string? _hoveredBerthId;
+    private BerthStatusFilter _statusFilter = BerthStatusFilter.All;
+    private BerthLabelMode _berthLabelMode = BerthLabelMode.None;
     private bool _sceneDirty = true;
     private int _sceneVersion;
     private int _updateDepth;
     private bool _layoutChangePending;
     private double _time;
     private Vector2 _viewportSize = new(1280f, 720f);
+    private Vector2 _waterCenter;
+    private float _waterSize;
+    private string _marinaName = "Marina";
 
     /// <summary>Creates an empty marina with default water and lighting. Load one with <see cref="InitializeLayout"/>.</summary>
     public MarinaVisualizer()
@@ -86,22 +97,25 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     public MarinaVisualizer(MarinaVisualizerOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        Water = options.Water;
-        Lighting = options.Lighting;
+        _style = options.Style ?? new MarinaStyle { Lighting = options.Lighting, Water = options.Water };
         Meshes = MeshLibrary.CreateDefault(Water.Size, Water.GridResolution, options.WaterCenter);
+        _waterCenter = options.WaterCenter;
+        _waterSize = Water.Size;
         Camera = new OrbitCamera();
+        AttachStyle(_style);
         Input = new MarinaInputController(this);
+        Designer = new MarinaDesigner(this);
         RebuildBuiltInPresets();
     }
 
     /// <inheritdoc/>
-    public event EventHandler<SlipEventArgs>? SlipClicked;
+    public event EventHandler<BerthEventArgs>? BerthClicked;
 
     /// <inheritdoc/>
-    public event EventHandler<SlipSelectedEventArgs>? SlipSelected;
+    public event EventHandler<BerthSelectedEventArgs>? BerthSelected;
 
     /// <inheritdoc/>
-    public event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected;
+    public event EventHandler<MultiBerthSelectedEventArgs>? MultiBerthSelected;
 
     /// <inheritdoc/>
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
@@ -110,22 +124,26 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     public event EventHandler? SelectionCleared;
 
     /// <inheritdoc/>
-    public event EventHandler<SlipActionInvokedEventArgs>? SlipActionInvoked;
+    public event EventHandler<BerthActionInvokedEventArgs>? BerthActionInvoked;
 
     /// <inheritdoc/>
-    public event EventHandler<SlipPopupChangedEventArgs>? PopupChanged;
+    public event EventHandler<BerthPopupChangedEventArgs>? PopupChanged;
 
     /// <inheritdoc/>
-    public event EventHandler<SlipHoverEventArgs>? SlipHoverChanged;
+    public event EventHandler<BerthHoverEventArgs>? BerthHoverChanged;
 
     /// <inheritdoc/>
-    public event EventHandler<SlipStatusChangedEventArgs>? SlipStatusChanged;
+    public event EventHandler<BerthStatusChangedEventArgs>? BerthStatusChanged;
 
     /// <inheritdoc/>
     public event EventHandler<LayoutChangedEventArgs>? LayoutChanged;
 
     /// <inheritdoc/>
-    public string MarinaName { get; private set; } = "Marina";
+    public string MarinaName
+    {
+        get => _marinaName;
+        set => _marinaName = string.IsNullOrWhiteSpace(value) ? "Marina" : value.Trim();
+    }
 
     /// <inheritdoc/>
     public OrbitCamera Camera { get; }
@@ -137,10 +155,30 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     public MarinaInputController Input { get; }
 
     /// <inheritdoc/>
-    public LightingSettings Lighting { get; }
+    public LightingSettings Lighting => _style.Lighting;
 
     /// <inheritdoc/>
-    public WaterSettings Water { get; }
+    public WaterSettings Water => _style.Water;
+
+    /// <inheritdoc/>
+    public MarinaStyle Style
+    {
+        get => _style;
+        set
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if (ReferenceEquals(value, _style)) return;
+            DetachStyle(_style);
+            _style = value;
+            AttachStyle(value);
+            RebuildLandMeshes();
+            MarkSceneDirty();
+            RequestPopupRefresh();
+        }
+    }
+
+    /// <inheritdoc/>
+    public MarinaDesigner Designer { get; }
 
     /// <summary>
     /// Meshes available to the scene. Register a replacement under an existing id
@@ -152,21 +190,21 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// Current status colors and overlay opacities (read-only view). Change them with <see cref="SetStatusColor"/>,
     /// <see cref="SetDisabledColor"/>, <see cref="SetOverlayOpacity"/> and <see cref="ResetStatusColors"/>.
     /// </summary>
-    public StatusColorScheme Colors => _colors;
+    public StatusColorScheme Colors => _style.Status;
 
     /// <summary>
-    /// Which slips have their name (<see cref="Slip.DisplayName"/>) written on the water next to their open end,
-    /// sized to fit the slip's width. Hidden and filtered-out slips are never labeled. Default <see cref="SlipLabelMode.None"/>.
+    /// Which berths have their name (<see cref="Berth.DisplayName"/>) written on the water next to their open end,
+    /// sized to fit the berth's width. Hidden and filtered-out berths are never labeled. Default <see cref="BerthLabelMode.None"/>.
     /// </summary>
-    /// <exception cref="ArgumentOutOfRangeException">The value is not a defined <see cref="Api.SlipLabelMode"/>.</exception>
-    public SlipLabelMode SlipLabelMode
+    /// <exception cref="ArgumentOutOfRangeException">The value is not a defined <see cref="Api.BerthLabelMode"/>.</exception>
+    public BerthLabelMode BerthLabelMode
     {
-        get => _slipLabelMode;
+        get => _berthLabelMode;
         set
         {
             if (!Enum.IsDefined(value)) throw new ArgumentOutOfRangeException(nameof(value), value, null);
-            if (value == _slipLabelMode) return;
-            _slipLabelMode = value;
+            if (value == _berthLabelMode) return;
+            _berthLabelMode = value;
             MarkSceneDirty();
         }
     }
@@ -203,25 +241,28 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// <summary>Builds the frame description for a renderer. Rebuilds instance data only when the scene changed.</summary>
     public RenderFrame BuildRenderFrame()
     {
+        if (Designer.OverlayNeedsRefresh()) _sceneDirty = true;
         if (_sceneDirty)
         {
             SceneBuilder.Build(_renderObjects, new SceneState
             {
-                Docks = OrderedDocks(),
-                Slips = OrderedSlips().ToList(),
+                Piers = OrderedPiers(),
+                Berths = OrderedBerths().ToList(),
                 Dividers = OrderedDividers(),
                 Land = OrderedLandAreas(),
+                LandMeshId = land => MeshIds.ForLand(_landMeshSlots.TryGetValue(land.Id, out var slot) ? slot : -1),
                 LandLookup = GetLandArea,
-                SlipLookup = GetSlip,
-                DockLookup = GetDock,
-                BerthLookup = GetMultiSlipBerth,
+                BerthLookup = GetBerth,
+                PierLookup = GetPier,
+                MultiBerthLookup = GetMultiBerth,
                 Filter = _statusFilter,
                 Selected = new HashSet<string>(_selection, IdComparer),
                 PrimarySelectedId = _selection.Count > 0 ? _selection[^1] : null,
-                HoveredSlipId = _hoveredSlipId,
-                LabelMode = _slipLabelMode,
-                Colors = _colors,
+                HoveredBerthId = _hoveredBerthId,
+                LabelMode = _berthLabelMode,
+                Style = _style,
                 Meshes = Meshes,
+                Overlay = Designer.AppendOverlay,
             });
             _sceneVersion++;
             _sceneDirty = false;
@@ -233,11 +274,12 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             Projection = Camera.GetProjectionMatrix(_viewportSize.X / _viewportSize.Y),
             CameraPosition = Camera.Position,
             Time = (float)(_time % 3600d),
-            Lighting = Lighting,
+            Lighting = Designer.IsActive && Designer.FogFactor < 1f ? DesignLighting() : Lighting,
             Water = Water,
             Objects = _renderObjects,
             SceneVersion = _sceneVersion,
             Meshes = Meshes,
+            ReferenceImage = Designer.BuildImageLayer(),
         };
     }
 
@@ -245,15 +287,15 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     public void InvalidateScene() => _sceneDirty = true;
 
     /// <summary>
-    /// Hit-tests a point in view pixels (origin top-left) against visible, unfiltered slips and boats.
-    /// Disabled slips are hit (so they block what's behind them), but input ignores them.
+    /// Hit-tests a point in view pixels (origin top-left) against visible, unfiltered berths and boats.
+    /// Disabled berths are hit (so they block what's behind them), but input ignores them.
     /// </summary>
-    public SlipHit? HitTest(float x, float y)
+    public BerthHit? HitTest(float x, float y)
     {
         var ray = Camera.ScreenPointToRay(x, y, _viewportSize.X, _viewportSize.Y);
-        var slips = OrderedSlips().Where(IsShown).ToList();
-        var boats = SlipPlacement.EnumerateBoats(slips, GetSlip, GetMultiSlipBerth, _statusFilter, GroundHeight, Meshes);
-        return ScenePicker.Pick(ray, slips, boats, Meshes, GroundHeight);
+        var berths = OrderedBerths().Where(IsShown).ToList();
+        var boats = BerthPlacement.EnumerateBoats(berths, GetBerth, GetMultiBerth, _statusFilter, GroundHeight, Meshes);
+        return ScenePicker.Pick(ray, berths, boats, Meshes, GroundHeight);
     }
 
     /// <summary>Point on the water plane under a view pixel, if the ray hits it.</summary>
@@ -280,55 +322,152 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     }
 
     /// <summary>
-    /// Where the popup should point, in view pixels: just above the primary selected slip's selection marker.
+    /// Where the popup should point, in view pixels: just above the primary selected berth's selection marker.
     /// Call every frame (the camera moves). False when no popup is open or the anchor is behind the camera.
     /// </summary>
     public bool TryGetPopupAnchor(out Vector2 screenPoint)
     {
         screenPoint = default;
-        return _popup is { } popup && GetSlip(popup.PrimarySlip.Id) is { } slip && TryProjectToScreen(GetPopupAnchorWorld(slip), out screenPoint);
+        return _popup is { } popup && GetBerth(popup.PrimaryBerth.Id) is { } berth && TryProjectToScreen(GetPopupAnchorWorld(berth), out screenPoint);
     }
 
     // ---- Helpers --------------------------------------------------------------------------------
 
-    private Vector3 GetPopupAnchorWorld(Slip slip)
+    private LightingSettings? _designLighting;
+
+    private StatusColorScheme _colors => _style.Status;
+
+    private void AttachStyle(MarinaStyle style)
     {
-        var ground = GroundHeight(slip);
-        var boatTop = slip.Boat is { } boat && slip.Status.CanHaveBoat() ? SlipPlacement.BoatTopHeight(boat, Meshes, ground) : (ground ?? 0f) + 3f;
-        return MarinaMath.ToWorld(slip.Center, SceneBuilder.MarkerBaseHeight(boatTop, ground ?? 0f) + SceneBuilder.MarkerTop);
+        foreach (var section in style.SceneSections) section.Changed += OnSceneStyleChanged;
+        style.Status.Changed += OnStatusStyleChanged;
+        style.Land.Changed += OnLandStyleChanged;
+        style.View.Changed += OnViewStyleChanged;
+        ApplyViewStyle(style.View);
     }
 
-    /// <summary>Land height under a land slip; null for water slips.</summary>
-    private float? GroundHeight(Slip slip) => SceneBuilder.GroundHeight(slip, GetLandArea);
+    private void DetachStyle(MarinaStyle style)
+    {
+        foreach (var section in style.SceneSections) section.Changed -= OnSceneStyleChanged;
+        style.Status.Changed -= OnStatusStyleChanged;
+        style.Land.Changed -= OnLandStyleChanged;
+        style.View.Changed -= OnViewStyleChanged;
+    }
+
+    private void OnSceneStyleChanged(object? sender, EventArgs e) => MarkSceneDirty();
+
+    /// <summary>Status colors also appear in the popup's accent.</summary>
+    private void OnStatusStyleChanged(object? sender, EventArgs e) => RequestPopupRefresh();
+
+    private void OnLandStyleChanged(object? sender, EventArgs e)
+    {
+        foreach (var land in OrderedLandAreas()) RegisterLandMesh(land);
+        MarkSceneDirty();
+    }
+
+    private void OnViewStyleChanged(object? sender, EventArgs e) => ApplyViewStyle(_style.View);
+
+    private void ApplyViewStyle(ViewStyle view)
+    {
+        Camera.FieldOfViewDegrees = view.FieldOfViewDegrees;
+        Camera.Smoothing = view.CameraSmoothing;
+    }
+
+    /// <summary>Rebuilds the water grid around <paramref name="center"/>.</summary>
+    private void SetWaterGrid(Vector2 center, float size)
+    {
+        // Keep the cell size of the configured grid as it grows (within limits).
+        var resolution = Math.Clamp((int)MathF.Round(Water.GridResolution * size / Water.Size), Water.GridResolution, 400);
+        Meshes.Register(MarinaMeshFactory.CreateWaterGrid(MeshIds.Water, size, resolution, center));
+        _waterCenter = center;
+        _waterSize = size;
+    }
+
+    /// <summary>Re-centers and, if needed, enlarges the water grid when the layout or the reference image reaches past its edges.</summary>
+    private void EnsureWaterCovers(Vector2 min, Vector2 max)
+    {
+        const float margin = 150f;
+        var half = _waterSize * 0.5f;
+        if (min.X - margin >= _waterCenter.X - half && min.Y - margin >= _waterCenter.Y - half &&
+            max.X + margin <= _waterCenter.X + half && max.Y + margin <= _waterCenter.Y + half)
+        {
+            return;
+        }
+
+        var extent = MathF.Max(max.X - min.X, max.Y - min.Y);
+        SetWaterGrid((min + max) * 0.5f, MathF.Max(Water.Size, extent + 4f * margin));
+    }
+
+    /// <summary><see cref="Lighting"/> with the fog thinned by <see cref="MarinaDesigner.FogFactor"/>, so a whole marina seen from high above stays clear.</summary>
+    private LightingSettings DesignLighting()
+    {
+        var copy = _designLighting ??= new LightingSettings();
+        copy.SunDirection = Lighting.SunDirection;
+        copy.SunColor = Lighting.SunColor;
+        copy.AmbientColor = Lighting.AmbientColor;
+        copy.SpecularStrength = Lighting.SpecularStrength;
+        copy.Shininess = Lighting.Shininess;
+        copy.SkyColor = Lighting.SkyColor;
+        copy.FogColor = Lighting.FogColor;
+        copy.FogDensity = Lighting.FogDensity * Designer.FogFactor;
+        return copy;
+    }
+
+    private Vector3 GetPopupAnchorWorld(Berth berth)
+    {
+        var ground = GroundHeight(berth);
+        var boatTop = berth.Boat is { } boat && berth.Status.CanHaveBoat() ? BerthPlacement.BoatTopHeight(boat, Meshes, ground) : (ground ?? 0f) + 3f;
+        return MarinaMath.ToWorld(berth.Center, SceneBuilder.MarkerBaseHeight(boatTop, ground ?? 0f) + SceneBuilder.MarkerTop);
+    }
+
+    /// <summary>Land height under a land berth; null for water berths.</summary>
+    private float? GroundHeight(Berth berth) => SceneBuilder.GroundHeight(berth, GetLandArea);
 
     private IEnumerable<LandArea> OrderedLandAreas() => _landOrder.Select(id => _landAreas[id]);
 
-    /// <summary>Builds one mesh per land area (<see cref="MeshIds.ForLand"/>) and drops meshes of land areas that no longer exist.</summary>
-    private void RegisterLandMeshes()
+    /// <summary>Drops every land mesh and builds one per current land area, in layout order (slots 0, 1, ...).</summary>
+    private void RebuildLandMeshes()
     {
-        var index = 0;
-        foreach (var land in OrderedLandAreas()) Meshes.Register(LandMeshFactory.Create(MeshIds.ForLand(index++), land));
-        for (var stale = index; stale < _registeredLandMeshes; stale++) Meshes.Unregister(MeshIds.ForLand(stale));
-        _registeredLandMeshes = index;
+        foreach (var slot in _landMeshSlots.Values) Meshes.Unregister(MeshIds.ForLand(slot));
+        _landMeshSlots.Clear();
+        _nextLandMeshSlot = 0;
+        foreach (var land in OrderedLandAreas()) RegisterLandMesh(land);
     }
 
-    private IEnumerable<Dock> OrderedDocks() => _dockOrder.Select(id => _docks[id]);
+    /// <summary>Builds (or rebuilds) the mesh of one land area, keeping its slot so other land meshes are untouched.</summary>
+    private void RegisterLandMesh(LandArea land)
+    {
+        if (!_landMeshSlots.TryGetValue(land.Id, out var slot))
+        {
+            slot = _nextLandMeshSlot++;
+            _landMeshSlots[land.Id] = slot;
+        }
 
-    private IEnumerable<Slip> OrderedSlips() => _slipOrder.Select(id => _slips[id]);
+        Meshes.Register(LandMeshFactory.Create(MeshIds.ForLand(slot), land, _style.Land));
+    }
+
+    private void UnregisterLandMesh(string landAreaId)
+    {
+        if (_landMeshSlots.Remove(landAreaId, out var slot)) Meshes.Unregister(MeshIds.ForLand(slot));
+    }
+
+    private IEnumerable<Pier> OrderedPiers() => _pierOrder.Select(id => _piers[id]);
+
+    private IEnumerable<Berth> OrderedBerths() => _berthOrder.Select(id => _berths[id]);
 
     private IEnumerable<Divider> OrderedDividers() => _dividerOrder.Select(id => _dividers[id]);
 
-    private IEnumerable<MultiSlipBerth> OrderedBerths() => _berthOrder.Select(id => _berths[id]);
+    private IEnumerable<MultiBerth> OrderedMultiBerths() => _multiBerthOrder.Select(id => _multiBerths[id]);
 
     /// <summary>Drawn with its status visuals: visible and not excluded by the status filter.</summary>
-    private bool IsShown(Slip slip) => slip.IsVisible && _statusFilter.Includes(slip.Status);
+    private bool IsShown(Berth berth) => berth.IsVisible && _statusFilter.Includes(berth.Status);
 
     /// <summary>Can be part of the selection.</summary>
-    private bool IsSelectable(Slip slip) => slip.IsInteractive && _statusFilter.Includes(slip.Status);
+    private bool IsSelectable(Berth berth) => berth.IsInteractive && _statusFilter.Includes(berth.Status);
 
-    private void MarkSceneDirty() => _sceneDirty = true;
+    internal void MarkSceneDirty() => _sceneDirty = true;
 
-    private void RaiseLayoutChanged(LayoutChangeKind kind, string? dockId = null, string? slipId = null, string? dividerId = null, string? berthId = null)
+    private void RaiseLayoutChanged(LayoutChangeKind kind, string? pierId = null, string? berthId = null, string? dividerId = null, string? multiBerthId = null, string? landAreaId = null)
     {
         if (_updateDepth > 0)
         {
@@ -336,21 +475,21 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             return;
         }
 
-        LayoutChanged?.Invoke(this, new LayoutChangedEventArgs(kind, dockId, slipId, dividerId, berthId));
+        LayoutChanged?.Invoke(this, new LayoutChangedEventArgs(kind, pierId, berthId, dividerId, multiBerthId, landAreaId));
     }
 
-    private Slip RequireSlip(string slipId)
+    private Berth RequireBerth(string berthId)
     {
-        ArgumentNullException.ThrowIfNull(slipId);
-        return _slips.TryGetValue(slipId, out var slip)
-            ? slip
-            : throw new KeyNotFoundException($"Slip '{slipId}' does not exist.");
+        ArgumentNullException.ThrowIfNull(berthId);
+        return _berths.TryGetValue(berthId, out var berth)
+            ? berth
+            : throw new KeyNotFoundException($"Berth '{berthId}' does not exist.");
     }
 
-    private SlipEventArgs CreateSlipArgs(Slip slip, PointerButton button = PointerButton.None, bool isDoubleClick = false, Vector3? worldPoint = null) =>
-        new(slip, slip.DockId is null ? null : _docks.GetValueOrDefault(slip.DockId), button, isDoubleClick, worldPoint)
+    private BerthEventArgs CreateBerthArgs(Berth berth, PointerButton button = PointerButton.None, bool isDoubleClick = false, Vector3? worldPoint = null) =>
+        new(berth, berth.PierId is null ? null : _piers.GetValueOrDefault(berth.PierId), button, isDoubleClick, worldPoint)
         {
-            LandArea = slip.LandAreaId is null ? null : GetLandArea(slip.LandAreaId),
+            LandArea = berth.LandAreaId is null ? null : GetLandArea(berth.LandAreaId),
         };
 
     private sealed class UpdateScope : IDisposable

@@ -4,38 +4,38 @@ using System.Diagnostics.CodeAnalysis;
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>
-/// Mutable key/value store (string → object) for host application data attached to a slip,
-/// e.g. contract ids, invoice objects, UI state or cached ERP records. Available as <see cref="Slip.ExternalData"/>
-/// and on every event that references a slip.
+/// Mutable key/value store (string → object) for host application data attached to a berth,
+/// e.g. contract ids, invoice objects, UI state or cached ERP records. Available as <see cref="Berth.ExternalData"/>
+/// and on every event that references a berth.
 /// </summary>
 /// <remarks>
-/// One bag exists per slip and is shared by every <see cref="Slip"/> snapshot of that slip, so a value
-/// saved from an event handler can be read back later from <c>GetSlip</c>, from other events, or after status
+/// One bag exists per berth and is shared by every <see cref="Berth"/> snapshot of that berth, so a value
+/// saved from an event handler can be read back later from <c>GetBerth</c>, from other events, or after status
 /// and geometry updates. The visualizer never reads, renders or serializes these values. Keys are case-sensitive.
 /// Like the rest of the visualizer API it is not thread-safe.
 /// </remarks>
 /// <example>
 /// <code>
-/// marina.SlipSelected += (s, e) =>
+/// marina.BerthSelected += (s, e) =>
 /// {
-///     var contract = e.ExternalData.GetOrAdd("Contract", () => erp.LoadContract(e.SlipId));
+///     var contract = e.ExternalData.GetOrAdd("Contract", () => erp.LoadContract(e.BerthId));
 ///     e.Tooltip.AddLine("Contract", contract.Number);
 /// };
 /// // Later, anywhere:
-/// var cached = marina.GetSlip("A-L03")!.ExternalData.Get&lt;Contract&gt;("Contract");
+/// var cached = marina.GetBerth("A-L03")!.ExternalData.Get&lt;Contract&gt;("Contract");
 /// </code>
 /// </example>
-public sealed class SlipDataBag : IDictionary<string, object?>, IReadOnlyDictionary<string, object?>
+public sealed class BerthDataBag : IDictionary<string, object?>, IReadOnlyDictionary<string, object?>
 {
     private readonly Dictionary<string, object?> _items = new(StringComparer.Ordinal);
 
-    /// <summary>Creates an empty bag. New slips get one automatically.</summary>
-    public SlipDataBag()
+    /// <summary>Creates an empty bag. New berths get one automatically.</summary>
+    public BerthDataBag()
     {
     }
 
     /// <summary>Creates a bag pre-filled with <paramref name="items"/> (later duplicates overwrite earlier ones).</summary>
-    public SlipDataBag(IEnumerable<KeyValuePair<string, object?>> items)
+    public BerthDataBag(IEnumerable<KeyValuePair<string, object?>> items)
     {
         ArgumentNullException.ThrowIfNull(items);
         foreach (var (key, value) in items) this[key] = value;
@@ -132,7 +132,7 @@ public sealed class SlipDataBag : IDictionary<string, object?>, IReadOnlyDiction
         ((ICollection<KeyValuePair<string, object?>>)_items).Remove(item);
 
     /// <summary>Copies entries from another bag, overwriting existing keys.</summary>
-    internal void MergeFrom(SlipDataBag other)
+    internal void MergeFrom(BerthDataBag other)
     {
         foreach (var (key, value) in other._items) _items[key] = value;
     }

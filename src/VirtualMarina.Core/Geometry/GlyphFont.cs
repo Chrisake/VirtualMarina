@@ -4,7 +4,7 @@ using System.Numerics;
 namespace VirtualMarina.Core.Geometry;
 
 /// <summary>
-/// Minimal stroke font for text laid flat on the water (slip labels). Each character is a mesh of flat,
+/// Minimal stroke font for text laid flat on the water (berth labels). Each character is a mesh of flat,
 /// upward-facing strokes, so it renders on every backend without textures.
 /// </summary>
 /// <remarks>

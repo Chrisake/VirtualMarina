@@ -1,3 +1,5 @@
+﻿using VirtualMarina.Core.Resources;
+
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>Boat categories the visualizer can render. Each has its own procedural model (see <see cref="Geometry.BoatMeshFactory"/>).</summary>
@@ -56,13 +58,13 @@ public static class BoatTypeCatalog
     /// <summary>Human-readable name, e.g. "Motor Yacht". Used by the default tooltip.</summary>
     public static string GetDisplayName(BoatType type) => type switch
     {
-        BoatType.MonohullSailboat => "Monohull Sailboat",
-        BoatType.CatamaranSailboat => "Catamaran Sailboat",
-        BoatType.DayMotorBoat => "Day Motor Boat",
-        BoatType.CatamaranMotorboat => "Catamaran Motorboat",
-        BoatType.MotorYacht => "Motor Yacht",
-        BoatType.FishingBoat => "Fishing Boat",
-        BoatType.JetSki => "Jet Ski",
+        BoatType.MonohullSailboat => Strings.BoatTypeMonohullSailboat,
+        BoatType.CatamaranSailboat => Strings.BoatTypeCatamaranSailboat,
+        BoatType.DayMotorBoat => Strings.BoatTypeDayMotorBoat,
+        BoatType.CatamaranMotorboat => Strings.BoatTypeCatamaranMotorboat,
+        BoatType.MotorYacht => Strings.BoatTypeMotorYacht,
+        BoatType.FishingBoat => Strings.BoatTypeFishingBoat,
+        BoatType.JetSki => Strings.BoatTypeJetSki,
         _ => type.ToString(),
     };
 }

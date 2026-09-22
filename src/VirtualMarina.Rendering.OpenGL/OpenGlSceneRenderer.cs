@@ -10,12 +10,18 @@ namespace VirtualMarina.Rendering.OpenGL;
 /// <remarks>
 /// The host must make its GL context current before calling any member (including <see cref="Dispose"/>)
 /// and must have loaded OpenTK's bindings (OpenTK's GLControl and GameWindow do this automatically).
+/// The designer's reference image must carry decoded RGBA pixels (<c>ReferenceImage.Rgba</c>); encoded-only images are skipped.
 /// </remarks>
 public sealed class OpenGlSceneRenderer : ISceneRenderer
 {
     private readonly Dictionary<int, GpuMesh> _meshes = new();
     private GlShaderProgram? _modelProgram;
     private GlShaderProgram? _waterProgram;
+    private GlShaderProgram? _imageProgram;
+    private int _imageQuadVao;
+    private int _imageQuadVbo;
+    private int _imageTexture;
+    private int _imageTextureKey = -1;
     private int _uploadedLibraryVersion = -1;
     private int _width = 1;
     private int _height = 1;
@@ -45,6 +51,11 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
             "water",
             ShaderSources.WaterVertex(ShaderDialect.DesktopGL33),
             ShaderSources.WaterFragment(ShaderDialect.DesktopGL33));
+        _imageProgram = new GlShaderProgram(
+            "image",
+            ShaderSources.ImageVertex(ShaderDialect.DesktopGL33),
+            ShaderSources.ImageFragment(ShaderDialect.DesktopGL33));
+        CreateImageQuad();
 
         GL.Enable(EnableCap.DepthTest);
         GL.DepthFunc(DepthFunction.Lequal);
@@ -98,9 +109,10 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
             water.Draw();
         }
 
-        // 3. Transparent overlays (status pads, reserved ghost boats), no depth writes.
+        // 3. Reference image (designer), then transparent overlays (status pads, ghost boats, drawing previews), no depth writes.
         GL.Enable(EnableCap.Blend);
         GL.DepthMask(false);
+        if (frame.ReferenceImage is { } image) DrawReferenceImage(frame, image);
         model.Use();
         foreach (var obj in frame.Objects)
         {
@@ -121,19 +133,84 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
         _meshes.Clear();
         _modelProgram?.Dispose();
         _waterProgram?.Dispose();
+        _imageProgram?.Dispose();
+        if (_imageTexture != 0) GL.DeleteTexture(_imageTexture);
+        if (_imageQuadVao != 0) GL.DeleteVertexArray(_imageQuadVao);
+        if (_imageQuadVbo != 0) GL.DeleteBuffer(_imageQuadVbo);
     }
 
+    /// <summary>Uploads meshes that are new or were replaced, and frees meshes no longer in the library.</summary>
     private void SyncMeshes(MeshLibrary library)
     {
         if (library.Version == _uploadedLibraryVersion) return;
 
+        var current = new HashSet<int>();
         foreach (var mesh in library.All)
         {
-            if (_meshes.Remove(mesh.Id, out var existing)) existing.Dispose();
+            current.Add(mesh.Id);
+            if (_meshes.TryGetValue(mesh.Id, out var existing))
+            {
+                if (ReferenceEquals(existing.Source, mesh)) continue;
+                existing.Dispose();
+            }
+
             _meshes[mesh.Id] = GpuMesh.Upload(mesh);
         }
 
+        foreach (var stale in _meshes.Keys.Where(id => !current.Contains(id)).ToList())
+        {
+            _meshes[stale].Dispose();
+            _meshes.Remove(stale);
+        }
+
         _uploadedLibraryVersion = library.Version;
+    }
+
+    private void CreateImageQuad()
+    {
+        _imageQuadVao = GL.GenVertexArray();
+        GL.BindVertexArray(_imageQuadVao);
+        _imageQuadVbo = GL.GenBuffer();
+        GL.BindBuffer(BufferTarget.ArrayBuffer, _imageQuadVbo);
+        GL.BufferData(BufferTarget.ArrayBuffer, ShaderSources.ImageQuadCorners.Length * sizeof(float), ShaderSources.ImageQuadCorners, BufferUsageHint.StaticDraw);
+        GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
+        GL.EnableVertexAttribArray(0);
+        GL.BindVertexArray(0);
+    }
+
+    /// <summary>Draws the designer's reference image as a textured quad (texture uploaded once per image).</summary>
+    private void DrawReferenceImage(RenderFrame frame, ReferenceImageLayer layer)
+    {
+        if (_imageProgram is null || layer.Image.Rgba is not { } rgba) return; // encoded-only images need a browser to decode
+
+        if (_imageTextureKey != layer.Image.Key)
+        {
+            if (_imageTexture == 0) _imageTexture = GL.GenTexture();
+            GL.BindTexture(TextureTarget.Texture2D, _imageTexture);
+            GL.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba8, layer.Image.PixelWidth, layer.Image.PixelHeight, 0, PixelFormat.Rgba, PixelType.UnsignedByte, rgba);
+            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.LinearMipmapLinear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+            _imageTextureKey = layer.Image.Key;
+        }
+
+        if (layer.AboveScene) GL.Disable(EnableCap.DepthTest);
+        _imageProgram.Use();
+        _imageProgram.Set("uView", frame.View);
+        _imageProgram.Set("uProjection", frame.Projection);
+        _imageProgram.Set("uImageMin", layer.Min);
+        _imageProgram.Set("uImageMax", layer.Max);
+        _imageProgram.Set("uImageHeight", layer.Height);
+        _imageProgram.Set("uOpacity", layer.Opacity);
+        _imageProgram.Set("uImage", 0);
+        GL.ActiveTexture(TextureUnit.Texture0);
+        GL.BindTexture(TextureTarget.Texture2D, _imageTexture);
+        GL.BindVertexArray(_imageQuadVao);
+        GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
+        GL.Enable(EnableCap.DepthTest);
     }
 
     private void DrawObject(GlShaderProgram program, in RenderObject obj)
@@ -169,6 +246,10 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
         program.Set("uWaveAmplitude", water.WaveAmplitude);
         program.Set("uWaveFrequency", water.WaveFrequency);
         program.Set("uWaveSpeed", water.WaveSpeed);
+        program.Set("uSkyReflection", Math.Clamp(water.SkyReflection, 0f, 1f));
+        program.Set("uRipples", Math.Clamp(water.Ripples, 0f, 2f));
+        program.Set("uSunGlints", Math.Clamp(water.SunGlints, 0f, 2f));
+        program.Set("uFloatMotion", Math.Clamp(water.BoatMotion, 0f, 3f));
     }
 
     private sealed class GpuMesh : IDisposable
@@ -178,9 +259,11 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
         private int _ebo;
         private int _indexCount;
 
+        public MeshData Source { get; private init; } = null!;
+
         public static GpuMesh Upload(MeshData mesh)
         {
-            var gpu = new GpuMesh { _indexCount = mesh.Indices.Length };
+            var gpu = new GpuMesh { _indexCount = mesh.Indices.Length, Source = mesh };
             gpu._vao = GL.GenVertexArray();
             GL.BindVertexArray(gpu._vao);
 

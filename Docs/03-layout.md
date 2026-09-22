@@ -1,145 +1,167 @@
-# Layout: docks, slips, dividers and land
+﻿# Layout: piers, berths, dividers and land
 
 A marina is a `MarinaLayout`:
 
 | Property | Contents |
 |---|---|
 | `Name` | Marina name (`IMarinaVisualizer.MarinaName`) |
-| `Docks` | `Dock` records |
-| `Slips` | `Slip` records, each referencing a dock by `DockId`, or a land area by `LandAreaId` for [land slips](#land-slips) |
-| `Dividers` | Finger piers, pile rows and booms between slips |
-| `MultiSlipBerths` | Boats spanning several slips (see [Multi-slip berths](05-multi-slip-berths.md)) |
+| `Piers` | `Pier` records |
+| `Berths` | `Berth` records, each referencing a pier by `PierId`, or a land area by `LandAreaId` for [land berths](#land-berths) |
+| `Dividers` | Finger piers, pile rows, booms and single piles between berths |
+| `MultiBerths` | Boats spanning several berths (see [Multi-berths](05-multi-berths.md)) |
 | `LandAreas` | Polygon quays, breakwaters and lawns (see [Land areas](#land-areas)) |
 
 Load it with `InitializeLayout(layout)`. This replaces everything, clears the selection, rebuilds the camera presets and resets the camera. Save the current state with `GetLayout()`, which round-trips through `InitializeLayout`.
 
 ## Building a layout
 
-### With `MarinaLayoutBuilder` (slips positioned along docks)
+### With `MarinaLayoutBuilder` (berths positioned along piers)
 
 ```csharp
 var layout = new MarinaLayoutBuilder("VirtualMarina Harbor")
     .AddLandArea(new LandArea("quay", new[] { new Vector2(-130, -32), new Vector2(130, -32), new Vector2(130, -6), new Vector2(-130, -6) }, 1.0f))
     .AddLandArea(new LandArea("yard", yardOutline, 1.0f) { Name = "Boatyard" }, yard => yard
-        .AddSlips("Y-", firstPosition: new Vector2(-120, -45), rowHeadingDegrees: 90, count: 8, slipWidth: 5.5f, slipLength: 12))
-    .AddDock("A", "Dock A", start: new Vector2(80, -6), headingDegrees: 0, length: 72, dock => dock
-        .AddSlips(DockSide.Left, count: 12, slipWidth: 5.5f, slipLength: 13,
-                  customize: (i, slip) => slip with { Status = SlipStatus.Occupied, Boat = boats[i] })
-        .AddSlips(DockSide.Right, count: 12, slipWidth: 5.5f, slipLength: 13, dividers: DividerType.Piles)
-        .AddSlip("A-GUEST", DockSide.Right, offsetAlong: 68, slipWidth: 8, slipLength: 16),
-        width: 3.5f, type: DockType.Concrete)
-    .AddMultiSlipBerth(new MultiSlipBerth("BIG", new[] { "A-L10", "A-L11", "A-L12" }, superyacht))
+        .AddBerths("Y-", firstPosition: new Vector2(-120, -45), rowHeadingDegrees: 90, count: 8, berthWidth: 5.5f, berthLength: 12))
+    .AddPier("A", "Pier A", start: new Vector2(80, -6), headingDegrees: 0, length: 72, pier => pier
+        .AddBerths(PierSide.Left, count: 12, berthWidth: 5.5f, berthLength: 13,
+                  customize: (i, berth) => berth with { Status = BerthStatus.Occupied, Boat = boats[i] })
+        .AddBerths(PierSide.Right, count: 12, berthWidth: 5.5f, berthLength: 13, dividers: DividerType.Piles)
+        .AddBerth("A-GUEST", PierSide.Right, offsetAlong: 68, berthWidth: 8, berthLength: 16),
+        width: 3.5f, type: PierType.Concrete)
+    .AddMultiBerth(new MultiBerth("BIG", new[] { "A-L10", "A-L11", "A-L12" }, superyacht))
     .Build();
 ```
 
-**`DockBuilder.AddSlips(side, count, slipWidth, slipLength, customize, startOffset = 2, gap = 0, dividers = null)`**
-- Slips are perpendicular to the dock with their bows toward it.
-- Ids are `{DockId}-L01…` or `{DockId}-R01…`, and numbering continues across calls on the same side.
-- `startOffset` is the distance from the dock's start to the first slip (it only applies to the first call on a side).
-- `dividers`: when set, a divider of that type is generated at every slip boundary and the slips' automatic finger piers are turned off.
+**`PierBuilder.AddBerths(side, count, berthWidth, berthLength, customize, startOffset = 2, gap = 0, dividers = null)`**
+- Berths are perpendicular to the pier with their bows toward it.
+- Ids are `{PierId}-L01…` or `{PierId}-R01…`, and numbering continues across calls on the same side.
+- `startOffset` is the distance from the pier's start to the first berth (it only applies to the first call on a side).
+- `dividers`: when set, a divider of that type is generated at every berth boundary and the berths' automatic finger piers are turned off.
 
-**`DockBuilder.AddSlip(id, side, offsetAlong, slipWidth, slipLength, customize)`** adds one slip at an explicit distance from the dock's start.
+**`PierBuilder.AddBerth(id, side, offsetAlong, berthWidth, berthLength, customize)`** adds one berth at an explicit distance from the pier's start.
 
-**`DockBuilder.AddSlip(Slip)`** and **`DockBuilder.AddDivider(Divider)`** add absolutely positioned elements (the `DockId` is set for you).
+**`PierBuilder.AddBerth(Berth)`** and **`PierBuilder.AddDivider(Divider)`** add absolutely positioned elements (the `PierId` is set for you).
 
-**`LandAreaBuilder.AddSlip(id, position, headingDegrees, length, width, customize)`** and **`LandAreaBuilder.AddSlips(idPrefix, firstPosition, rowHeadingDegrees, count, slipWidth, slipLength, customize, gap = 0.5, boatHeadingDegrees = row − 90°)`** add [land slips](#land-slips) to the land area passed to `MarinaLayoutBuilder.AddLandArea(landArea, configure)`. Row ids are `{idPrefix}01…` and continue across calls with the same prefix.
+**`LandAreaBuilder.AddBerth(id, position, headingDegrees, length, width, customize)`** and **`LandAreaBuilder.AddBerths(idPrefix, firstPosition, rowHeadingDegrees, count, berthWidth, berthLength, customize, gap = 0.5, boatHeadingDegrees = row − 90°)`** add [land berths](#land-berths) to the land area passed to `MarinaLayoutBuilder.AddLandArea(landArea, configure)`. Row ids are `{idPrefix}01…` and continue across calls with the same prefix.
 
-**`MarinaLayoutBuilder.AddSlip`, `AddDivider` and `AddMultiSlipBerth`** add elements that aren't tied to the dock callback.
+**`MarinaLayoutBuilder.AddBerth`, `AddDivider` and `AddMultiBerth`** add elements that aren't tied to the pier callback.
 
 ### With explicit positions
 
 Every element can be placed by position, size and orientation:
 
 ```csharp
-var dock  = Dock.FromCenter("E", "Dock E", center: new Vector2(150, 30), length: 60, width: 3, headingDegrees: 0, DockType.FloatingWooden);
-var slip  = new Slip("E-01", "E", center: new Vector2(142.5f, 10), headingDegrees: 90, length: 12, width: 5);   // left of E, bow toward the dock
-var piles = new Divider("E-D1", start: new Vector2(148.5f, 7.5f), headingDegrees: -90, length: 12, DividerType.Piles) { DockId = "E" };
+var pier  = Pier.FromCenter("E", "Pier E", center: new Vector2(150, 30), length: 60, width: 3, headingDegrees: 0, PierType.FloatingWooden);
+var berth  = new Berth("E-01", "E", center: new Vector2(142.5f, 10), headingDegrees: 90, length: 12, width: 5);   // left of E, bow toward the pier
+var piles = new Divider("E-D1", start: new Vector2(148.5f, 7.5f), headingDegrees: -90, length: 12, DividerType.Piles) { PierId = "E" };
 
-var layout = new MarinaLayout { Name = "Custom", Docks = new[] { dock }, Slips = new[] { slip }, Dividers = new[] { piles } };
+var layout = new MarinaLayout { Name = "Custom", Piers = new[] { pier }, Berths = new[] { berth }, Dividers = new[] { piles } };
 ```
 
-### With `SlipGenerator` (compute geometry, add yourself)
+### With `BerthGenerator` (compute geometry, add yourself)
 
 | Method | Returns |
 |---|---|
-| `SlipGenerator.AlongDock(dock, side, count, slipWidth, slipLength, startOffset, gap, firstNumber)` | A row of slips |
-| `SlipGenerator.AtDock(dock, id, side, offsetAlong, slipWidth, slipLength)` | One slip |
-| `SlipGenerator.DividersAlongDock(dock, side, count, slipWidth, slipLength, type, startOffset, gap)` | Dividers at the boundaries of such a row |
+| `BerthGenerator.AlongPier(pier, side, count, berthWidth, berthLength, startOffset, gap, firstNumber)` | A row of berths |
+| `BerthGenerator.AtPier(pier, id, side, offsetAlong, berthWidth, berthLength)` | One berth |
+| `BerthGenerator.DividersAlongPier(pier, side, count, berthWidth, berthLength, type, startOffset, gap)` | Dividers at the boundaries of such a row |
 
-Useful when your ERP stores only slip numbers and dock dimensions.
+Useful when your ERP stores only berth numbers and pier dimensions.
 
-## Docks
+## Piers
 
 | Member | Meaning |
 |---|---|
-| `new Dock(id, name, start, headingDegrees, length, width = 2.5, type = FloatingWooden)` | Created from the shore-end point |
-| `Dock.FromCenter(id, name, center, length, width, headingDegrees, type)` | Created from the center point |
+| `new Pier(id, name, start, headingDegrees, length, width = 2.5, type = FloatingWooden)` | Created from the shore-end point |
+| `Pier.FromCenter(id, name, center, length, width, headingDegrees, type)` | Created from the center point |
 | `Start`, `End`, `Center`, `Direction`, `Right`, `Bounds` | Geometry (plan coordinates) |
-| `Type` | `DockType`: controls the look and the default deck height |
+| `Type` | `PierType`: controls the look and the default deck height |
 | `DeckHeight` | Deck height above water; defaults from `Type` unless set |
 | `PilingSpacing` | Column spacing (`Concrete`) or cleat spacing (`FloatingConcrete`); default 6 m |
-| `BerthingSides` | `DockSides.Both` (default), `Left` or `Right`: see [Single-sided docks](#single-sided-docks) |
+| `BerthingSides` | `PierSides.Both` (default), `Left` or `Right`: see [Single-sided piers](#single-sided-piers) |
+| `Services` | `PierServices.None` (default), `Power`, `Water` or `PowerAndWater`: see [Power and water pedestals](#power-and-water-pedestals) |
 | `HasBerthsOn(side)` | True when boats can berth on that side |
 | `WithCenter(center)` | Copy moved to a new center |
 
-| `DockType` | Rendering | Default deck height |
+| `PierType` | Rendering | Default deck height |
 |---|---|---|
 | `FloatingWooden` (default) | Plank deck with seams, walers, dark pontoon floats | 0.5 m |
 | `FloatingConcrete` | Monolithic pontoon, rubber fenders, section joints, cleats | 0.55 m |
 | `Concrete` | Fixed slab on square columns, curbs, bollards | 1.1 m |
 
-Automatic finger piers of slips and finger-pier dividers take the dock's material: wood for floating wooden docks, concrete otherwise.
+Automatic finger piers of berths and finger-pier dividers take the pier's material: wood for floating wooden piers, concrete otherwise.
 
-### Single-sided docks
+### Single-sided piers
 
-A dock that runs along the edge of a land area (a quay wall, a pontoon moored against a mole) only takes boats on its water side. Set `BerthingSides` to that side:
+A pier that runs along the edge of a land area (a quay wall, a pontoon moored against a mole) only takes boats on its water side. Set `BerthingSides` to that side:
 
 ```csharp
-// Heading 0° runs along +Z, so Left is −X: the land is on the +X side.
-var pontoon = new Dock("E", "Dock E (along the mole)", new Vector2(110.75f, -6), 0, 50, 2.5f, DockType.FloatingConcrete)
+// Heading 0° runs along +Z; looking that way, the right-hand side is −X (the water), the land is on the left (+X).
+var pontoon = new Pier("E", "Pier E (along the mole)", new Vector2(110.75f, -6), 0, 50, 2.5f, PierType.FloatingConcrete)
 {
-    BerthingSides = DockSides.Left,
+    BerthingSides = PierSides.Right,
 };
-builder.AddDock(pontoon, dock => dock.AddSlips(DockSide.Left, 9, 5, 10));
+builder.AddPier(pontoon, pier => pier.AddBerths(PierSide.Right, 9, 5, 10));
 ```
 
 - Mooring points are drawn on the open side only: bollards (`Concrete`), cleats and rubber fenders (`FloatingConcrete`).
-- `DockBuilder.AddSlips`, `SlipGenerator.AtDock`, `AlongDock` and `DividersAlongDock` throw `InvalidOperationException` for the closed side. Slips placed by absolute position aren't checked, so guest berths off the dock's end still work.
-- `DockUpdate.BerthingSides` changes it at runtime; existing slips are not moved or removed.
+- `PierBuilder.AddBerths`, `BerthGenerator.AtPier`, `AlongPier` and `DividersAlongPier` throw `InvalidOperationException` for the closed side. Berths placed by absolute position aren't checked, so guest berths off the pier's end still work.
+- `PierUpdate.BerthingSides` changes it at runtime; existing berths are not moved or removed.
 
-## Slips
+### Power and water pedestals
+
+`Pier.Services` draws supply pedestals along the pier. They appear on the berthing sides only, and only where berths exist: one for
+every two berths, standing between them, so each berth has exactly one within reach. A berth left on its own at the end of a row gets
+one halfway along it, and a stretch of pier without berths stays empty.
+
+```csharp
+marina.UpdatePier(new PierUpdate("A") { Services = PierServices.PowerAndWater });
+```
+
+| `PierServices` | Pedestal |
+|---|---|
+| `None` (default) | None |
+| `Power` | Yellow top |
+| `Water` | Blue top |
+| `PowerAndWater` | Yellow top with a blue band |
+
+Their colors come from `Style.Piers` (`PedestalColor`, `PowerColor`, `WaterColor`). The designer switches them on for you with
+`MarinaDesigner.BerthServices`.
+
+## Berths
 
 | Member | Meaning |
 |---|---|
-| `new Slip(id, dockId, center, headingDegrees, length, width)` | A Free slip along a dock |
-| `Slip.OnLand(id, landAreaId, position, headingDegrees = 0, length = 12, width = 5)` | A Free [land slip](#land-slips) |
-| `DockId` / `LandAreaId` | Exactly one is set; `IsOnLand` is true for land slips |
+| `new Berth(id, pierId, center, headingDegrees, length, width)` | A Free berth along a pier |
+| `Berth.OnLand(id, landAreaId, position, headingDegrees = 0, length = 12, width = 5)` | A Free [land berth](#land-berths) |
+| `PierId` / `LandAreaId` | Exactly one is set; `IsOnLand` is true for land berths |
 | `Label` / `DisplayName` | Display text (`DisplayName` falls back to `Id`) |
 | `Center`, `HeadingDegrees`, `Length`, `Width`, `Forward`, `Right`, `Bounds` | Geometry of the water area |
 | `MaxDraft` | Optional; shown in the default tooltip |
-| `Status`, `Boat` | See [Slip status, boats and flags](04-status-and-flags.md) |
+| `Status`, `Boat` | See [Berth status, boats and flags](04-status-and-flags.md) |
 | `HasFingerPiers` | Draw simple finger piers on both long sides (default true) |
 | `IsVisible`, `IsDisabled`, `IsReadOnly` | Interaction flags |
-| `BerthId` | Set by the visualizer for members of a multi-slip berth |
+| `MultiBerthId` | Set by the visualizer for members of a multi-berth |
 | `Metadata` | Read-only string attributes you supply |
-| `ExternalData` | Mutable host data bag (see [Selection, tooltips and actions](06-selection-tooltips-actions.md#external-data-on-slips)) |
+| `ExternalData` | Mutable host data bag (see [Selection, tooltips and actions](06-selection-tooltips-actions.md#external-data-on-berths)) |
 
-Each slip's water area gets a translucent status pad, a status buoy at the seaward end and, when it has a boat, the boat model.
+Each berth's water area gets a translucent status pad, a status buoy at the seaward end and, when it has a boat, the boat model.
 
 ## Dividers
 
 | Member | Meaning |
 |---|---|
 | `new Divider(id, start, headingDegrees, length, type = FingerPier)` / `Divider.FromCenter(...)` | Created from the start point or the center |
-| `DockId` | Optional owning dock: sets deck height and material, and the divider is removed with the dock |
+| `PierId` | Optional owning pier: sets deck height and material, and the divider is removed with the pier |
 | `Width` | Finger width, boom float size or pile diameter (default 0.8 m) |
 | `Spacing` | Distance between piles or boom floats (default 4 m) |
 
 | `DividerType` | Rendering |
 |---|---|
 | `FingerPier` | Narrow walkable pier with a pile at its end |
-| `Piles` | Row of mooring piles (wood, or steel next to concrete docks) |
+| `Piles` | Row of mooring piles (wood, or steel next to concrete piers) |
 | `Boom` | Dark line with orange floats (yellow at the ends) bobbing on the water |
+| `SinglePile` | One mooring pile at the outer end of the boundary, nothing in between (Mediterranean mooring) |
 
 ## Land areas
 
@@ -160,7 +182,7 @@ var lawn = new LandArea("lawn", new OrientedRect(new Vector2(95, -24), new Vecto
 
 | Member | Meaning |
 |---|---|
-| `Id` | Unique (case-insensitive); land slips reference it |
+| `Id` | Unique (case-insensitive); land berths reference it |
 | `Name` / `DisplayName` | Optional display name, used in tooltips (`DisplayName` falls back to `Id`) |
 | `Points` | Outline, at least 3 points. Convex or concave, either winding, edges must not cross, don't repeat the first point |
 | `Height` | Top surface above the water, 0–50 m |
@@ -173,69 +195,74 @@ var lawn = new LandArea("lawn", new OrientedRect(new Vector2(95, -24), new Vecto
 | `Grass` | Solid green block |
 | `Breakwater` | Rubble mound: the outline is filled with irregular rocks that reach `Height` in the middle and slope down to the water at the edges |
 
-Each land area gets its own world-space mesh (`MeshIds.ForLand(index)`, built by `LandMeshFactory`) when the layout is loaded. Land areas themselves aren't interactive; read them with `GetLandArea(id)` and `GetLandAreas()`.
+Each land area gets its own world-space mesh (`MeshIds.ForLand(slot)`, built by `LandMeshFactory`), built when the layout is loaded or the land area is added or updated. Land areas themselves aren't clickable; read them with `GetLandArea(id)` and `GetLandAreas()`, and change them with `AddLandArea`, `UpdateLandArea` and `RemoveLandArea`.
 
 `PolygonMath` has the helpers used for outlines: `SignedArea`, `Contains`, `DistanceToBoundary`, `IsSimple` and `Triangulate`.
 
-## Land slips
+## Land berths
 
-A land slip is a spot on a land area where a boat is stored or maintained ashore (boatyard, hard standing, maintenance area). It is an ordinary `Slip` with `LandAreaId` set instead of `DockId`, so status, boats, flags, selection, tooltips, actions, labels, focus, filters and events all work the same, with the same status colors.
+A land berth is a spot on a land area where a boat is stored or maintained ashore (boatyard, hard standing, maintenance area). It is an ordinary `Berth` with `LandAreaId` set instead of `PierId`, so status, boats, flags, selection, tooltips, actions, labels, focus, filters and events all work the same, with the same status colors.
 
 ```csharp
-var spot = Slip.OnLand("Y-01", "yard", position: new Vector2(-120, -45), headingDegrees: 180, length: 12, width: 5.5f)
-    with { Status = SlipStatus.Occupied, Boat = boat };
-marina.AddSlip(spot);
+var spot = Berth.OnLand("Y-01", "yard", position: new Vector2(-120, -45), headingDegrees: 180, length: 12, width: 5.5f)
+    with { Status = BerthStatus.Occupied, Boat = boat };
+marina.AddBerth(spot);
 
-IReadOnlyList<Slip> stored = marina.GetSlipsByLandArea("yard");
+IReadOnlyList<Berth> stored = marina.GetBerthsByLandArea("yard");
 ```
 
 - **Drawn on the land:** a status pad on the surface, a status post with a colored ball at the rear (instead of a buoy), and the name on the ground when labels are on. No finger piers.
-- **Boats ashore** are centered on the spot, don't bob, and rest on keel blocks and cradle stands with the keel `SlipPlacement.CradleHeight` (0.7 m) above the land. Reserved and temporarily free spots show the usual ghost boat.
-- **Events:** `SlipEventArgs.Dock` is null and `SlipEventArgs.LandArea` is set. The default tooltip's subtitle reads "On land · {land area name}".
+- **Boats ashore** are centered on the spot, don't bob, and rest on keel blocks and cradle stands with the keel `BerthPlacement.CradleHeight` (0.7 m) above the land. Reserved and temporarily free spots show the usual ghost boat.
+- **Events:** `BerthEventArgs.Pier` is null and `BerthEventArgs.LandArea` is set. The default tooltip's subtitle reads "On land · {land area name}".
 - **Moving a boat** between the water and the land is a batch of two updates:
 
   ```csharp
-  marina.BatchUpdate(new[] { SlipUpdate.Free("A-L03"), SlipUpdate.Occupy("Y-01", boat) });
+  marina.BatchUpdate(new[] { BerthUpdate.Free("A-L03"), BerthUpdate.Occupy("Y-01", boat) });
   ```
 
-- Validation rejects a land slip whose land area doesn't exist, or a slip with both `DockId` and `LandAreaId`.
+- Validation rejects a land berth whose land area doesn't exist, or a berth with both `PierId` and `LandAreaId`.
 
 ## Changing the layout at runtime
 
-| Docks | Dividers | Slips |
+| Piers | Dividers | Berths |
 |---|---|---|
-| `AddDock(dock)` | `AddDivider(divider)` / `AddDividers(...)` | `AddSlip(slip)` / `AddSlip(id, dockId, center, heading, length, width, label)` / `AddSlips(...)` |
-| `UpdateDock(dock)` / `UpdateDock(DockUpdate)` | `UpdateDivider(divider)` | `UpdateSlip(slip)` / `UpdateSlip(SlipUpdate)` |
-| `RemoveDock(id, removeSlips = true)` | `RemoveDivider(id)` | `RemoveSlip(id)` |
-| `GetDock`, `GetDocks` | `GetDivider`, `GetDividers`, `GetDividersByDock` | `GetSlip`, `GetSlips`, `GetSlipsByDock`, `GetSlipsByLandArea`, `GetSlipsByStatus` |
+| `AddPier(pier)` | `AddDivider(divider)` / `AddDividers(...)` | `AddBerth(berth)` / `AddBerth(id, pierId, center, heading, length, width, label)` / `AddBerths(...)` |
+| `UpdatePier(pier)` / `UpdatePier(PierUpdate)` | `UpdateDivider(divider)` | `UpdateBerth(berth)` / `UpdateBerth(BerthUpdate)` |
+| `RemovePier(id, removeBerths = true)` | `RemoveDivider(id)` | `RemoveBerth(id)` / `RenameBerth(id, newId)` |
+| `GetPier`, `GetPiers` | `GetDivider`, `GetDividers`, `GetDividersByPier` | `GetBerth`, `GetBerths`, `GetBerthsByPier`, `GetBerthsByLandArea`, `GetBerthsByStatus` |
 
-Land areas are set with the layout (`InitializeLayout`) and read with `GetLandArea` and `GetLandAreas`.
+| Land areas | |
+|---|---|
+| `AddLandArea(land)`, `UpdateLandArea(land)`, `RemoveLandArea(id, removeBerths = true)` | `GetLandArea`, `GetLandAreas`, `GetBerthsByLandArea` |
 
-- **Moving a dock doesn't move its slips.** Slips and dividers have absolute positions, so move them explicitly if needed.
-- **`DockUpdate`** keeps the dock's center when only length or heading changes:
+`ExportObjects()` returns everything as one array of records (land areas, piers, dividers, berths and multi-berths); `MarinaLayout.FromObjects` turns such an array back into a layout. To draw layouts interactively, see [Designer](12-designer.md).
 
-  ```csharp
-  marina.UpdateDock(new DockUpdate("E") { Length = 80, HeadingDegrees = 10, Type = DockType.FloatingConcrete });
-  marina.UpdateDock(new DockUpdate("E") { Center = new Vector2(160, 30) });
-  ```
-
-- **`SlipUpdate`** applies only the members you set:
+- **Moving a pier doesn't move its berths.** Berths and dividers have absolute positions, so move them explicitly if needed.
+- **`PierUpdate`** keeps the pier's center when only length or heading changes:
 
   ```csharp
-  marina.UpdateSlip(SlipUpdate.Geometry("E-01", center: new Vector2(143, 12), width: 6));
-  marina.UpdateSlip(new SlipUpdate("E-01") { Label = "E-1", HasFingerPiers = false, MaxDraft = 2.8f });
+  marina.UpdatePier(new PierUpdate("E") { Length = 80, HeadingDegrees = 10, Type = PierType.FloatingConcrete });
+  marina.UpdatePier(new PierUpdate("E") { Center = new Vector2(160, 30) });
   ```
 
-- **`RemoveDock`** also removes the dock's dividers. With `removeSlips: false` it throws if slips remain.
-- **`RemoveSlip`** drops the slip from the selection and shrinks or dissolves its multi-slip berth.
+- **`BerthUpdate`** applies only the members you set:
+
+  ```csharp
+  marina.UpdateBerth(BerthUpdate.Geometry("E-01", center: new Vector2(143, 12), width: 6));
+  marina.UpdateBerth(new BerthUpdate("E-01") { Label = "E-1", HasFingerPiers = false, MaxDraft = 2.8f });
+  ```
+
+- **`RemovePier`** also removes the pier's dividers. With `removeBerths: false` it throws if berths remain.
+- **`RemoveBerth`** drops the berth from the selection and shrinks or dissolves its multi-berth.
+- **`RenameBerth`** gives a berth another id, keeping its place, boat, status, `ExternalData`, place in the selection and multi-berth, and raises `BerthRenamed`. It throws when the new id is taken. The id is what an ERP stores against a contract, so `Berth.Label` — a display name that leaves the id alone — is often the better answer; the [designer](12-designer.md#renaming-one-element) renames berths this way with an undo step.
 
 ## Batching changes
 
-- **`BatchUpdate(IEnumerable<SlipUpdate>)`** applies all updates with one scene rebuild and one `LayoutChanged` (`BatchUpdated`). Failures are returned instead of thrown:
+- **`BatchUpdate(IEnumerable<BerthUpdate>)`** applies all updates with one scene rebuild and one `LayoutChanged` (`BatchUpdated`). Failures are returned instead of thrown:
 
   ```csharp
   BatchUpdateResult result = marina.BatchUpdate(updates);
-  if (!result.Succeeded) foreach (var err in result.Errors) log($"{err.SlipId}: {err.Message}");
+  if (!result.Succeeded) foreach (var err in result.Errors) log($"{err.BerthId}: {err.Message}");
   ```
 
 - **`BeginUpdate()`** coalesces `LayoutChanged` notifications and defers popup refreshes for any mix of calls:
@@ -243,10 +270,10 @@ Land areas are set with the layout (`InitializeLayout`) and read with `GetLandAr
   ```csharp
   using (marina.BeginUpdate())
   {
-      marina.AddDock(dock);
-      marina.AddSlips(SlipGenerator.AlongDock(dock, DockSide.Left, 10, 5, 12));
-      marina.AddDividers(SlipGenerator.DividersAlongDock(dock, DockSide.Left, 10, 5, 12, DividerType.Boom));
+      marina.AddPier(pier);
+      marina.AddBerths(BerthGenerator.AlongPier(pier, PierSide.Left, 10, 5, 12));
+      marina.AddDividers(BerthGenerator.DividersAlongPier(pier, PierSide.Left, 10, 5, 12, DividerType.Boom));
   }   // one LayoutChanged(BatchUpdated) here
   ```
 
-`SlipStatusChanged` is still raised once per affected slip.
+`BerthStatusChanged` is still raised once per affected berth.

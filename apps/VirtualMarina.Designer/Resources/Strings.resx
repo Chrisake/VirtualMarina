@@ -1,0 +1,805 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Displayed text for VirtualMarina.Designer. To translate it, copy this file next to it as Strings.<culture>.resx
+    (e.g. Strings.el.resx), translate the <value> elements only, and leave the names untouched.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- Application -->
+  <data name="AppName">
+    <value>VirtualMarina Designer</value>
+    <comment>Window title and message box caption. Usually left untranslated.</comment>
+  </data>
+  <data name="WindowTitle">
+    <value>{0}{1} — {2}</value>
+    <comment>{0} = "*" when unsaved, {1} = file or marina name, {2} = AppName.</comment>
+  </data>
+  <data name="UnsavedMarker">
+    <value>*</value>
+    <comment>Put in front of the title while there are unsaved changes.</comment>
+  </data>
+  <data name="NewMarinaName">
+    <value>New marina</value>
+    <comment>Name a brand-new design starts with.</comment>
+  </data>
+  <data name="DefaultFileName">
+    <value>marina</value>
+    <comment>Used when the marina name has no characters a file name can keep.</comment>
+  </data>
+  <!-- Menu: File -->
+  <data name="MenuFile">
+    <value>&amp;File</value>
+  </data>
+  <data name="MenuNew">
+    <value>&amp;New marina</value>
+  </data>
+  <data name="MenuOpen">
+    <value>&amp;Open design…</value>
+  </data>
+  <data name="MenuSave">
+    <value>&amp;Save</value>
+  </data>
+  <data name="MenuSaveAs">
+    <value>Save &amp;as…</value>
+  </data>
+  <data name="MenuLoadImage">
+    <value>&amp;Load reference image…</value>
+  </data>
+  <data name="MenuExit">
+    <value>E&amp;xit</value>
+  </data>
+  <!-- Menu: Edit -->
+  <data name="MenuEdit">
+    <value>&amp;Edit</value>
+  </data>
+  <data name="MenuUndo">
+    <value>&amp;Undo</value>
+  </data>
+  <data name="MenuCancelDraft">
+    <value>&amp;Cancel what I am drawing</value>
+  </data>
+  <data name="MenuMarinaProperties">
+    <value>Marina &amp;name and description…</value>
+  </data>
+  <!-- Menu: View -->
+  <data name="MenuView">
+    <value>&amp;View</value>
+  </data>
+  <data name="MenuTopView">
+    <value>&amp;Top view, north up</value>
+  </data>
+  <data name="MenuFitMarina">
+    <value>&amp;Fit the whole marina</value>
+  </data>
+  <data name="MenuFitImage">
+    <value>Fit the reference &amp;image</value>
+  </data>
+  <data name="MenuShowLog">
+    <value>Show &amp;activity log</value>
+  </data>
+  <!-- Menu: Marina and Help -->
+  <data name="MenuMarina">
+    <value>&amp;Marina</value>
+  </data>
+  <data name="MenuAppearance">
+    <value>&amp;Water, light and motion…</value>
+  </data>
+  <data name="MenuBerthLabels">
+    <value>Berth &amp;labels</value>
+  </data>
+  <data name="MenuHelp">
+    <value>&amp;Help</value>
+  </data>
+  <data name="MenuShortcuts">
+    <value>&amp;Keyboard and mouse…</value>
+  </data>
+  <data name="MenuAbout">
+    <value>&amp;About</value>
+  </data>
+  <!-- Toolbar -->
+  <data name="ToolNavigate">
+    <value>Navigate</value>
+  </data>
+  <data name="ToolNavigateTip">
+    <value>Look around without changing anything (Esc)</value>
+  </data>
+  <data name="ToolLand">
+    <value>Land</value>
+  </data>
+  <data name="ToolLandTip">
+    <value>Draw a quay, a lawn or a breakwater as a polygon</value>
+  </data>
+  <data name="ToolPier">
+    <value>Pier</value>
+  </data>
+  <data name="ToolPierTip">
+    <value>Draw a pier from the shore out</value>
+  </data>
+  <data name="ToolBerths">
+    <value>Berths</value>
+  </data>
+  <data name="ToolBerthsTip">
+    <value>Fill a stretch of pier with berths</value>
+  </data>
+  <data name="ToolAshore">
+    <value>Ashore</value>
+  </data>
+  <data name="ToolAshoreTip">
+    <value>Put a boat's storage spot on land</value>
+  </data>
+  <data name="ToolTrees">
+    <value>Trees</value>
+  </data>
+  <data name="ToolTreesTip">
+    <value>Scatter trees over a lawn</value>
+  </data>
+  <data name="ToolErase">
+    <value>Erase</value>
+  </data>
+  <data name="ToolEraseTip">
+    <value>Remove what you click</value>
+  </data>
+  <data name="Undo">
+    <value>Undo</value>
+  </data>
+  <data name="UndoTip">
+    <value>Undo the last change (Ctrl+Z)</value>
+  </data>
+  <data name="UndoTipWith">
+    <value>Undo: {0} (Ctrl+Z)</value>
+    <comment>{0} = what would be undone.</comment>
+  </data>
+  <data name="NothingToUndo">
+    <value>Nothing to undo</value>
+  </data>
+  <data name="CommandTopView">
+    <value>Top view</value>
+  </data>
+  <data name="CommandTopViewTip">
+    <value>Look straight down with north up (Ctrl+T)</value>
+  </data>
+  <data name="CommandFitMarina">
+    <value>Fit marina</value>
+  </data>
+  <data name="CommandFitMarinaTip">
+    <value>Frame the whole marina (Ctrl+F)</value>
+  </data>
+  <data name="CommandReferenceImage">
+    <value>Reference image…</value>
+  </data>
+  <data name="CommandReferenceImageTip">
+    <value>Trace a map or aerial photo to get the real shape and scale (Ctrl+I)</value>
+  </data>
+  <!-- Status bar and log -->
+  <data name="StatusCamera">
+    <value>Eye {0:0} m · tilt {1:0}°</value>
+    <comment>{0} = distance to the camera target, {1} = tilt above the horizon.</comment>
+  </data>
+  <data name="StatusPointer">
+    <value>x {0:0.0} m · y {1:0.0} m</value>
+    <comment>Position of the pointer in plan coordinates.</comment>
+  </data>
+  <data name="LogHeader">
+    <value>ACTIVITY LOG</value>
+  </data>
+  <data name="LogEntry">
+    <value>{0:HH:mm:ss}  {1}</value>
+    <comment>{0} = time, {1} = the message.</comment>
+  </data>
+  <data name="LogNewMarina">
+    <value>New marina. Load a reference image to trace the real shape, or start with the land tool.</value>
+  </data>
+  <data name="LogAddedLand">
+    <value>Added {0}: {1} corners, {2:0} m²</value>
+    <comment>{0} = land area name, {1} = number of corners, {2} = area.</comment>
+  </data>
+  <data name="LogAddedPier">
+    <value>Added pier {0}: {1:0.0} × {2:0.0} m</value>
+    <comment>{0} = pier name, {1} = length, {2} = width.</comment>
+  </data>
+  <data name="LogAddedBerth">
+    <value>Added berth {0}</value>
+    <comment>{0} = berth name.</comment>
+  </data>
+  <data name="LogAddedBerths">
+    <value>Added {0} berths: {1}</value>
+    <comment>{0} = count, {1} = the berth names.</comment>
+  </data>
+  <data name="LogRemoved">
+    <value>Removed {0} ({1} berth(s), {2} separator(s))</value>
+    <comment>{0} = what was removed, {1} and {2} = what went with it.</comment>
+  </data>
+  <data name="LogTrees">
+    <value>{0}: {1} trees (was {2})</value>
+    <comment>{0} = land area name, {1} = trees now, {2} = trees before.</comment>
+  </data>
+  <data name="LogUndone">
+    <value>Undone: {0}</value>
+    <comment>{0} = description of the undone step.</comment>
+  </data>
+  <data name="LogScaleLine">
+    <value>Scale line drawn: {0:0.0} m at the current image scale</value>
+  </data>
+  <data name="LogReferenceImage">
+    <value>Reference image {0} ({1:0.####} m per pixel)</value>
+    <comment>{0} = what changed, {1} = the scale.</comment>
+  </data>
+  <data name="LogRendererError">
+    <value>Renderer: {0}</value>
+    <comment>{0} = the error message.</comment>
+  </data>
+  <data name="LogOpened">
+    <value>Opened {0}: {1} berths, {2} piers</value>
+    <comment>{0} = file name, {1} and {2} = what it holds.</comment>
+  </data>
+  <data name="LogOpenedNewerVersion" xml:space="preserve">
+    <value> (written by a newer version, {0})</value>
+    <comment>Appended to LogOpened. {0} = that file’s format version.</comment>
+  </data>
+  <data name="LogSaved">
+    <value>Saved {0} ({1} berths)</value>
+    <comment>{0} = file name, {1} = number of berths.</comment>
+  </data>
+  <data name="LogImageLoaded">
+    <value>Loaded {0}. Draw a line over something of a known length, then type that length.</value>
+    <comment>{0} = file name.</comment>
+  </data>
+  <data name="LogBerthLabelsShown">
+    <value>Berth labels shown</value>
+  </data>
+  <data name="LogBerthLabelsHidden">
+    <value>Berth labels hidden</value>
+  </data>
+  <data name="LogFailed">
+    <value>{0}: {1}</value>
+    <comment>{0} = what failed, {1} = the reason.</comment>
+  </data>
+  <!-- File dialogs and messages -->
+  <data name="OpenDesignTitle">
+    <value>Open a marina design</value>
+  </data>
+  <data name="SaveDesignTitle">
+    <value>Save the marina design</value>
+  </data>
+  <data name="OpenImageTitle">
+    <value>Top-down image of the marina (north at the top)</value>
+  </data>
+  <data name="OpenFailed">
+    <value>The design could not be opened</value>
+  </data>
+  <data name="SaveFailed">
+    <value>The design could not be saved</value>
+  </data>
+  <data name="ImageLoadFailed">
+    <value>The image could not be loaded</value>
+  </data>
+  <data name="WarnBody">
+    <value>{0}:
+
+{1}</value>
+    <comment>{0} = what failed, {1} = the reason.</comment>
+  </data>
+  <data name="ConfirmDiscard">
+    <value>Save the changes to {0} first?</value>
+    <comment>{0} = file or marina name.</comment>
+  </data>
+  <data name="MarinaNameTitle">
+    <value>Marina name</value>
+  </data>
+  <data name="MarinaNameQuestion">
+    <value>What is this marina called?</value>
+  </data>
+  <data name="DialogOk">
+    <value>OK</value>
+  </data>
+  <data name="DialogCancel">
+    <value>Cancel</value>
+  </data>
+  <!-- Help -->
+  <data name="ShortcutsTitle">
+    <value>Keyboard and mouse</value>
+  </data>
+  <data name="ShortcutsBody">
+    <value>Mouse
+  Left drag           pan the view
+  Right drag          orbit
+  Wheel               zoom
+  Click               use the tool in hand
+  Right click         finish a shape (land area), or clear the trees under it
+
+Keys
+  Esc                 cancel what you are drawing, then back to Navigate
+  Enter               finish the land area you are drawing
+  Backspace           take back the last corner
+  Delete              remove what the eraser points at
+  Ctrl+Z              undo the last change
+  Shift (while drawing)   snap a pier or a bow direction to 15° steps
+  Alt (while drawing)     ignore the snapping to corners and edges</value>
+    <comment>Keep the columns lined up when translating.</comment>
+  </data>
+  <data name="AboutTitle">
+    <value>About</value>
+  </data>
+  <data name="AboutBody">
+    <value>{0} {1}
+
+Draw a marina to scale and save it as a .marina.json design.
+The host application loads that file with MarinaDocument.Load(path).ApplyTo(marina),
+which brings the layout, the water and light settings, the berth labels and the camera with it.
+
+Renderer: {2}</value>
+    <comment>{0} = application name, {1} = version, {2} = the graphics backend.</comment>
+  </data>
+  <!-- Inspector: headings -->
+  <data name="CardLandArea">
+    <value>Land area</value>
+  </data>
+  <data name="CardPier">
+    <value>Pier</value>
+  </data>
+  <data name="CardBerths">
+    <value>Berths</value>
+  </data>
+  <data name="CardStorageAshore">
+    <value>Storage ashore</value>
+  </data>
+  <data name="CardTrees">
+    <value>Trees</value>
+  </data>
+  <data name="CardErase">
+    <value>Erase</value>
+  </data>
+  <data name="CardReferenceImage">
+    <value>Reference image</value>
+  </data>
+  <data name="CardSummary">
+    <value>This marina</value>
+  </data>
+  <data name="TitleNavigate">
+    <value>Navigate</value>
+  </data>
+  <data name="TitleLandArea">
+    <value>Land area</value>
+  </data>
+  <data name="TitlePier">
+    <value>Pier</value>
+  </data>
+  <data name="TitleBerths">
+    <value>Berths</value>
+  </data>
+  <data name="TitleStorageAshore">
+    <value>Storage ashore</value>
+  </data>
+  <data name="TitleTrees">
+    <value>Trees</value>
+  </data>
+  <data name="TitleErase">
+    <value>Erase</value>
+  </data>
+  <data name="TitleMoveImage">
+    <value>Move the image</value>
+  </data>
+  <data name="TitleMeasureScale">
+    <value>Set the scale</value>
+  </data>
+  <!-- Inspector: land area -->
+  <data name="LandSurface">
+    <value>Surface</value>
+  </data>
+  <data name="LandSurfaceTip">
+    <value>What the area is made of. Lawns can have trees on them.</value>
+  </data>
+  <data name="LandHeight">
+    <value>Height (m)</value>
+  </data>
+  <data name="LandHeightTip">
+    <value>How far the surface stands above the water.</value>
+  </data>
+  <data name="LandHint">
+    <value>Click each corner in the view, then press Enter (or click the first corner) to close the shape.</value>
+  </data>
+  <!-- Inspector: pier -->
+  <data name="PierConstruction">
+    <value>Construction</value>
+  </data>
+  <data name="PierConstructionTip">
+    <value>Floating pontoon or fixed concrete pier; it sets the deck height and the look.</value>
+  </data>
+  <data name="PierWidth">
+    <value>Deck width (m)</value>
+  </data>
+  <data name="PierBerths">
+    <value>Berths</value>
+  </data>
+  <data name="PierBerthsTip">
+    <value>A pier along a quay wall or a mole only takes boats on its water side.</value>
+  </data>
+  <data name="PierHint">
+    <value>Click the shore end, then the far end. Hold Shift to snap the direction to 15° steps.</value>
+  </data>
+  <data name="PierName">
+    <value>Name</value>
+  </data>
+  <data name="PierNameTip">
+    <value>Name given to each new pier. {pier} stands for its letter, so "Pier {pier}" gives "Pier A".</value>
+  </data>
+  <!-- Inspector: berths -->
+  <data name="BerthWidth">
+    <value>Width (m)</value>
+  </data>
+  <data name="BerthWidthTip">
+    <value>Across the berth: the widest boat that fits.</value>
+  </data>
+  <data name="BerthLength">
+    <value>Length (m)</value>
+  </data>
+  <data name="BerthLengthTip">
+    <value>Away from the pier: the longest boat that fits.</value>
+  </data>
+  <data name="BerthDepth">
+    <value>Depth (m)</value>
+  </data>
+  <data name="BerthDepthTip">
+    <value>Water depth, stored as the berth's maximum draft.</value>
+  </data>
+  <data name="BerthSeparator">
+    <value>Separator</value>
+  </data>
+  <data name="BerthGap">
+    <value>Gap (m)</value>
+  </data>
+  <data name="BerthGapTip">
+    <value>Space left between neighbouring berths.</value>
+  </data>
+  <data name="AlignBerths">
+    <value>Continue the row already on that side</value>
+  </data>
+  <data name="BerthServices">
+    <value>Pedestals</value>
+  </data>
+  <data name="BerthServicesTip">
+    <value>Power and water points, placed between every two berths of the pier.</value>
+  </data>
+  <data name="BerthHint">
+    <value>Click beside a pier where the row starts, then where it ends. Clear the tick above to start the row exactly where you click.</value>
+  </data>
+  <data name="SeparatorHintFingerPiers">
+    <value>Each berth gets its own pair of short finger piers.</value>
+  </data>
+  <data name="SeparatorHintNone">
+    <value>Nothing between the berths but a gap, so boats lie side by side.</value>
+  </data>
+  <data name="SeparatorHintFingerPier">
+    <value>One walkable pier between every two berths.</value>
+  </data>
+  <data name="SeparatorHintPiles">
+    <value>A row of mooring piles between every two berths.</value>
+  </data>
+  <data name="SeparatorHintBoom">
+    <value>A floating boom between every two berths.</value>
+  </data>
+  <data name="SeparatorHintPaired">
+    <value>A pier every other berth: each boat has a pier on one side and a neighbour on the other.</value>
+  </data>
+  <data name="SeparatorHintSinglePile">
+    <value>One mooring pile at the outer end of every berth boundary (Mediterranean mooring).</value>
+  </data>
+  <data name="SeparatorHintSpacing" xml:space="preserve">
+    <value> Berths are {0:0.##} m apart, {1:0.##} m from center to center.</value>
+    <comment>Appended to the separator hint. {0} = gap, {1} = spacing.</comment>
+  </data>
+  <data name="BerthNamingHeading">
+    <value>Names</value>
+  </data>
+  <data name="BerthNamePattern">
+    <value>Pattern</value>
+  </data>
+  <data name="BerthNamePatternTip">
+    <value>Name of each new berth. {pier} is the pier, {pierName} its name, {side} the side (L or R) and {number} the running number.</value>
+  </data>
+  <data name="BerthStartNumber">
+    <value>Start at</value>
+  </data>
+  <data name="BerthStartNumberTip">
+    <value>Number the first new berth gets. Names already taken are skipped, so a second row carries on after the first.</value>
+  </data>
+  <data name="BerthIncrement">
+    <value>Count by</value>
+  </data>
+  <data name="BerthIncrementTip">
+    <value>Step from one berth to the next: 1 gives 1, 2, 3; 2 gives 1, 3, 5.</value>
+  </data>
+  <data name="BerthNumberDigits">
+    <value>Digits</value>
+  </data>
+  <data name="BerthNumberDigitsTip">
+    <value>Leading zeros: 2 writes 1 as 01.</value>
+  </data>
+  <data name="BerthNamingExample">
+    <value>Next: {0}</value>
+    <comment>{0} = the first few names the scheme would give.</comment>
+  </data>
+  <!-- Inspector: storage ashore -->
+  <data name="LandBerthWidth">
+    <value>Width (m)</value>
+  </data>
+  <data name="LandBerthLength">
+    <value>Length (m)</value>
+  </data>
+  <data name="LandBerthHeading">
+    <value>Bow points</value>
+  </data>
+  <data name="LandBerthHeadingTip">
+    <value>Direction the stored boat faces: 0° = north, 90° = east.</value>
+  </data>
+  <data name="LandBerthHint">
+    <value>Click the spot on a land area, then click where the bow should point. Click the same spot twice to use the direction above.</value>
+  </data>
+  <!-- Inspector: trees and erase -->
+  <data name="TreeNone">
+    <value>none</value>
+    <comment>Shown on the coverage slider at zero.</comment>
+  </data>
+  <data name="TreeHint">
+    <value>Trees per 1000 m². Click a lawn to scatter them; click again for a different arrangement, Ctrl+click (or right-click) to clear it.</value>
+  </data>
+  <data name="EraseHint">
+    <value>Click a berth, a pier or a land area to remove it. Piers and land areas take their berths with them, and berths take the separators that only served them.</value>
+  </data>
+  <data name="EraseUndoHint">
+    <value>Ctrl+Z brings back anything you remove by mistake.</value>
+  </data>
+  <!-- Renaming -->
+  <data name="CardRename">
+    <value>Rename</value>
+  </data>
+  <data name="RenameHint">
+    <value>Click a berth to give it another name, or a pier to give it a title. Berth names are also their ids, so each one must be free.</value>
+  </data>
+  <data name="RenameUndoHint">
+    <value>Ctrl+Z puts the old name back.</value>
+  </data>
+  <data name="RenameBerthTitle">
+    <value>Rename berth</value>
+  </data>
+  <data name="RenameBerthQuestion">
+    <value>What should this berth be called?</value>
+  </data>
+  <data name="RenamePierTitle">
+    <value>Name the pier</value>
+  </data>
+  <data name="RenamePierQuestion">
+    <value>What should this pier be called?</value>
+  </data>
+  <data name="TitleRename">
+    <value>Rename</value>
+  </data>
+  <data name="ToolRename">
+    <value>Rename</value>
+  </data>
+  <data name="ToolRenameTip">
+    <value>Click a berth or a pier to give it another name</value>
+  </data>
+  <data name="MenuRename">
+    <value>&amp;Rename a berth or pier</value>
+  </data>
+  <data name="LogRenamed">
+    <value>Renamed {0} to {1}</value>
+    <comment>{0} = the old name, {1} = the new one.</comment>
+  </data>
+  <data name="LogRenameRefused">
+    <value>{0} is already taken; {1} keeps its name.</value>
+    <comment>{0} = the name asked for, {1} = the berth.</comment>
+  </data>
+  <!-- Inspector: reference image -->
+  <data name="ImageLoad">
+    <value>Load image…</value>
+  </data>
+  <data name="ImageFit">
+    <value>Fit to view</value>
+  </data>
+  <data name="ImageRemove">
+    <value>Remove</value>
+  </data>
+  <data name="ImageMove">
+    <value>Move image</value>
+  </data>
+  <data name="ImageMeasure">
+    <value>Draw scale line</value>
+  </data>
+  <data name="ImageApply">
+    <value>Apply</value>
+  </data>
+  <data name="ImageRealLength">
+    <value>Real length (m)</value>
+  </data>
+  <data name="ImageOpacity">
+    <value>Opacity</value>
+  </data>
+  <data name="ImageAbove">
+    <value>Draw over land and piers</value>
+  </data>
+  <data name="ImageStateEmpty">
+    <value>Load a top-down photo or map of the marina (north up) and set its scale, then trace over it.</value>
+  </data>
+  <data name="ImageStateLine">
+    <value>The line you drew is {0:0.0} m long at the current scale. Type what it should be and apply.</value>
+  </data>
+  <data name="ImageStateReady">
+    <value>Image is {0:0} × {1:0} m ({2:0.###} m per pixel). Draw a line over a known length to set the scale.</value>
+  </data>
+  <data name="Percent">
+    <value>{0}%</value>
+    <comment>{0} = a whole percentage.</comment>
+  </data>
+  <!-- Inspector: summary -->
+  <data name="Summary">
+    <value>{0} berth(s): {1} on the water, {2} ashore
+{3} pier(s), {4} land area(s), {5} separator(s), {6} tree(s)
+{7:0} × {8:0} m overall</value>
+    <comment>Counts of everything drawn, then the overall size.</comment>
+  </data>
+  <!-- Appearance dialog -->
+  <data name="AppearanceTitle">
+    <value>Water, light and motion</value>
+  </data>
+  <data name="AppearanceDone">
+    <value>Done</value>
+  </data>
+  <data name="AppearanceCancel">
+    <value>Cancel</value>
+  </data>
+  <data name="AppearanceReset">
+    <value>Reset to defaults</value>
+  </data>
+  <data name="CardWater">
+    <value>Water</value>
+  </data>
+  <data name="WaveHeight">
+    <value>Wave height</value>
+  </data>
+  <data name="WaveLength">
+    <value>Wave length</value>
+  </data>
+  <data name="WaveSpeed">
+    <value>Wave speed</value>
+  </data>
+  <data name="Reflections">
+    <value>Reflections</value>
+  </data>
+  <data name="Ripples">
+    <value>Ripples</value>
+  </data>
+  <data name="SunGlints">
+    <value>Sun glints</value>
+  </data>
+  <data name="DeepWater">
+    <value>Deep water</value>
+  </data>
+  <data name="ShallowWater">
+    <value>Shallow water</value>
+  </data>
+  <data name="CardBoats">
+    <value>Boats</value>
+  </data>
+  <data name="BoatMovement">
+    <value>Movement</value>
+  </data>
+  <data name="BoatMovementHint">
+    <value>How much moored boats, buoys and booms rise, fall and roll with the waves.</value>
+  </data>
+  <data name="CardLight">
+    <value>Light and air</value>
+  </data>
+  <data name="SunDirection">
+    <value>Sun direction</value>
+  </data>
+  <data name="SunHeight">
+    <value>Sun height</value>
+  </data>
+  <data name="Haze">
+    <value>Haze</value>
+  </data>
+  <data name="Sky">
+    <value>Sky</value>
+  </data>
+  <data name="Horizon">
+    <value>Horizon</value>
+  </data>
+  <data name="CardBerthColors">
+    <value>Berth colors</value>
+  </data>
+  <data name="ColorFree">
+    <value>Free</value>
+  </data>
+  <data name="ColorOccupied">
+    <value>Occupied</value>
+  </data>
+  <data name="ColorReserved">
+    <value>Reserved</value>
+  </data>
+  <data name="ColorOwnerAway">
+    <value>Owner away</value>
+  </data>
+  <data name="PadStrength">
+    <value>Pad strength</value>
+  </data>
+  <data name="ShowStatusBuoys">
+    <value>Show the status buoys</value>
+  </data>
+  <data name="ValueMeters">
+    <value>{0:0.00} m</value>
+    <comment>{0} = a length in meters.</comment>
+  </data>
+  <data name="ValueTimes">
+    <value>×{0:0.0}</value>
+    <comment>A multiplier, e.g. ×1.5.</comment>
+  </data>
+  <data name="ValueStill">
+    <value>still</value>
+    <comment>Shown at zero on the wave speed and boat movement sliders.</comment>
+  </data>
+  <data name="ValueDegreesFromNorth">
+    <value>{0}° from north</value>
+  </data>
+  <data name="ValueDegreesAboveHorizon">
+    <value>{0}° above the horizon</value>
+  </data>
+</root>

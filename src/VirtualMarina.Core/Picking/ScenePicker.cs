@@ -6,7 +6,7 @@ using VirtualMarina.Core.Mathematics;
 namespace VirtualMarina.Core.Picking;
 
 /// <summary>
-/// CPU ray casting against slip footprints and the actual triangles of boat models. Works the same on every backend
+/// CPU ray casting against berth footprints and the actual triangles of boat models. Works the same on every backend
 /// and needs no GPU read-back.
 /// </summary>
 /// <remarks>
@@ -17,28 +17,28 @@ namespace VirtualMarina.Core.Picking;
 internal static class ScenePicker
 {
     /// <param name="ray">World-space pick ray.</param>
-    /// <param name="slips">Slips whose pads can be hit (visible and not filtered out).</param>
+    /// <param name="berths">Berths whose pads can be hit (visible and not filtered out).</param>
     /// <param name="boats">Boats that can be hit.</param>
     /// <param name="meshes">Boat meshes, tested triangle by triangle.</param>
-    /// <param name="groundHeight">Land height of a land slip (null for water slips); when null every pad is on the water.</param>
-    public static SlipHit? Pick(Ray ray, IEnumerable<Slip> slips, IEnumerable<BoatInstance> boats, MeshLibrary meshes, Func<Slip, float?>? groundHeight = null)
+    /// <param name="groundHeight">Land height of a land berth (null for water berths); when null every pad is on the water.</param>
+    public static BerthHit? Pick(Ray ray, IEnumerable<Berth> berths, IEnumerable<BoatInstance> boats, MeshLibrary meshes, Func<Berth, float?>? groundHeight = null)
     {
-        SlipHit? best = null;
+        BerthHit? best = null;
 
-        // 1. Slip areas (the colored pads), on the water or on land.
-        foreach (var slip in slips)
+        // 1. Berth areas (the colored pads), on the water or on land.
+        foreach (var berth in berths)
         {
-            var padHeight = SlipPlacement.PadHeightFor(groundHeight?.Invoke(slip));
+            var padHeight = BerthPlacement.PadHeightFor(groundHeight?.Invoke(berth));
             if (!ray.IntersectHorizontalPlane(padHeight, out var padDistance) || (best is not null && padDistance >= best.Value.Distance)) continue;
 
             var point = ray.GetPoint(padDistance);
-            if (slip.Bounds.Contains(MarinaMath.ToPlan(point)))
+            if (berth.Bounds.Contains(MarinaMath.ToPlan(point)))
             {
-                best = new SlipHit(slip.Id, padDistance, point, HitBoat: false);
+                best = new BerthHit(berth.Id, padDistance, point, HitBoat: false);
             }
         }
 
-        // 2. Boats, which may rise far above the pads and overhang neighbouring slips.
+        // 2. Boats, which may rise far above the pads and overhang neighbouring berths.
         foreach (var boat in boats)
         {
             if (!meshes.TryGet(MeshIds.ForBoat(boat.Boat.Type), out var mesh) ||
@@ -62,7 +62,7 @@ internal static class ScenePicker
                 (best is null || boatDistance < best.Value.Distance))
             {
                 var hitPoint = ray.GetPoint(boatDistance);
-                best = new SlipHit(ResolveSlip(boat, MarinaMath.ToPlan(hitPoint)), boatDistance, hitPoint, HitBoat: true);
+                best = new BerthHit(ResolveBerth(boat, MarinaMath.ToPlan(hitPoint)), boatDistance, hitPoint, HitBoat: true);
             }
         }
 
@@ -114,18 +114,18 @@ internal static class ScenePicker
 
     private static Vector3 Position(float[] vertices, int offset) => new(vertices[offset], vertices[offset + 1], vertices[offset + 2]);
 
-    /// <summary>For a boat spanning several slips, the visible member slip nearest the hit point (interactive ones first).</summary>
-    private static string ResolveSlip(BoatInstance boat, Vector2 plan)
+    /// <summary>For a boat spanning several berths, the visible member berth nearest the hit point (interactive ones first).</summary>
+    private static string ResolveBerth(BoatInstance boat, Vector2 plan)
     {
-        if (boat.Slips.Count == 1) return boat.PrimarySlip.Id;
+        if (boat.Berths.Count == 1) return boat.PrimaryBerth.Id;
 
-        return boat.Slips
+        return boat.Berths
             .Where(s => s.IsVisible)
             .OrderBy(s => s.IsInteractive ? 0 : 1)
             .ThenBy(s => s.Bounds.Contains(plan) ? 0 : 1)
             .ThenBy(s => Vector2.DistanceSquared(s.Center, plan))
             .Select(s => s.Id)
-            .DefaultIfEmpty(boat.PrimarySlip.Id)
+            .DefaultIfEmpty(boat.PrimaryBerth.Id)
             .First();
     }
 }

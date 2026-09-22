@@ -1,4 +1,4 @@
-# VirtualMarina
+﻿# VirtualMarina
 
 A modular 3D marina visualization library for .NET 8. The same core DLL drives a desktop OpenGL view (WinForms) and a browser WebGL 2 view (Blazor WebAssembly).
 
@@ -6,7 +6,7 @@ A modular 3D marina visualization library for .NET 8. The same core DLL drives a
 
 **[Docs/](Docs/README.md)** has the full documentation:
 - [getting started](Docs/01-getting-started.md) and [conventions](Docs/02-coordinates-and-conventions.md)
-- guides for [layout](Docs/03-layout.md), [status and flags](Docs/04-status-and-flags.md), [multi-slip berths](Docs/05-multi-slip-berths.md), [selection, tooltips and actions](Docs/06-selection-tooltips-actions.md), [camera and focus](Docs/07-camera-and-focus.md), [appearance](Docs/08-appearance.md), [events](Docs/09-events-reference.md) and [hosting](Docs/10-hosting-and-custom-views.md)
+- guides for [layout](Docs/03-layout.md), [the designer](Docs/12-designer.md), [the designer application](Docs/14-designer-app.md), [marina files](Docs/13-marina-file-format.md), [status and flags](Docs/04-status-and-flags.md), [multi-berths](Docs/05-multi-berths.md), [selection, tooltips and actions](Docs/06-selection-tooltips-actions.md), [camera and focus](Docs/07-camera-and-focus.md), [appearance](Docs/08-appearance.md), [events](Docs/09-events-reference.md), [hosting](Docs/10-hosting-and-custom-views.md) and [localization](Docs/15-localization.md)
 - a generated [API reference](Docs/11-api-reference.md)
 
 Every public type and member also has XML documentation comments, so Visual Studio shows them in IntelliSense. The libraries emit `VirtualMarina.*.xml` next to their DLLs (`src/Directory.Build.props`), and a missing comment on a public member is a build warning. After changing the public API, regenerate the reference with `dotnet run --project Docs/tools/ApiDocGen -- Docs/11-api-reference.md`.
@@ -28,21 +28,26 @@ Requirements: .NET 8 SDK or newer (`global.json` rolls forward), and a GPU/drive
 VirtualMarina.sln
 ├─ src/
 │  ├─ VirtualMarina.Core/                 net8.0 – no graphics/UI dependencies
-│  │  ├─ Domain/      Dock, Slip, Boat, BoatType, SlipStatus, OrientedRect, LandArea (polygon),
-│  │  │               MarinaLayout (+Validate), MarinaLayoutBuilder, LandAreaBuilder, SlipGenerator
+│  │  ├─ Domain/      Pier, Berth, Boat, BoatType, BerthStatus, OrientedRect, LandArea (polygon),
+│  │  │               MarinaLayout (+Validate), MarinaLayoutBuilder, LandAreaBuilder, BerthGenerator
+│  │  ├─ Design/      MarinaDesigner (draw land/piers/berths/land berths, trees, undo, reference image, calibration),
+│  │  │               ReferenceImage, DesignerSettings
 │  │  ├─ Api/         IMarinaVisualizer, MarinaVisualizer (Layout/Status/View partials),
-│  │  │               SlipUpdate, BatchUpdateResult, MarinaStatistics, events, StatusColorScheme
+│  │  │               BerthUpdate, BatchUpdateResult, MarinaStatistics, events, StatusColorScheme
 │  │  ├─ Camera/      OrbitCamera (smoothed pan/zoom/orbit), CameraConstraints, CameraPreset
 │  │  ├─ Input/       MarinaInputController (platform-neutral pointer/keyboard → camera/picking)
-│  │  ├─ Picking/     Ray, CPU ScenePicker (slip footprints + boat triangles)
+│  │  ├─ Picking/     Ray, CPU ScenePicker (berth footprints + boat triangles)
 │  │  ├─ Geometry/    MeshBuilder, BoatMeshFactory (7 low-poly boats), MarinaMeshFactory,
 │  │  │               LandMeshFactory (polygon slabs, rock breakwaters), MeshLibrary
 │  │  ├─ Rendering/   ISceneRenderer, RenderFrame, RenderObject, Lighting/WaterSettings,
 │  │  │               ShaderSources (shared GLSL 330 / GLSL ES 300), SceneBuilder
+│  │  ├─ Serialization/ MarinaDocument (.marina.json: layout + look + motion + camera), MarinaJson
 │  │  └─ Mathematics/ MarinaMath, PolygonMath
 │  ├─ VirtualMarina.Rendering.OpenGL/     net8.0 – ISceneRenderer for OpenGL 3.3 (OpenTK bindings only)
-│  ├─ VirtualMarina.WinForms/             net8.0-windows – MarinaViewControl (GLControl host)
-│  └─ VirtualMarina.Blazor/               Razor class library – <MarinaView>, WebGlSceneRenderer, marinaWebGL.js
+│  ├─ VirtualMarina.WinForms/             net8.0-windows – MarinaViewControl (GLControl host), MarinaDesignerPanel
+│  └─ VirtualMarina.Blazor/               Razor class library – <MarinaView>, <MarinaDesignerPanel>, WebGlSceneRenderer, marinaWebGL.js
+├─ apps/
+│  └─ VirtualMarina.Designer/             WinExe – the marina designer tool (draws to scale, saves .marina.json)
 ├─ samples/
 │  ├─ VirtualMarina.SampleData/           mock marina + simulated ERP activity (shared by both hosts)
 │  ├─ VirtualMarina.TestHost.WinForms/    WinExe test harness
@@ -55,7 +60,7 @@ VirtualMarina.sln
 
 ```
  Host ERP (WinForms / Blazor page)
-        │  API calls                         ▲ events (SlipClicked, SlipSelected, SlipStatusChanged…)
+        │  API calls                         ▲ events (BerthClicked, BerthSelected, BerthStatusChanged…)
         ▼                                    │
  ┌──────────────────── VirtualMarina.Core (portable) ─────────────────────┐
  │ MarinaVisualizer ── domain state, selection, filter, color scheme      │
@@ -72,7 +77,7 @@ VirtualMarina.sln
 
 - **Backends only draw.** Camera math, hit testing, scene composition and animation logic live in Core. A new backend (WebGPU, Vulkan, Avalonia, MAUI) implements `ISceneRenderer` and forwards input to `marina.Input`.
 - **GPU-side animation.** Water waves, boats bobbing and rolling, the selection marker's spin, and highlight pulses are computed in the shaders from `uTime`. Instance data is re-sent only when `RenderFrame.SceneVersion` changes, so the browser renderer sends about 63 floats per frame.
-- **Immutable snapshots.** `Slip`, `Dock` and `Boat` are records. Events carry snapshots, so host code can't change marina state without going through the API.
+- **Immutable snapshots.** `Berth`, `Pier` and `Boat` are records. Events carry snapshots, so host code can't change marina state without going through the API.
 
 ## Using the API
 
@@ -81,149 +86,149 @@ var marina = new MarinaVisualizer();                 // or marinaViewControl.Mar
 marina.InitializeLayout(layout);                     // MarinaLayout or MarinaLayoutBuilder
 
 // Events → ERP
-marina.SlipClicked  += (s, e) => erp.OpenBerth(e.SlipId, e.Status, e.Boat);
-marina.SlipSelected += (s, e) => erp.ShowDetails(e.Slip);
-marina.SlipStatusChanged += (s, e) => audit.Log(e.SlipId, e.OldStatus, e.NewStatus);
+marina.BerthClicked  += (s, e) => erp.OpenBerth(e.BerthId, e.Status, e.Boat);
+marina.BerthSelected += (s, e) => erp.ShowDetails(e.Berth);
+marina.BerthStatusChanged += (s, e) => audit.Log(e.BerthId, e.OldStatus, e.NewStatus);
 
 // Space management
-marina.AddDock(new Dock("E", "Dock E", new Vector2(150, -6), 0, 60));
-marina.AddSlips(SlipGenerator.AlongDock(marina.GetDock("E")!, DockSide.Left, 10, 5, 12));
-marina.UpdateSlip(new SlipUpdate("E-L01") { Length = 14, Label = "E-1 (long)" });
-marina.RemoveSlip("E-L10");
+marina.AddPier(new Pier("E", "Pier E", new Vector2(150, -6), 0, 60));
+marina.AddBerths(BerthGenerator.AlongPier(marina.GetPier("E")!, PierSide.Left, 10, 5, 12));
+marina.UpdateBerth(new BerthUpdate("E-L01") { Length = 14, Label = "E-1 (long)" });
+marina.RemoveBerth("E-L10");
 
 // Status
 marina.AssignBoat("A-L03", new Boat("B-77", "Aurora", BoatType.MotorYacht) { LengthMeters = 18 });  // Occupied (red)
-marina.ReserveSlip("A-L04", expectedBoat);                                                           // Reserved (blue)
-marina.ReleaseSlip("A-L05");                                                                          // Free (green)
+marina.ReserveBerth("A-L04", expectedBoat);                                                           // Reserved (blue)
+marina.ReleaseBerth("A-L05");                                                                          // Free (green)
 var result = marina.BatchUpdate(updatesFromErp);   // one scene rebuild and one LayoutChanged; errors collected
 
 // Utilities
-marina.SetStatusFilter(SlipStatusFilter.Free | SlipStatusFilter.Reserved);
+marina.SetStatusFilter(BerthStatusFilter.Free | BerthStatusFilter.Reserved);
 marina.ClearSelection();
 marina.ResetCamera();
-marina.ApplyCameraPreset("Dock: Dock A");
-marina.FocusSlips(new[] { "C-R02", "C-R05" }, CameraAngle.TopDown);
-marina.SetStatusColor(SlipStatus.Reserved, ColorRgba.FromHex("#8A4FFF"));
+marina.ApplyCameraPreset("Pier: Pier A");
+marina.FocusBerths(new[] { "C-R02", "C-R05" }, CameraAngle.TopDown);
+marina.SetStatusColor(BerthStatus.Reserved, ColorRgba.FromHex("#8A4FFF"));
 marina.Lighting.SetSunAngles(azimuthDegrees: 220, elevationDegrees: 35);
 marina.Water.WaveSpeed = 0;                         // freeze the water
 ```
 
-### Docks, dividers and slips: position, size, orientation, type
+### Piers, dividers and berths: position, size, orientation, type
 
 ```csharp
-// Docks: from the shore end (constructor) or from the center; three construction types render differently.
-marina.AddDock(Dock.FromCenter("E", "Dock E", center: new Vector2(150, 30), length: 60, width: 3, headingDegrees: 0, DockType.Concrete));
-marina.UpdateDock(new DockUpdate("E") { Type = DockType.FloatingConcrete, HeadingDegrees = 10 });   // keeps the center
+// Piers: from the shore end (constructor) or from the center; three construction types render differently.
+marina.AddPier(Pier.FromCenter("E", "Pier E", center: new Vector2(150, 30), length: 60, width: 3, headingDegrees: 0, PierType.Concrete));
+marina.UpdatePier(new PierUpdate("E") { Type = PierType.FloatingConcrete, HeadingDegrees = 10 });   // keeps the center
 
-// Slips at an explicit center, heading (bow direction), length and width.
-marina.AddSlip("E-01", "E", center: new Vector2(155, 10), headingDegrees: -90, length: 12, width: 5);
-marina.UpdateSlip(SlipUpdate.Geometry("E-01", width: 6));
+// Berths at an explicit center, heading (bow direction), length and width.
+marina.AddBerth("E-01", "E", center: new Vector2(155, 10), headingDegrees: -90, length: 12, width: 5);
+marina.UpdateBerth(BerthUpdate.Geometry("E-01", width: 6));
 
-// Dividers between slips: finger piers, pile rows or floating booms.
-marina.AddDivider(new Divider("E-D1", start: new Vector2(151.5f, 7.5f), headingDegrees: 90, length: 9, DividerType.Piles) { DockId = "E" });
+// Dividers between berths: finger piers, pile rows or floating booms.
+marina.AddDivider(new Divider("E-D1", start: new Vector2(151.5f, 7.5f), headingDegrees: 90, length: 9, DividerType.Piles) { PierId = "E" });
 
-// Or let the builder lay slips and dividers along a dock.
-new MarinaLayoutBuilder().AddDock("A", "Dock A", Vector2.Zero, 0, 60, dock => dock
-    .AddSlips(DockSide.Right, 10, 5, 12, dividers: DividerType.FingerPier)
-    .AddSlip("A-GUEST", DockSide.Left, offsetAlong: 40, slipWidth: 8, slipLength: 16), type: DockType.FloatingWooden);
+// Or let the builder lay berths and dividers along a pier.
+new MarinaLayoutBuilder().AddPier("A", "Pier A", Vector2.Zero, 0, 60, pier => pier
+    .AddBerths(PierSide.Right, 10, 5, 12, dividers: DividerType.FingerPier)
+    .AddBerth("A-GUEST", PierSide.Left, offsetAlong: 40, berthWidth: 8, berthLength: 16), type: PierType.FloatingWooden);
 ```
 
-| `DockType` | Look | Default deck height |
+| `PierType` | Look | Default deck height |
 |---|---|---|
 | `FloatingWooden` (default) | plank deck, walers, dark pontoon floats | 0.5 m |
 | `FloatingConcrete` | monolithic pontoon, rubber fenders, section joints, cleats | 0.55 m |
 | `Concrete` | fixed slab on columns, curbs, bollards | 1.1 m |
 
-### Statuses and slip flags
+### Statuses and berth flags
 
-`SlipStatus.TemporarilyFree` (yellow) means the berth holder's boat is away. The boat stays assigned and is drawn as a ghost, as for `Reserved`. Set it with `MarkTemporarilyFree(slipId)` or `SlipUpdate.TemporarilyFree(slipId)`.
+`BerthStatus.TemporarilyFree` (yellow) means the berth holder's boat is away. The boat stays assigned and is drawn as a ghost, as for `Reserved`. Set it with `MarkTemporarilyFree(berthId)` or `BerthUpdate.TemporarilyFree(berthId)`.
 
 | Flag | Rendering | Interaction |
 |---|---|---|
 | `IsVisible = false` | nothing is drawn (not even finger piers) | none |
-| `IsDisabled = true` | pad and buoy gray, boat desaturated | no hover, selection, tooltip, actions or `SlipClicked` |
+| `IsDisabled = true` | pad and buoy gray, boat desaturated | no hover, selection, tooltip, actions or `BerthClicked` |
 | `IsReadOnly = true` | normal | selectable, tooltip shows, actions window never opens |
 
-`SetSlipVisible`, `SetSlipDisabled`, `SetSlipReadOnly`, or `SetSlipFlags(ids, visible, disabled, readOnly)` for many slips at once. A slip that becomes hidden, disabled or filtered out leaves the selection.
+`SetBerthVisible`, `SetBerthDisabled`, `SetBerthReadOnly`, or `SetBerthFlags(ids, visible, disabled, readOnly)` for many berths at once. A berth that becomes hidden, disabled or filtered out leaves the selection.
 
-### Slip labels on the water
+### Berth labels on the water
 
 ```csharp
-marina.SlipLabelMode = SlipLabelMode.NonOccupied;   // None (default) | OnlyFree | NonOccupied | All
+marina.BerthLabelMode = BerthLabelMode.NonOccupied;   // None (default) | OnlyFree | NonOccupied | All
 ```
 
-Writes each slip's `DisplayName` (its `Label`, or else its id) flat on the water, just past the slip's open end.
+Writes each berth's `DisplayName` (its `Label`, or else its id) flat on the water, just past the berth's open end.
 
-- **Size:** the text is scaled to use at most 65% of the slip width, between 0.3 m and 1 m tall, so neighbouring labels don't run together.
-- **Orientation:** the top of the text points away from the dock, so it reads upright from the dock.
-- **Colour:** white normally, yellow while hovered or selected, grey for disabled slips.
-- **Which slips:** hidden slips and slips excluded by the status filter get no label.
+- **Size:** the text is scaled to use at most 65% of the berth width, between 0.3 m and 1 m tall, so neighbouring labels don't run together.
+- **Orientation:** the top of the text points away from the pier, so it reads upright from the pier.
+- **Colour:** white normally, yellow while hovered or selected, grey for disabled berths.
+- **Which berths:** hidden berths and berths excluded by the status filter get no label.
 
 The text uses a built-in stroke font: one flat mesh per character, no textures. It renders the same on every backend. The shader lifts the text just above the highest point the waves can reach, which is the sum of the wave component amplitudes × `Water.WaveAmplitude` (`ShaderSources.MaxWaveHeightFactor`). Since both the camera and the text are above that level, waves never cover a name from any viewpoint, even if you raise the amplitude. It covers A–Z, 0–9 and `- _ + . , : / ( ) # ?`. Lowercase letters are drawn as uppercase, and anything else is drawn as `?`.
 
-### One boat across several slips
+### One boat across several berths
 
 ```csharp
-var berth = marina.DockAlongside(new[] { "B-L10", "B-L11", "B-L12" }, yacht);             // parallel to the dock; any number of slips (≥ 2)
-marina.AssignBoatToSlips(new[] { "C-L01", "C-L02" }, catamaran, SlipStatus.Reserved, MooringStyle.BowIn);
-marina.UpdateMultiSlipBerth(berth.Id, status: SlipStatus.TemporarilyFree, slipIds: new[] { "B-L10", "B-L11" });
-marina.ReleaseMultiSlipBerth(berth.Id);                                                   // frees all its slips
+var berth = marina.MoorAlongside(new[] { "B-L10", "B-L11", "B-L12" }, yacht);             // parallel to the pier; any number of berths (≥ 2)
+marina.AssignBoatToBerths(new[] { "C-L01", "C-L02" }, catamaran, BerthStatus.Reserved, MooringStyle.BowIn);
+marina.UpdateMultiBerth(berth.Id, status: BerthStatus.TemporarilyFree, berthIds: new[] { "B-L10", "B-L11" });
+marina.ReleaseMultiBerth(berth.Id);                                                   // frees all its berths
 ```
 
-Each member slip carries the berth's status and boat, plus `Slip.BerthId`. `MarinaLayout.MultiSlipBerths` stores berths so layouts round-trip. The boat is drawn once, across the slips, using the first slip's orientation, and finger piers between member slips are not drawn. If you change the status or boat of a member through the single-slip API, the whole berth changes. Setting a member Free, or clearing its boat, releases the berth.
+Each member berth carries the berth's status and boat, plus `Berth.MultiBerthId`. `MarinaLayout.MultiBerths` stores berths so layouts round-trip. The boat is drawn once, across the berths, using the first berth's orientation, and finger piers between member berths are not drawn. If you change the status or boat of a member through the single-berth API, the whole berth changes. Setting a member Free, or clearing its boat, releases the berth.
 
 ### Tooltip, actions and multi-select
 
-- **Left click:** selects the slip and shows a tooltip above it.
-- **Right click:** selects the slip and opens the actions window.
-- **Ctrl+click or Shift+click:** adds or removes slips from the selection. Right-clicking inside a multi-selection opens its actions.
+- **Left click:** selects the berth and shows a tooltip above it.
+- **Right click:** selects the berth and opens the actions window.
+- **Ctrl+click or Shift+click:** adds or removes berths from the selection. Right-clicking inside a multi-selection opens its actions.
 
-The popup follows its slip while the camera moves. Esc closes the popup, and a second Esc clears the selection.
+The popup follows its berth while the camera moves. Esc closes the popup, and a second Esc clears the selection.
 
 ```csharp
-marina.SlipSelected += (s, e) =>                   // pre-filled with slip, dock, status and boat details
+marina.BerthSelected += (s, e) =>                   // pre-filled with berth, pier, status and boat details
 {
-    var contract = e.ExternalData.GetOrAdd("Contract", () => erp.LoadContract(e.SlipId));   // host data kept on the slip
+    var contract = e.ExternalData.GetOrAdd("Contract", () => erp.LoadContract(e.BerthId));   // host data kept on the berth
     e.Tooltip.AddLine("Contract", contract.Number);
-    e.Actions.Add("checkin", "Check in", enabled: e.Status == SlipStatus.Free, icon: "⚓").Style = SlipActionStyle.Primary;
+    e.Actions.Add("checkin", "Check in", enabled: e.Status == BerthStatus.Free, icon: "⚓").Style = BerthActionStyle.Primary;
     e.Actions.Add("invoice", "Open invoice…").Description = "Opens the ERP invoice screen";
 };
-marina.MultiSlipSelected += (s, e) => e.Actions.Add("free-all", $"Free {e.ActionableSlips.Count} slips");
-marina.SlipActionInvoked += (s, e) => erp.Execute(e.ActionId, e.Slips);   // e.Slip = primary, e.KeepPopupOpen to keep it open
+marina.MultiBerthSelected += (s, e) => e.Actions.Add("free-all", $"Free {e.ActionableBerths.Count} berths");
+marina.BerthActionInvoked += (s, e) => erp.Execute(e.ActionId, e.Berths);   // e.Berth = primary, e.KeepPopupOpen to keep it open
 ```
 
-- **Why `SlipSelected` fires:** `e.Reason` tells you: `Pointer` (a click, including a re-click on the selected slip), `Api`, or `Refresh`. A refresh happens when a selected slip changes while its popup is open, so actions can follow the new status.
-- **`SlipAction` options:** `ActionId`, `Caption`, `Enabled`, `Visible`, `Description` (hover hint), `Icon`, `ShortcutText`, `Style` (Normal/Primary/Danger), `BeginGroup` (separator above), `KeepOpen` and `Tag`.
-- **Showing the popup from code:** `ShowTooltip()`, `ShowActions()`, `RefreshPopup()`, `ClosePopup()` and `InvokeSlipAction(id)`.
+- **Why `BerthSelected` fires:** `e.Reason` tells you: `Pointer` (a click, including a re-click on the selected berth), `Api`, or `Refresh`. A refresh happens when a selected berth changes while its popup is open, so actions can follow the new status.
+- **`BerthAction` options:** `ActionId`, `Caption`, `Enabled`, `Visible`, `Description` (hover hint), `Icon`, `ShortcutText`, `Style` (Normal/Primary/Danger), `BeginGroup` (separator above), `KeepOpen` and `Tag`.
+- **Showing the popup from code:** `ShowTooltip()`, `ShowActions()`, `RefreshPopup()`, `ClosePopup()` and `InvokeBerthAction(id)`.
 - **Turning features off:** `TooltipsEnabled`, `ActionsEnabled` and `MultiSelectEnabled`.
-- **Selection API:** `SetSelection`, `SelectSlips`, `AddToSelection`, `RemoveFromSelection` and `SelectedSlips` (see below).
+- **Selection API:** `SetSelection`, `SelectBerths`, `AddToSelection`, `RemoveFromSelection` and `SelectedBerths` (see below).
 
 ### Changing the selection and focusing the camera
 
 ```csharp
-// One or many slips. Disabled slips are discarded (so are hidden, filtered-out and unknown ids).
+// One or many berths. Disabled berths are discarded (so are hidden, filtered-out and unknown ids).
 SelectionResult result = marina.SetSelection(new[] { "A-L01", "A-L02", "C-R08" }, focusCamera: true, CameraAngle.TopDown);
-foreach (var rejected in result.Rejected) log($"{rejected.SlipId}: {rejected.Reason}");   // C-R08: Disabled
+foreach (var rejected in result.Rejected) log($"{rejected.BerthId}: {rejected.Reason}");   // C-R08: Disabled
 marina.SetSelection("B-L04");                                  // params overload, no focus
 
-// Frame one or many slips: centered on their middle, zoomed so all of them (and their boats) fit.
-marina.FocusSlip("C-L04", CameraAngle.TopDown);
-marina.FocusSlips(marina.GetSlipsByDock("B").Select(s => s.Id), new CameraAngle(YawDegrees: 200, PitchDegrees: 45));
+// Frame one or many berths: centered on their middle, zoomed so all of them (and their boats) fit.
+marina.FocusBerth("C-L04", CameraAngle.TopDown);
+marina.FocusBerths(marina.GetBerthsByPier("B").Select(s => s.Id), new CameraAngle(YawDegrees: 200, PitchDegrees: 45));
 marina.FocusSelection();                                       // uses DefaultFocusAngle
 
 marina.DefaultFocusAngle = CameraAngle.TopDown;                // for calls without an angle, and double-click
-marina.FocusMargin = 0.12f;                                    // free space around the slips, per side
-CameraPose preview = marina.ComputeFocusPose(slips, CameraAngle.TopDown);   // compute without moving
+marina.FocusMargin = 0.12f;                                    // free space around the berths, per side
+CameraPose preview = marina.ComputeFocusPose(berths, CameraAngle.TopDown);   // compute without moving
 ```
 
-- **What `SetSelection` does:** raises `SlipSelected` or `MultiSlipSelected` as a click would. When nothing selectable remains, it clears the selection.
-- **What focus includes:** focus uses every existing slip you pass, including disabled ones, because it only moves the camera.
+- **What `SetSelection` does:** raises `BerthSelected` or `MultiBerthSelected` as a click would. When nothing selectable remains, it clears the selection.
+- **What focus includes:** focus uses every existing berth you pass, including disabled ones, because it only moves the camera.
 - **`CameraAngle`:** yaw is the compass position of the camera around the target (180° = on the shore side, +Z at the top of the screen). Pitch is the angle above the horizon (up to 89°, i.e. straight down). `CameraAngle.TopDown` is (180°, 89°).
 - **Without an angle:** the call uses `DefaultFocusAngle`. If that's null, it keeps the current yaw and looks down at least 35°.
-- **Zoom limits:** `MinFocusDistance` (25 m) leaves some context around a single slip, and the camera's `MaxDistance` constraint caps how far out it goes.
+- **Zoom limits:** `MinFocusDistance` (25 m) leaves some context around a single berth, and the camera's `MaxDistance` constraint caps how far out it goes.
 - **Resizing:** if the view size changes while the camera is still where a focus put it (for example, focus was called before the view had its size), the focus is re-fitted. If the user has moved the camera since, a resize leaves it alone.
 
-`Slip.ExternalData` is a `SlipDataBag` (string → object). All snapshots of a slip share the same instance, so values written in an event handler survive later updates. `SlipUpdate.ExternalData` merges entries from a batch. The visualizer never reads it.
+`Berth.ExternalData` is a `BerthDataBag` (string → object). All snapshots of a berth share the same instance, so values written in an event handler survive later updates. `BerthUpdate.ExternalData` merges entries from a batch. The visualizer never reads it.
 
 **Custom views.** `MarinaViewControl` and `<MarinaView>` render the popup for you. Another host can subscribe to `PopupChanged`, render `ActivePopup`, and call `TryGetPopupAnchor(out screenPoint)` every frame to position it.
 
@@ -250,11 +255,11 @@ view.Marina.InitializeLayout(layout);
 | Left-drag / middle-drag | Pan (map-style) |
 | Right-drag, or Shift+left-drag | Orbit |
 | Mouse wheel | Zoom toward the cursor |
-| Hover | Highlight the slip or boat under the cursor (exact shape); the cursor becomes a pointer |
-| Click | Select the slip or boat and show its tooltip (raises `SlipClicked` and `SlipSelected`) |
+| Hover | Highlight the berth or boat under the cursor (exact shape); the cursor becomes a pointer |
+| Click | Select the berth or boat and show its tooltip (raises `BerthClicked` and `BerthSelected`) |
 | Right-click | Select and open the actions window |
-| Ctrl+click or Shift+click (Cmd+click in browsers) | Add/remove slips from a multi-selection (raises `MultiSlipSelected`) |
-| Double-click | Focus the camera on the slip |
+| Ctrl+click or Shift+click (Cmd+click in browsers) | Add/remove berths from a multi-selection (raises `MultiBerthSelected`) |
+| Double-click | Focus the camera on the berth |
 | Arrows / WASD, Shift+arrows, PageUp/PageDown, +/- | Pan, orbit, tilt, zoom |
 | Esc / Home | Close the popup, then clear the selection / reset the camera |
 

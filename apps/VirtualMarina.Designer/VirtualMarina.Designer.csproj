@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    VirtualMarina Designer: the stand-alone tool marina operators use to draw their marina to scale and export it as a
+    .marina.json design, which the host application then loads into a MarinaViewControl or <MarinaView>.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <RootNamespace>VirtualMarina.Designer</RootNamespace>
+    <AssemblyName>VirtualMarina.Designer</AssemblyName>
+    <Product>VirtualMarina Designer</Product>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VirtualMarina.WinForms\VirtualMarina.WinForms.csproj" />
+  </ItemGroup>
+
+</Project>

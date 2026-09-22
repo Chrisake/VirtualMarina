@@ -16,7 +16,7 @@ public static class MeshIds
     public const int Piling = 3;
 
     /// <summary>1 × 1 m flat quad (status pads).</summary>
-    public const int SlipPad = 4;
+    public const int BerthPad = 4;
 
     /// <summary>Spinning gold selection marker.</summary>
     public const int SelectionMarker = 5;
@@ -35,8 +35,11 @@ public static class MeshIds
 
     private const int BoatBase = 100;
 
-    /// <summary>Mesh id of the land area at <paramref name="index"/> in the layout (world-space geometry built by <see cref="LandMeshFactory"/>).</summary>
-    public static int ForLand(int index) => LandBase + index;
+    /// <summary>
+    /// Mesh id of a land area's mesh slot (world-space geometry built by <see cref="LandMeshFactory"/>). Loading a layout assigns
+    /// slots 0, 1, ... in layout order; land areas added later get the next free slot.
+    /// </summary>
+    public static int ForLand(int slot) => LandBase + slot;
 
     /// <summary>Mesh id of a boat model (100 + type). Register a <see cref="MeshData"/> under this id to replace the model.</summary>
     public static int ForBoat(BoatType type) => BoatBase + (int)type;
@@ -66,7 +69,7 @@ public sealed class MeshLibrary
         library.Register(MarinaMeshFactory.CreateWaterGrid(MeshIds.Water, waterSize, waterResolution, waterCenter));
         library.Register(MarinaMeshFactory.CreateUnitBox(MeshIds.UnitBox));
         library.Register(MarinaMeshFactory.CreatePiling(MeshIds.Piling));
-        library.Register(MarinaMeshFactory.CreateSlipPad(MeshIds.SlipPad));
+        library.Register(MarinaMeshFactory.CreateBerthPad(MeshIds.BerthPad));
         library.Register(MarinaMeshFactory.CreateSelectionMarker(MeshIds.SelectionMarker));
         library.Register(MarinaMeshFactory.CreateBuoy(MeshIds.Buoy));
         library.Register(MarinaMeshFactory.CreateCylinder(MeshIds.Cylinder));

@@ -9,8 +9,8 @@ using VirtualMarina.SampleData;
 
 namespace VirtualMarina.Core.Tests;
 
-/// <summary>Polygon land areas, rock breakwaters, land slips and single-sided docks.</summary>
-public class LandAndSingleSidedDockTests
+/// <summary>Polygon land areas, rock breakwaters, land berths and single-sided piers.</summary>
+public class LandAndSingleSidedPierTests
 {
     private static readonly Vector2[] LShape =
     {
@@ -22,10 +22,10 @@ public class LandAndSingleSidedDockTests
         var marina = new MarinaVisualizer();
         marina.InitializeLayout(new MarinaLayoutBuilder("Yard")
             .AddLandArea(new LandArea("yard", LShape, 1.5f) { Name = "Boatyard" }, yard => yard
-                .AddSlip("Y-1", new Vector2(25, 5), headingDegrees: 90, length: 12, width: 5)
-                .AddSlip("Y-2", new Vector2(5, 20), headingDegrees: 0, length: 12, width: 5))
+                .AddBerth("Y-1", new Vector2(25, 5), headingDegrees: 90, length: 12, width: 5)
+                .AddBerth("Y-2", new Vector2(5, 20), headingDegrees: 0, length: 12, width: 5))
             .AddLandArea(new LandArea("rocks", new OrientedRect(new Vector2(20, 60), new Vector2(60, 8), 0), 2.2f, LandKind.Breakwater))
-            .AddDock("A", "Dock A", new Vector2(20, 12), 0f, 30f, dock => dock.AddSlips(DockSide.Right, 2, 5f, 10f))
+            .AddPier("A", "Pier A", new Vector2(20, 12), 0f, 30f, pier => pier.AddBerths(PierSide.Right, 2, 5f, 10f))
             .Build());
         marina.SetViewportSize(800, 600);
         return marina;
@@ -61,7 +61,7 @@ public class LandAndSingleSidedDockTests
         var layout = new MarinaLayout
         {
             LandAreas = new[] { bowTie, new LandArea("line", new[] { new Vector2(0, 0), new Vector2(1, 0) }, 1f), new LandArea("line", LShape, 1f) },
-            Slips = new[] { Slip.OnLand("X-1", "nowhere", Vector2.Zero) },
+            Berths = new[] { Berth.OnLand("X-1", "nowhere", Vector2.Zero) },
         };
 
         var errors = layout.Validate();
@@ -71,8 +71,8 @@ public class LandAndSingleSidedDockTests
         Assert.Contains(errors, e => e.Contains("unknown land area 'nowhere'"));
 
         var marina = CreateMarinaWithBoatyard();
-        Assert.Throws<MarinaLayoutException>(() => marina.AddSlip(Slip.OnLand("X-2", "nowhere", Vector2.Zero)));
-        Assert.Throws<MarinaLayoutException>(() => marina.AddSlip(Slip.OnLand("X-3", "yard", Vector2.Zero) with { DockId = "A" }));
+        Assert.Throws<MarinaLayoutException>(() => marina.AddBerth(Berth.OnLand("X-2", "nowhere", Vector2.Zero)));
+        Assert.Throws<MarinaLayoutException>(() => marina.AddBerth(Berth.OnLand("X-3", "yard", Vector2.Zero) with { PierId = "A" }));
     }
 
     [Fact]
@@ -99,25 +99,25 @@ public class LandAndSingleSidedDockTests
     }
 
     [Fact]
-    public void LandSlips_AreQueryable_AndCanBeSelectedAndUpdatedLikeWaterSlips()
+    public void LandBerths_AreQueryable_AndCanBeSelectedAndUpdatedLikeWaterBerths()
     {
         var marina = CreateMarinaWithBoatyard();
 
-        Assert.Equal(new[] { "Y-1", "Y-2" }, marina.GetSlipsByLandArea("YARD").Select(s => s.Id));
+        Assert.Equal(new[] { "Y-1", "Y-2" }, marina.GetBerthsByLandArea("YARD").Select(s => s.Id));
         Assert.Equal("Boatyard", marina.GetLandArea("yard")?.DisplayName);
-        Assert.Null(marina.GetSlip("Y-1")!.DockId);
+        Assert.Null(marina.GetBerth("Y-1")!.PierId);
 
-        SlipSelectedEventArgs? selected = null;
-        marina.SlipSelected += (_, e) => selected = e;
-        Assert.True(marina.SelectSlip("Y-1"));
+        BerthSelectedEventArgs? selected = null;
+        marina.BerthSelected += (_, e) => selected = e;
+        Assert.True(marina.SelectBerth("Y-1"));
         Assert.Equal("yard", selected!.LandArea?.Id);
-        Assert.Null(selected.Dock);
+        Assert.Null(selected.Pier);
         Assert.Contains("Boatyard", selected.Tooltip.Subtitle);
 
         var boat = new Boat("B1", "Hauled", BoatType.MonohullSailboat) { LengthMeters = 10f, BeamMeters = 3.4f };
-        foreach (var status in new[] { SlipStatus.Occupied, SlipStatus.Reserved, SlipStatus.TemporarilyFree, SlipStatus.Free })
+        foreach (var status in new[] { BerthStatus.Occupied, BerthStatus.Reserved, BerthStatus.TemporarilyFree, BerthStatus.Free })
         {
-            Assert.Equal(status, marina.SetSlipStatus("Y-1", status, boat).Status);
+            Assert.Equal(status, marina.SetBerthStatus("Y-1", status, boat).Status);
         }
     }
 
@@ -128,48 +128,48 @@ public class LandAndSingleSidedDockTests
         var boat = new Boat("B1", "Hauled", BoatType.MonohullSailboat) { LengthMeters = 10f, BeamMeters = 3.4f };
         marina.AssignBoat("Y-1", boat);
 
-        var instance = SlipPlacement.EnumerateBoats(
-            marina.GetSlips(), marina.GetSlip, marina.GetMultiSlipBerth, SlipStatusFilter.All,
-            slip => slip.IsOnLand ? 1.5f : null, marina.Meshes).Single();
+        var instance = BerthPlacement.EnumerateBoats(
+            marina.GetBerths(), marina.GetBerth, marina.GetMultiBerth, BerthStatusFilter.All,
+            berth => berth.IsOnLand ? 1.5f : null, marina.Meshes).Single();
         var mesh = marina.Meshes.Get(MeshIds.ForBoat(boat.Type));
         var keelY = Vector3.Transform(new Vector3(0f, mesh.Bounds.Min.Y, 0f), instance.World).Y;
         Assert.True(instance.OnLand);
-        Assert.Equal(1.5f + SlipPlacement.CradleHeight, keelY, 2);
+        Assert.Equal(1.5f + BerthPlacement.CradleHeight, keelY, 2);
 
         var objects = marina.BuildRenderFrame().Objects;
         Assert.Contains(objects, o => o.MeshId == MeshIds.ForBoat(boat.Type) && (o.Animation & RenderAnimation.FloatOnWater) == 0);
 
-        // Straight down onto the empty land slip: the pad sits on the land, not on the water.
+        // Straight down onto the empty land berth: the pad sits on the land, not on the water.
         var hit = ScenePicker.Pick(
-            new Ray(new Vector3(5, 50, 20), -Vector3.UnitY), marina.GetSlips(), Array.Empty<BoatInstance>(), marina.Meshes,
-            slip => slip.IsOnLand ? 1.5f : null);
-        Assert.Equal("Y-2", hit?.SlipId);
-        Assert.Equal(1.5f + SlipPlacement.LandPadLift, hit!.Value.WorldPoint.Y, 3);
+            new Ray(new Vector3(5, 50, 20), -Vector3.UnitY), marina.GetBerths(), Array.Empty<BoatInstance>(), marina.Meshes,
+            berth => berth.IsOnLand ? 1.5f : null);
+        Assert.Equal("Y-2", hit?.BerthId);
+        Assert.Equal(1.5f + BerthPlacement.LandPadLift, hit!.Value.WorldPoint.Y, 3);
     }
 
     [Fact]
-    public void SingleSidedDock_RejectsSlipsOnItsClosedSide()
+    public void SingleSidedPier_RejectsBerthsOnItsClosedSide()
     {
-        var dock = new Dock("Q", "Quay pontoon", Vector2.Zero, 90f, 30f) { BerthingSides = DockSides.Left };
+        var pier = new Pier("Q", "Quay pontoon", Vector2.Zero, 90f, 30f) { BerthingSides = PierSides.Left };
 
-        Assert.True(dock.HasBerthsOn(DockSide.Left));
-        Assert.False(dock.HasBerthsOn(DockSide.Right));
-        Assert.Throws<InvalidOperationException>(() => SlipGenerator.AtDock(dock, "Q-R01", DockSide.Right, 0f, 5f, 10f));
-        Assert.Throws<InvalidOperationException>(() => new MarinaLayoutBuilder().AddDock(dock, d => d.AddSlips(DockSide.Right, 2, 5f, 10f)));
-        Assert.Equal(3, SlipGenerator.AlongDock(dock, DockSide.Left, 3, 5f, 10f).Count);
-        Assert.Contains(new MarinaLayout { Docks = new[] { dock with { BerthingSides = 0 } } }.Validate(), e => e.Contains("berthing sides"));
+        Assert.True(pier.HasBerthsOn(PierSide.Left));
+        Assert.False(pier.HasBerthsOn(PierSide.Right));
+        Assert.Throws<InvalidOperationException>(() => BerthGenerator.AtPier(pier, "Q-R01", PierSide.Right, 0f, 5f, 10f));
+        Assert.Throws<InvalidOperationException>(() => new MarinaLayoutBuilder().AddPier(pier, d => d.AddBerths(PierSide.Right, 2, 5f, 10f)));
+        Assert.Equal(3, BerthGenerator.AlongPier(pier, PierSide.Left, 3, 5f, 10f).Count);
+        Assert.Contains(new MarinaLayout { Piers = new[] { pier with { BerthingSides = 0 } } }.Validate(), e => e.Contains("berthing sides"));
     }
 
     [Theory]
-    [InlineData(DockType.Concrete)]
-    [InlineData(DockType.FloatingConcrete)]
-    public void SingleSidedDock_DrawsMooringPointsOnlyOnItsOpenSide(DockType type)
+    [InlineData(PierType.Concrete)]
+    [InlineData(PierType.FloatingConcrete)]
+    public void SingleSidedPier_DrawsMooringPointsOnlyOnItsOpenSide(PierType type)
     {
         var marina = new MarinaVisualizer();
-        // Heading 0: the Left side is −X.
+        // Heading 0 (along +Z): looking from the start, the left-hand side is +X.
         marina.InitializeLayout(new MarinaLayout
         {
-            Docks = new[] { new Dock("Q", "Quay pontoon", Vector2.Zero, 0f, 40f, 3f, type) { BerthingSides = DockSides.Left } },
+            Piers = new[] { new Pier("Q", "Quay pontoon", Vector2.Zero, 0f, 40f, 3f, type) { BerthingSides = PierSides.Left } },
         });
 
         var mooringPoints = marina.BuildRenderFrame().Objects
@@ -178,16 +178,16 @@ public class LandAndSingleSidedDockTests
             .ToList();
 
         Assert.NotEmpty(mooringPoints);
-        Assert.All(mooringPoints, x => Assert.True(x < 0f, $"mooring point at x = {x} on the closed side"));
+        Assert.All(mooringPoints, x => Assert.True(x > 0f, $"mooring point at x = {x} on the closed side"));
     }
 
     [Theory]
-    [InlineData(DockType.FloatingWooden)]
-    [InlineData(DockType.FloatingConcrete)]
-    public void FloatingDocks_HaveNoGuidePiles(DockType type)
+    [InlineData(PierType.FloatingWooden)]
+    [InlineData(PierType.FloatingConcrete)]
+    public void FloatingPiers_HaveNoGuidePiles(PierType type)
     {
         var marina = new MarinaVisualizer();
-        marina.InitializeLayout(new MarinaLayout { Docks = new[] { new Dock("F", "Floating", Vector2.Zero, 0f, 60f, 3f, type) } });
+        marina.InitializeLayout(new MarinaLayout { Piers = new[] { new Pier("F", "Floating", Vector2.Zero, 0f, 60f, 3f, type) } });
 
         var objects = marina.BuildRenderFrame().Objects;
         Assert.DoesNotContain(objects, o => o.MeshId == MeshIds.Piling);
@@ -196,31 +196,31 @@ public class LandAndSingleSidedDockTests
     }
 
     [Fact]
-    public void SampleMarina_LandSlipsLieOnTheirLand_AndWaterSlipsStayOffLand()
+    public void SampleMarina_LandBerthsLieOnTheirLand_AndWaterBerthsStayOffLand()
     {
         var layout = MockMarinaFactory.CreateSampleMarina();
         Assert.Empty(layout.Validate());
 
         var land = layout.LandAreas.ToDictionary(l => l.Id, StringComparer.OrdinalIgnoreCase);
-        var landSlips = layout.Slips.Where(s => s.IsOnLand).ToList();
-        Assert.True(landSlips.Count >= 15);
-        Assert.Contains(layout.Docks, d => d.BerthingSides != DockSides.Both);
+        var landBerths = layout.Berths.Where(s => s.IsOnLand).ToList();
+        Assert.True(landBerths.Count >= 15);
+        Assert.Contains(layout.Piers, d => d.BerthingSides != PierSides.Both);
         Assert.Contains(layout.LandAreas, l => l.Kind == LandKind.Breakwater);
 
-        foreach (var slip in landSlips)
+        foreach (var berth in landBerths)
         {
-            Assert.All(slip.Bounds.GetCorners(), c => Assert.True(land[slip.LandAreaId!].Contains(c), $"{slip.Id} corner {c} is off its land area"));
+            Assert.All(berth.Bounds.GetCorners(), c => Assert.True(land[berth.LandAreaId!].Contains(c), $"{berth.Id} corner {c} is off its land area"));
         }
 
-        foreach (var slip in layout.Slips.Where(s => !s.IsOnLand))
+        foreach (var berth in layout.Berths.Where(s => !s.IsOnLand))
         {
-            Assert.All(layout.LandAreas, l => Assert.False(l.Contains(slip.Center), $"{slip.Id} is on land area {l.Id}"));
+            Assert.All(layout.LandAreas, l => Assert.False(l.Contains(berth.Center), $"{berth.Id} is on land area {l.Id}"));
         }
 
-        // Land slips don't overlap each other.
-        foreach (var slip in landSlips)
+        // Land berths don't overlap each other.
+        foreach (var berth in landBerths)
         {
-            Assert.DoesNotContain(landSlips, other => other.Id != slip.Id && other.Bounds.Contains(slip.Center));
+            Assert.DoesNotContain(landBerths, other => other.Id != berth.Id && other.Bounds.Contains(berth.Center));
         }
 
         var marina = new MarinaVisualizer();

@@ -1,6 +1,7 @@
 using System.Numerics;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Mathematics;
+using VirtualMarina.Core.Rendering;
 
 namespace VirtualMarina.Core.Geometry;
 
@@ -10,42 +11,55 @@ public static class LandMeshFactory
     /// <summary>How far land walls reach below the water surface, in meters.</summary>
     public const float WallDepth = 3f;
 
-    private static readonly Vector3 QuayTop = new(0.74f, 0.72f, 0.67f);
-    private static readonly Vector3 QuayWall = new(0.62f, 0.60f, 0.56f);
-    private static readonly Vector3 GrassTop = new(0.40f, 0.58f, 0.30f);
-    private static readonly Vector3 GrassWall = new(0.47f, 0.40f, 0.30f);
-    private static readonly Vector3 RockCore = new(0.26f, 0.26f, 0.25f);
-    private static readonly Vector3 RockDark = new(0.42f, 0.41f, 0.39f);
-    private static readonly Vector3 RockLight = new(0.64f, 0.62f, 0.58f);
-
-    /// <summary>The mesh for a land area: a rock pile for <see cref="LandKind.Breakwater"/>, otherwise a solid slab.</summary>
+    /// <summary>The mesh for a land area: a rock pile for <see cref="LandKind.Breakwater"/>, otherwise a solid slab; plus its trees.</summary>
     /// <param name="id">Mesh id (see <see cref="MeshIds.ForLand"/>).</param>
     /// <param name="area">The land area. Vertices are in world space, so the mesh is drawn with an identity transform.</param>
-    public static MeshData Create(int id, LandArea area)
+    /// <param name="style">Colors and tree visibility; the defaults when null.</param>
+    public static MeshData Create(int id, LandArea area, LandStyle? style = null)
     {
         ArgumentNullException.ThrowIfNull(area);
-        return area.Kind == LandKind.Breakwater ? CreateRockPile(id, area) : CreateSlab(id, area);
+        style ??= new LandStyle();
+        var b = new MeshBuilder();
+        if (area.Kind == LandKind.Breakwater) AddRockPile(b, area, style);
+        else AddSlab(b, area, style);
+        if (style.ShowTrees) AddTrees(b, area, style);
+        return b.Build(id, $"{(area.Kind == LandKind.Breakwater ? "Breakwater" : "Land")}:{area.Id}");
     }
 
     /// <summary>The outline extruded from <see cref="WallDepth"/> below the water up to the land height, with a flat top.</summary>
-    public static MeshData CreateSlab(int id, LandArea area)
+    public static MeshData CreateSlab(int id, LandArea area, LandStyle? style = null)
     {
         ArgumentNullException.ThrowIfNull(area);
-        var (top, wall) = area.Kind == LandKind.Grass ? (GrassTop, GrassWall) : (QuayTop, QuayWall);
         var b = new MeshBuilder();
-        AddPrism(b, area.Points, -WallDepth, area.Height, top, wall);
+        AddSlab(b, area, style ?? new LandStyle());
         return b.Build(id, $"Land:{area.Id}");
+    }
+
+    private static void AddSlab(MeshBuilder b, LandArea area, LandStyle style)
+    {
+        var (top, wall) = area.Kind == LandKind.Grass ? (style.GrassColor, style.GrassBankColor) : (style.QuayColor, style.QuayWallColor);
+        AddPrism(b, area.Points, -WallDepth, area.Height, top.ToVector3(), wall.ToVector3());
     }
 
     /// <summary>
     /// A rubble mound: the area filled with irregular rocks (low-poly squashed spheres), reaching the land height in the
     /// middle and sloping down to the water along the outline, over a dark core that hides the gaps between rocks.
     /// </summary>
-    public static MeshData CreateRockPile(int id, LandArea area)
+    public static MeshData CreateRockPile(int id, LandArea area, LandStyle? style = null)
     {
         ArgumentNullException.ThrowIfNull(area);
-        var points = area.Points;
         var b = new MeshBuilder();
+        AddRockPile(b, area, style ?? new LandStyle());
+        return b.Build(id, $"Breakwater:{area.Id}");
+    }
+
+    private static void AddRockPile(MeshBuilder b, LandArea area, LandStyle style)
+    {
+        var points = area.Points;
+        var rock = style.RockColor.ToVector3();
+        var rockDark = rock * (1f - style.RockColorVariation);
+        var rockLight = rock * (1f + style.RockColorVariation);
+        var core = rock * 0.5f;
         var random = new Random((int)(MarinaMath.StableHash01(area.Id) * int.MaxValue));
 
         var height = MathF.Max(area.Height, 0.3f);
@@ -53,7 +67,7 @@ public static class LandMeshFactory
         var edgeHeight = MathF.Max(0.1f, height * 0.3f);
 
         // Core, kept below the rocks so it only shows through the gaps.
-        AddPrism(b, points, -WallDepth, MathF.Max(-0.2f, edgeHeight - 0.35f), RockCore, RockCore);
+        AddPrism(b, points, -WallDepth, MathF.Max(-0.2f, edgeHeight - 0.35f), core, core);
 
         // Deepest point inside the outline sets how far the slope runs in.
         var (min, max) = PolygonMath.GetBounds(points);
@@ -81,7 +95,7 @@ public static class LandMeshFactory
             var top = edgeHeight + (height - edgeHeight) * t;
             var radius = spacing * Lerp(0.5f, 0.68f, (float)random.NextDouble());
             // The second (offset) layer sits a little lower, filling the gaps of the first.
-            AddRock(b, random, MarinaMath.ToWorld(position, top - radius * (lower ? 0.9f : 0.55f)), radius);
+            AddRock(b, random, MarinaMath.ToWorld(position, top - radius * (lower ? 0.9f : 0.55f)), radius, rockDark, rockLight);
         }
 
         // A ring of rocks along the outline, at the waterline, covering the core's walls.
@@ -95,11 +109,41 @@ public static class LandMeshFactory
             {
                 var along = Vector2.Lerp(a, c, (k + (float)random.NextDouble() * 0.5f) / count);
                 var radius = spacing * Lerp(0.5f, 0.7f, (float)random.NextDouble());
-                AddRock(b, random, MarinaMath.ToWorld(along, edgeHeight - radius * 0.6f), radius);
+                AddRock(b, random, MarinaMath.ToWorld(along, edgeHeight - radius * 0.6f), radius, rockDark, rockLight);
             }
         }
+    }
 
-        return b.Build(id, $"Breakwater:{area.Id}");
+    /// <summary>Trunks and crowns of the area's trees, standing on its surface. Colors vary slightly per tree (from its position).</summary>
+    private static void AddTrees(MeshBuilder b, LandArea area, LandStyle style)
+    {
+        foreach (var tree in area.Trees)
+        {
+            var hash = MarinaMath.StableHash01(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{tree.Position.X:0.00},{tree.Position.Y:0.00}"));
+            var shade = 0.85f + hash * 0.3f;
+            var ground = MarinaMath.ToWorld(tree.Position, area.Height);
+            var trunkHeight = tree.Shape == TreeShape.Conifer ? tree.Height * 0.25f : tree.Height * 0.4f;
+            var trunkRadius = MathF.Max(0.1f, tree.CrownRadius * 0.12f);
+            b.AddCylinder(ground - Vector3.UnitY * 0.2f, ground + Vector3.UnitY * (trunkHeight + tree.CrownRadius * 0.3f), trunkRadius, trunkRadius * 0.7f, 6, style.TrunkColor.ToVector3());
+
+            if (tree.Shape == TreeShape.Conifer)
+            {
+                var color = style.ConiferColor.ToVector3() * shade;
+                var crownHeight = tree.Height - trunkHeight;
+                // Two stacked cones.
+                b.AddCylinder(ground + Vector3.UnitY * trunkHeight, ground + Vector3.UnitY * (trunkHeight + crownHeight * 0.65f), tree.CrownRadius, tree.CrownRadius * 0.35f, 7, color);
+                b.AddCylinder(ground + Vector3.UnitY * (trunkHeight + crownHeight * 0.4f), ground + Vector3.UnitY * tree.Height, tree.CrownRadius * 0.75f, 0f, 7, color * 1.05f);
+            }
+            else
+            {
+                var color = style.FoliageColor.ToVector3() * shade;
+                var center = ground + Vector3.UnitY * (tree.Height - tree.CrownRadius);
+                var random = new Random((int)(hash * int.MaxValue));
+                AddRock(b, random, center, tree.CrownRadius, color, color * 1.12f, flatten: false);
+                var offset = new Vector3((float)random.NextDouble() - 0.5f, 0f, (float)random.NextDouble() - 0.5f) * tree.CrownRadius;
+                AddRock(b, random, center + offset - Vector3.UnitY * tree.CrownRadius * 0.25f, tree.CrownRadius * 0.7f, color * 0.9f, color, flatten: false);
+            }
+        }
     }
 
     /// <summary>Flat top and vertical walls of a (possibly concave) outline.</summary>
@@ -134,16 +178,16 @@ public static class LandMeshFactory
     }
 
     /// <summary>An irregular, flattened low-poly ball.</summary>
-    private static void AddRock(MeshBuilder b, Random random, Vector3 center, float radius)
+    private static void AddRock(MeshBuilder b, Random random, Vector3 center, float radius, Vector3 dark, Vector3 light, bool flatten = true)
     {
         const int segments = 6;
         const int rings = 3;
         var radii = new Vector3(
             radius * Lerp(0.9f, 1.25f, (float)random.NextDouble()),
-            radius * Lerp(0.6f, 0.85f, (float)random.NextDouble()),
+            radius * (flatten ? Lerp(0.6f, 0.85f, (float)random.NextDouble()) : Lerp(0.85f, 1.05f, (float)random.NextDouble())),
             radius * Lerp(0.9f, 1.25f, (float)random.NextDouble()));
         var yaw = (float)random.NextDouble() * MathF.Tau;
-        var color = Vector3.Lerp(RockDark, RockLight, (float)random.NextDouble()) *
+        var color = Vector3.Lerp(dark, light, (float)random.NextDouble()) *
             new Vector3(1f, 1f, Lerp(0.94f, 1.02f, (float)random.NextDouble()));
 
         Vector3[]? previous = null;

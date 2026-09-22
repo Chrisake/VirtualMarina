@@ -33,12 +33,12 @@ public static class MarinaMeshFactory
         return b.Build(id, "Cylinder");
     }
 
-    /// <summary>Flat 1×1 m quad on Y = 0, facing up, with white vertices (tinted by slip status).</summary>
-    public static MeshData CreateSlipPad(int id)
+    /// <summary>Flat 1×1 m quad on Y = 0, facing up, with white vertices (tinted by berth status).</summary>
+    public static MeshData CreateBerthPad(int id)
     {
         var b = new MeshBuilder();
         b.AddQuadUp(new(-0.5f, 0f, -0.5f), new(0.5f, 0f, -0.5f), new(0.5f, 0f, 0.5f), new(-0.5f, 0f, 0.5f), White);
-        return b.Build(id, "SlipPad");
+        return b.Build(id, "BerthPad");
     }
 
     /// <summary>Inverted pyramid "you are here" marker, tip at Y = 0, about 1.6 m tall.</summary>

@@ -1,4 +1,4 @@
-using VirtualMarina.Core.Domain;
+﻿using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
 
 namespace VirtualMarina.Core.Api;
@@ -12,7 +12,7 @@ public sealed partial class MarinaVisualizer
         var errors = layout.Validate();
         if (errors.Count > 0) throw new MarinaLayoutException(errors);
 
-        var previousSelection = SelectedSlips;
+        var previousSelection = SelectedBerths;
         ClosePopup();
         ClearState();
 
@@ -23,16 +23,16 @@ public sealed partial class MarinaVisualizer
             _landOrder.Add(land.Id);
         }
 
-        foreach (var dock in layout.Docks)
+        foreach (var pier in layout.Piers)
         {
-            _docks[dock.Id] = dock;
-            _dockOrder.Add(dock.Id);
+            _piers[pier.Id] = pier;
+            _pierOrder.Add(pier.Id);
         }
 
-        foreach (var slip in layout.Slips)
+        foreach (var berth in layout.Berths)
         {
-            _slips[slip.Id] = Normalize(slip with { BerthId = null });
-            _slipOrder.Add(slip.Id);
+            _berths[berth.Id] = Normalize(berth with { MultiBerthId = null });
+            _berthOrder.Add(berth.Id);
         }
 
         foreach (var divider in layout.Dividers)
@@ -41,28 +41,28 @@ public sealed partial class MarinaVisualizer
             _dividerOrder.Add(divider.Id);
         }
 
-        foreach (var berth in layout.MultiSlipBerths)
+        foreach (var berth in layout.MultiBerths)
         {
-            var canonical = berth with { SlipIds = berth.SlipIds.Select(id => _slips[id].Id).ToArray() };
-            _berths[berth.Id] = canonical;
-            _berthOrder.Add(berth.Id);
-            foreach (var slipId in canonical.SlipIds)
+            var canonical = berth with { BerthIds = berth.BerthIds.Select(id => _berths[id].Id).ToArray() };
+            _multiBerths[berth.Id] = canonical;
+            _multiBerthOrder.Add(berth.Id);
+            foreach (var berthId in canonical.BerthIds)
             {
-                _slips[slipId] = _slips[slipId] with { Status = canonical.Status, Boat = canonical.Boat, BerthId = canonical.Id };
+                _berths[berthId] = _berths[berthId] with { Status = canonical.Status, Boat = canonical.Boat, MultiBerthId = canonical.Id };
             }
         }
 
-        RegisterLandMeshes();
+        RebuildLandMeshes();
 
         var (min, max) = layout.ComputeBounds();
-        Meshes.Register(MarinaMeshFactory.CreateWaterGrid(MeshIds.Water, Water.Size, Water.GridResolution, (min + max) * 0.5f));
+        SetWaterGrid((min + max) * 0.5f, Water.Size);
         RebuildBuiltInPresets();
         ResetCamera(immediate: true);
         MarkSceneDirty();
 
         if (previousSelection.Count > 0)
         {
-            SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(previousSelection, Array.Empty<Slip>()));
+            SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(previousSelection, Array.Empty<Berth>()));
             SelectionCleared?.Invoke(this, EventArgs.Empty);
         }
 
@@ -73,102 +73,102 @@ public sealed partial class MarinaVisualizer
     public MarinaLayout GetLayout() => new()
     {
         Name = MarinaName,
-        Docks = OrderedDocks().ToArray(),
-        Slips = OrderedSlips().ToArray(),
+        Piers = OrderedPiers().ToArray(),
+        Berths = OrderedBerths().ToArray(),
         Dividers = OrderedDividers().ToArray(),
-        MultiSlipBerths = OrderedBerths().ToArray(),
+        MultiBerths = OrderedMultiBerths().ToArray(),
         LandAreas = OrderedLandAreas().ToArray(),
     };
 
     /// <inheritdoc/>
     public void ClearLayout()
     {
-        var previous = SelectedSlips;
+        var previous = SelectedBerths;
         ClosePopup();
         ClearState();
-        RegisterLandMeshes();
+        RebuildLandMeshes();
         RebuildBuiltInPresets();
         MarkSceneDirty();
         if (previous.Count > 0)
         {
-            SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(previous, Array.Empty<Slip>()));
+            SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(previous, Array.Empty<Berth>()));
             SelectionCleared?.Invoke(this, EventArgs.Empty);
         }
 
         RaiseLayoutChanged(LayoutChangeKind.Cleared);
     }
 
-    // ---- Docks ----------------------------------------------------------------------------------
+    // ---- Piers ----------------------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public void AddDock(Dock dock)
+    public void AddPier(Pier pier)
     {
-        ArgumentNullException.ThrowIfNull(dock);
-        ThrowIfInvalid(dock.Validate());
-        if (_docks.ContainsKey(dock.Id)) throw new InvalidOperationException($"Dock '{dock.Id}' already exists.");
+        ArgumentNullException.ThrowIfNull(pier);
+        ThrowIfInvalid(pier.Validate());
+        if (_piers.ContainsKey(pier.Id)) throw new InvalidOperationException($"Pier '{pier.Id}' already exists.");
 
-        _docks[dock.Id] = dock;
-        _dockOrder.Add(dock.Id);
+        _piers[pier.Id] = pier;
+        _pierOrder.Add(pier.Id);
         RebuildBuiltInPresets();
         MarkSceneDirty();
-        RaiseLayoutChanged(LayoutChangeKind.DockAdded, dock.Id);
+        RaiseLayoutChanged(LayoutChangeKind.PierAdded, pier.Id);
     }
 
     /// <inheritdoc/>
-    public void UpdateDock(Dock dock)
+    public void UpdatePier(Pier pier)
     {
-        ArgumentNullException.ThrowIfNull(dock);
-        ThrowIfInvalid(dock.Validate());
-        if (!_docks.TryGetValue(dock.Id, out var existing)) throw new KeyNotFoundException($"Dock '{dock.Id}' does not exist.");
+        ArgumentNullException.ThrowIfNull(pier);
+        ThrowIfInvalid(pier.Validate());
+        if (!_piers.TryGetValue(pier.Id, out var existing)) throw new KeyNotFoundException($"Pier '{pier.Id}' does not exist.");
 
-        _docks[existing.Id] = dock with { Id = existing.Id };
+        _piers[existing.Id] = pier with { Id = existing.Id };
         RebuildBuiltInPresets();
         MarkSceneDirty();
-        RefreshPopupIfShowingDock(existing.Id);
-        RaiseLayoutChanged(LayoutChangeKind.DockUpdated, existing.Id);
+        RefreshPopupIfShowingPier(existing.Id);
+        RaiseLayoutChanged(LayoutChangeKind.PierUpdated, existing.Id);
     }
 
     /// <inheritdoc/>
-    public Dock UpdateDock(DockUpdate update)
+    public Pier UpdatePier(PierUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);
-        var existing = GetDock(update.DockId) ?? throw new KeyNotFoundException($"Dock '{update.DockId}' does not exist.");
+        var existing = GetPier(update.PierId) ?? throw new KeyNotFoundException($"Pier '{update.PierId}' does not exist.");
         var updated = update.ApplyTo(existing);
-        UpdateDock(updated);
-        return _docks[existing.Id];
+        UpdatePier(updated);
+        return _piers[existing.Id];
     }
 
     /// <inheritdoc/>
-    public bool RemoveDock(string dockId, bool removeSlips = true)
+    public bool RemovePier(string pierId, bool removeBerths = true)
     {
-        ArgumentNullException.ThrowIfNull(dockId);
-        if (!_docks.TryGetValue(dockId, out var dock)) return false;
+        ArgumentNullException.ThrowIfNull(pierId);
+        if (!_piers.TryGetValue(pierId, out var pier)) return false;
 
-        var slipIds = _slipOrder.Where(id => IdComparer.Equals(_slips[id].DockId, dock.Id)).ToList();
-        if (slipIds.Count > 0 && !removeSlips)
+        var berthIds = _berthOrder.Where(id => IdComparer.Equals(_berths[id].PierId, pier.Id)).ToList();
+        if (berthIds.Count > 0 && !removeBerths)
         {
-            throw new InvalidOperationException($"Dock '{dockId}' still has {slipIds.Count} slip(s).");
+            throw new InvalidOperationException($"Pier '{pierId}' still has {berthIds.Count} berth(s).");
         }
 
         using (BeginUpdate())
         {
-            foreach (var slipId in slipIds) RemoveSlip(slipId);
-            foreach (var dividerId in _dividerOrder.Where(id => IdComparer.Equals(_dividers[id].DockId, dock.Id)).ToList()) RemoveDivider(dividerId);
-            _docks.Remove(dock.Id);
-            _dockOrder.RemoveAll(id => IdComparer.Equals(id, dock.Id));
+            foreach (var berthId in berthIds) RemoveBerth(berthId);
+            foreach (var dividerId in _dividerOrder.Where(id => IdComparer.Equals(_dividers[id].PierId, pier.Id)).ToList()) RemoveDivider(dividerId);
+            _piers.Remove(pier.Id);
+            _pierOrder.RemoveAll(id => IdComparer.Equals(id, pier.Id));
             RebuildBuiltInPresets();
             MarkSceneDirty();
-            RaiseLayoutChanged(LayoutChangeKind.DockRemoved, dock.Id);
+            RaiseLayoutChanged(LayoutChangeKind.PierRemoved, pier.Id);
         }
 
         return true;
     }
 
     /// <inheritdoc/>
-    public Dock? GetDock(string dockId) => dockId is not null && _docks.TryGetValue(dockId, out var dock) ? dock : null;
+    public Pier? GetPier(string pierId) => pierId is not null && _piers.TryGetValue(pierId, out var pier) ? pier : null;
 
     /// <inheritdoc/>
-    public IReadOnlyList<Dock> GetDocks() => OrderedDocks().ToArray();
+    public IReadOnlyList<Pier> GetPiers() => OrderedPiers().ToArray();
 
     // ---- Dividers -------------------------------------------------------------------------------
 
@@ -182,7 +182,7 @@ public sealed partial class MarinaVisualizer
         _dividers[divider.Id] = divider;
         _dividerOrder.Add(divider.Id);
         MarkSceneDirty();
-        RaiseLayoutChanged(LayoutChangeKind.DividerAdded, divider.DockId, dividerId: divider.Id);
+        RaiseLayoutChanged(LayoutChangeKind.DividerAdded, divider.PierId, dividerId: divider.Id);
     }
 
     /// <inheritdoc/>
@@ -204,7 +204,7 @@ public sealed partial class MarinaVisualizer
 
         _dividers[existing.Id] = divider with { Id = existing.Id };
         MarkSceneDirty();
-        RaiseLayoutChanged(LayoutChangeKind.DividerUpdated, divider.DockId, dividerId: existing.Id);
+        RaiseLayoutChanged(LayoutChangeKind.DividerUpdated, divider.PierId, dividerId: existing.Id);
     }
 
     /// <inheritdoc/>
@@ -216,7 +216,7 @@ public sealed partial class MarinaVisualizer
         _dividers.Remove(divider.Id);
         _dividerOrder.RemoveAll(id => IdComparer.Equals(id, divider.Id));
         MarkSceneDirty();
-        RaiseLayoutChanged(LayoutChangeKind.DividerRemoved, divider.DockId, dividerId: divider.Id);
+        RaiseLayoutChanged(LayoutChangeKind.DividerRemoved, divider.PierId, dividerId: divider.Id);
         return true;
     }
 
@@ -227,100 +227,178 @@ public sealed partial class MarinaVisualizer
     public IReadOnlyList<Divider> GetDividers() => OrderedDividers().ToArray();
 
     /// <inheritdoc/>
-    public IReadOnlyList<Divider> GetDividersByDock(string dockId) =>
-        OrderedDividers().Where(d => IdComparer.Equals(d.DockId, dockId)).ToArray();
+    public IReadOnlyList<Divider> GetDividersByPier(string pierId) =>
+        OrderedDividers().Where(d => IdComparer.Equals(d.PierId, pierId)).ToArray();
 
-    // ---- Slips ----------------------------------------------------------------------------------
+    // ---- Berths ----------------------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public void AddSlip(Slip slip)
+    public void AddBerth(Berth berth)
     {
-        ArgumentNullException.ThrowIfNull(slip);
-        ValidateSlipForStorage(slip);
-        if (_slips.ContainsKey(slip.Id)) throw new InvalidOperationException($"Slip '{slip.Id}' already exists.");
+        ArgumentNullException.ThrowIfNull(berth);
+        ValidateBerthForStorage(berth);
+        if (_berths.ContainsKey(berth.Id)) throw new InvalidOperationException($"Berth '{berth.Id}' already exists.");
 
-        _slips[slip.Id] = Normalize(slip with { BerthId = null });
-        _slipOrder.Add(slip.Id);
+        _berths[berth.Id] = Normalize(berth with { MultiBerthId = null });
+        _berthOrder.Add(berth.Id);
         MarkSceneDirty();
-        RaiseLayoutChanged(LayoutChangeKind.SlipAdded, slip.DockId, slip.Id);
+        RaiseLayoutChanged(LayoutChangeKind.BerthAdded, berth.PierId, berth.Id, landAreaId: berth.LandAreaId);
     }
 
     /// <inheritdoc/>
-    public Slip AddSlip(string slipId, string dockId, System.Numerics.Vector2 center, float headingDegrees, float length, float width, string? label = null)
+    public Berth AddBerth(string berthId, string pierId, System.Numerics.Vector2 center, float headingDegrees, float length, float width, string? label = null)
     {
-        var slip = new Slip(slipId, dockId, center, headingDegrees, length, width) { Label = label };
-        AddSlip(slip);
-        return _slips[slip.Id];
+        var berth = new Berth(berthId, pierId, center, headingDegrees, length, width) { Label = label };
+        AddBerth(berth);
+        return _berths[berth.Id];
     }
 
     /// <inheritdoc/>
-    public void AddSlips(IEnumerable<Slip> slips)
+    public void AddBerths(IEnumerable<Berth> berths)
     {
-        ArgumentNullException.ThrowIfNull(slips);
+        ArgumentNullException.ThrowIfNull(berths);
         using (BeginUpdate())
         {
-            foreach (var slip in slips) AddSlip(slip);
+            foreach (var berth in berths) AddBerth(berth);
         }
     }
 
     /// <inheritdoc/>
-    public void UpdateSlip(Slip slip)
+    public void UpdateBerth(Berth berth)
     {
-        ArgumentNullException.ThrowIfNull(slip);
-        var existing = RequireSlip(slip.Id);
-        ReplaceSlipRoutingBerth(existing, slip);
+        ArgumentNullException.ThrowIfNull(berth);
+        var existing = RequireBerth(berth.Id);
+        ReplaceBerthRoutingMultiBerth(existing, berth);
     }
 
     /// <inheritdoc/>
-    public Slip UpdateSlip(SlipUpdate update)
+    public Berth UpdateBerth(BerthUpdate update)
     {
         ArgumentNullException.ThrowIfNull(update);
-        var existing = RequireSlip(update.SlipId);
+        var existing = RequireBerth(update.BerthId);
         var replacement = update.ApplyTo(existing);
         if (update.ExternalData is not null)
         {
             foreach (var (key, value) in update.ExternalData) existing.ExternalData[key] = value;
         }
 
-        return ReplaceSlipRoutingBerth(existing, replacement);
+        return ReplaceBerthRoutingMultiBerth(existing, replacement);
     }
 
     /// <inheritdoc/>
-    public bool RemoveSlip(string slipId)
+    public bool RemoveBerth(string berthId)
     {
-        ArgumentNullException.ThrowIfNull(slipId);
-        if (!_slips.TryGetValue(slipId, out var slip)) return false;
+        ArgumentNullException.ThrowIfNull(berthId);
+        if (!_berths.TryGetValue(berthId, out var berth)) return false;
 
         using (BeginUpdate())
         {
-            RemoveFromSelectionCore(slip.Id);
-            if (IdComparer.Equals(_hoveredSlipId, slip.Id)) SetHoveredSlip(null);
-            if (slip.BerthId is not null) DetachFromBerth(slip);
+            RemoveFromSelectionCore(berth.Id);
+            if (IdComparer.Equals(_hoveredBerthId, berth.Id)) SetHoveredBerth(null);
+            if (berth.MultiBerthId is not null) DetachFromMultiBerth(berth);
 
-            _slips.Remove(slip.Id);
-            _slipOrder.RemoveAll(id => IdComparer.Equals(id, slip.Id));
+            _berths.Remove(berth.Id);
+            _berthOrder.RemoveAll(id => IdComparer.Equals(id, berth.Id));
             MarkSceneDirty();
-            RaiseLayoutChanged(LayoutChangeKind.SlipRemoved, slip.DockId, slip.Id);
+            RaiseLayoutChanged(LayoutChangeKind.BerthRemoved, berth.PierId, berth.Id, landAreaId: berth.LandAreaId);
         }
 
         return true;
     }
 
     /// <inheritdoc/>
-    public Slip? GetSlip(string slipId) => slipId is not null && _slips.TryGetValue(slipId, out var slip) ? slip : null;
+    public Berth RenameBerth(string berthId, string newBerthId)
+    {
+        ArgumentNullException.ThrowIfNull(berthId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(newBerthId);
+        var existing = RequireBerth(berthId);
+        newBerthId = newBerthId.Trim();
+        if (IdComparer.Equals(existing.Id, newBerthId))
+        {
+            // Same name but spelled differently (case, spacing): store the new spelling, nothing else moves.
+            return existing.Id == newBerthId ? existing : ReplaceBerthId(existing, newBerthId);
+        }
+
+        if (_berths.ContainsKey(newBerthId)) throw new InvalidOperationException($"Berth '{newBerthId}' already exists.");
+        return ReplaceBerthId(existing, newBerthId);
+    }
 
     /// <inheritdoc/>
-    public IReadOnlyList<Slip> GetSlips() => OrderedSlips().ToArray();
+    public Berth? GetBerth(string berthId) => berthId is not null && _berths.TryGetValue(berthId, out var berth) ? berth : null;
 
     /// <inheritdoc/>
-    public IReadOnlyList<Slip> GetSlipsByDock(string dockId) =>
-        OrderedSlips().Where(s => IdComparer.Equals(s.DockId, dockId)).ToArray();
+    public IReadOnlyList<Berth> GetBerths() => OrderedBerths().ToArray();
 
     /// <inheritdoc/>
-    public IReadOnlyList<Slip> GetSlipsByLandArea(string landAreaId) =>
-        OrderedSlips().Where(s => IdComparer.Equals(s.LandAreaId, landAreaId)).ToArray();
+    public IReadOnlyList<Berth> GetBerthsByPier(string pierId) =>
+        OrderedBerths().Where(s => IdComparer.Equals(s.PierId, pierId)).ToArray();
+
+    /// <inheritdoc/>
+    public IReadOnlyList<Berth> GetBerthsByLandArea(string landAreaId) =>
+        OrderedBerths().Where(s => IdComparer.Equals(s.LandAreaId, landAreaId)).ToArray();
 
     // ---- Land -----------------------------------------------------------------------------------
+
+    /// <inheritdoc/>
+    public void AddLandArea(LandArea landArea)
+    {
+        ArgumentNullException.ThrowIfNull(landArea);
+        ThrowIfInvalid(landArea.Validate());
+        if (_landAreas.ContainsKey(landArea.Id)) throw new InvalidOperationException($"Land area '{landArea.Id}' already exists.");
+
+        _landAreas[landArea.Id] = landArea;
+        _landOrder.Add(landArea.Id);
+        RegisterLandMesh(landArea);
+        RebuildBuiltInPresets();
+        MarkSceneDirty();
+        RaiseLayoutChanged(LayoutChangeKind.LandAreaAdded, landAreaId: landArea.Id);
+    }
+
+    /// <inheritdoc/>
+    public void UpdateLandArea(LandArea landArea)
+    {
+        ArgumentNullException.ThrowIfNull(landArea);
+        ThrowIfInvalid(landArea.Validate());
+        if (!_landAreas.TryGetValue(landArea.Id, out var existing)) throw new KeyNotFoundException($"Land area '{landArea.Id}' does not exist.");
+
+        var updated = landArea with { Id = existing.Id };
+        _landAreas[existing.Id] = updated;
+        RegisterLandMesh(updated);
+        RebuildBuiltInPresets();
+        MarkSceneDirty();
+        RefreshPopupIfShowingLand(existing.Id);
+        RaiseLayoutChanged(LayoutChangeKind.LandAreaUpdated, landAreaId: existing.Id);
+    }
+
+    /// <inheritdoc/>
+    public bool RemoveLandArea(string landAreaId, bool removeBerths = true)
+    {
+        ArgumentNullException.ThrowIfNull(landAreaId);
+        if (!_landAreas.TryGetValue(landAreaId, out var land)) return false;
+
+        var berthIds = _berthOrder.Where(id => IdComparer.Equals(_berths[id].LandAreaId, land.Id)).ToList();
+        if (berthIds.Count > 0 && !removeBerths)
+        {
+            throw new InvalidOperationException($"Land area '{landAreaId}' still has {berthIds.Count} berth(s).");
+        }
+
+        // Removing land berths too is coalesced into one BatchUpdated notification.
+        using (berthIds.Count > 0 ? BeginUpdate() : null)
+        {
+            foreach (var berthId in berthIds) RemoveBerth(berthId);
+            _landAreas.Remove(land.Id);
+            _landOrder.RemoveAll(id => IdComparer.Equals(id, land.Id));
+            UnregisterLandMesh(land.Id);
+            RebuildBuiltInPresets();
+            MarkSceneDirty();
+            RaiseLayoutChanged(LayoutChangeKind.LandAreaRemoved, landAreaId: land.Id);
+        }
+
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public object[] ExportObjects() => GetLayout().ToObjects();
 
     /// <inheritdoc/>
     public LandArea? GetLandArea(string landAreaId) => landAreaId is not null && _landAreas.TryGetValue(landAreaId, out var land) ? land : null;
@@ -328,14 +406,14 @@ public sealed partial class MarinaVisualizer
     /// <inheritdoc/>
     public IReadOnlyList<LandArea> GetLandAreas() => OrderedLandAreas().ToArray();
 
-    // ---- Slips (continued) ----------------------------------------------------------------------
+    // ---- Berths (continued) ----------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public IReadOnlyList<Slip> GetSlipsByStatus(SlipStatus status) =>
-        OrderedSlips().Where(s => s.Status == status).ToArray();
+    public IReadOnlyList<Berth> GetBerthsByStatus(BerthStatus status) =>
+        OrderedBerths().Where(s => s.Status == status).ToArray();
 
     /// <inheritdoc/>
-    public BatchUpdateResult BatchUpdate(IEnumerable<SlipUpdate> updates)
+    public BatchUpdateResult BatchUpdate(IEnumerable<BerthUpdate> updates)
     {
         ArgumentNullException.ThrowIfNull(updates);
         var errors = new List<BatchUpdateError>();
@@ -348,12 +426,12 @@ public sealed partial class MarinaVisualizer
                 if (update is null) continue;
                 try
                 {
-                    UpdateSlip(update);
+                    UpdateBerth(update);
                     applied++;
                 }
                 catch (Exception ex) when (ex is KeyNotFoundException or MarinaLayoutException or ArgumentException or InvalidOperationException)
                 {
-                    errors.Add(new BatchUpdateError(update.SlipId ?? string.Empty, ex.Message));
+                    errors.Add(new BatchUpdateError(update.BerthId ?? string.Empty, ex.Message));
                 }
             }
         }
@@ -384,43 +462,79 @@ public sealed partial class MarinaVisualizer
     }
 
     /// <summary>
-    /// Replaces a slip. A status or boat change on a member of a multi-slip berth applies to the whole berth
-    /// (or releases it, when the slip becomes Free or loses its boat).
+    /// Replaces a berth. A status or boat change on a member of a multi-berth applies to the whole berth
+    /// (or releases it, when the berth becomes Free or loses its boat).
     /// </summary>
-    private Slip ReplaceSlipRoutingBerth(Slip existing, Slip replacement)
+    private Berth ReplaceBerthRoutingMultiBerth(Berth existing, Berth replacement)
     {
-        if (existing.BerthId is not { } berthId || !_berths.TryGetValue(berthId, out var berth) ||
+        if (existing.MultiBerthId is not { } multiBerthId || !_multiBerths.TryGetValue(multiBerthId, out var berth) ||
             (replacement.Status == existing.Status && replacement.Boat == existing.Boat))
         {
-            return ReplaceSlip(existing, replacement);
+            return ReplaceBerth(existing, replacement);
         }
 
-        ValidateSlipForStorage(replacement);
+        ValidateBerthForStorage(replacement);
         using (BeginUpdate())
         {
             if (!replacement.Status.CanHaveBoat() || replacement.Boat is null)
             {
-                ReleaseMultiSlipBerth(berth.Id);
-                return ReplaceSlip(_slips[existing.Id], replacement with { BerthId = null });
+                ReleaseMultiBerth(berth.Id);
+                return ReplaceBerth(_berths[existing.Id], replacement with { MultiBerthId = null });
             }
 
-            var updated = UpdateMultiSlipBerth(berth with { Status = replacement.Status, Boat = replacement.Boat });
-            return ReplaceSlip(_slips[existing.Id], replacement with { Status = updated.Status, Boat = updated.Boat, BerthId = updated.Id });
+            var updated = UpdateMultiBerth(berth with { Status = replacement.Status, Boat = replacement.Boat });
+            return ReplaceBerth(_berths[existing.Id], replacement with { Status = updated.Status, Boat = updated.Boat, MultiBerthId = updated.Id });
         }
     }
 
-    /// <summary>Stores a new definition for an existing slip, keeping selection, hover and events consistent.</summary>
-    /// <param name="existing">The currently stored slip.</param>
+    /// <summary>Moves a berth to another id, taking its place in the order, the selection and its multi-berth with it.</summary>
+    private Berth ReplaceBerthId(Berth existing, string newBerthId)
+    {
+        var renamed = Normalize(existing with { Id = newBerthId });
+        using (BeginUpdate())
+        {
+            _berths.Remove(existing.Id);
+            _berths[renamed.Id] = renamed;
+
+            var position = _berthOrder.FindIndex(id => IdComparer.Equals(id, existing.Id));
+            if (position >= 0) _berthOrder[position] = renamed.Id;
+
+            for (var i = 0; i < _selection.Count; i++)
+            {
+                if (IdComparer.Equals(_selection[i], existing.Id)) _selection[i] = renamed.Id;
+            }
+
+            if (IdComparer.Equals(_hoveredBerthId, existing.Id)) _hoveredBerthId = renamed.Id;
+
+            if (renamed.MultiBerthId is { } multiBerthId && _multiBerths.TryGetValue(multiBerthId, out var group))
+            {
+                _multiBerths[group.Id] = group with
+                {
+                    BerthIds = group.BerthIds.Select(id => IdComparer.Equals(id, existing.Id) ? renamed.Id : id).ToArray(),
+                };
+            }
+
+            MarkSceneDirty();
+            if (IsBerthSelected(renamed.Id)) RequestPopupRefresh();
+        }
+
+        // Outside the update scope, so listeners are told the berth was renamed rather than just "something changed".
+        RaiseLayoutChanged(LayoutChangeKind.BerthRenamed, renamed.PierId, renamed.Id, landAreaId: renamed.LandAreaId);
+        return renamed;
+    }
+
+    /// <summary>Stores a new definition for an existing berth, keeping selection, hover and events consistent.</summary>
+    /// <param name="existing">The currently stored berth.</param>
     /// <param name="replacement">The new definition (same id).</param>
-    /// <param name="keepBerthId">When false, the replacement's <see cref="Slip.BerthId"/> is used as-is (berth management).</param>
-    private Slip ReplaceSlip(Slip existing, Slip replacement, bool keepBerthId = true)
+    /// <param name="keepMultiBerthId">When false, the replacement's <see cref="Berth.MultiBerthId"/> is used as-is (berth management).</param>
+    private Berth ReplaceBerth(Berth existing, Berth replacement, bool keepMultiBerthId = true)
     {
         if (!IdComparer.Equals(existing.Id, replacement.Id))
         {
-            throw new InvalidOperationException("A slip's id cannot be changed; remove it and add a new slip instead.");
+            throw new InvalidOperationException("A berth's id cannot be changed; remove it and add a new berth instead.");
         }
 
-        ValidateSlipForStorage(replacement);
+        ValidateBerthForStorage(replacement);
 
         if (!ReferenceEquals(existing.ExternalData, replacement.ExternalData))
         {
@@ -431,42 +545,42 @@ public sealed partial class MarinaVisualizer
         {
             Id = existing.Id,
             ExternalData = existing.ExternalData,
-            BerthId = keepBerthId && replacement.BerthId is null ? existing.BerthId : replacement.BerthId,
+            MultiBerthId = keepMultiBerthId && replacement.MultiBerthId is null ? existing.MultiBerthId : replacement.MultiBerthId,
         });
-        _slips[existing.Id] = normalized;
+        _berths[existing.Id] = normalized;
         MarkSceneDirty();
 
-        if (IsSlipSelected(existing.Id))
+        if (IsBerthSelected(existing.Id))
         {
             if (!IsSelectable(normalized)) RemoveFromSelectionCore(existing.Id);
             else RequestPopupRefresh();
         }
 
-        if (IdComparer.Equals(_hoveredSlipId, existing.Id) && !(normalized.IsInteractive && _statusFilter.Includes(normalized.Status)))
+        if (IdComparer.Equals(_hoveredBerthId, existing.Id) && !(normalized.IsInteractive && _statusFilter.Includes(normalized.Status)))
         {
-            SetHoveredSlip(null);
+            SetHoveredBerth(null);
         }
 
         if (existing.Status != normalized.Status || existing.Boat != normalized.Boat)
         {
-            SlipStatusChanged?.Invoke(this, new SlipStatusChangedEventArgs(existing, normalized));
+            BerthStatusChanged?.Invoke(this, new BerthStatusChangedEventArgs(existing, normalized));
         }
 
-        RaiseLayoutChanged(LayoutChangeKind.SlipUpdated, normalized.DockId, normalized.Id);
+        RaiseLayoutChanged(LayoutChangeKind.BerthUpdated, normalized.PierId, normalized.Id, landAreaId: normalized.LandAreaId);
         return normalized;
     }
 
-    private void ValidateSlipForStorage(Slip slip)
+    private void ValidateBerthForStorage(Berth berth)
     {
-        var errors = slip.Validate().ToList();
-        if (!string.IsNullOrWhiteSpace(slip.DockId) && !_docks.ContainsKey(slip.DockId))
+        var errors = berth.Validate().ToList();
+        if (!string.IsNullOrWhiteSpace(berth.PierId) && !_piers.ContainsKey(berth.PierId))
         {
-            errors.Add($"Slip '{slip.Id}' references unknown dock '{slip.DockId}'.");
+            errors.Add($"Berth '{berth.Id}' references unknown pier '{berth.PierId}'.");
         }
 
-        if (!string.IsNullOrWhiteSpace(slip.LandAreaId) && !_landAreas.ContainsKey(slip.LandAreaId))
+        if (!string.IsNullOrWhiteSpace(berth.LandAreaId) && !_landAreas.ContainsKey(berth.LandAreaId))
         {
-            errors.Add($"Slip '{slip.Id}' references unknown land area '{slip.LandAreaId}'.");
+            errors.Add($"Berth '{berth.Id}' references unknown land area '{berth.LandAreaId}'.");
         }
 
         ThrowIfInvalid(errors);
@@ -475,9 +589,9 @@ public sealed partial class MarinaVisualizer
     private void ValidateDividerForStorage(Divider divider)
     {
         var errors = divider.Validate().ToList();
-        if (divider.DockId is not null && !_docks.ContainsKey(divider.DockId))
+        if (divider.PierId is not null && !_piers.ContainsKey(divider.PierId))
         {
-            errors.Add($"Divider '{divider.Id}' references unknown dock '{divider.DockId}'.");
+            errors.Add($"Divider '{divider.Id}' references unknown pier '{divider.PierId}'.");
         }
 
         ThrowIfInvalid(errors);
@@ -489,24 +603,25 @@ public sealed partial class MarinaVisualizer
         if (list.Count > 0) throw new MarinaLayoutException(list);
     }
 
-    /// <summary>Enforces invariants: a free slip never carries a boat.</summary>
-    private static Slip Normalize(Slip slip) =>
-        slip.Status == SlipStatus.Free && slip.Boat is not null ? slip with { Boat = null } : slip;
+    /// <summary>Enforces invariants: a free berth never carries a boat.</summary>
+    private static Berth Normalize(Berth berth) =>
+        berth.Status == BerthStatus.Free && berth.Boat is not null ? berth with { Boat = null } : berth;
 
     private void ClearState()
     {
-        _docks.Clear();
-        _dockOrder.Clear();
-        _slips.Clear();
-        _slipOrder.Clear();
-        _dividers.Clear();
-        _dividerOrder.Clear();
+        _piers.Clear();
+        _pierOrder.Clear();
         _berths.Clear();
         _berthOrder.Clear();
+        _dividers.Clear();
+        _dividerOrder.Clear();
+        _multiBerths.Clear();
+        _multiBerthOrder.Clear();
         _landAreas.Clear();
         _landOrder.Clear();
         _selection.Clear();
-        _hoveredSlipId = null;
+        _hoveredBerthId = null;
         _popupRefreshPending = false;
+        Designer.ClearHistory(); // The old elements are gone; undoing into them would resurrect stale ids.
     }
 }

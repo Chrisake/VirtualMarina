@@ -1,0 +1,75 @@
+# Multi-berths
+
+A `MultiBerth` puts **one boat across two or more berths**, for example a superyacht moored alongside a row of small berths, or a wide catamaran taking two berths bow-in. There is no upper limit on the number of berths.
+
+## Mooring styles
+
+| `MooringStyle` | Boat placement |
+|---|---|
+| `Alongside` (default) | Parallel to the pier (across the berths), next to the pier end, centered along the combined width |
+| `BowIn` | Bow toward the pier like a normal berth, centered across the combined width |
+
+- **Reference frame:** geometry uses the **first** berth in `BerthIds` (the primary berth). The combined rectangle is measured along that berth's axes, so list berths that lie in a row.
+- **Finger piers:** automatic finger piers between member berths are not drawn, so the boat doesn't clip through them.
+- **Explicit dividers** (`Divider` records) are always drawn. Don't put pile or boom dividers between berths you intend to combine.
+
+## Creating a berth at runtime
+
+```csharp
+var superyacht = new Boat("SY-1", "Meltemi Star", BoatType.MotorYacht) { LengthMeters = 44, BeamMeters = 8.5f };
+
+// Alongside (shortcut)
+MultiBerth berth = marina.MoorAlongside(new[] { "B-L05", "B-L06", "B-L07", "B-L08", "B-L09", "B-L10", "B-L11", "B-L12" }, superyacht);
+
+// General form
+marina.AssignBoatToBerths(new[] { "C-L01", "C-L02" }, catamaran, BerthStatus.Reserved, MooringStyle.BowIn, multiBerthId: "CAT-7");
+```
+
+- **What happens to the berths:** every member berth gets the berth's `Status`, its `Boat` and `MultiBerthId`, and raises `BerthStatusChanged`. The boat is drawn once.
+- **Ids:** `multiBerthId` is generated from the first berth (`BERTH-{berthId}`) when null.
+- **Status:** must be `Occupied`, `Reserved` or `TemporarilyFree`. To end a berth, release it.
+- **Errors:** a berth already in another berth throws `InvalidOperationException`. Fewer than two berths, unknown berths or an invalid boat throw `MarinaLayoutException`.
+
+## Updating and releasing
+
+```csharp
+marina.UpdateMultiBerth("CAT-7", status: BerthStatus.Occupied);                 // arrival
+marina.UpdateMultiBerth("CAT-7", berthIds: new[] { "C-L01", "C-L02", "C-L03" }); // grow (berths no longer listed become Free)
+marina.UpdateMultiBerth(berth with { Style = MooringStyle.BowIn, Boat = biggerBoat });
+marina.ReleaseMultiBerth("CAT-7");                                             // all member berths become Free
+
+MultiBerth? b = marina.GetMultiBerth("CAT-7");
+MultiBerth? ofBerth = marina.GetMultiBerthFor("C-L02");
+IReadOnlyList<MultiBerth> all = marina.GetMultiBerths();
+```
+
+## Interaction with the single-berth API
+
+The visualizer keeps member berths consistent:
+
+| Call on a member berth | Effect |
+|---|---|
+| `MarkTemporarilyFree`, `ReserveBerth(id, boat)`, `AssignBoat`, `SetBerthStatus(non-Free)` | Changes the **whole berth**'s status and boat |
+| `ReleaseBerth`, `SetBerthStatus(Free)`, or clearing the boat (`ReserveBerth(id)` with no boat) | **Releases the berth**: all members become Free, then the change applies to that berth |
+| Geometry, label or flag changes | Affect only that berth |
+| `RemoveBerth` | The berth shrinks. With fewer than two berths left it dissolves, and the remaining berth keeps the boat as a normal assignment. |
+
+## In layouts
+
+Berths are part of `MarinaLayout.MultiBerths` and are included in `GetLayout()`:
+
+```csharp
+new MarinaLayoutBuilder()
+    .AddPier("B", "Pier B", new Vector2(35, -6), 0, 66, pier => pier.AddBerths(PierSide.Left, 12, 5, 11))
+    .AddMultiBerth(new MultiBerth("BIG", new[] { "B-L10", "B-L11", "B-L12" }, superyacht, BerthStatus.Occupied, MooringStyle.Alongside))
+    .Build();
+```
+
+`InitializeLayout` applies each berth's status and boat to its member berths. Status and boat values already set on those berths in the layout are overwritten.
+
+## In events, tooltips and picking
+
+- **`BerthSelectedEventArgs.Berth`** is the berth of the selected berth.
+- **The default tooltip** adds a row such as `Berth: Alongside across B-L10, B-L11, B-L12`.
+- **Clicking the boat** selects the member berth nearest the click point.
+- **Highlighting:** the boat is highlighted when any member berth is selected or hovered.

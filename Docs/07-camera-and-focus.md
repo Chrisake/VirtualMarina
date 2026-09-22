@@ -11,27 +11,27 @@ The camera is an orbit camera looking at a **target** point on the water, descri
 
 All camera moves are smoothed (eased) unless you pass `immediate: true`.
 
-## Focusing on slips
+## Focusing on berths
 
 ```csharp
-marina.FocusSlip("C-L04");                                   // DefaultFocusAngle
-marina.FocusSlip("C-L04", CameraAngle.TopDown);              // plan view
-marina.FocusSlips(new[] { "A-R01", "D-L01" }, CameraAngle.TopDown);
-marina.FocusSlips(marina.GetSlipsByDock("B").Select(s => s.Id), new CameraAngle(YawDegrees: 200, PitchDegrees: 45));
+marina.FocusBerth("C-L04");                                   // DefaultFocusAngle
+marina.FocusBerth("C-L04", CameraAngle.TopDown);              // plan view
+marina.FocusBerths(new[] { "A-R01", "D-L01" }, CameraAngle.TopDown);
+marina.FocusBerths(marina.GetBerthsByPier("B").Select(s => s.Id), new CameraAngle(YawDegrees: 200, PitchDegrees: 45));
 marina.FocusSelection(CameraAngle.TopDown, immediate: true);
 marina.SetSelection(ids, focusCamera: true, focusAngle: CameraAngle.TopDown);   // select + frame
 ```
 
-How `FocusSlips` frames the slips:
-1. **Target:** the middle of all listed slips.
-2. **Distance:** the closest that fits every slip's water area **and** its boat's height, inside the view with `FocusMargin` free space on each side (default 0.12 = 12% per side).
+How `FocusBerths` frames the berths:
+1. **Target:** the middle of all listed berths.
+2. **Distance:** the closest that fits every berth's water area **and** its boat's height, inside the view with `FocusMargin` free space on each side (default 0.12 = 12% per side).
 3. **Aspect ratio:** it uses the view's actual aspect ratio, so wide, tall and square views all fit.
-4. **Minimum distance:** the camera never gets closer than `MinFocusDistance` (default 25 m), so a single slip keeps some surroundings.
-5. **Maximum distance:** the camera's `Constraints.MaxDistance` still applies. If a very thin view would need more, the camera stops at the limit, centered on the slips.
-6. **Ids:** unknown ids are ignored, and it returns false when none exist. Disabled and hidden slips **are** included, because focusing only moves the camera.
+4. **Minimum distance:** the camera never gets closer than `MinFocusDistance` (default 25 m), so a single berth keeps some surroundings.
+5. **Maximum distance:** the camera's `Constraints.MaxDistance` still applies. If a very thin view would need more, the camera stops at the limit, centered on the berths.
+6. **Ids:** unknown ids are ignored, and it returns false when none exist. Disabled and hidden berths **are** included, because focusing only moves the camera.
 7. **Resizing:** if the view is resized while the camera is still at the focus pose (for example, focus was called before the view had its size), the focus is re-fitted. Once the user moves the camera, resizing leaves it alone.
 
-`ComputeFocusPose(slips, angle)` returns the pose without moving the camera.
+`ComputeFocusPose(berths, angle)` returns the pose without moving the camera.
 
 ### `CameraAngle`
 
@@ -52,7 +52,7 @@ public readonly record struct CameraAngle(float YawDegrees, float PitchDegrees)
 marina.DefaultFocusAngle = CameraAngle.TopDown;
 ```
 
-This is used by `FocusSlip(id)`, `FocusSlips(ids)` or `FocusSelection()` without an angle, by `SelectSlip(id, focusCamera: true)`, by `SetSelection(..., focusCamera: true)` without an angle, and by **double-click**. When null (the default), focus keeps the current yaw and looks down at least 35°.
+This is used by `FocusBerth(id)`, `FocusBerths(ids)` or `FocusSelection()` without an angle, by `SelectBerth(id, focusCamera: true)`, by `SetSelection(..., focusCamera: true)` without an angle, and by **double-click**. When null (the default), focus keeps the current yaw and looks down at least 35°.
 
 ## Presets
 
@@ -63,14 +63,14 @@ This is used by `FocusSlip(id)`, `FocusSlips(ids)` or `FocusSelection()` without
 | `Sea Side` | Looking back toward the shore |
 | `East`, `West` | From the sides |
 | `Low Angle` | Close to the water line |
-| `Dock: {Name}` | Close-up of each dock |
+| `Pier: {Name}` | Close-up of each pier |
 
 ```csharp
 marina.ResetCamera();                                    // Overview
 marina.ApplyCameraPreset("Top Down", immediate: true);   // case-insensitive
-marina.FocusDock("A");                                   // same as "Dock: {name}"
-marina.AddCameraPreset(new CameraPreset("Fuel dock", new CameraPose(new Vector3(40, 0, 10), 150, 35, 60), "Fuel station close-up"));
-marina.RemoveCameraPreset("Fuel dock");
+marina.FocusPier("A");                                   // same as "Pier: {name}"
+marina.AddCameraPreset(new CameraPreset("Fuel pier", new CameraPose(new Vector3(40, 0, 10), 150, 35, 60), "Fuel station close-up"));
+marina.RemoveCameraPreset("Fuel pier");
 foreach (CameraPreset p in marina.CameraPresets) menu.Add(p.Name, p.Description);
 ```
 

@@ -1,4 +1,4 @@
-namespace VirtualMarina.Core.Input;
+﻿namespace VirtualMarina.Core.Input;
 
 /// <summary>Platform-neutral mouse button, as forwarded by host views to <see cref="MarinaInputController"/>.</summary>
 public enum PointerButton
@@ -23,13 +23,13 @@ public enum InputModifiers
     /// <summary>No modifier.</summary>
     None = 0,
 
-    /// <summary>Shift: click adds or removes slips from the selection (like Control); swaps pan and orbit while dragging; orbits with the arrow keys.</summary>
+    /// <summary>Shift: click adds or removes berths from the selection (like Control); swaps pan and orbit while dragging; orbits with the arrow keys.</summary>
     Shift = 1,
 
-    /// <summary>Control (Cmd on macOS browsers): click adds or removes slips from the selection (like Shift).</summary>
+    /// <summary>Control (Cmd on macOS browsers): click adds or removes berths from the selection (like Shift).</summary>
     Control = 2,
 
-    /// <summary>Alt: currently unused.</summary>
+    /// <summary>Alt: in the designer, turns snapping off while held.</summary>
     Alt = 4,
 }
 
@@ -63,8 +63,20 @@ public enum MarinaKey
     /// <summary>Reset the camera to the overview.</summary>
     Home,
 
-    /// <summary>Close the popup; pressed again, clear the selection.</summary>
+    /// <summary>Close the popup; pressed again, clear the selection. In the designer: cancel the drawing, then return to navigation.</summary>
     Escape,
+
+    /// <summary>Designer: finish the drawing in progress.</summary>
+    Enter,
+
+    /// <summary>Designer: remove the last placed point.</summary>
+    Backspace,
+
+    /// <summary>Designer: with the erase tool, remove the element under the pointer.</summary>
+    Delete,
+
+    /// <summary>Designer: undo the last change (<c>MarinaDesigner.Undo</c>). Hosts map Ctrl+Z.</summary>
+    Undo,
 }
 
 /// <summary>What dragging with a mouse button does. Configure with <see cref="MarinaInputController.LeftDragAction"/> and related properties.</summary>

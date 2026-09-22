@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Displayed text for VirtualMarina.WinForms. To translate it, copy this file next to it as Strings.<culture>.resx
+    (e.g. Strings.el.resx), translate the <value> elements only, and leave the names untouched.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- Designer panel -->
+  <data name="SectionDesigner">
+    <value>Designer</value>
+  </data>
+  <data name="DesignMode">
+    <value>Design mode</value>
+  </data>
+  <data name="Undo">
+    <value>Undo (Ctrl+Z)</value>
+  </data>
+  <data name="NothingToUndo">
+    <value>Nothing to undo</value>
+  </data>
+  <data name="TurnOnDesignMode">
+    <value>Turn on design mode to draw land areas, piers and berths.</value>
+  </data>
+  <!-- Land area settings -->
+  <data name="SectionLandArea">
+    <value>Land area</value>
+  </data>
+  <data name="LandType">
+    <value>Type</value>
+  </data>
+  <data name="LandHeight">
+    <value>Height (m)</value>
+  </data>
+  <data name="TreeCoverage">
+    <value>Tree coverage</value>
+  </data>
+  <data name="TreeDensity">
+    <value>{0:0} trees / 1000 m²</value>
+    <comment>{0} = trees per 1000 square meters.</comment>
+  </data>
+  <data name="NoTrees">
+    <value>no trees</value>
+  </data>
+  <!-- Pier settings -->
+  <data name="SectionPier">
+    <value>Pier</value>
+  </data>
+  <data name="PierType">
+    <value>Type</value>
+  </data>
+  <data name="PierWidth">
+    <value>Width (m)</value>
+  </data>
+  <data name="PierBerths">
+    <value>Berths</value>
+  </data>
+  <!-- Berth settings -->
+  <data name="SectionBerths">
+    <value>Berths</value>
+  </data>
+  <data name="BerthWidth">
+    <value>Width (m)</value>
+  </data>
+  <data name="BerthLength">
+    <value>Length (m)</value>
+  </data>
+  <data name="BerthDepth">
+    <value>Depth (m)</value>
+  </data>
+  <data name="BerthSeparators">
+    <value>Separators</value>
+  </data>
+  <data name="BerthGap">
+    <value>Space between (m)</value>
+  </data>
+  <data name="AlignBerths">
+    <value>Line up with the berths already there</value>
+  </data>
+  <data name="BerthServices">
+    <value>Pedestals</value>
+  </data>
+  <data name="LandBerthHeading">
+    <value>Land berth bow (°)</value>
+  </data>
+  <!-- Reference image -->
+  <data name="SectionReferenceImage">
+    <value>Reference image (north up)</value>
+  </data>
+  <data name="LoadImage">
+    <value>Load image…</value>
+  </data>
+  <data name="RemoveImage">
+    <value>Remove</value>
+  </data>
+  <data name="ViewImage">
+    <value>View image</value>
+  </data>
+  <data name="TopViewNorthUp">
+    <value>Top view, north up</value>
+  </data>
+  <data name="ShowImage">
+    <value>Show</value>
+  </data>
+  <data name="ImageAboveScene">
+    <value>Over land and piers</value>
+  </data>
+  <data name="ImageOpacity">
+    <value>Opacity</value>
+  </data>
+  <data name="ScaleBarLength">
+    <value>Scale bar (m)</value>
+  </data>
+  <data name="ApplyScale">
+    <value>Apply scale</value>
+  </data>
+  <data name="MetersPerPixel">
+    <value>Meters / pixel</value>
+  </data>
+  <data name="OpenImageTitle">
+    <value>Top-down image of the marina (north up)</value>
+    <comment>Title of the file dialog.</comment>
+  </data>
+  <data name="ImageLoadFailed">
+    <value>The image could not be loaded:
+
+{0}</value>
+    <comment>{0} = the error message.</comment>
+  </data>
+  <data name="ImageLoadFailedTitle">
+    <value>Reference image</value>
+    <comment>Caption of the message box.</comment>
+  </data>
+  <data name="NoImageYet">
+    <value>Load a top-down image to trace the marina.</value>
+  </data>
+  <data name="ScaleLineDrawn">
+    <value>Scale line: {0:0.0} m now. Enter its real length:</value>
+    <comment>{0} = current length of the drawn line, in meters.</comment>
+  </data>
+  <data name="ImageSizeHint">
+    <value>{0:0} × {1:0} m. Draw a line over the map’s scale bar.</value>
+    <comment>{0} and {1} = width and height of the image in meters.</comment>
+  </data>
+  <!-- Selection popup -->
+  <data name="PopupClose">
+    <value>Close (Esc)</value>
+    <comment>Hint shown while the pointer is over the popup’s close button.</comment>
+  </data>
+  <!-- View control -->
+  <data name="FileDialogFilterImages">
+    <value>Images (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff)</value>
+    <comment>Left of the | in the file dialog filter; the patterns after it are not translated.</comment>
+  </data>
+  <data name="FileDialogFilterAll">
+    <value>All files (*.*)</value>
+  </data>
+  <data name="DesignTimeTitle">
+    <value>VirtualMarina 3D view</value>
+    <comment>Drawn on the control inside the Visual Studio designer, where there is no OpenGL surface.</comment>
+  </data>
+  <data name="DesignTimeSubtitle">
+    <value>The marina is rendered here at runtime (OpenGL 3.3).</value>
+  </data>
+  <data name="RendererNotInitialized">
+    <value>OpenGL (not initialized)</value>
+  </data>
+</root>

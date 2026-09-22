@@ -116,6 +116,12 @@ pre.details {
 
 .stats span { margin-right: 10px; }
 
+.tabs { display: flex; gap: 4px; }
+.tabs button { flex: 1; font-weight: 600; }
+.tabs button.active { background: #1f5fd1; border-color: #1f5fd1; color: #fff; }
+
+pre.export { max-height: 220px; overflow: auto; white-space: pre; min-height: 0; margin-top: 8px; font-size: 11px; }
+
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;

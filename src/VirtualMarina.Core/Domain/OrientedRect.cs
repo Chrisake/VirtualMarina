@@ -4,7 +4,7 @@ using VirtualMarina.Core.Mathematics;
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>
-/// Plan-view rectangle rotated about its center. Used as the spatial boundary of slips, docks and land.
+/// Plan-view rectangle rotated about its center. Used as the spatial boundary of berths, piers and land.
 /// </summary>
 /// <param name="Center">Center in plan coordinates (X = world X, Y = world Z).</param>
 /// <param name="Size">X = width across the heading, Y = length along the heading.</param>

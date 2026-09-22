@@ -6,119 +6,116 @@ namespace VirtualMarina.Core.Api;
 public sealed partial class MarinaVisualizer
 {
     /// <inheritdoc/>
-    public Slip SetSlipStatus(string slipId, SlipStatus status, Boat? boat = null)
+    public Berth SetBerthStatus(string berthId, BerthStatus status, Boat? boat = null)
     {
         if (!Enum.IsDefined(status)) throw new ArgumentOutOfRangeException(nameof(status), status, null);
-        var update = new SlipUpdate(slipId)
+        var update = new BerthUpdate(berthId)
         {
             Status = status,
-            Boat = status == SlipStatus.Free ? null : boat,
-            ClearBoat = status == SlipStatus.Free,
+            Boat = status == BerthStatus.Free ? null : boat,
+            ClearBoat = status == BerthStatus.Free,
         };
-        return UpdateSlip(update);
+        return UpdateBerth(update);
     }
 
     /// <inheritdoc/>
-    public Slip AssignBoat(string slipId, Boat boat)
+    public Berth AssignBoat(string berthId, Boat boat)
     {
         ArgumentNullException.ThrowIfNull(boat);
-        return UpdateSlip(SlipUpdate.Occupy(slipId, boat));
+        return UpdateBerth(BerthUpdate.Occupy(berthId, boat));
     }
 
     /// <inheritdoc/>
-    public Slip ReserveSlip(string slipId, Boat? expectedBoat = null) =>
-        UpdateSlip(SlipUpdate.Reserve(slipId, expectedBoat));
+    public Berth ReserveBerth(string berthId, Boat? expectedBoat = null) =>
+        UpdateBerth(BerthUpdate.Reserve(berthId, expectedBoat));
 
     /// <inheritdoc/>
-    public Slip ReleaseSlip(string slipId) => UpdateSlip(SlipUpdate.Free(slipId));
+    public Berth ReleaseBerth(string berthId) => UpdateBerth(BerthUpdate.Free(berthId));
 
     /// <summary>
-    /// Marks the slip Temporarily Free (yellow): the berth holder's boat is away. The assigned boat is kept and drawn as a ghost;
+    /// Marks the berth Temporarily Free (yellow): the berth holder's boat is away. The assigned boat is kept and drawn as a ghost;
     /// pass <paramref name="boat"/> to set or replace it.
     /// </summary>
-    public Slip MarkTemporarilyFree(string slipId, Boat? boat = null) =>
-        UpdateSlip(SlipUpdate.TemporarilyFree(slipId, boat));
+    public Berth MarkTemporarilyFree(string berthId, Boat? boat = null) =>
+        UpdateBerth(BerthUpdate.TemporarilyFree(berthId, boat));
 
     // ---- Interaction flags ----------------------------------------------------------------------
 
-    /// <summary>Hidden slips are not drawn at all and cannot be interacted with.</summary>
-    public Slip SetSlipVisible(string slipId, bool visible) => UpdateSlip(SlipUpdate.Flags(slipId, visible: visible));
+    /// <summary>Hidden berths are not drawn at all and cannot be interacted with.</summary>
+    public Berth SetBerthVisible(string berthId, bool visible) => UpdateBerth(BerthUpdate.Flags(berthId, visible: visible));
 
-    /// <summary>Disabled slips are drawn in gray and cannot be hovered, selected, right-clicked or acted on.</summary>
-    public Slip SetSlipDisabled(string slipId, bool disabled) => UpdateSlip(SlipUpdate.Flags(slipId, disabled: disabled));
+    /// <summary>Disabled berths are drawn in gray and cannot be hovered, selected, right-clicked or acted on.</summary>
+    public Berth SetBerthDisabled(string berthId, bool disabled) => UpdateBerth(BerthUpdate.Flags(berthId, disabled: disabled));
 
-    /// <summary>Read-only slips can be selected and show their tooltip, but their actions window does not open.</summary>
-    public Slip SetSlipReadOnly(string slipId, bool readOnly) => UpdateSlip(SlipUpdate.Flags(slipId, readOnly: readOnly));
+    /// <summary>Read-only berths can be selected and show their tooltip, but their actions window does not open.</summary>
+    public Berth SetBerthReadOnly(string berthId, bool readOnly) => UpdateBerth(BerthUpdate.Flags(berthId, readOnly: readOnly));
 
-    /// <summary>Sets interaction flags on many slips with a single scene rebuild; null leaves a flag unchanged.</summary>
-    public BatchUpdateResult SetSlipFlags(IEnumerable<string> slipIds, bool? visible = null, bool? disabled = null, bool? readOnly = null)
+    /// <summary>Sets interaction flags on many berths with a single scene rebuild; null leaves a flag unchanged.</summary>
+    public BatchUpdateResult SetBerthFlags(IEnumerable<string> berthIds, bool? visible = null, bool? disabled = null, bool? readOnly = null)
     {
-        ArgumentNullException.ThrowIfNull(slipIds);
-        return BatchUpdate(slipIds.Select(id => SlipUpdate.Flags(id, visible, disabled, readOnly)));
+        ArgumentNullException.ThrowIfNull(berthIds);
+        return BatchUpdate(berthIds.Select(id => BerthUpdate.Flags(id, visible, disabled, readOnly)));
     }
 
     /// <inheritdoc/>
     public MarinaStatistics GetStatistics()
     {
         int free = 0, occupied = 0, reserved = 0, temporarilyFree = 0;
-        foreach (var slip in _slips.Values)
+        foreach (var berth in _berths.Values)
         {
-            switch (slip.Status)
+            switch (berth.Status)
             {
-                case SlipStatus.Free: free++; break;
-                case SlipStatus.Occupied: occupied++; break;
-                case SlipStatus.Reserved: reserved++; break;
-                case SlipStatus.TemporarilyFree: temporarilyFree++; break;
+                case BerthStatus.Free: free++; break;
+                case BerthStatus.Occupied: occupied++; break;
+                case BerthStatus.Reserved: reserved++; break;
+                case BerthStatus.TemporarilyFree: temporarilyFree++; break;
             }
         }
 
-        return new MarinaStatistics(_slips.Count, free, occupied, reserved, temporarilyFree);
+        return new MarinaStatistics(_berths.Count, free, occupied, reserved, temporarilyFree);
     }
 
     /// <inheritdoc/>
-    public SlipStatusFilter StatusFilter => _statusFilter;
+    public BerthStatusFilter StatusFilter => _statusFilter;
 
-    /// <summary>Shows only slips whose status is in <paramref name="filter"/>. Filtered-out slips cannot be clicked or selected.</summary>
-    public void SetStatusFilter(SlipStatusFilter filter)
+    /// <summary>Shows only berths whose status is in <paramref name="filter"/>. Filtered-out berths cannot be clicked or selected.</summary>
+    public void SetStatusFilter(BerthStatusFilter filter)
     {
-        filter &= SlipStatusFilter.All;
+        filter &= BerthStatusFilter.All;
         if (filter == _statusFilter) return;
         _statusFilter = filter;
 
-        var hidden = _selection.Where(id => _slips.TryGetValue(id, out var s) && !filter.Includes(s.Status)).ToArray();
+        var hidden = _selection.Where(id => _berths.TryGetValue(id, out var s) && !filter.Includes(s.Status)).ToArray();
         if (hidden.Length > 0) RemoveFromSelectionCore(hidden);
-        if (HoveredSlip is { } hovered && !filter.Includes(hovered.Status)) SetHoveredSlip(null);
+        if (HoveredBerth is { } hovered && !filter.Includes(hovered.Status)) SetHoveredBerth(null);
         MarkSceneDirty();
     }
 
-    /// <summary>Shows only slips with one of the given statuses, e.g. <c>SetStatusFilter(SlipStatus.Free, SlipStatus.TemporarilyFree)</c>.</summary>
+    /// <summary>Shows only berths with one of the given statuses, e.g. <c>SetStatusFilter(BerthStatus.Free, BerthStatus.TemporarilyFree)</c>.</summary>
     /// <param name="visibleStatuses">Statuses to show.</param>
-    public void SetStatusFilter(params SlipStatus[] visibleStatuses) =>
-        SetStatusFilter(SlipStatusExtensions.FromStatuses(visibleStatuses));
+    public void SetStatusFilter(params BerthStatus[] visibleStatuses) =>
+        SetStatusFilter(BerthStatusExtensions.FromStatuses(visibleStatuses));
 
     /// <inheritdoc/>
-    public void ShowAllStatuses() => SetStatusFilter(SlipStatusFilter.All);
+    public void ShowAllStatuses() => SetStatusFilter(BerthStatusFilter.All);
 
-    /// <summary>True when the slip exists, is not hidden, and passes the status filter.</summary>
-    public bool IsSlipVisible(string slipId) => GetSlip(slipId) is { } slip && IsShown(slip);
+    /// <summary>True when the berth exists, is not hidden, and passes the status filter.</summary>
+    public bool IsBerthVisible(string berthId) => GetBerth(berthId) is { } berth && IsShown(berth);
 
     /// <inheritdoc/>
-    public void SetStatusColor(SlipStatus status, ColorRgba color)
+    public void SetStatusColor(BerthStatus status, ColorRgba color)
     {
         _colors.Set(status, color);
-        MarkSceneDirty();
-        RequestPopupRefresh();
     }
 
     /// <inheritdoc/>
-    public ColorRgba GetStatusColor(SlipStatus status) => _colors.Get(status);
+    public ColorRgba GetStatusColor(BerthStatus status) => _colors.Get(status);
 
-    /// <summary>Changes the pad and buoy color used for disabled slips (boats of disabled slips are always desaturated).</summary>
+    /// <summary>Changes the pad and buoy color used for disabled berths (boats of disabled berths are always desaturated).</summary>
     /// <param name="color">New color.</param>
     public void SetDisabledColor(ColorRgba color)
     {
         _colors.DisabledColor = color;
-        MarkSceneDirty();
     }
 
     /// <summary>Sets the opacity of status pads and of reserved/temporarily free "ghost" boats. Values are clamped to 0.05–1.</summary>
@@ -128,14 +125,11 @@ public sealed partial class MarinaVisualizer
     {
         _colors.PadOpacity = Math.Clamp(padOpacity, 0.05f, 1f);
         _colors.GhostBoatOpacity = Math.Clamp(ghostBoatOpacity, 0.05f, 1f);
-        MarkSceneDirty();
     }
 
     /// <inheritdoc/>
     public void ResetStatusColors()
     {
         _colors.Reset();
-        MarkSceneDirty();
-        RequestPopupRefresh();
     }
 }

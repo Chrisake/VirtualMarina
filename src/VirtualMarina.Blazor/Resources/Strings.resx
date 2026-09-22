@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Displayed text for VirtualMarina.Blazor. To translate it, copy this file next to it as Strings.<culture>.resx
+    (e.g. Strings.el.resx), translate the <value> elements only, and leave the names untouched.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- Designer panel -->
+  <data name="SectionDesigner">
+    <value>Designer</value>
+  </data>
+  <data name="DesignMode">
+    <value>Design mode</value>
+  </data>
+  <data name="Undo">
+    <value>Undo (Ctrl+Z)</value>
+  </data>
+  <data name="NothingToUndo">
+    <value>Nothing to undo</value>
+  </data>
+  <data name="TurnOnDesignMode">
+    <value>Turn on design mode to draw land areas, piers and berths.</value>
+  </data>
+  <!-- Land area settings -->
+  <data name="SectionLandArea">
+    <value>Land area</value>
+  </data>
+  <data name="LandType">
+    <value>Type</value>
+  </data>
+  <data name="LandHeight">
+    <value>Height (m)</value>
+  </data>
+  <data name="TreeCoverage">
+    <value>Tree coverage</value>
+  </data>
+  <data name="TreeCoverageHint">
+    <value>Trees scattered on new lawns and by the Trees tool (lawns only)</value>
+    <comment>Tooltip on the tree coverage slider.</comment>
+  </data>
+  <data name="TreeDensity">
+    <value>{0} / 1000 m²</value>
+    <comment>{0} = number of trees.</comment>
+  </data>
+  <data name="NoTrees">
+    <value>no trees</value>
+  </data>
+  <!-- Pier settings -->
+  <data name="SectionPier">
+    <value>Pier</value>
+  </data>
+  <data name="PierType">
+    <value>Type</value>
+  </data>
+  <data name="PierWidth">
+    <value>Width (m)</value>
+  </data>
+  <data name="PierBerths">
+    <value>Berths</value>
+  </data>
+  <!-- Berth settings -->
+  <data name="SectionBerths">
+    <value>Berths</value>
+  </data>
+  <data name="BerthWidth">
+    <value>Width (m)</value>
+  </data>
+  <data name="BerthLength">
+    <value>Length (m)</value>
+  </data>
+  <data name="BerthDepth">
+    <value>Depth (m)</value>
+  </data>
+  <data name="BerthSeparators">
+    <value>Separators</value>
+  </data>
+  <data name="BerthGap">
+    <value>Space between (m)</value>
+  </data>
+  <data name="BerthGapHint">
+    <value>Space left between neighbouring berths</value>
+  </data>
+  <data name="AlignBerthsLabel">
+    <value>Align</value>
+  </data>
+  <data name="AlignBerthsHint">
+    <value>Off: the first berth starts exactly where you click</value>
+  </data>
+  <data name="AlignBerths">
+    <value>Line up with the berths already there</value>
+  </data>
+  <data name="BerthServices">
+    <value>Pedestals</value>
+  </data>
+  <data name="BerthServicesHint">
+    <value>Power/water pedestals generated beside the berths added to a pier</value>
+  </data>
+  <data name="LandBerthHeading">
+    <value>Land berth bow (°)</value>
+  </data>
+  <data name="LandBerthHeadingHint">
+    <value>Direction a boat stored on a land berth points, when both clicks land on the same spot</value>
+  </data>
+  <!-- Reference image -->
+  <data name="SectionReferenceImage">
+    <value>Reference image (north up)</value>
+  </data>
+  <data name="RemoveImage">
+    <value>Remove</value>
+  </data>
+  <data name="ViewImage">
+    <value>View image</value>
+  </data>
+  <data name="TopViewNorthUp">
+    <value>Top view, north up</value>
+  </data>
+  <data name="ShowImage">
+    <value>Show</value>
+  </data>
+  <data name="ImageAboveScene">
+    <value>Over land and piers</value>
+  </data>
+  <data name="ImageOpacity">
+    <value>Opacity</value>
+  </data>
+  <data name="ScaleBarLength">
+    <value>Scale bar (m)</value>
+  </data>
+  <data name="ApplyScale">
+    <value>Apply scale</value>
+  </data>
+  <data name="MetersPerPixel">
+    <value>Meters / pixel</value>
+  </data>
+  <data name="NoImageYet">
+    <value>Load a top-down image (e.g. a map screenshot with its scale bar) to trace the marina.</value>
+  </data>
+  <data name="ScaleLineDrawn">
+    <value>Scale line: {0} m now. Enter its real length:</value>
+    <comment>{0} = current length of the drawn line, in meters.</comment>
+  </data>
+  <data name="ImageSizeHint">
+    <value>{0} × {1} m. Draw a line over the map’s scale bar.</value>
+    <comment>{0} and {1} = width and height of the image in meters.</comment>
+  </data>
+  <data name="ViewParameterMissing">
+    <value>Set the View parameter to load images.</value>
+    <comment>Shown to the developer hosting the panel without a MarinaView.</comment>
+  </data>
+  <data name="ImageDecodeFailed">
+    <value>The browser could not decode this image.</value>
+  </data>
+</root>

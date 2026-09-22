@@ -19,7 +19,7 @@ public enum ShaderDialect
 /// Attributes: location 0 = position, 1 = normal, 2 = color.
 /// Frame uniforms: uView, uProjection, uCameraPos, uTime, uSunDirection, uSunColor, uAmbientColor,
 /// uSpecularStrength, uShininess, uSkyColor, uFogColor, uFogDensity, uWaterDeep, uWaterShallow,
-/// uWaveAmplitude, uWaveFrequency, uWaveSpeed.
+/// uWaveAmplitude, uWaveFrequency, uWaveSpeed, uSkyReflection, uRipples, uSunGlints (water) and uFloatMotion (model).
 /// Object uniforms: uModel, uTint, uEmissive, uDesaturation, uAnimation, uPhase.
 /// </remarks>
 public static class ShaderSources
@@ -35,6 +35,18 @@ public static class ShaderSources
 
     /// <summary>Fragment shader for the water: fresnel sky reflection, ripples, sun glints and fog.</summary>
     public static string WaterFragment(ShaderDialect dialect) => Header(dialect) + WaveFunctions + FogFunction + WaterFragmentBody;
+
+    /// <summary>
+    /// Vertex shader for the reference image: attribute 0 is a unit-square corner (vec2, 0..1); uniforms <c>uImageMin</c>,
+    /// <c>uImageMax</c> (plan X/Z corners) and <c>uImageHeight</c> place it, and the corner doubles as the texture coordinate.
+    /// </summary>
+    public static string ImageVertex(ShaderDialect dialect) => Header(dialect) + ImageVertexBody;
+
+    /// <summary>Fragment shader for the reference image: samples <c>uImage</c> (texture unit 0) with <c>uOpacity</c>.</summary>
+    public static string ImageFragment(ShaderDialect dialect) => Header(dialect) + ImageFragmentBody;
+
+    /// <summary>The unit square drawn by the image program: two triangles as 6 (x, y) corners.</summary>
+    public static readonly float[] ImageQuadCorners = { 0f, 0f, 1f, 0f, 1f, 1f, 0f, 0f, 1f, 1f, 0f, 1f };
 
     private static string Header(ShaderDialect dialect) => dialect switch
     {
@@ -115,6 +127,7 @@ public static class ShaderSources
         uniform mat4 uProjection;
         uniform int uAnimation;
         uniform float uPhase;
+        uniform float uFloatMotion;
 
         out vec3 vWorldPos;
         out vec3 vNormal;
@@ -136,12 +149,12 @@ public static class ShaderSources
                 vec2 grad;
                 float h = vmWaveHeight(origin.xz, grad);
                 float t = uTime * uWaveSpeed;
-                float roll = sin(t * 0.8 + uPhase) * 0.02 + clamp(grad.x, -0.2, 0.2) * 0.3;
-                float pitch = sin(t * 0.63 + uPhase * 1.7) * 0.012 + clamp(grad.y, -0.2, 0.2) * 0.2;
+                float roll = (sin(t * 0.8 + uPhase) * 0.02 + clamp(grad.x, -0.2, 0.2) * 0.3) * uFloatMotion;
+                float pitch = (sin(t * 0.63 + uPhase * 1.7) * 0.012 + clamp(grad.y, -0.2, 0.2) * 0.2) * uFloatMotion;
                 mat3 r = vmRotZ(roll) * vmRotX(pitch);
                 p = r * p;
                 n = r * n;
-                lift += h;
+                lift += h * clamp(uFloatMotion, 0.0, 1.0);
             }
 
             if ((uAnimation & 8) != 0)
@@ -234,6 +247,44 @@ public static class ShaderSources
 
         """;
 
+    private const string ImageVertexBody = """
+
+        layout(location = 0) in vec2 aCorner;
+
+        uniform mat4 uView;
+        uniform mat4 uProjection;
+        uniform vec2 uImageMin;
+        uniform vec2 uImageMax;
+        uniform float uImageHeight;
+
+        out vec2 vUv;
+
+        void main()
+        {
+            vec2 plan = mix(uImageMin, uImageMax, aCorner);
+            vUv = aCorner;
+            gl_Position = uProjection * uView * vec4(plan.x, uImageHeight, plan.y, 1.0);
+        }
+
+        """;
+
+    private const string ImageFragmentBody = """
+
+        in vec2 vUv;
+
+        uniform sampler2D uImage;
+        uniform float uOpacity;
+
+        out vec4 fragColor;
+
+        void main()
+        {
+            vec4 texel = texture(uImage, vUv);
+            fragColor = vec4(texel.rgb, texel.a * uOpacity);
+        }
+
+        """;
+
     private const string WaterFragmentBody = """
 
         in vec3 vWorldPos;
@@ -244,6 +295,9 @@ public static class ShaderSources
         uniform vec3 uSkyColor;
         uniform vec3 uWaterDeep;
         uniform vec3 uWaterShallow;
+        uniform float uSkyReflection;
+        uniform float uRipples;
+        uniform float uSunGlints;
 
         out vec4 fragColor;
 
@@ -258,7 +312,7 @@ public static class ShaderSources
             float t = uTime * uWaveSpeed;
             float viewDistance = length(uCameraPos - vWorldPos);
             float footprint = length(fwidth(p));
-            float detail = clamp(1.0 - viewDistance / 260.0, 0.0, 1.0) * clamp(1.5 - footprint * 1.2, 0.0, 1.0);
+            float detail = clamp(1.0 - viewDistance / 260.0, 0.0, 1.0) * clamp(1.5 - footprint * 1.2, 0.0, 1.0) * uRipples;
             grad += vec2(cos(p.x * 0.9 + p.y * 0.3 + t * 1.6), cos(p.y * 1.1 - p.x * 0.4 + t * 1.3)) * (0.06 * detail);
             grad += vec2(cos((p.x + p.y) * 1.7 - t * 2.2), cos((p.x - p.y) * 1.5 + t * 1.9)) * (0.035 * detail * detail);
 
@@ -269,8 +323,8 @@ public static class ShaderSources
             float fresnel = 0.04 + 0.96 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
             float diffuse = max(dot(N, L), 0.0);
             vec3 body = mix(uWaterDeep, uWaterShallow, 0.3 + 0.4 * diffuse) * (uAmbientColor + uSunColor * 0.6);
-            vec3 color = mix(body, uSkyColor, clamp(fresnel, 0.0, 0.85));
-            float sparkle = pow(max(dot(reflect(-L, N), V), 0.0), 90.0) * (0.35 + 0.65 * detail);
+            vec3 color = mix(body, uSkyColor, clamp(fresnel, 0.0, 0.85) * uSkyReflection);
+            float sparkle = pow(max(dot(reflect(-L, N), V), 0.0), 90.0) * (0.35 + 0.65 * clamp(detail, 0.0, 1.0)) * uSunGlints;
             color += uSunColor * sparkle;
 
             fragColor = vec4(vmApplyFog(color, vWorldPos), 1.0);

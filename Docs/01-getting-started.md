@@ -18,9 +18,9 @@ The WinForms harness accepts command-line options:
 | Option | Effect |
 |---|---|
 | `--preset "Top Down"` | Apply a camera preset |
-| `--select A-L03,A-L04` | Select slips (disabled ones are skipped) |
-| `--focus A-L03,D-L01` | Frame slips top-down |
-| `--labels NonOccupied` | Set the slip label mode |
+| `--select A-L03,A-L04` | Select berths (disabled ones are skipped) |
+| `--focus A-L03,D-L01` | Frame berths top-down |
+| `--labels NonOccupied` | Set the berth label mode |
 
 ## Referencing the libraries
 
@@ -52,8 +52,8 @@ public class MarinaForm : Form
         marina.InitializeLayout(BuildLayout());
         marina.DefaultFocusAngle = CameraAngle.TopDown;   // optional
 
-        marina.SlipSelected += (_, e) => e.Actions.Add("details", "Open berth card");
-        marina.SlipActionInvoked += (_, e) => OpenBerthCard(e.SlipId);
+        marina.BerthSelected += (_, e) => e.Actions.Add("details", "Open berth card");
+        marina.BerthActionInvoked += (_, e) => OpenBerthCard(e.BerthId);
     }
 }
 ```
@@ -79,8 +79,8 @@ The control renders at about 60 FPS (`FrameIntervalMilliseconds`, `Animate`) and
 
     protected override void OnInitialized()
     {
-        _marina.SlipSelected += (_, e) => e.Actions.Add("details", "Open berth card");
-        _marina.SlipActionInvoked += (_, e) => Nav.NavigateTo($"/berths/{e.SlipId}");
+        _marina.BerthSelected += (_, e) => e.Actions.Add("details", "Open berth card");
+        _marina.BerthActionInvoked += (_, e) => Nav.NavigateTo($"/berths/{e.BerthId}");
         _marina.InitializeLayout(BuildLayout());
     }
 }
@@ -97,30 +97,30 @@ using VirtualMarina.Core.Domain;
 static MarinaLayout BuildLayout() =>
     new MarinaLayoutBuilder("Harbor")
         .AddLandArea(new LandArea("quay", new OrientedRect(new Vector2(0, -12), new Vector2(160, 12), 0), 1.0f))
-        .AddDock("A", "Dock A", start: new Vector2(0, -6), headingDegrees: 0, length: 60, dock => dock
-            .AddSlips(DockSide.Left, count: 10, slipWidth: 5, slipLength: 12)
-            .AddSlips(DockSide.Right, count: 10, slipWidth: 5, slipLength: 12, dividers: DividerType.Piles),
-            width: 3, type: DockType.FloatingConcrete)
+        .AddPier("A", "Pier A", start: new Vector2(0, -6), headingDegrees: 0, length: 60, pier => pier
+            .AddBerths(PierSide.Left, count: 10, berthWidth: 5, berthLength: 12)
+            .AddBerths(PierSide.Right, count: 10, berthWidth: 5, berthLength: 12, dividers: DividerType.Piles),
+            width: 3, type: PierType.FloatingConcrete)
         .Build();
 ```
 
-Slips are generated with ids `A-L01…A-L10` and `A-R01…A-R10`. Then set statuses from your ERP data:
+Berths are generated with ids `A-L01…A-L10` and `A-R01…A-R10`. Then set statuses from your ERP data:
 
 ```csharp
 marina.BatchUpdate(erpBerths.Select(b => b.BoatOnBerth is { } boat
-    ? SlipUpdate.Occupy(b.Number, new Boat(boat.Id, boat.Name, MapType(boat.Kind)) { LengthMeters = boat.Loa, BeamMeters = boat.Beam })
-    : SlipUpdate.Free(b.Number)));
+    ? BerthUpdate.Occupy(b.Number, new Boat(boat.Id, boat.Name, MapType(boat.Kind)) { LengthMeters = boat.Loa, BeamMeters = boat.Beam })
+    : BerthUpdate.Free(b.Number)));
 ```
 
 ## Default mouse and keyboard controls
 
 | Input | Action |
 |---|---|
-| Hover | Highlights the slip or boat under the cursor (exact shape, not its bounding box); the cursor becomes a hand/pointer |
-| Left click | Select the slip and show its tooltip |
-| Right click | Select the slip and open its actions window |
-| Ctrl+click or Shift+click (Cmd+click in browsers) | Add/remove slips from the selection |
-| Double-click | Focus the camera on the slip (at `DefaultFocusAngle`) |
+| Hover | Highlights the berth or boat under the cursor (exact shape, not its bounding box); the cursor becomes a hand/pointer |
+| Left click | Select the berth and show its tooltip |
+| Right click | Select the berth and open its actions window |
+| Ctrl+click or Shift+click (Cmd+click in browsers) | Add/remove berths from the selection |
+| Double-click | Focus the camera on the berth (at `DefaultFocusAngle`) |
 | Left-drag / middle-drag | Pan |
 | Right-drag, Shift+left-drag | Orbit (Shift only changes a *drag*; a Shift+click without moving multi-selects) |
 | Mouse wheel | Zoom toward the cursor |

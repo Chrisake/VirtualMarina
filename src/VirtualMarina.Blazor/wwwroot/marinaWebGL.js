@@ -8,6 +8,7 @@ const FRAME = {
     SUN_DIR: 36, SUN_COLOR: 39, AMBIENT: 42, SPECULAR: 45, SHININESS: 46,
     SKY: 47, FOG: 50, FOG_DENSITY: 53,
     DEEP: 54, SHALLOW: 57, WAVE_AMP: 60, WAVE_FREQ: 61, WAVE_SPEED: 62,
+    SKY_REFLECTION: 63, RIPPLES: 64, SUN_GLINTS: 65, FLOAT_MOTION: 66,
 };
 const OBJECT_STRIDE = 25;
 const VERTEX_STRIDE_BYTES = 9 * 4;
@@ -29,6 +30,11 @@ export function createView(canvas, dotnetRef, popup) {
         objectCount: 0,
         model: null,
         water: null,
+        image: null,
+        imageQuad: null,
+        imageTexture: null,
+        imageKey: -1,
+        imagePendingKey: -1,
         running: false,
         rafHandle: 0,
         errorLogged: false,
@@ -39,16 +45,27 @@ export function createView(canvas, dotnetRef, popup) {
     return id;
 }
 
-export function initRenderer(id, modelVertex, modelFragment, waterVertex, waterFragment) {
+export function initRenderer(id, modelVertex, modelFragment, waterVertex, waterFragment, imageVertex, imageFragment, imageQuadCorners) {
     const view = views.get(id);
     if (!view) return 'Unknown view.';
     const gl = view.gl;
     try {
         view.model = createProgram(gl, modelVertex, modelFragment);
         view.water = createProgram(gl, waterVertex, waterFragment);
+        view.image = createProgram(gl, imageVertex, imageFragment);
     } catch (e) {
         return String(e && e.message ? e.message : e);
     }
+
+    const quadVao = gl.createVertexArray();
+    gl.bindVertexArray(quadVao);
+    const quadVbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadVbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(imageQuadCorners), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+    gl.enableVertexAttribArray(0);
+    gl.bindVertexArray(null);
+    view.imageQuad = { vao: quadVao, vbo: quadVbo };
 
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
@@ -101,6 +118,97 @@ export function uploadMesh(id, meshId, verticesBase64, indicesBase64, isWater) {
     if (isWater) view.waterMeshId = meshId;
 }
 
+export function deleteMesh(id, meshId) {
+    const view = views.get(id);
+    if (!view) return;
+    const mesh = view.meshes.get(meshId);
+    if (!mesh) return;
+    const gl = view.gl;
+    gl.deleteVertexArray(mesh.vao);
+    gl.deleteBuffer(mesh.vbo);
+    gl.deleteBuffer(mesh.ebo);
+    view.meshes.delete(meshId);
+}
+
+// ---- Reference image (designer) -----------------------------------------------------------------
+
+/** Uploads decoded RGBA pixels (top row first) as the reference image texture. */
+export function setReferenceImageRgba(id, key, rgba, width, height) {
+    const view = views.get(id);
+    if (!view) return;
+    uploadImageTexture(view, key, width, height, new Uint8Array(rgba.buffer ?? rgba, rgba.byteOffset ?? 0, width * height * 4));
+}
+
+/** Decodes PNG/JPEG/WebP bytes in the browser and uploads them as the reference image texture (asynchronously). */
+export function setReferenceImageEncoded(id, key, bytes, contentType) {
+    const view = views.get(id);
+    if (!view) return;
+    view.imagePendingKey = key;
+    createImageBitmap(new Blob([bytes], { type: contentType || 'image/png' }))
+        .then((bitmap) => {
+            if (!views.has(id) || view.imagePendingKey !== key) return;
+            uploadImageTexture(view, key, bitmap.width, bitmap.height, bitmap);
+            bitmap.close?.();
+        })
+        .catch((e) => console.error('[VirtualMarina] reference image could not be decoded', e));
+}
+
+/** Returns [width, height] of PNG/JPEG/WebP bytes, or null when the browser can't decode them. */
+export async function measureImage(bytes, contentType) {
+    try {
+        const bitmap = await createImageBitmap(new Blob([bytes], { type: contentType || 'image/png' }));
+        const size = [bitmap.width, bitmap.height];
+        bitmap.close?.();
+        return size;
+    } catch {
+        return null;
+    }
+}
+
+function uploadImageTexture(view, key, width, height, source) {
+    const gl = view.gl;
+    if (!view.imageTexture) view.imageTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, view.imageTexture);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+    if (source instanceof Uint8Array) {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    } else {
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, source);
+    }
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    view.imageKey = key;
+}
+
+// image = [key, minX, minZ, maxX, maxZ, height, opacity, aboveScene (0/1)]
+function drawReferenceImage(view, f, image) {
+    const gl = view.gl;
+    if (!view.image || !view.imageTexture || view.imageKey !== image[0]) return;
+    const p = view.image;
+    const u = p.uniforms;
+    if (image[7] > 0) gl.disable(gl.DEPTH_TEST);
+    gl.useProgram(p.program);
+    if (u.uView) gl.uniformMatrix4fv(u.uView, false, f, FRAME.VIEW, 16);
+    if (u.uProjection) gl.uniformMatrix4fv(u.uProjection, false, f, FRAME.PROJ, 16);
+    if (u.uImageMin) gl.uniform2f(u.uImageMin, image[1], image[2]);
+    if (u.uImageMax) gl.uniform2f(u.uImageMax, image[3], image[4]);
+    if (u.uImageHeight) gl.uniform1f(u.uImageHeight, image[5]);
+    if (u.uOpacity) gl.uniform1f(u.uOpacity, image[6]);
+    if (u.uImage) gl.uniform1i(u.uImage, 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, view.imageTexture);
+    gl.bindVertexArray(view.imageQuad.vao);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    gl.enable(gl.DEPTH_TEST);
+}
+
 export function setObjects(id, objectsBase64, count) {
     const view = views.get(id);
     if (!view) return;
@@ -108,7 +216,7 @@ export function setObjects(id, objectsBase64, count) {
     view.objectCount = count;
 }
 
-export function renderFrame(id, frameValues) {
+export function renderFrame(id, frameValues, imageValues) {
     const view = views.get(id);
     if (!view || !view.model) return;
     const gl = view.gl;
@@ -138,9 +246,10 @@ export function renderFrame(id, frameValues) {
         gl.drawElements(gl.TRIANGLES, water.count, gl.UNSIGNED_INT, 0);
     }
 
-    // 3. Transparent overlays
+    // 3. Reference image (designer), then transparent overlays (status pads, ghost boats, drawing previews)
     gl.enable(gl.BLEND);
     gl.depthMask(false);
+    if (imageValues) drawReferenceImage(view, f, imageValues);
     gl.useProgram(model.program);
     drawObjects(view, true);
     gl.depthMask(true);
@@ -186,6 +295,12 @@ export function destroyView(id) {
     }
     if (view.model) gl.deleteProgram(view.model.program);
     if (view.water) gl.deleteProgram(view.water.program);
+    if (view.image) gl.deleteProgram(view.image.program);
+    if (view.imageQuad) {
+        gl.deleteVertexArray(view.imageQuad.vao);
+        gl.deleteBuffer(view.imageQuad.vbo);
+    }
+    if (view.imageTexture) gl.deleteTexture(view.imageTexture);
     views.delete(id);
 }
 
@@ -238,6 +353,10 @@ function applyFrameUniforms(gl, program, f) {
     setFloat(gl, program, 'uWaveAmplitude', f[FRAME.WAVE_AMP]);
     setFloat(gl, program, 'uWaveFrequency', f[FRAME.WAVE_FREQ]);
     setFloat(gl, program, 'uWaveSpeed', f[FRAME.WAVE_SPEED]);
+    setFloat(gl, program, 'uSkyReflection', f[FRAME.SKY_REFLECTION]);
+    setFloat(gl, program, 'uRipples', f[FRAME.RIPPLES]);
+    setFloat(gl, program, 'uSunGlints', f[FRAME.SUN_GLINTS]);
+    setFloat(gl, program, 'uFloatMotion', f[FRAME.FLOAT_MOTION]);
 }
 
 function setFloat(gl, program, name, value) {
@@ -303,7 +422,7 @@ function resizeCanvas(canvas) {
 
 // ---- Selection popup ---------------------------------------------------------------------------
 // Content is rendered by Blazor; only its position is updated here, every frame, so it follows the
-// slip while the camera moves. anchor = [visible (0/1), x, y] in CSS pixels relative to the canvas.
+// berth while the camera moves. anchor = [visible (0/1), x, y] in CSS pixels relative to the canvas.
 
 const POPUP_MARGIN = 8;
 const POPUP_GAP = 12;
@@ -424,22 +543,21 @@ function attachInput(view) {
     on(canvas, 'pointerdown', safe((e) => {
         canvas.focus();
         canvas.setPointerCapture(e.pointerId);
-        canvas.style.cursor = 'grabbing';
+        if (view.cursor !== 'crosshair') canvas.style.cursor = 'grabbing';
         const [x, y] = position(e);
         ref.invokeMethod('OnPointerDown', x, y, e.button, modifiers(e));
     }));
     on(canvas, 'pointermove', safe((e) => {
         const [x, y] = position(e);
-        const overSelectable = ref.invokeMethod('OnPointerMove', x, y, modifiers(e));
-        // While a button is held the cursor stays 'grabbing'; otherwise a hand over selectable slips/boats.
-        if (!canvas.hasPointerCapture(e.pointerId)) {
-            const cursor = overSelectable ? 'pointer' : 'grab';
-            if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
-        }
+        // C# picks the cursor: a hand over selectable berths/boats, a crosshair or move cursor for designer tools.
+        const cursor = ref.invokeMethod('OnPointerMove', x, y, modifiers(e)) || 'grab';
+        view.cursor = cursor;
+        // While a button is held the cursor stays 'grabbing'.
+        if (!canvas.hasPointerCapture(e.pointerId) && canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
     }));
     on(canvas, 'pointerup', safe((e) => {
         if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-        canvas.style.cursor = 'grab';
+        canvas.style.cursor = view.cursor || 'grab';
         const [x, y] = position(e);
         ref.invokeMethod('OnPointerUp', x, y, e.button, modifiers(e));
     }));

@@ -1,109 +1,110 @@
-using System.Globalization;
+﻿using System.Globalization;
 using VirtualMarina.Core.Domain;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Api;
 
 /// <summary>Builds the tooltip the visualizer pre-fills before raising the selection events.</summary>
 public static class DefaultPopupContent
 {
-    /// <summary>Maximum number of per-slip rows in a multi-selection tooltip.</summary>
-    public const int MaxListedSlips = 6;
+    /// <summary>Maximum number of per-berth rows in a multi-selection tooltip.</summary>
+    public const int MaxListedBerths = 6;
 
     /// <summary>
-    /// The default single-slip tooltip: title = slip name, subtitle = dock (or land area for a land slip), rows for status, slip size and draft, boat name,
-    /// type, size, owner, registration, expected arrival/return, multi-slip berth and read-only access. Accent = status color.
+    /// The default single-berth tooltip: title = berth name, subtitle = pier (or land area for a land berth), rows for status, berth size and draft, boat name,
+    /// type, size, owner, registration, expected arrival/return, multi-berth and read-only access. Accent = status color.
     /// </summary>
-    /// <param name="slip">The slip.</param>
-    /// <param name="dock">Its dock, if known.</param>
-    /// <param name="berth">Its multi-slip berth, if any.</param>
+    /// <param name="berth">The berth.</param>
+    /// <param name="pier">Its pier, if known.</param>
+    /// <param name="multiBerth">Its multi-berth, if any.</param>
     /// <param name="colors">Color scheme for the accent.</param>
-    /// <param name="landArea">The land area of a land slip, if known.</param>
-    public static SlipTooltip ForSlip(Slip slip, Dock? dock, MultiSlipBerth? berth, StatusColorScheme colors, LandArea? landArea = null)
+    /// <param name="landArea">The land area of a land berth, if known.</param>
+    public static BerthTooltip ForBerth(Berth berth, Pier? pier, MultiBerth? multiBerth, StatusColorScheme colors, LandArea? landArea = null)
     {
-        ArgumentNullException.ThrowIfNull(slip);
+        ArgumentNullException.ThrowIfNull(berth);
         ArgumentNullException.ThrowIfNull(colors);
         var c = CultureInfo.CurrentCulture;
 
-        var tooltip = new SlipTooltip
+        var tooltip = new BerthTooltip
         {
-            Title = slip.DisplayName,
-            Subtitle = dock?.Name ?? (slip.IsOnLand ? $"On land · {landArea?.DisplayName ?? slip.LandAreaId}" : null),
-            AccentColor = colors.Get(slip.Status),
+            Title = berth.DisplayName,
+            Subtitle = pier?.Name ?? (berth.IsOnLand ? Strings.Format(Strings.TooltipOnLand, landArea?.DisplayName ?? berth.LandAreaId) : null),
+            AccentColor = colors.Get(berth.Status),
         };
 
-        tooltip.AddLine("Status", slip.Status.GetDisplayName(), emphasize: true);
-        var size = string.Format(c, "{0:0.0} × {1:0.0} m", slip.Length, slip.Width);
-        if (slip.MaxDraft is { } draft) size += string.Format(c, ", draft {0:0.0} m", draft);
-        tooltip.AddLine("Slip size", size);
+        tooltip.AddLine(Strings.TooltipStatus, berth.Status.GetDisplayName(), emphasize: true);
+        var size = string.Format(c, Strings.TooltipSize, berth.Length, berth.Width);
+        if (berth.MaxDraft is { } draft) size += string.Format(c, Strings.TooltipDraftSuffix, draft);
+        tooltip.AddLine(Strings.TooltipBerthSize, size);
 
-        if (slip.Boat is { } boat && slip.Status.CanHaveBoat())
+        if (berth.Boat is { } boat && berth.Status.CanHaveBoat())
         {
-            tooltip.AddLine("Boat", string.IsNullOrWhiteSpace(boat.Name) ? boat.Id : boat.Name, emphasize: true);
-            tooltip.AddLine("Boat type", boat.TypeDisplayName);
-            tooltip.AddLine("Boat size", string.Format(c, "{0:0.0} × {1:0.0} m", boat.LengthMeters, boat.BeamMeters));
-            if (!string.IsNullOrWhiteSpace(boat.OwnerName)) tooltip.AddLine("Owner", boat.OwnerName);
-            if (!string.IsNullOrWhiteSpace(boat.RegistrationNumber)) tooltip.AddLine("Registration", boat.RegistrationNumber);
-            if (boat.ExpectedArrival is { } eta && slip.Status != SlipStatus.Occupied)
+            tooltip.AddLine(Strings.TooltipBoat, string.IsNullOrWhiteSpace(boat.Name) ? boat.Id : boat.Name, emphasize: true);
+            tooltip.AddLine(Strings.TooltipBoatType, boat.TypeDisplayName);
+            tooltip.AddLine(Strings.TooltipBoatSize, string.Format(c, Strings.TooltipSize, boat.LengthMeters, boat.BeamMeters));
+            if (!string.IsNullOrWhiteSpace(boat.OwnerName)) tooltip.AddLine(Strings.TooltipOwner, boat.OwnerName);
+            if (!string.IsNullOrWhiteSpace(boat.RegistrationNumber)) tooltip.AddLine(Strings.TooltipRegistration, boat.RegistrationNumber);
+            if (boat.ExpectedArrival is { } eta && berth.Status != BerthStatus.Occupied)
             {
-                tooltip.AddLine(slip.Status == SlipStatus.TemporarilyFree ? "Returns" : "Expected", eta.ToLocalTime().ToString("g", c));
+                tooltip.AddLine(berth.Status == BerthStatus.TemporarilyFree ? Strings.TooltipReturns : Strings.TooltipExpected, eta.ToLocalTime().ToString("g", c));
             }
         }
 
-        if (berth is not null)
+        if (multiBerth is not null)
         {
-            var style = berth.Style == MooringStyle.Alongside ? "Alongside" : "Bow-in";
-            tooltip.AddLine("Berth", $"{style} across {string.Join(", ", berth.SlipIds)}");
+            var style = multiBerth.Style == MooringStyle.Alongside ? Strings.MooringAlongside : Strings.MooringBowIn;
+            tooltip.AddLine(Strings.TooltipBoatLies, Strings.Format(Strings.TooltipAcrossBerths, style, string.Join(", ", multiBerth.BerthIds)));
         }
 
-        if (slip.IsReadOnly) tooltip.AddLine("Access", "Read-only");
+        if (berth.IsReadOnly) tooltip.AddLine(Strings.TooltipAccess, Strings.TooltipReadOnly);
         return tooltip;
     }
 
     /// <summary>
-    /// The default multi-selection tooltip: "N slips selected", dock and land area names, counts per status and read-only, then one row per
-    /// slip (up to <see cref="MaxListedSlips"/>, with an "and N more" footer).
+    /// The default multi-selection tooltip: "N berths selected", pier and land area names, counts per status and read-only, then one row per
+    /// berth (up to <see cref="MaxListedBerths"/>, with an "and N more" footer).
     /// </summary>
-    /// <param name="slips">The selected slips.</param>
-    /// <param name="dockLookup">Resolves dock names.</param>
-    /// <param name="colors">Color scheme; the accent is set when all slips share a status.</param>
-    /// <param name="landLookup">Resolves land area names for land slips; ids are shown when null.</param>
-    public static SlipTooltip ForSlips(IReadOnlyList<Slip> slips, Func<string, Dock?> dockLookup, StatusColorScheme colors, Func<string, LandArea?>? landLookup = null)
+    /// <param name="berths">The selected berths.</param>
+    /// <param name="pierLookup">Resolves pier names.</param>
+    /// <param name="colors">Color scheme; the accent is set when all berths share a status.</param>
+    /// <param name="landLookup">Resolves land area names for land berths; ids are shown when null.</param>
+    public static BerthTooltip ForBerths(IReadOnlyList<Berth> berths, Func<string, Pier?> pierLookup, StatusColorScheme colors, Func<string, LandArea?>? landLookup = null)
     {
-        ArgumentNullException.ThrowIfNull(slips);
-        ArgumentNullException.ThrowIfNull(dockLookup);
+        ArgumentNullException.ThrowIfNull(berths);
+        ArgumentNullException.ThrowIfNull(pierLookup);
         ArgumentNullException.ThrowIfNull(colors);
 
-        var statuses = slips.Select(s => s.Status).Distinct().ToArray();
-        var docks = slips
-            .Select(s => s.DockId is { } dockId
-                ? dockLookup(dockId)?.Name ?? dockId
+        var statuses = berths.Select(s => s.Status).Distinct().ToArray();
+        var piers = berths
+            .Select(s => s.PierId is { } pierId
+                ? pierLookup(pierId)?.Name ?? pierId
                 : s.LandAreaId is { } landId ? landLookup?.Invoke(landId)?.DisplayName ?? landId : null)
             .OfType<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        var tooltip = new SlipTooltip
+        var tooltip = new BerthTooltip
         {
-            Title = $"{slips.Count} slips selected",
-            Subtitle = string.Join(", ", docks),
+            Title = Strings.Format(Strings.TooltipBerthsSelected, berths.Count),
+            Subtitle = string.Join(", ", piers),
             AccentColor = statuses.Length == 1 ? colors.Get(statuses[0]) : null,
         };
 
-        foreach (var group in slips.GroupBy(s => s.Status).OrderBy(g => g.Key))
+        foreach (var group in berths.GroupBy(s => s.Status).OrderBy(g => g.Key))
         {
             tooltip.AddLine(group.Key.GetDisplayName(), group.Count().ToString(CultureInfo.CurrentCulture), emphasize: true);
         }
 
-        var readOnly = slips.Count(s => s.IsReadOnly);
-        if (readOnly > 0) tooltip.AddLine("Read-only", readOnly.ToString(CultureInfo.CurrentCulture));
+        var readOnly = berths.Count(s => s.IsReadOnly);
+        if (readOnly > 0) tooltip.AddLine(Strings.TooltipReadOnly, readOnly.ToString(CultureInfo.CurrentCulture));
 
-        foreach (var slip in slips.Take(MaxListedSlips))
+        foreach (var berth in berths.Take(MaxListedBerths))
         {
-            var value = slip.Status.GetDisplayName();
-            if (slip.Boat is { } boat && slip.Status.CanHaveBoat()) value += " · " + (string.IsNullOrWhiteSpace(boat.Name) ? boat.Id : boat.Name);
-            tooltip.AddLine(slip.DisplayName, value);
+            var value = berth.Status.GetDisplayName();
+            if (berth.Boat is { } boat && berth.Status.CanHaveBoat()) value = Strings.Format(Strings.TooltipBerthAndBoat, value, string.IsNullOrWhiteSpace(boat.Name) ? boat.Id : boat.Name);
+            tooltip.AddLine(berth.DisplayName, value);
         }
 
-        if (slips.Count > MaxListedSlips) tooltip.Footer = $"and {slips.Count - MaxListedSlips} more";
+        if (berths.Count > MaxListedBerths) tooltip.Footer = Strings.Format(Strings.TooltipAndMore, berths.Count - MaxListedBerths);
         return tooltip;
     }
 }

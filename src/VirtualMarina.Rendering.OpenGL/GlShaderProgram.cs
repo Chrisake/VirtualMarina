@@ -49,6 +49,12 @@ internal sealed class GlShaderProgram : IDisposable
         if (location >= 0) GL.Uniform1(location, value);
     }
 
+    public void Set(string name, Vector2 value)
+    {
+        var location = Location(name);
+        if (location >= 0) GL.Uniform2(location, value.X, value.Y);
+    }
+
     public void Set(string name, Vector3 value)
     {
         var location = Location(name);

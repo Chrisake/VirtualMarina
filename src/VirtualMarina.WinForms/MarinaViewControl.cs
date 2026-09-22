@@ -1,29 +1,32 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using OpenTK.Windowing.Common;
 using OpenTK.GLControl;
 using VirtualMarina.Core.Api;
+using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Input;
+using VirtualMarina.Core.Rendering;
 using VirtualMarina.Rendering.OpenGL;
+using VirtualMarina.WinForms.Resources;
 
 namespace VirtualMarina.WinForms;
 
 /// <summary>
 /// Drop-in WinForms control that renders a <see cref="MarinaVisualizer"/> with OpenGL, and shows the
-/// selection tooltip / actions window above the selected slip.
+/// selection tooltip / actions window above the selected berth.
 /// </summary>
 /// <remarks>
 /// <code>
 /// var view = new MarinaViewControl { Dock = DockStyle.Fill };
 /// form.Controls.Add(view);
 /// view.Marina.InitializeLayout(layout);
-/// view.Marina.SlipSelected += (s, e) => e.Actions.Add("checkin", "Check in");
-/// view.Marina.SlipActionInvoked += (s, e) => Erp.Run(e.ActionId, e.Slips);
+/// view.Marina.BerthSelected += (s, e) => e.Actions.Add("checkin", "Check in");
+/// view.Marina.BerthActionInvoked += (s, e) => Erp.Run(e.ActionId, e.Berths);
 /// </code>
 /// </remarks>
 [ToolboxItem(true)]
 [Description("Interactive 3D marina view.")]
-[DefaultEvent(nameof(SlipSelected))]
+[DefaultEvent(nameof(BerthSelected))]
 public sealed class MarinaViewControl : UserControl
 {
     private readonly System.Windows.Forms.Timer _frameTimer;
@@ -57,7 +60,7 @@ public sealed class MarinaViewControl : UserControl
             UpdatePopupPosition();
         };
 
-        _popupPanel.ActionClicked += (_, actionId) => _marina.InvokeSlipAction(actionId);
+        _popupPanel.ActionClicked += (_, actionId) => _marina.InvokeBerthAction(actionId);
         _popupPanel.CloseClicked += (_, _) => _marina.ClosePopup();
         AttachMarina(_marina);
 
@@ -75,24 +78,24 @@ public sealed class MarinaViewControl : UserControl
     // ---- Marina events, forwarded from Marina so they can be wired in the Visual Studio designer ----------
     // The sender is this control; the event data is the same as on MarinaVisualizer.
 
-    /// <inheritdoc cref="IMarinaVisualizer.SlipClicked"/>
+    /// <inheritdoc cref="IMarinaVisualizer.BerthClicked"/>
     [Category("Marina")]
-    [Description("A slip or its boat was clicked or double-clicked.")]
-    public event EventHandler<SlipEventArgs>? SlipClicked;
+    [Description("A berth or its boat was clicked or double-clicked.")]
+    public event EventHandler<BerthEventArgs>? BerthClicked;
 
-    /// <inheritdoc cref="IMarinaVisualizer.SlipSelected"/>
+    /// <inheritdoc cref="IMarinaVisualizer.BerthSelected"/>
     [Category("Marina")]
-    [Description("A slip was selected. Fill e.Tooltip and e.Actions to control the popup.")]
-    public event EventHandler<SlipSelectedEventArgs>? SlipSelected;
+    [Description("A berth was selected. Fill e.Tooltip and e.Actions to control the popup.")]
+    public event EventHandler<BerthSelectedEventArgs>? BerthSelected;
 
-    /// <inheritdoc cref="IMarinaVisualizer.MultiSlipSelected"/>
+    /// <inheritdoc cref="IMarinaVisualizer.MultiBerthSelected"/>
     [Category("Marina")]
-    [Description("Two or more slips were selected (Ctrl+click or Shift+click). Fill e.Tooltip and e.Actions for the selection.")]
-    public event EventHandler<MultiSlipSelectedEventArgs>? MultiSlipSelected;
+    [Description("Two or more berths were selected (Ctrl+click or Shift+click). Fill e.Tooltip and e.Actions for the selection.")]
+    public event EventHandler<MultiBerthSelectedEventArgs>? MultiBerthSelected;
 
     /// <inheritdoc cref="IMarinaVisualizer.SelectionChanged"/>
     [Category("Marina")]
-    [Description("The selected slips changed, including the selection being cleared.")]
+    [Description("The selected berths changed, including the selection being cleared.")]
     public event EventHandler<SelectionChangedEventArgs>? SelectionChanged;
 
     /// <inheritdoc cref="IMarinaVisualizer.SelectionCleared"/>
@@ -100,29 +103,29 @@ public sealed class MarinaViewControl : UserControl
     [Description("The selection became empty.")]
     public event EventHandler? SelectionCleared;
 
-    /// <inheritdoc cref="IMarinaVisualizer.SlipActionInvoked"/>
+    /// <inheritdoc cref="IMarinaVisualizer.BerthActionInvoked"/>
     [Category("Marina")]
-    [Description("The user clicked an action in the actions window (e.ActionId, e.Slips).")]
-    public event EventHandler<SlipActionInvokedEventArgs>? SlipActionInvoked;
+    [Description("The user clicked an action in the actions window (e.ActionId, e.Berths).")]
+    public event EventHandler<BerthActionInvokedEventArgs>? BerthActionInvoked;
 
     /// <inheritdoc cref="IMarinaVisualizer.PopupChanged"/>
     [Category("Marina")]
     [Description("The tooltip or actions window opened, closed or changed.")]
-    public event EventHandler<SlipPopupChangedEventArgs>? PopupChanged;
+    public event EventHandler<BerthPopupChangedEventArgs>? PopupChanged;
 
-    /// <inheritdoc cref="IMarinaVisualizer.SlipHoverChanged"/>
+    /// <inheritdoc cref="IMarinaVisualizer.BerthHoverChanged"/>
     [Category("Marina")]
-    [Description("The slip under the mouse changed.")]
-    public event EventHandler<SlipHoverEventArgs>? SlipHoverChanged;
+    [Description("The berth under the mouse changed.")]
+    public event EventHandler<BerthHoverEventArgs>? BerthHoverChanged;
 
-    /// <inheritdoc cref="IMarinaVisualizer.SlipStatusChanged"/>
+    /// <inheritdoc cref="IMarinaVisualizer.BerthStatusChanged"/>
     [Category("Marina")]
-    [Description("A slip's status or boat changed.")]
-    public event EventHandler<SlipStatusChangedEventArgs>? SlipStatusChanged;
+    [Description("A berth's status or boat changed.")]
+    public event EventHandler<BerthStatusChangedEventArgs>? BerthStatusChanged;
 
     /// <inheritdoc cref="IMarinaVisualizer.LayoutChanged"/>
     [Category("Marina")]
-    [Description("Docks, slips, dividers or berths were added, changed or removed.")]
+    [Description("Piers, berths, dividers or berths were added, changed or removed.")]
     public event EventHandler<LayoutChangedEventArgs>? LayoutChanged;
 
     /// <summary>
@@ -147,48 +150,61 @@ public sealed class MarinaViewControl : UserControl
     private void AttachMarina(MarinaVisualizer marina)
     {
         marina.PopupChanged += OnPopupChanged;
-        marina.SlipClicked += OnMarinaSlipClicked;
-        marina.SlipSelected += OnMarinaSlipSelected;
-        marina.MultiSlipSelected += OnMarinaMultiSlipSelected;
+        marina.BerthClicked += OnMarinaBerthClicked;
+        marina.BerthSelected += OnMarinaBerthSelected;
+        marina.MultiBerthSelected += OnMarinaMultiBerthSelected;
         marina.SelectionChanged += OnMarinaSelectionChanged;
         marina.SelectionCleared += OnMarinaSelectionCleared;
-        marina.SlipActionInvoked += OnMarinaSlipActionInvoked;
-        marina.SlipHoverChanged += OnMarinaSlipHoverChanged;
-        marina.SlipStatusChanged += OnMarinaSlipStatusChanged;
+        marina.BerthActionInvoked += OnMarinaBerthActionInvoked;
+        marina.BerthHoverChanged += OnMarinaBerthHoverChanged;
+        marina.BerthStatusChanged += OnMarinaBerthStatusChanged;
         marina.LayoutChanged += OnMarinaLayoutChanged;
     }
 
     private void DetachMarina(MarinaVisualizer marina)
     {
         marina.PopupChanged -= OnPopupChanged;
-        marina.SlipClicked -= OnMarinaSlipClicked;
-        marina.SlipSelected -= OnMarinaSlipSelected;
-        marina.MultiSlipSelected -= OnMarinaMultiSlipSelected;
+        marina.BerthClicked -= OnMarinaBerthClicked;
+        marina.BerthSelected -= OnMarinaBerthSelected;
+        marina.MultiBerthSelected -= OnMarinaMultiBerthSelected;
         marina.SelectionChanged -= OnMarinaSelectionChanged;
         marina.SelectionCleared -= OnMarinaSelectionCleared;
-        marina.SlipActionInvoked -= OnMarinaSlipActionInvoked;
-        marina.SlipHoverChanged -= OnMarinaSlipHoverChanged;
-        marina.SlipStatusChanged -= OnMarinaSlipStatusChanged;
+        marina.BerthActionInvoked -= OnMarinaBerthActionInvoked;
+        marina.BerthHoverChanged -= OnMarinaBerthHoverChanged;
+        marina.BerthStatusChanged -= OnMarinaBerthStatusChanged;
         marina.LayoutChanged -= OnMarinaLayoutChanged;
     }
 
-    private void OnMarinaSlipClicked(object? sender, SlipEventArgs e) => SlipClicked?.Invoke(this, e);
+    private void OnMarinaBerthClicked(object? sender, BerthEventArgs e) => BerthClicked?.Invoke(this, e);
 
-    private void OnMarinaSlipSelected(object? sender, SlipSelectedEventArgs e) => SlipSelected?.Invoke(this, e);
+    private void OnMarinaBerthSelected(object? sender, BerthSelectedEventArgs e) => BerthSelected?.Invoke(this, e);
 
-    private void OnMarinaMultiSlipSelected(object? sender, MultiSlipSelectedEventArgs e) => MultiSlipSelected?.Invoke(this, e);
+    private void OnMarinaMultiBerthSelected(object? sender, MultiBerthSelectedEventArgs e) => MultiBerthSelected?.Invoke(this, e);
 
     private void OnMarinaSelectionChanged(object? sender, SelectionChangedEventArgs e) => SelectionChanged?.Invoke(this, e);
 
     private void OnMarinaSelectionCleared(object? sender, EventArgs e) => SelectionCleared?.Invoke(this, e);
 
-    private void OnMarinaSlipActionInvoked(object? sender, SlipActionInvokedEventArgs e) => SlipActionInvoked?.Invoke(this, e);
+    private void OnMarinaBerthActionInvoked(object? sender, BerthActionInvokedEventArgs e) => BerthActionInvoked?.Invoke(this, e);
 
-    private void OnMarinaSlipHoverChanged(object? sender, SlipHoverEventArgs e) => SlipHoverChanged?.Invoke(this, e);
+    private void OnMarinaBerthHoverChanged(object? sender, BerthHoverEventArgs e) => BerthHoverChanged?.Invoke(this, e);
 
-    private void OnMarinaSlipStatusChanged(object? sender, SlipStatusChangedEventArgs e) => SlipStatusChanged?.Invoke(this, e);
+    private void OnMarinaBerthStatusChanged(object? sender, BerthStatusChangedEventArgs e) => BerthStatusChanged?.Invoke(this, e);
 
     private void OnMarinaLayoutChanged(object? sender, LayoutChangedEventArgs e) => LayoutChanged?.Invoke(this, e);
+
+    /// <summary>
+    /// How the marina is drawn and animated: lighting, waves, status colors, boat opacities, land and trees, piers, labels, selection and
+    /// camera. The same object as <c>Marina.Style</c>; change its properties or assign a new <see cref="MarinaStyle"/>.
+    /// </summary>
+    /// <example><code>marinaView.Style.Water.WaveAmplitude = 0.02f; marinaView.Style.Status.ReservedBoatOpacity = 0.7f;</code></example>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public MarinaStyle Style
+    {
+        get => _marina.Style;
+        set => _marina.Style = value ?? throw new ArgumentNullException(nameof(value));
+    }
 
     /// <summary>Delay between frames in milliseconds (the Windows timer resolution is about 15 ms).</summary>
     [DefaultValue(15)]
@@ -214,7 +230,7 @@ public sealed class MarinaViewControl : UserControl
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public string RendererDescription =>
-        _renderer?.DeviceDescription is { } device ? $"{_renderer.BackendName} | {device}" : "OpenGL (not initialized)";
+        _renderer?.DeviceDescription is { } device ? $"{_renderer.BackendName} | {device}" : Strings.RendererNotInitialized;
 
     /// <summary>Creates the OpenGL surface and starts the render loop once the window handle exists (not in the designer).</summary>
     protected override void OnHandleCreated(EventArgs e)
@@ -249,8 +265,8 @@ public sealed class MarinaViewControl : UserControl
         var subtitleRect = new Rectangle(0, bounds.Height / 2 + 4, bounds.Width, titleHeight * 2);
         const TextFormatFlags flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.Top | TextFormatFlags.WordBreak;
 
-        TextRenderer.DrawText(e.Graphics, "VirtualMarina 3D view", titleFont, titleRect, Color.FromArgb(40, 70, 95), flags);
-        TextRenderer.DrawText(e.Graphics, "The marina is rendered here at runtime (OpenGL 3.3).", Font, subtitleRect, Color.FromArgb(70, 95, 120), flags);
+        TextRenderer.DrawText(e.Graphics, Strings.DesignTimeTitle, titleFont, titleRect, Color.FromArgb(40, 70, 95), flags);
+        TextRenderer.DrawText(e.Graphics, Strings.DesignTimeSubtitle, Font, subtitleRect, Color.FromArgb(70, 95, 120), flags);
     }
 
     /// <summary>
@@ -322,13 +338,13 @@ public sealed class MarinaViewControl : UserControl
         Controls.Add(_glControl);
     }
 
-    private void OnPopupChanged(object? sender, SlipPopupChangedEventArgs e)
+    private void OnPopupChanged(object? sender, BerthPopupChangedEventArgs e)
     {
         ShowPopup(e.Current);
         PopupChanged?.Invoke(this, e);
     }
 
-    private void ShowPopup(SlipPopup? popup)
+    private void ShowPopup(BerthPopup? popup)
     {
         if (IsDisposed) return;
         if (popup is null)
@@ -341,7 +357,7 @@ public sealed class MarinaViewControl : UserControl
         UpdatePopupPosition();
     }
 
-    /// <summary>Keeps the popup pointing at its slip while the camera moves.</summary>
+    /// <summary>Keeps the popup pointing at its berth while the camera moves.</summary>
     private void UpdatePopupPosition()
     {
         if (_popupPanel.Popup is null || _marina.ActivePopup is null)
@@ -412,16 +428,40 @@ public sealed class MarinaViewControl : UserControl
         UpdateCursor();
     }
 
-    /// <summary>Hand cursor over a selectable slip or boat (hover uses the exact boat shapes); default otherwise and while dragging.</summary>
+    /// <summary>
+    /// Hand cursor over a selectable berth or boat (hover uses the exact boat shapes); default otherwise and while dragging.
+    /// In the designer: a cross for drawing and erasing, a move cursor for moving the reference image.
+    /// </summary>
     private void UpdateCursor()
     {
         if (_glControl is null) return;
-        var cursor = !_marina.Input.IsDragging && _marina.HoveredSlip is not null ? Cursors.Hand : Cursors.Default;
+        var designer = _marina.Designer;
+        var cursor = designer.IsActive
+            ? designer.Tool switch
+            {
+                DesignTool.Navigate => Cursors.Default,
+                DesignTool.MoveReferenceImage => designer.ReferenceImage is null ? Cursors.No : Cursors.SizeAll,
+                _ => Cursors.Cross,
+            }
+            : !_marina.Input.IsDragging && _marina.HoveredBerth is not null ? Cursors.Hand : Cursors.Default;
         if (_glControl.Cursor != cursor) _glControl.Cursor = cursor;
     }
 
     private void OnGlMouseDoubleClick(object? sender, MouseEventArgs e) =>
         _marina.Input.DoubleClick(e.X, e.Y, MapButton(e.Button), CurrentModifiers());
+
+    /// <summary>
+    /// Loads an image file (PNG, JPEG, BMP, GIF or TIFF) and shows it as the designer's reference image, north at the top.
+    /// </summary>
+    /// <param name="path">The image file.</param>
+    /// <param name="metersPerPixel">Known ground size of a pixel; null sizes it to the layout until calibrated.</param>
+    /// <returns>The loaded image.</returns>
+    public ReferenceImage LoadReferenceImage(string path, float? metersPerPixel = null)
+    {
+        var image = ReferenceImageLoader.FromFile(path);
+        _marina.Designer.SetReferenceImage(image, metersPerPixel);
+        return image;
+    }
 
     private void OnGlMouseWheel(object? sender, MouseEventArgs e) =>
         _marina.Input.Wheel(e.Delta / (float)SystemInformation.MouseWheelScrollDelta, e.X, e.Y);
@@ -464,6 +504,10 @@ public sealed class MarinaViewControl : UserControl
         Keys.Subtract or Keys.OemMinus => MarinaKey.ZoomOut,
         Keys.Home => MarinaKey.Home,
         Keys.Escape => MarinaKey.Escape,
+        Keys.Enter => MarinaKey.Enter,
+        Keys.Back => MarinaKey.Backspace,
+        Keys.Delete => MarinaKey.Delete,
+        Keys.Z when (ModifierKeys & Keys.Control) != 0 => MarinaKey.Undo,
         _ => null,
     };
 }

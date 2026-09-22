@@ -25,10 +25,10 @@ public readonly record struct CameraAngle(float YawDegrees, float PitchDegrees)
 }
 
 /// <summary>A named viewpoint staff can jump to (<c>IMarinaVisualizer.ApplyCameraPreset</c>).</summary>
-/// <param name="Name">Unique name (case-insensitive), e.g. "Fuel dock".</param>
+/// <param name="Name">Unique name (case-insensitive), e.g. "Fuel pier".</param>
 /// <param name="Pose">Camera target, angles and distance.</param>
 /// <param name="Description">Optional description, e.g. for a tooltip in a preset menu.</param>
-/// <example><code>marina.AddCameraPreset(new CameraPreset("Fuel dock", new CameraPose(new Vector3(40, 0, 10), 150, 35, 60)));</code></example>
+/// <example><code>marina.AddCameraPreset(new CameraPreset("Fuel pier", new CameraPose(new Vector3(40, 0, 10), 150, 35, 60)));</code></example>
 public sealed record CameraPreset(string Name, CameraPose Pose, string? Description = null)
 {
     /// <summary>True for presets generated automatically from the layout (rebuilt when the layout changes).</summary>

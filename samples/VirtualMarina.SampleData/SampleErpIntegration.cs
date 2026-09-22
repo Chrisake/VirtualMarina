@@ -1,16 +1,16 @@
-using System.Globalization;
+﻿using System.Globalization;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Domain;
 
 namespace VirtualMarina.SampleData;
 
-/// <summary>A fake ERP record kept in <see cref="Slip.ExternalData"/>.</summary>
+/// <summary>A fake ERP record kept in <see cref="Berth.ExternalData"/>.</summary>
 public sealed record SampleContract(string Number, string Holder, decimal Balance, DateOnly ValidUntil);
 
 /// <summary>
 /// What a host ERP typically does with the visualizer's interaction events, shared by both test hosts:
-/// fills tooltips and actions, runs actions, and keeps its own objects in <see cref="Slip.ExternalData"/>.
+/// fills tooltips and actions, runs actions, and keeps its own objects in <see cref="Berth.ExternalData"/>.
 /// </summary>
 public sealed class SampleErpIntegration : IDisposable
 {
@@ -26,198 +26,198 @@ public sealed class SampleErpIntegration : IDisposable
         _marina = marina ?? throw new ArgumentNullException(nameof(marina));
         _rng = rng ?? throw new ArgumentNullException(nameof(rng));
         _log = log ?? (_ => { });
-        _marina.SlipSelected += OnSlipSelected;
-        _marina.MultiSlipSelected += OnMultiSlipSelected;
-        _marina.SlipActionInvoked += OnSlipActionInvoked;
+        _marina.BerthSelected += OnBerthSelected;
+        _marina.MultiBerthSelected += OnMultiBerthSelected;
+        _marina.BerthActionInvoked += OnBerthActionInvoked;
     }
 
     public void Dispose()
     {
-        _marina.SlipSelected -= OnSlipSelected;
-        _marina.MultiSlipSelected -= OnMultiSlipSelected;
-        _marina.SlipActionInvoked -= OnSlipActionInvoked;
+        _marina.BerthSelected -= OnBerthSelected;
+        _marina.MultiBerthSelected -= OnMultiBerthSelected;
+        _marina.BerthActionInvoked -= OnBerthActionInvoked;
     }
 
     // ---- Events -----------------------------------------------------------------------------------
 
-    private void OnSlipSelected(object? sender, SlipSelectedEventArgs e)
+    private void OnBerthSelected(object? sender, BerthSelectedEventArgs e)
     {
-        _log($"SlipSelected    {e.SlipId} reason={e.Reason} new={e.IsNewSelection} button={e.Button}");
-        var slip = e.Slip;
+        _log($"BerthSelected    {e.BerthId} reason={e.Reason} new={e.IsNewSelection} button={e.Button}");
+        var berth = e.Berth;
 
-        // External data: a per-slip counter and a lazily "loaded" contract object.
+        // External data: a per-berth counter and a lazily "loaded" contract object.
         if (e.Reason == SelectionReason.Pointer)
         {
             e.ExternalData[ViewCountKey] = e.ExternalData.Get<int>(ViewCountKey) + 1;
         }
 
-        if (slip.Boat is not null && slip.Status != SlipStatus.Reserved)
+        if (berth.Boat is not null && berth.Status != BerthStatus.Reserved)
         {
-            var contract = e.ExternalData.GetOrAdd(ContractKey, () => CreateContract(slip));
+            var contract = e.ExternalData.GetOrAdd(ContractKey, () => CreateContract(berth));
             e.Tooltip.AddLine("Contract", contract.Number);
             e.Tooltip.AddLine("Balance", contract.Balance.ToString("C", CultureInfo.GetCultureInfo("el-GR")), emphasize: contract.Balance > 0);
         }
 
-        if (slip.Metadata.TryGetValue("DailyRate", out var rate)) e.Tooltip.AddLine("Daily rate", rate);
+        if (berth.Metadata.TryGetValue("DailyRate", out var rate)) e.Tooltip.AddLine("Daily rate", rate);
         if (e.ExternalData.Get<int>(ViewCountKey) is > 1 and var views) e.Tooltip.Footer = $"Opened {views} times this session";
 
-        // Actions depend on the slip's state.
+        // Actions depend on the berth's state.
         var a = e.Actions;
-        switch (slip.Status)
+        switch (berth.Status)
         {
-            case SlipStatus.Free:
+            case BerthStatus.Free:
                 Primary(a.Add("checkin", "Check in walk-in boat", icon: "⚓"));
                 a.Add("reserve", "Reserve…", icon: "📅");
                 break;
-            case SlipStatus.Reserved:
+            case BerthStatus.Reserved:
                 Primary(a.Add("arrive", "Mark arrived", icon: "⚓"));
                 Danger(a.Add("cancel", "Cancel reservation", icon: "✖"));
                 break;
-            case SlipStatus.Occupied:
+            case BerthStatus.Occupied:
                 a.Add("tempfree", "Owner away (temporarily free)", icon: "⛵");
                 Danger(a.Add("checkout", "Check out", icon: "⇥"));
                 break;
-            case SlipStatus.TemporarilyFree:
+            case BerthStatus.TemporarilyFree:
                 Primary(a.Add("returned", "Owner returned", icon: "⚓"));
-                a.Add("checkout", "End contract (free slip)", icon: "⇥");
+                a.Add("checkout", "End contract (free berth)", icon: "⇥");
                 break;
         }
 
-        if (e.Berth is not null) Danger(a.Add("release-berth", $"Release berth ({e.Berth.SlipIds.Count} slips)", icon: "⛓"));
+        if (e.MultiBerth is not null) Danger(a.Add("release-berth", $"Release multi-berth ({e.MultiBerth.BerthIds.Count} berths)", icon: "⛓"));
 
         // Moving boats between the water and the boatyard.
-        if (slip.Boat is { } stored && slip.Status == SlipStatus.Occupied && e.Berth is null)
+        if (berth.Boat is { } stored && berth.Status == BerthStatus.Occupied && e.MultiBerth is null)
         {
-            if (slip.IsOnLand)
+            if (berth.IsOnLand)
             {
-                var target = MockMarinaFactory.FindFreeWaterSlip(_marina, stored);
+                var target = MockMarinaFactory.FindFreeWaterBerth(_marina, stored);
                 var launch = a.Add("launch", target is null ? "Launch (no free berth fits)" : $"Launch to {target.DisplayName}", enabled: target is not null, icon: "🌊");
                 launch.BeginGroup = true;
             }
             else
             {
-                var target = MockMarinaFactory.FindFreeLandSlip(_marina, stored);
+                var target = MockMarinaFactory.FindFreeLandBerth(_marina, stored);
                 var haulOut = a.Add("haulout", target is null ? "Haul out (boatyard full)" : $"Haul out to {target.DisplayName}", enabled: target is not null, icon: "🏗");
                 haulOut.BeginGroup = true;
             }
         }
 
-        var contractAction = a.Add("contract", "Open contract…", enabled: slip.Boat is not null, icon: "📄");
+        var contractAction = a.Add("contract", "Open contract…", enabled: berth.Boat is not null, icon: "📄");
         contractAction.BeginGroup = true;
         contractAction.ShortcutText = "Ctrl+O";
-        if (slip.Boat is null) contractAction.Description = "No boat is assigned to this slip.";
+        if (berth.Boat is null) contractAction.Description = "No boat is assigned to this berth.";
 
         a.Add("focus", "Focus camera (top down)", icon: "🎯");
-        a.Add("readonly", "Lock slip (read-only)", icon: "🔒").BeginGroup = true;
+        a.Add("readonly", "Lock berth (read-only)", icon: "🔒").BeginGroup = true;
         Danger(a.Add("maintenance", "Put under maintenance (disable)", icon: "🛠"));
-        a.Add("hide", "Hide slip", icon: "🙈");
+        a.Add("hide", "Hide berth", icon: "🙈");
     }
 
-    private void OnMultiSlipSelected(object? sender, MultiSlipSelectedEventArgs e)
+    private void OnMultiBerthSelected(object? sender, MultiBerthSelectedEventArgs e)
     {
-        _log($"MultiSelected   {string.Join(",", e.SlipIds)} reason={e.Reason} button={e.Button}");
+        _log($"MultiSelected   {string.Join(",", e.BerthIds)} reason={e.Reason} button={e.Button}");
 
-        var actionable = e.ActionableSlips;
+        var actionable = e.ActionableBerths;
         var width = actionable.Sum(s => s.Width);
         e.Tooltip.AddLine("Combined width", string.Format(CultureInfo.CurrentCulture, "{0:0.0} m", width));
 
-        // Any number of slips (two or more) can take one boat alongside.
-        var canMoorAlongside = actionable.Count >= 2 && actionable.Count == e.Slips.Count &&
-            actionable.All(s => s.Status == SlipStatus.Free && s.BerthId is null) &&
-            actionable.All(s => s.DockId is not null) &&
-            actionable.Select(s => s.DockId).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1;
-        var moor = e.Actions.Add("moor-alongside", $"Moor one yacht alongside {actionable.Count} slips", enabled: canMoorAlongside, icon: "🛥");
-        moor.Style = SlipActionStyle.Primary;
-        if (!canMoorAlongside) moor.Description = "Select two or more free slips on the same dock (none read-only).";
+        // Any number of berths (two or more) can take one boat alongside.
+        var canMoorAlongside = actionable.Count >= 2 && actionable.Count == e.Berths.Count &&
+            actionable.All(s => s.Status == BerthStatus.Free && s.MultiBerthId is null) &&
+            actionable.All(s => s.PierId is not null) &&
+            actionable.Select(s => s.PierId).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1;
+        var moor = e.Actions.Add("moor-alongside", $"Moor one yacht alongside {actionable.Count} berths", enabled: canMoorAlongside, icon: "🛥");
+        moor.Style = BerthActionStyle.Primary;
+        if (!canMoorAlongside) moor.Description = "Select two or more free berths on the same pier (none read-only).";
 
-        var focus = e.Actions.Add("focus-all", $"Focus camera on all {e.Slips.Count} (top down)", icon: "🎯");
+        var focus = e.Actions.Add("focus-all", $"Focus camera on all {e.Berths.Count} (top down)", icon: "🎯");
         focus.KeepOpen = true;
-        e.Actions.Add("tempfree-all", "Mark occupied slips temporarily free", enabled: actionable.Any(s => s.Status == SlipStatus.Occupied), icon: "⛵");
-        Danger(e.Actions.Add("free-all", $"Free {actionable.Count} slip(s)", enabled: actionable.Count > 0, icon: "⇥"));
+        e.Actions.Add("tempfree-all", "Mark occupied berths temporarily free", enabled: actionable.Any(s => s.Status == BerthStatus.Occupied), icon: "⛵");
+        Danger(e.Actions.Add("free-all", $"Free {actionable.Count} berth(s)", enabled: actionable.Count > 0, icon: "⇥"));
         e.Actions.Add("readonly-all", "Lock all (read-only)", icon: "🔒").BeginGroup = true;
         Danger(e.Actions.Add("maintenance-all", "Put all under maintenance", icon: "🛠"));
     }
 
-    private void OnSlipActionInvoked(object? sender, SlipActionInvokedEventArgs e)
+    private void OnBerthActionInvoked(object? sender, BerthActionInvokedEventArgs e)
     {
-        _log($"ActionInvoked   {e.ActionId} on {string.Join(",", e.Slips.Select(s => s.Id))}");
-        var slip = e.Slip;
-        var ids = e.ActionableSlips.Select(s => s.Id).ToArray();
+        _log($"ActionInvoked   {e.ActionId} on {string.Join(",", e.Berths.Select(s => s.Id))}");
+        var berth = e.Berth;
+        var ids = e.ActionableBerths.Select(s => s.Id).ToArray();
 
         switch (e.ActionId)
         {
             case "checkin":
-                _marina.AssignBoat(slip.Id, MockMarinaFactory.CreateBoatForSlip(slip, _rng));
+                _marina.AssignBoat(berth.Id, MockMarinaFactory.CreateBoatForBerth(berth, _rng));
                 break;
             case "reserve":
-                _marina.ReserveSlip(slip.Id, MockMarinaFactory.CreateBoatForSlip(slip, _rng) with { ExpectedArrival = DateTimeOffset.Now.AddHours(_rng.Next(2, 48)) });
+                _marina.ReserveBerth(berth.Id, MockMarinaFactory.CreateBoatForBerth(berth, _rng) with { ExpectedArrival = DateTimeOffset.Now.AddHours(_rng.Next(2, 48)) });
                 break;
             case "arrive":
             case "returned":
-                _marina.SetSlipStatus(slip.Id, SlipStatus.Occupied, slip.Boat is { } b ? b with { ExpectedArrival = null } : null);
+                _marina.SetBerthStatus(berth.Id, BerthStatus.Occupied, berth.Boat is { } b ? b with { ExpectedArrival = null } : null);
                 break;
             case "cancel":
             case "checkout":
-                slip.ExternalData.Remove(ContractKey);
-                _marina.ReleaseSlip(slip.Id);
+                berth.ExternalData.Remove(ContractKey);
+                _marina.ReleaseBerth(berth.Id);
                 break;
             case "tempfree":
-                _marina.MarkTemporarilyFree(slip.Id, slip.Boat is { } away ? away with { ExpectedArrival = DateTimeOffset.Now.AddDays(7) } : null);
+                _marina.MarkTemporarilyFree(berth.Id, berth.Boat is { } away ? away with { ExpectedArrival = DateTimeOffset.Now.AddDays(7) } : null);
                 break;
             case "launch":
             case "haulout":
-                MoveBoat(slip, e.ActionId == "launch");
+                MoveBoat(berth, e.ActionId == "launch");
                 break;
             case "release-berth":
-                if (slip.BerthId is { } berthId) _marina.ReleaseMultiSlipBerth(berthId);
+                if (berth.MultiBerthId is { } multiBerthId) _marina.ReleaseMultiBerth(multiBerthId);
                 break;
             case "contract":
-                var contract = slip.ExternalData.Get<SampleContract>(ContractKey);
-                _log($"  -> would open contract {contract?.Number ?? "(none)"} for {slip.Boat?.Name}");
+                var contract = berth.ExternalData.Get<SampleContract>(ContractKey);
+                _log($"  -> would open contract {contract?.Number ?? "(none)"} for {berth.Boat?.Name}");
                 e.KeepPopupOpen = true;
                 break;
             case "focus":
             case "focus-all":
-                _marina.FocusSlips(e.Slips.Select(s => s.Id), CameraAngle.TopDown);
+                _marina.FocusBerths(e.Berths.Select(s => s.Id), CameraAngle.TopDown);
                 e.KeepPopupOpen = true;
                 break;
             case "readonly":
             case "readonly-all":
-                _marina.SetSlipFlags(ids, readOnly: true);
+                _marina.SetBerthFlags(ids, readOnly: true);
                 break;
             case "maintenance":
             case "maintenance-all":
-                _marina.SetSlipFlags(ids, disabled: true);
+                _marina.SetBerthFlags(ids, disabled: true);
                 break;
             case "hide":
-                _marina.SetSlipVisible(slip.Id, false);
+                _marina.SetBerthVisible(berth.Id, false);
                 break;
             case "moor-alongside":
                 MoorYachtAlongside(ids);
                 break;
             case "tempfree-all":
-                _marina.BatchUpdate(e.ActionableSlips.Where(s => s.Status == SlipStatus.Occupied).Select(s => SlipUpdate.TemporarilyFree(s.Id)));
+                _marina.BatchUpdate(e.ActionableBerths.Where(s => s.Status == BerthStatus.Occupied).Select(s => BerthUpdate.TemporarilyFree(s.Id)));
                 break;
             case "free-all":
-                _marina.BatchUpdate(ids.Select(SlipUpdate.Free));
+                _marina.BatchUpdate(ids.Select(BerthUpdate.Free));
                 break;
         }
     }
 
     // ---- Helpers for host buttons -----------------------------------------------------------------
 
-    /// <summary>Moors a generated yacht alongside the given slips. Returns the berth, or null when not possible.</summary>
-    public MultiSlipBerth? MoorYachtAlongside(IReadOnlyList<string> slipIds)
+    /// <summary>Moors a generated yacht alongside the given berths. Returns the berth, or null when not possible.</summary>
+    public MultiBerth? MoorYachtAlongside(IReadOnlyList<string> berthIds)
     {
-        var slips = slipIds.Select(_marina.GetSlip).OfType<Slip>().ToList();
-        if (slips.Count < 2)
+        var berths = berthIds.Select(_marina.GetBerth).OfType<Berth>().ToList();
+        if (berths.Count < 2)
         {
-            _log("Select at least two slips (Ctrl+click or Shift+click) to moor a yacht alongside.");
+            _log("Select at least two berths (Ctrl+click or Shift+click) to moor a yacht alongside.");
             return null;
         }
 
-        var span = slips.Sum(s => s.Width);
-        var depth = slips.Min(s => s.Length);
+        var span = berths.Sum(s => s.Width);
+        var depth = berths.Min(s => s.Length);
         var boat = new Boat($"BT-{_rng.Next(10000, 99999)}", "Alongside Guest", BoatType.MotorYacht)
         {
             LengthMeters = MathF.Round(MathF.Max(6f, span - 1.2f), 1),
@@ -227,8 +227,8 @@ public sealed class SampleErpIntegration : IDisposable
 
         try
         {
-            var berth = _marina.DockAlongside(slips.Select(s => s.Id), boat);
-            _log($"Berth           {berth.Id}: {boat.LengthMeters:0.0} m yacht alongside {string.Join(", ", berth.SlipIds)}");
+            var berth = _marina.MoorAlongside(berths.Select(s => s.Id), boat);
+            _log($"Berth           {berth.Id}: {boat.LengthMeters:0.0} m yacht alongside {string.Join(", ", berth.BerthIds)}");
             return berth;
         }
         catch (Exception ex) when (ex is InvalidOperationException or MarinaLayoutException)
@@ -238,38 +238,38 @@ public sealed class SampleErpIntegration : IDisposable
         }
     }
 
-    /// <summary>Moves a slip's boat into the water (<paramref name="launch"/>) or up onto a land slip, in one batch.</summary>
-    public Slip? MoveBoat(Slip from, bool launch)
+    /// <summary>Moves a berth's boat into the water (<paramref name="launch"/>) or up onto a land berth, in one batch.</summary>
+    public Berth? MoveBoat(Berth from, bool launch)
     {
         if (from.Boat is not { } boat) return null;
-        var target = launch ? MockMarinaFactory.FindFreeWaterSlip(_marina, boat) : MockMarinaFactory.FindFreeLandSlip(_marina, boat);
+        var target = launch ? MockMarinaFactory.FindFreeWaterBerth(_marina, boat) : MockMarinaFactory.FindFreeLandBerth(_marina, boat);
         if (target is null)
         {
             _log(launch ? "No free berth fits this boat." : "The boatyard has no free spot for this boat.");
             return null;
         }
 
-        var result = _marina.BatchUpdate(new[] { SlipUpdate.Free(from.Id), SlipUpdate.Occupy(target.Id, boat) });
+        var result = _marina.BatchUpdate(new[] { BerthUpdate.Free(from.Id), BerthUpdate.Occupy(target.Id, boat) });
         _log($"{(launch ? "Launched" : "Hauled out"),-15} {boat.Name}: {from.DisplayName} -> {target.DisplayName} (applied {result.AppliedCount})");
-        _marina.SelectSlip(target.Id, focusCamera: true);
-        return _marina.GetSlip(target.Id);
+        _marina.SelectBerth(target.Id, focusCamera: true);
+        return _marina.GetBerth(target.Id);
     }
 
-    /// <summary>Clears Disabled / Read-only on every slip and shows hidden ones.</summary>
+    /// <summary>Clears Disabled / Read-only on every berth and shows hidden ones.</summary>
     public void ResetAllFlags()
     {
-        var result = _marina.SetSlipFlags(_marina.GetSlips().Select(s => s.Id), visible: true, disabled: false, readOnly: false);
-        _log($"Flags reset on {result.AppliedCount} slips");
+        var result = _marina.SetBerthFlags(_marina.GetBerths().Select(s => s.Id), visible: true, disabled: false, readOnly: false);
+        _log($"Flags reset on {result.AppliedCount} berths");
     }
 
-    private SampleContract CreateContract(Slip slip)
+    private SampleContract CreateContract(Berth berth)
     {
         var number = $"CT-{DateTime.Today.Year}-{_rng.Next(1000, 9999)}";
-        _log($"  -> loaded contract {number} for {slip.Id} into ExternalData");
-        return new SampleContract(number, slip.Boat?.OwnerName ?? "-", _rng.Next(0, 4) == 0 ? _rng.Next(50, 900) : 0m, DateOnly.FromDateTime(DateTime.Today.AddMonths(_rng.Next(1, 12))));
+        _log($"  -> loaded contract {number} for {berth.Id} into ExternalData");
+        return new SampleContract(number, berth.Boat?.OwnerName ?? "-", _rng.Next(0, 4) == 0 ? _rng.Next(50, 900) : 0m, DateOnly.FromDateTime(DateTime.Today.AddMonths(_rng.Next(1, 12))));
     }
 
-    private static void Primary(SlipAction action) => action.Style = SlipActionStyle.Primary;
+    private static void Primary(BerthAction action) => action.Style = BerthActionStyle.Primary;
 
-    private static void Danger(SlipAction action) => action.Style = SlipActionStyle.Danger;
+    private static void Danger(BerthAction action) => action.Style = BerthActionStyle.Danger;
 }

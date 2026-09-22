@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using VirtualMarina.Core.Api;
+using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Input;
 
 namespace VirtualMarina.Blazor;
@@ -22,7 +23,7 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
     private ElementReference _canvas;
     private ElementReference _popupElement;
     private MarinaVisualizer? _subscribedMarina;
-    private SlipPopup? _popup;
+    private BerthPopup? _popup;
     private IJSInProcessObjectReference? _module;
     private DotNetObjectReference<MarinaView>? _selfReference;
     private WebGlSceneRenderer? _renderer;
@@ -36,6 +37,14 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
     /// <summary>The visualizer to display. Required.</summary>
     [Parameter, EditorRequired]
     public MarinaVisualizer Marina { get; set; } = default!;
+
+    /// <summary>
+    /// How the marina is drawn and animated (lighting, waves, status colors, boat opacities, land and trees, piers, labels, selection,
+    /// camera). Assigned to <c>Marina.Style</c> when set; leave it null to keep the visualizer's style. (Named <c>MarinaStyle</c> because
+    /// <see cref="Style"/> is the element's inline CSS.)
+    /// </summary>
+    [Parameter]
+    public Core.Rendering.MarinaStyle? MarinaStyle { get; set; }
 
     /// <summary>Extra CSS classes for the outer element.</summary>
     [Parameter]
@@ -56,11 +65,31 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
     /// <summary>Backend and GPU description once WebGL is running, otherwise null.</summary>
     public string? RendererDescription { get; private set; }
 
+    /// <summary>
+    /// Shows PNG, JPEG or WebP bytes as the designer's reference image (north at the top). The browser decodes the image, so no .NET
+    /// image library is needed. Returns null when the bytes can't be decoded or the view isn't running yet.
+    /// </summary>
+    /// <param name="data">The file contents, e.g. from an <c>InputFile</c>.</param>
+    /// <param name="contentType">MIME type, e.g. "image/png".</param>
+    /// <param name="metersPerPixel">Known ground size of a pixel; null sizes it to the layout until calibrated.</param>
+    public async Task<ReferenceImage?> LoadReferenceImageAsync(byte[] data, string contentType, float? metersPerPixel = null)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (_module is null || data.Length == 0) return null;
+        var size = await _module.InvokeAsync<int[]?>("measureImage", data, contentType);
+        if (size is not { Length: 2 } || size[0] <= 0 || size[1] <= 0) return null;
+
+        var image = ReferenceImage.FromEncoded(data, size[0], size[1], contentType);
+        Marina.Designer.SetReferenceImage(image, metersPerPixel);
+        return image;
+    }
+
     /// <summary>Subscribes to the visualizer's popup changes.</summary>
     /// <exception cref="InvalidOperationException"><see cref="Marina"/> is not set.</exception>
     protected override void OnParametersSet()
     {
         if (Marina is null) throw new InvalidOperationException($"{nameof(MarinaView)} requires the {nameof(Marina)} parameter.");
+        if (MarinaStyle is not null && !ReferenceEquals(Marina.Style, MarinaStyle)) Marina.Style = MarinaStyle;
         if (ReferenceEquals(_subscribedMarina, Marina)) return;
 
         if (_subscribedMarina is not null) _subscribedMarina.PopupChanged -= OnPopupChanged;
@@ -69,7 +98,7 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
         _popup = Marina.ActivePopup;
     }
 
-    private void OnPopupChanged(object? sender, SlipPopupChangedEventArgs e)
+    private void OnPopupChanged(object? sender, BerthPopupChangedEventArgs e)
     {
         _popup = e.Current;
         StateHasChanged();
@@ -77,17 +106,17 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
 
     private string? PopupKindClass => _popup?.Kind switch
     {
-        SlipPopupKind.Actions => "vm-popup--actions",
-        SlipPopupKind.Tooltip => "vm-popup--tooltip",
+        BerthPopupKind.Actions => "vm-popup--actions",
+        BerthPopupKind.Tooltip => "vm-popup--tooltip",
         _ => null,
     };
 
     private string? AccentStyle => _popup?.Tooltip.AccentColor is { } accent ? $"--vm-accent:{accent.ToHex()}" : null;
 
-    private static string? ActionStyleClass(SlipAction action) => action.Style switch
+    private static string? ActionStyleClass(BerthAction action) => action.Style switch
     {
-        SlipActionStyle.Primary => "vm-popup__action--primary",
-        SlipActionStyle.Danger => "vm-popup__action--danger",
+        BerthActionStyle.Primary => "vm-popup__action--primary",
+        BerthActionStyle.Danger => "vm-popup__action--danger",
         _ => null,
     };
 
@@ -151,14 +180,26 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
         Marina.Input.PointerDown((float)x, (float)y, MapButton(button), (InputModifiers)modifiers);
 
     /// <summary>
-    /// Called by marinaWebGL.js; forwards to <see cref="MarinaInputController.PointerMove"/>. Returns true when the pointer is over a
-    /// selectable slip or boat (the JS side shows a pointer cursor). Not for direct use.
+    /// Called by marinaWebGL.js; forwards to <see cref="MarinaInputController.PointerMove"/>. Returns the CSS cursor to show when no
+    /// button is held: "pointer" over a selectable berth or boat, "crosshair" or "move" for designer tools, otherwise "grab".
+    /// Not for direct use.
     /// </summary>
     [JSInvokable]
-    public bool OnPointerMove(double x, double y, int modifiers)
+    public string OnPointerMove(double x, double y, int modifiers)
     {
         Marina.Input.PointerMove((float)x, (float)y, (InputModifiers)modifiers);
-        return !Marina.Input.IsDragging && Marina.HoveredSlip is not null;
+        var designer = Marina.Designer;
+        if (designer.IsActive)
+        {
+            return designer.Tool switch
+            {
+                DesignTool.Navigate => "grab",
+                DesignTool.MoveReferenceImage => designer.ReferenceImage is null ? "not-allowed" : "move",
+                _ => "crosshair",
+            };
+        }
+
+        return !Marina.Input.IsDragging && Marina.HoveredBerth is not null ? "pointer" : "grab";
     }
 
     /// <summary>Called by marinaWebGL.js; forwards to <see cref="MarinaInputController.PointerUp"/>. Not for direct use.</summary>
@@ -196,6 +237,10 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
             "-" or "_" => MarinaKey.ZoomOut,
             "Home" => MarinaKey.Home,
             "Escape" => MarinaKey.Escape,
+            "Enter" => MarinaKey.Enter,
+            "Backspace" => MarinaKey.Backspace,
+            "Delete" => MarinaKey.Delete,
+            "z" or "Z" when ((InputModifiers)modifiers & InputModifiers.Control) != 0 => MarinaKey.Undo,
             _ => null,
         };
         return mapped is { } k && Marina.Input.KeyDown(k, (InputModifiers)modifiers);

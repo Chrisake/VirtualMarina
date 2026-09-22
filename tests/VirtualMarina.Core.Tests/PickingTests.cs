@@ -15,7 +15,7 @@ public class PickingTests
     {
         var marina = new MarinaVisualizer();
         marina.InitializeLayout(new MarinaLayoutBuilder("Picking")
-            .AddDock("A", "Dock A", Vector2.Zero, 0f, 40f, dock => dock.AddSlips(DockSide.Left, 2, 5f, 12f))
+            .AddPier("A", "Pier A", Vector2.Zero, 0f, 40f, pier => pier.AddBerths(PierSide.Left, 2, 5f, 12f))
             .Build());
         marina.SetViewportSize(800, 600);
         foreach (var id in new[] { "A-L01", "A-L02" })
@@ -27,7 +27,7 @@ public class PickingTests
     }
 
     private static IReadOnlyList<BoatInstance> Boats(MarinaVisualizer marina) =>
-        SlipPlacement.EnumerateBoats(marina.GetSlips(), marina.GetSlip, marina.GetMultiSlipBerth, SlipStatusFilter.All).ToList();
+        BerthPlacement.EnumerateBoats(marina.GetBerths(), marina.GetBerth, marina.GetMultiBerth, BerthStatusFilter.All).ToList();
 
     private static bool HitsBox(BoatInstance boat, MeshLibrary meshes, Ray ray, out MeshData mesh, out Vector3 origin, out Vector3 direction)
     {
@@ -42,7 +42,7 @@ public class PickingTests
     /// Rays toward +Z across a grid of positions, looking slightly down like a camera above the water: they pass the
     /// front boat first, then the rear one (which appears higher on screen, e.g. its sail beside the front boat's mast).
     /// </summary>
-    private static IEnumerable<Ray> RaysAlongTheRow(Slip front)
+    private static IEnumerable<Ray> RaysAlongTheRow(Berth front)
     {
         foreach (var slope in new[] { -0.15f, -0.3f, -0.5f })
         {
@@ -51,7 +51,7 @@ public class PickingTests
             {
                 for (var y = 0.5f; y <= 16f; y += 0.25f)
                 {
-                    // Start the ray so that it is at height y where it reaches the front slip.
+                    // Start the ray so that it is at height y where it reaches the front berth.
                     var start = new Vector3(x, y, front.Center.Y) - direction * 30f;
                     yield return new Ray(start, direction);
                 }
@@ -64,11 +64,11 @@ public class PickingTests
     {
         var marina = CreateMarinaWithTwoSailboats();
         var boats = Boats(marina);
-        var front = boats.Single(b => b.PrimarySlip.Id == "A-L01");
-        var rear = boats.Single(b => b.PrimarySlip.Id == "A-L02");
+        var front = boats.Single(b => b.PrimaryBerth.Id == "A-L01");
+        var rear = boats.Single(b => b.PrimaryBerth.Id == "A-L02");
         var cases = 0;
 
-        foreach (var ray in RaysAlongTheRow(front.PrimarySlip))
+        foreach (var ray in RaysAlongTheRow(front.PrimaryBerth))
         {
             // The old behavior would pick the front boat here: its box is hit...
             if (!HitsBox(front, marina.Meshes, ray, out var frontMesh, out var fo, out var fd)) continue;
@@ -76,9 +76,9 @@ public class PickingTests
             if (ScenePicker.TryIntersectMesh(frontMesh, fo, fd, out _)) continue;
             if (!HitsBox(rear, marina.Meshes, ray, out var rearMesh, out var ro, out var rd) || !ScenePicker.TryIntersectMesh(rearMesh, ro, rd, out _)) continue;
 
-            // The rear slip must win: through its boat, or its water area when that is nearer than the hull under the waterline.
-            var hit = ScenePicker.Pick(ray, marina.GetSlips(), boats, marina.Meshes);
-            Assert.True(hit?.SlipId == "A-L02", $"Ray from ({ray.Origin.X}, {ray.Origin.Y}) should pick the rear slip, got {hit?.SlipId ?? "nothing"}.");
+            // The rear berth must win: through its boat, or its water area when that is nearer than the hull under the waterline.
+            var hit = ScenePicker.Pick(ray, marina.GetBerths(), boats, marina.Meshes);
+            Assert.True(hit?.BerthId == "A-L02", $"Ray from ({ray.Origin.X}, {ray.Origin.Y}) should pick the rear berth, got {hit?.BerthId ?? "nothing"}.");
             cases++;
         }
 
@@ -90,14 +90,14 @@ public class PickingTests
     {
         var marina = CreateMarinaWithTwoSailboats();
         var boats = Boats(marina);
-        var front = boats.Single(b => b.PrimarySlip.Id == "A-L01");
+        var front = boats.Single(b => b.PrimaryBerth.Id == "A-L01");
         var cases = 0;
 
-        foreach (var ray in RaysAlongTheRow(front.PrimarySlip))
+        foreach (var ray in RaysAlongTheRow(front.PrimaryBerth))
         {
             if (!HitsBox(front, marina.Meshes, ray, out var mesh, out var o, out var d) || !ScenePicker.TryIntersectMesh(mesh, o, d, out _)) continue;
 
-            Assert.Equal("A-L01", ScenePicker.Pick(ray, marina.GetSlips(), boats, marina.Meshes)?.SlipId);
+            Assert.Equal("A-L01", ScenePicker.Pick(ray, marina.GetBerths(), boats, marina.Meshes)?.BerthId);
             cases++;
         }
 
@@ -108,17 +108,17 @@ public class PickingTests
     public void Hover_OnlyTargetsBoatShapes()
     {
         var marina = CreateMarinaWithTwoSailboats();
-        var slip = marina.GetSlip("A-L01")!;
+        var berth = marina.GetBerth("A-L01")!;
 
         // Low camera from the side, looking along the boat at the height of the empty space beside the mast.
-        marina.Camera.SetPose(new CameraPose(new Vector3(slip.Center.X, 9f, slip.Center.Y), 180f, 8f, 25f), immediate: true);
+        marina.Camera.SetPose(new CameraPose(new Vector3(berth.Center.X, 9f, berth.Center.Y), 180f, 8f, 25f), immediate: true);
         var ray = marina.Camera.ScreenPointToRay(400, 300, 800, 600);
-        var expected = ScenePicker.Pick(ray, marina.GetSlips().Where(s => s.IsVisible), Boats(marina), marina.Meshes)?.SlipId;
+        var expected = ScenePicker.Pick(ray, marina.GetBerths().Where(s => s.IsVisible), Boats(marina), marina.Meshes)?.BerthId;
 
         marina.Input.PointerMove(400, 300);
 
-        Assert.Equal(expected, marina.HoveredSlip?.Id);
-        Assert.Equal(expected, marina.HitTest(400, 300)?.SlipId);
+        Assert.Equal(expected, marina.HoveredBerth?.Id);
+        Assert.Equal(expected, marina.HitTest(400, 300)?.BerthId);
     }
 
     [Fact]

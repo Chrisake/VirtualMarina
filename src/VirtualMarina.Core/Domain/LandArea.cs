@@ -16,9 +16,26 @@ public enum LandKind
     Grass,
 }
 
+/// <summary>Shape of a <see cref="LandTree"/>.</summary>
+public enum TreeShape
+{
+    /// <summary>Round crown (plane tree, olive, oak).</summary>
+    Broadleaf,
+
+    /// <summary>Tall, pointed crown (pine, cypress).</summary>
+    Conifer,
+}
+
+/// <summary>A tree standing on a <see cref="LandArea"/>. Positions and sizes are stored, so trees look the same in every session.</summary>
+/// <param name="Position">Trunk position in plan coordinates.</param>
+/// <param name="Height">Total height above the land surface, 1–40 m.</param>
+/// <param name="CrownRadius">Radius of the crown, 0.3–15 m.</param>
+/// <param name="Shape">Crown shape.</param>
+public readonly record struct LandTree(Vector2 Position, float Height, float CrownRadius, TreeShape Shape = TreeShape.Broadleaf);
+
 /// <summary>
 /// A flat piece of land such as a quay, breakwater or lawn: a polygon outline in plan coordinates with one top height
-/// for the whole area. Land slips (<see cref="Slip.OnLand"/>) can be placed on it for boats stored or maintained ashore.
+/// for the whole area. Land berths (<see cref="Berth.OnLand"/>) can be placed on it for boats stored or maintained ashore.
 /// </summary>
 /// <remarks>
 /// The outline may be convex or concave, in either winding order, but its edges must not cross. Don't repeat the first
@@ -33,7 +50,7 @@ public enum LandKind
 public sealed record LandArea
 {
     /// <summary>Creates a land area from its outline.</summary>
-    /// <param name="id">Unique id (case-insensitive). Land slips reference it.</param>
+    /// <param name="id">Unique id (case-insensitive). Land berths reference it.</param>
     /// <param name="points">Outline in plan coordinates (X = world X, Y = world Z), at least three points.</param>
     /// <param name="height">Height of the top surface above the water, in meters (the same over the whole area).</param>
     /// <param name="kind">Surface type.</param>
@@ -58,7 +75,7 @@ public sealed record LandArea
     {
     }
 
-    /// <summary>Unique id (case-insensitive). Land slips reference it through <see cref="Slip.LandAreaId"/>.</summary>
+    /// <summary>Unique id (case-insensitive). Land berths reference it through <see cref="Berth.LandAreaId"/>.</summary>
     public string Id { get; init; }
 
     /// <summary>Display name (tooltips); the id is used when null.</summary>
@@ -72,6 +89,49 @@ public sealed record LandArea
 
     /// <summary>Surface type.</summary>
     public LandKind Kind { get; init; }
+
+    /// <summary>
+    /// Trees standing on the area (usually lawns). Their positions are part of the layout, so they never move between sessions; generate
+    /// them once with <see cref="GenerateTrees"/> or the designer.
+    /// </summary>
+    public IReadOnlyList<LandTree> Trees { get; init; } = Array.Empty<LandTree>();
+
+    /// <summary>
+    /// Scatters trees randomly inside an outline, at about <paramref name="treesPer1000SquareMeters"/>, keeping them apart, away from the
+    /// edges and out of <paramref name="keepClear"/> (e.g. land berths). Store the result in <see cref="Trees"/>.
+    /// </summary>
+    /// <param name="outline">The land outline.</param>
+    /// <param name="treesPer1000SquareMeters">Density; 0 returns no trees.</param>
+    /// <param name="random">Random source: pass a seeded one for repeatable results.</param>
+    /// <param name="keepClear">Areas that must stay free of trees.</param>
+    /// <example><code>lawn = lawn with { Trees = LandArea.GenerateTrees(lawn.Points, 6, new Random()) };</code></example>
+    public static IReadOnlyList<LandTree> GenerateTrees(IReadOnlyList<Vector2> outline, float treesPer1000SquareMeters, Random random, IEnumerable<OrientedRect>? keepClear = null)
+    {
+        ArgumentNullException.ThrowIfNull(outline);
+        ArgumentNullException.ThrowIfNull(random);
+        if (outline.Count < 3 || !(treesPer1000SquareMeters > 0f)) return Array.Empty<LandTree>();
+
+        var area = MathF.Abs(PolygonMath.SignedArea(outline));
+        var target = Math.Min(5000, (int)MathF.Round(area / 1000f * treesPer1000SquareMeters));
+        var clear = keepClear?.ToArray() ?? Array.Empty<OrientedRect>();
+        var (min, max) = PolygonMath.GetBounds(outline);
+        var trees = new List<LandTree>(target);
+        for (var attempt = 0; attempt < target * 30 && trees.Count < target; attempt++)
+        {
+            var conifer = random.NextDouble() < 0.3;
+            var height = conifer ? 6f + (float)random.NextDouble() * 7f : 4f + (float)random.NextDouble() * 5f;
+            var radius = conifer ? height * (0.16f + (float)random.NextDouble() * 0.06f) : height * (0.3f + (float)random.NextDouble() * 0.12f);
+            var position = new Vector2(min.X + (float)random.NextDouble() * (max.X - min.X), min.Y + (float)random.NextDouble() * (max.Y - min.Y));
+
+            if (!PolygonMath.Contains(outline, position) || PolygonMath.DistanceToBoundary(outline, position) < radius * 0.8f + 0.5f) continue;
+            if (clear.Any(r => new OrientedRect(r.Center, r.Size + new Vector2(radius * 2f + 1f), r.HeadingDegrees).Contains(position))) continue;
+            if (trees.Any(t => Vector2.Distance(t.Position, position) < (t.CrownRadius + radius) * 0.9f)) continue;
+
+            trees.Add(new LandTree(position, MathF.Round(height, 2), MathF.Round(radius, 2), conifer ? TreeShape.Conifer : TreeShape.Broadleaf));
+        }
+
+        return trees;
+    }
 
     /// <summary><see cref="Name"/> when set, otherwise <see cref="Id"/>.</summary>
     public string DisplayName => string.IsNullOrWhiteSpace(Name) ? Id : Name!;
@@ -98,6 +158,15 @@ public sealed record LandArea
         else if (!PolygonMath.IsSimple(Points)) yield return $"Land area '{Id}' outline must not cross itself or repeat points.";
         else if (!(Area > 1e-3f)) yield return $"Land area '{Id}' outline has no area.";
         if (!float.IsFinite(Height) || Height < 0f || Height > 50f) yield return $"Land area '{Id}' height must be between 0 and 50 m.";
+        if (Trees is null)
+        {
+            yield return $"Land area '{Id}' must have a Trees list.";
+        }
+        else if (Trees.Any(t => !float.IsFinite(t.Position.X) || !float.IsFinite(t.Position.Y) || !(t.Height >= 1f && t.Height <= 40f) ||
+                                !(t.CrownRadius >= 0.3f && t.CrownRadius <= 15f) || !Enum.IsDefined(t.Shape)))
+        {
+            yield return $"Land area '{Id}' has a tree with a non-finite position, a height outside 1–40 m or a crown radius outside 0.3–15 m.";
+        }
         if (!Enum.IsDefined(Kind)) yield return $"Land area '{Id}' has an unknown kind '{Kind}'.";
     }
 }

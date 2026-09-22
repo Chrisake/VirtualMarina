@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Displayed text for VirtualMarina.Core. To translate it, copy this file next to it as Strings.<culture>.resx
+    (e.g. Strings.el.resx), translate the <value> elements only, and leave the names untouched.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <!-- Berth status -->
+  <data name="StatusFree">
+    <value>Free</value>
+  </data>
+  <data name="StatusOccupied">
+    <value>Occupied</value>
+  </data>
+  <data name="StatusReserved">
+    <value>Reserved</value>
+  </data>
+  <data name="StatusTemporarilyFree">
+    <value>Temporarily Free</value>
+  </data>
+  <!-- Berth label modes -->
+  <data name="BerthLabelsNone">
+    <value>None</value>
+  </data>
+  <data name="BerthLabelsOnlyFree">
+    <value>Only free</value>
+  </data>
+  <data name="BerthLabelsNonOccupied">
+    <value>Non-occupied</value>
+  </data>
+  <data name="BerthLabelsAll">
+    <value>All</value>
+  </data>
+  <!-- Boat types -->
+  <data name="BoatTypeMonohullSailboat">
+    <value>Monohull Sailboat</value>
+  </data>
+  <data name="BoatTypeCatamaranSailboat">
+    <value>Catamaran Sailboat</value>
+  </data>
+  <data name="BoatTypeDayMotorBoat">
+    <value>Day Motor Boat</value>
+  </data>
+  <data name="BoatTypeCatamaranMotorboat">
+    <value>Catamaran Motorboat</value>
+  </data>
+  <data name="BoatTypeMotorYacht">
+    <value>Motor Yacht</value>
+  </data>
+  <data name="BoatTypeFishingBoat">
+    <value>Fishing Boat</value>
+  </data>
+  <data name="BoatTypeJetSki">
+    <value>Jet Ski</value>
+  </data>
+  <!-- Pier types -->
+  <data name="PierTypeFloatingWooden">
+    <value>Floating (wooden)</value>
+  </data>
+  <data name="PierTypeFloatingConcrete">
+    <value>Floating (concrete)</value>
+  </data>
+  <data name="PierTypeConcrete">
+    <value>Fixed concrete</value>
+  </data>
+  <!-- Mooring styles -->
+  <data name="MooringAlongside">
+    <value>Alongside</value>
+  </data>
+  <data name="MooringBowIn">
+    <value>Bow-in</value>
+  </data>
+  <!-- Default tooltip -->
+  <data name="TooltipOnLand">
+    <value>On land · {0}</value>
+    <comment>{0} = name of the land area the boat stands on.</comment>
+  </data>
+  <data name="TooltipStatus">
+    <value>Status</value>
+  </data>
+  <data name="TooltipBerthSize">
+    <value>Berth size</value>
+  </data>
+  <data name="TooltipSize">
+    <value>{0:0.0} × {1:0.0} m</value>
+    <comment>{0} = length, {1} = width, both in meters.</comment>
+  </data>
+  <data name="TooltipDraftSuffix">
+    <value>, draft {0:0.0} m</value>
+    <comment>Appended to the berth size. {0} = maximum draft in meters.</comment>
+  </data>
+  <data name="TooltipBoat">
+    <value>Boat</value>
+  </data>
+  <data name="TooltipBoatType">
+    <value>Boat type</value>
+  </data>
+  <data name="TooltipBoatSize">
+    <value>Boat size</value>
+  </data>
+  <data name="TooltipOwner">
+    <value>Owner</value>
+  </data>
+  <data name="TooltipRegistration">
+    <value>Registration</value>
+  </data>
+  <data name="TooltipReturns">
+    <value>Returns</value>
+    <comment>Row label for the return time of a temporarily free berth.</comment>
+  </data>
+  <data name="TooltipExpected">
+    <value>Expected</value>
+    <comment>Row label for the expected arrival at a reserved berth.</comment>
+  </data>
+  <data name="TooltipBoatLies">
+    <value>Boat lies</value>
+    <comment>Row label for how a boat lies across a multi-berth.</comment>
+  </data>
+  <data name="TooltipAcrossBerths">
+    <value>{0} across {1}</value>
+    <comment>{0} = mooring style, {1} = the berth names, comma separated.</comment>
+  </data>
+  <data name="TooltipAccess">
+    <value>Access</value>
+  </data>
+  <data name="TooltipReadOnly">
+    <value>Read-only</value>
+  </data>
+  <data name="TooltipBerthsSelected">
+    <value>{0} berths selected</value>
+    <comment>{0} = number of selected berths (always 2 or more).</comment>
+  </data>
+  <data name="TooltipBerthAndBoat">
+    <value>{0} · {1}</value>
+    <comment>{0} = berth status, {1} = boat name.</comment>
+  </data>
+  <data name="TooltipAndMore">
+    <value>and {0} more</value>
+    <comment>Footer under the listed berths. {0} = number of berths not listed.</comment>
+  </data>
+  <!-- Design tools -->
+  <data name="ToolNavigate">
+    <value>Navigate</value>
+  </data>
+  <data name="ToolDrawLandArea">
+    <value>Land area</value>
+  </data>
+  <data name="ToolDrawPier">
+    <value>Pier</value>
+  </data>
+  <data name="ToolAddBerths">
+    <value>Berths</value>
+  </data>
+  <data name="ToolAddLandBerths">
+    <value>Land berths</value>
+  </data>
+  <data name="ToolPlantTrees">
+    <value>Trees</value>
+  </data>
+  <data name="ToolErase">
+    <value>Erase</value>
+  </data>
+  <data name="ToolRename">
+    <value>Rename</value>
+  </data>
+  <data name="ToolMoveReferenceImage">
+    <value>Move image</value>
+  </data>
+  <data name="ToolMeasureScale">
+    <value>Draw scale line</value>
+  </data>
+  <!-- Berth separators -->
+  <data name="SeparatorFingerPiers">
+    <value>Own finger piers</value>
+  </data>
+  <data name="SeparatorNone">
+    <value>Nothing (gap only)</value>
+  </data>
+  <data name="SeparatorFingerPier">
+    <value>Pier between all</value>
+  </data>
+  <data name="SeparatorPairedFingerPiers">
+    <value>Pier every other berth</value>
+  </data>
+  <data name="SeparatorPiles">
+    <value>Mooring piles</value>
+  </data>
+  <data name="SeparatorBoom">
+    <value>Floating boom</value>
+  </data>
+  <data name="SeparatorSinglePile">
+    <value>Single pile at the end</value>
+  </data>
+  <!-- Pier services -->
+  <data name="ServicesNone">
+    <value>None</value>
+  </data>
+  <data name="ServicesPower">
+    <value>Power only</value>
+  </data>
+  <data name="ServicesWater">
+    <value>Water only</value>
+  </data>
+  <data name="ServicesPowerAndWater">
+    <value>Power and water</value>
+  </data>
+  <!-- Berthing sides -->
+  <data name="PierSidesBoth">
+    <value>Boats on both sides</value>
+  </data>
+  <data name="PierSidesLeft">
+    <value>Boats on the left only</value>
+  </data>
+  <data name="PierSidesRight">
+    <value>Boats on the right only</value>
+  </data>
+  <!-- Land surfaces -->
+  <data name="LandKindQuay">
+    <value>Quay or pier head</value>
+  </data>
+  <data name="LandKindBreakwater">
+    <value>Rock breakwater</value>
+  </data>
+  <data name="LandKindGrass">
+    <value>Lawn or park</value>
+  </data>
+  <!-- Divider types -->
+  <data name="DividerFingerPier">
+    <value>Finger pier</value>
+  </data>
+  <data name="DividerPiles">
+    <value>Mooring piles</value>
+  </data>
+  <data name="DividerBoom">
+    <value>Floating boom</value>
+  </data>
+  <data name="DividerSinglePile">
+    <value>Single pile</value>
+  </data>
+  <!-- Designer tool hints -->
+  <data name="HintDrawLandAreaFirst">
+    <value>Click to place the first corner of the land area.</value>
+  </data>
+  <data name="HintDrawLandAreaCorners">
+    <value>Click to add corners (at least 3). Backspace removes the last one, Esc cancels.</value>
+  </data>
+  <data name="HintDrawLandAreaFinish">
+    <value>Click to add corners; double-click, Enter, right-click or click the first corner to finish.</value>
+  </data>
+  <data name="HintDrawPierStart">
+    <value>Click the shore end of the pier.</value>
+  </data>
+  <data name="HintDrawPierEnd">
+    <value>Click the far end of the pier (Shift: 15° steps). Esc cancels.</value>
+  </data>
+  <data name="HintAddBerthsStart">
+    <value>Click beside a pier where the first berth goes.</value>
+  </data>
+  <data name="HintAddBerthsEnd">
+    <value>Click where the row of berths ends (same spot: one berth). Esc cancels.</value>
+  </data>
+  <data name="HintAddLandBerthsStart">
+    <value>Click a land area where the boat should stand.</value>
+  </data>
+  <data name="HintAddLandBerthsHeading">
+    <value>Click where the bow should point (Shift: 15° steps; same spot: the set heading). Esc cancels.</value>
+  </data>
+  <data name="HintErase">
+    <value>Click a berth, pier or land area to remove it.</value>
+  </data>
+  <data name="HintRename">
+    <value>Click a berth or a pier to give it another name.</value>
+  </data>
+  <data name="HintPlantTrees">
+    <value>Click a lawn to scatter trees on it (replacing the ones it has); Ctrl+click or right-click removes them.</value>
+  </data>
+  <data name="HintPlantTreesNone">
+    <value>Tree coverage is 0: click a lawn to remove its trees.</value>
+  </data>
+  <data name="HintReferenceImageMissing">
+    <value>Load a reference image first.</value>
+  </data>
+  <data name="HintMoveReferenceImage">
+    <value>Drag with the left mouse button to move the image.</value>
+  </data>
+  <data name="HintMeasureScaleFirst">
+    <value>Click one end of the image's scale bar.</value>
+  </data>
+  <data name="HintMeasureScaleSecond">
+    <value>Click the other end of the scale bar.</value>
+  </data>
+  <data name="HintNavigate">
+    <value>Drag to pan, right-drag to orbit, wheel to zoom.</value>
+  </data>
+  <!-- Undo step descriptions -->
+  <data name="UndoDrawLandArea">
+    <value>Draw {0}</value>
+    <comment>{0} = name of the land area.</comment>
+  </data>
+  <data name="UndoDrawPier">
+    <value>Draw pier {0}</value>
+    <comment>{0} = pier name.</comment>
+  </data>
+  <data name="UndoAddBerth">
+    <value>Add berth {0}</value>
+    <comment>{0} = berth name.</comment>
+  </data>
+  <data name="UndoAddBerths">
+    <value>Add {0} berths</value>
+    <comment>{0} = number of berths added.</comment>
+  </data>
+  <data name="UndoAddLandBerth">
+    <value>Add land berth {0}</value>
+    <comment>{0} = berth name.</comment>
+  </data>
+  <data name="UndoPlantTrees">
+    <value>Plant trees</value>
+  </data>
+  <data name="UndoRemoveTrees">
+    <value>Remove trees</value>
+  </data>
+  <data name="UndoTreesOn">
+    <value>{0} on {1}</value>
+    <comment>{0} = "Plant trees" or "Remove trees", {1} = name of the land area.</comment>
+  </data>
+  <data name="UndoErase">
+    <value>Erase {0}</value>
+    <comment>{0} = the element described by ElementBerth, ElementPier or a land area name.</comment>
+  </data>
+  <data name="UndoRenameBerth">
+    <value>Rename {0} to {1}</value>
+    <comment>{0} = the old berth name, {1} = the new one.</comment>
+  </data>
+  <data name="UndoRenamePier">
+    <value>Rename pier {0} to {1}</value>
+    <comment>{0} = the old pier name, {1} = the new one.</comment>
+  </data>
+  <data name="ElementBerth">
+    <value>berth {0}</value>
+    <comment>{0} = berth name. Reads as part of "Erase berth A-1".</comment>
+  </data>
+  <data name="ElementPier">
+    <value>pier {0}</value>
+    <comment>{0} = pier name. Reads as part of "Erase pier A".</comment>
+  </data>
+</root>

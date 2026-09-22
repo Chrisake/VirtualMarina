@@ -55,20 +55,40 @@ public class GeometryAndCameraTests
     }
 
     [Fact]
-    public void SlipGenerator_PlacesSlipsBesideDock_BowTowardDock()
+    public void BerthGenerator_PlacesBerthsBesidePier_BowTowardPier()
     {
-        var dock = new Dock("A", "A", Vector2.Zero, 0f, 50f, width: 2f);
+        var pier = new Pier("A", "A", Vector2.Zero, 0f, 50f, width: 2f);
 
-        var right = SlipGenerator.AlongDock(dock, DockSide.Right, 2, 5f, 10f, startOffset: 0f);
-        var left = SlipGenerator.AlongDock(dock, DockSide.Left, 1, 5f, 10f, startOffset: 0f);
+        var right = BerthGenerator.AlongPier(pier, PierSide.Right, 2, 5f, 10f, startOffset: 0f);
+        var left = BerthGenerator.AlongPier(pier, PierSide.Left, 1, 5f, 10f, startOffset: 0f);
 
+        // Heading 0° runs along +Z: looking from the start toward the end, the right-hand side is −X.
         Assert.Equal("A-R01", right[0].Id);
-        Assert.Equal(new Vector2(6f, 2.5f), right[0].Center);
-        Assert.Equal(new Vector2(6f, 7.5f), right[1].Center);
-        Assert.Equal(new Vector2(-6f, 2.5f), left[0].Center);
-        // Right-side slip bows point -X (toward the dock), left-side slip bows point +X.
-        Assert.Equal(-1f, right[0].Forward.X, 3);
-        Assert.Equal(1f, left[0].Forward.X, 3);
+        Assert.Equal(new Vector2(-6f, 2.5f), right[0].Center);
+        Assert.Equal(new Vector2(-6f, 7.5f), right[1].Center);
+        Assert.Equal(new Vector2(6f, 2.5f), left[0].Center);
+        // Right-side berth bows point +X (toward the pier), left-side berth bows point −X.
+        Assert.Equal(1f, right[0].Forward.X, 3);
+        Assert.Equal(-1f, left[0].Forward.X, 3);
+    }
+
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(37f)]
+    [InlineData(180f)]
+    [InlineData(-120f)]
+    public void PierRight_IsTheRightHandSideLookingFromStartToEnd(float heading)
+    {
+        var pier = new Pier("A", "A", Vector2.Zero, heading, 10f);
+        // In plan coordinates (X right, Y = world Z) seen from above with +Y up the page, a clockwise turn from the direction
+        // gives the right-hand side: with world Z pointing down the screen (north up, yaw 0), right = (−dir.Y, dir.X).
+        var direction = pier.Direction;
+        var expected = new Vector2(-direction.Y, direction.X);
+        Assert.Equal(expected.X, pier.Right.X, 4);
+        Assert.Equal(expected.Y, pier.Right.Y, 4);
+
+        // Heading 180° runs north (−Z, up the screen when north is up): its right-hand side is east (+X).
+        if (heading == 180f) Assert.Equal(1f, pier.Right.X, 4);
     }
 
     [Fact]

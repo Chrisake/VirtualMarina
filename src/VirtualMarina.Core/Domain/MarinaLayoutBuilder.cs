@@ -1,28 +1,28 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Mathematics;
 
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>
-/// Fluent helper for composing a <see cref="MarinaLayout"/> with slips auto-positioned along docks.
+/// Fluent helper for composing a <see cref="MarinaLayout"/> with berths auto-positioned along piers.
 /// </summary>
 /// <example>
 /// <code>
 /// var layout = new MarinaLayoutBuilder("Harbor")
-///     .AddDock("A", "Dock A", new Vector2(0, 0), headingDegrees: 0, length: 60, dock => dock
-///         .AddSlips(DockSide.Left, count: 10, slipWidth: 5, slipLength: 12)
-///         .AddSlips(DockSide.Right, count: 10, slipWidth: 5, slipLength: 12, dividers: DividerType.Piles),
-///         type: DockType.Concrete)
+///     .AddPier("A", "Pier A", new Vector2(0, 0), headingDegrees: 0, length: 60, pier => pier
+///         .AddBerths(PierSide.Left, count: 10, berthWidth: 5, berthLength: 12)
+///         .AddBerths(PierSide.Right, count: 10, berthWidth: 5, berthLength: 12, dividers: DividerType.Piles),
+///         type: PierType.Concrete)
 ///     .Build();
 /// </code>
 /// </example>
 public sealed class MarinaLayoutBuilder
 {
     private readonly string _name;
-    private readonly List<Dock> _docks = new();
-    private readonly List<Slip> _slips = new();
+    private readonly List<Pier> _piers = new();
+    private readonly List<Berth> _berths = new();
     private readonly List<Divider> _dividers = new();
-    private readonly List<MultiSlipBerth> _berths = new();
+    private readonly List<MultiBerth> _multiBerths = new();
     private readonly List<LandArea> _land = new();
 
     /// <summary>Starts an empty layout.</summary>
@@ -32,53 +32,53 @@ public sealed class MarinaLayoutBuilder
         _name = name;
     }
 
-    /// <summary>Adds a quay, breakwater or lawn and, optionally, land slips on it.</summary>
+    /// <summary>Adds a quay, breakwater or lawn and, optionally, land berths on it.</summary>
     /// <param name="landArea">The land area.</param>
-    /// <param name="configure">Callback receiving a <see cref="LandAreaBuilder"/> to add land slips.</param>
+    /// <param name="configure">Callback receiving a <see cref="LandAreaBuilder"/> to add land berths.</param>
     public MarinaLayoutBuilder AddLandArea(LandArea landArea, Action<LandAreaBuilder>? configure = null)
     {
         _land.Add(landArea);
-        configure?.Invoke(new LandAreaBuilder(landArea, _slips));
+        configure?.Invoke(new LandAreaBuilder(landArea, _berths));
         return this;
     }
 
-    /// <summary>Adds a land area from its outline and, optionally, land slips on it.</summary>
+    /// <summary>Adds a land area from its outline and, optionally, land berths on it.</summary>
     /// <param name="id">Unique land area id.</param>
     /// <param name="points">Outline in plan coordinates.</param>
     /// <param name="height">Top surface height above the water, in meters.</param>
     /// <param name="kind">Surface type.</param>
-    /// <param name="configure">Callback receiving a <see cref="LandAreaBuilder"/> to add land slips.</param>
+    /// <param name="configure">Callback receiving a <see cref="LandAreaBuilder"/> to add land berths.</param>
     public MarinaLayoutBuilder AddLandArea(string id, IEnumerable<Vector2> points, float height, LandKind kind = LandKind.Quay, Action<LandAreaBuilder>? configure = null) =>
         AddLandArea(new LandArea(id, points, height, kind), configure);
 
-    /// <summary>Adds a dock and, optionally, lays out its slips and dividers.</summary>
-    /// <param name="dock">The dock.</param>
-    /// <param name="configure">Callback receiving a <see cref="DockBuilder"/> for this dock.</param>
-    public MarinaLayoutBuilder AddDock(Dock dock, Action<DockBuilder>? configure = null)
+    /// <summary>Adds a pier and, optionally, lays out its berths and dividers.</summary>
+    /// <param name="pier">The pier.</param>
+    /// <param name="configure">Callback receiving a <see cref="PierBuilder"/> for this pier.</param>
+    public MarinaLayoutBuilder AddPier(Pier pier, Action<PierBuilder>? configure = null)
     {
-        _docks.Add(dock);
-        configure?.Invoke(new DockBuilder(dock, _slips, _dividers));
+        _piers.Add(pier);
+        configure?.Invoke(new PierBuilder(pier, _berths, _dividers));
         return this;
     }
 
-    /// <summary>Adds a dock from its shore-end point, heading and size, and optionally lays out its slips and dividers.</summary>
-    /// <param name="id">Unique dock id.</param>
+    /// <summary>Adds a pier from its shore-end point, heading and size, and optionally lays out its berths and dividers.</summary>
+    /// <param name="id">Unique pier id.</param>
     /// <param name="name">Display name.</param>
     /// <param name="start">Shore-end center point in plan coordinates.</param>
-    /// <param name="headingDegrees">Direction along the dock (0° = +Z, 90° = +X).</param>
+    /// <param name="headingDegrees">Direction along the pier (0° = +Z, 90° = +X).</param>
     /// <param name="length">Length in meters.</param>
-    /// <param name="configure">Callback receiving a <see cref="DockBuilder"/> for this dock.</param>
+    /// <param name="configure">Callback receiving a <see cref="PierBuilder"/> for this pier.</param>
     /// <param name="width">Deck width in meters.</param>
     /// <param name="type">Construction type.</param>
-    public MarinaLayoutBuilder AddDock(
+    public MarinaLayoutBuilder AddPier(
         string id, string name, Vector2 start, float headingDegrees, float length,
-        Action<DockBuilder>? configure = null, float width = 2.5f, DockType type = DockType.FloatingWooden) =>
-        AddDock(new Dock(id, name, start, headingDegrees, length, width, type), configure);
+        Action<PierBuilder>? configure = null, float width = 2.5f, PierType type = PierType.FloatingWooden) =>
+        AddPier(new Pier(id, name, start, headingDegrees, length, width, type), configure);
 
-    /// <summary>Adds a slip at an explicit position, size and orientation.</summary>
-    public MarinaLayoutBuilder AddSlip(Slip slip)
+    /// <summary>Adds a berth at an explicit position, size and orientation.</summary>
+    public MarinaLayoutBuilder AddBerth(Berth berth)
     {
-        _slips.Add(slip);
+        _berths.Add(berth);
         return this;
     }
 
@@ -89,10 +89,10 @@ public sealed class MarinaLayoutBuilder
         return this;
     }
 
-    /// <summary>Puts one boat across several slips added earlier.</summary>
-    public MarinaLayoutBuilder AddMultiSlipBerth(MultiSlipBerth berth)
+    /// <summary>Puts one boat across several berths added earlier.</summary>
+    public MarinaLayoutBuilder AddMultiBerth(MultiBerth berth)
     {
-        _berths.Add(berth);
+        _multiBerths.Add(berth);
         return this;
     }
 
@@ -100,272 +100,272 @@ public sealed class MarinaLayoutBuilder
     public MarinaLayout Build() => new()
     {
         Name = _name,
-        Docks = _docks.ToArray(),
-        Slips = _slips.ToArray(),
+        Piers = _piers.ToArray(),
+        Berths = _berths.ToArray(),
         Dividers = _dividers.ToArray(),
-        MultiSlipBerths = _berths.ToArray(),
+        MultiBerths = _multiBerths.ToArray(),
         LandAreas = _land.ToArray(),
     };
 }
 
-/// <summary>Adds slips and dividers to a single dock inside <see cref="MarinaLayoutBuilder"/>.</summary>
-public sealed class DockBuilder
+/// <summary>Adds berths and dividers to a single pier inside <see cref="MarinaLayoutBuilder"/>.</summary>
+public sealed class PierBuilder
 {
-    private readonly List<Slip> _slips;
+    private readonly List<Berth> _berths;
     private readonly List<Divider> _dividers;
-    private readonly Dictionary<DockSide, float> _nextOffset = new();
+    private readonly Dictionary<PierSide, float> _nextOffset = new();
 
-    internal DockBuilder(Dock dock, List<Slip> slips, List<Divider> dividers)
+    internal PierBuilder(Pier pier, List<Berth> berths, List<Divider> dividers)
     {
-        Dock = dock;
-        _slips = slips;
+        Pier = pier;
+        _berths = berths;
         _dividers = dividers;
     }
 
-    /// <summary>The dock being configured.</summary>
-    public Dock Dock { get; }
+    /// <summary>The pier being configured.</summary>
+    public Pier Pier { get; }
 
     /// <summary>
-    /// Appends <paramref name="count"/> slips on one side, continuing after any slips previously added on that side.
-    /// Ids follow <c>{DockId}-L01</c> / <c>{DockId}-R01</c>; bows point at the dock.
+    /// Appends <paramref name="count"/> berths on one side, continuing after any berths previously added on that side.
+    /// Ids follow <c>{PierId}-L01</c> / <c>{PierId}-R01</c>; bows point at the pier.
     /// </summary>
-    /// <param name="side">Side of the dock.</param>
-    /// <param name="count">Number of slips.</param>
-    /// <param name="slipWidth">Width of each slip (along the dock), in meters.</param>
-    /// <param name="slipLength">Length of each slip (away from the dock), in meters.</param>
-    /// <param name="customize">Optional callback to set status, boat, label, flags... on each generated slip (index, slip) → slip.</param>
-    /// <param name="startOffset">Distance from the dock's start to the first slip (only for the first call on this side).</param>
-    /// <param name="gap">Space between consecutive slips.</param>
+    /// <param name="side">Side of the pier.</param>
+    /// <param name="count">Number of berths.</param>
+    /// <param name="berthWidth">Width of each berth (along the pier), in meters.</param>
+    /// <param name="berthLength">Length of each berth (away from the pier), in meters.</param>
+    /// <param name="customize">Optional callback to set status, boat, label, flags... on each generated berth (index, berth) → berth.</param>
+    /// <param name="startOffset">Distance from the pier's start to the first berth (only for the first call on this side).</param>
+    /// <param name="gap">Space between consecutive berths.</param>
     /// <param name="dividers">
-    /// When set, explicit dividers of this type are generated at every slip boundary and the slips'
+    /// When set, explicit dividers of this type are generated at every berth boundary and the berths'
     /// automatic finger piers are turned off.
     /// </param>
-    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
-    public DockBuilder AddSlips(
-        DockSide side, int count, float slipWidth, float slipLength,
-        Func<int, Slip, Slip>? customize = null, float startOffset = 2f, float gap = 0f, DividerType? dividers = null)
+    /// <exception cref="InvalidOperationException">The pier has no berths on <paramref name="side"/> (see <see cref="Pier.BerthingSides"/>).</exception>
+    public PierBuilder AddBerths(
+        PierSide side, int count, float berthWidth, float berthLength,
+        Func<int, Berth, Berth>? customize = null, float startOffset = 2f, float gap = 0f, DividerType? dividers = null)
     {
         var offset = _nextOffset.TryGetValue(side, out var existing) ? existing : startOffset;
-        var existingCount = _slips.Count(s => s.DockId == Dock.Id && s.Id.StartsWith(SlipGenerator.SidePrefix(Dock, side), StringComparison.Ordinal));
-        var generated = SlipGenerator.AlongDock(Dock, side, count, slipWidth, slipLength, offset, gap, existingCount + 1);
+        var existingCount = _berths.Count(s => s.PierId == Pier.Id && s.Id.StartsWith(BerthGenerator.SidePrefix(Pier, side), StringComparison.Ordinal));
+        var generated = BerthGenerator.AlongPier(Pier, side, count, berthWidth, berthLength, offset, gap, existingCount + 1);
         for (var i = 0; i < generated.Count; i++)
         {
-            var slip = dividers.HasValue ? generated[i] with { HasFingerPiers = false } : generated[i];
-            _slips.Add(customize is null ? slip : customize(i, slip));
+            var berth = dividers.HasValue ? generated[i] with { HasFingerPiers = false } : generated[i];
+            _berths.Add(customize is null ? berth : customize(i, berth));
         }
 
         if (dividers is { } dividerType)
         {
-            foreach (var divider in SlipGenerator.DividersAlongDock(Dock, side, count, slipWidth, slipLength, dividerType, offset, gap))
+            foreach (var divider in BerthGenerator.DividersAlongPier(Pier, side, count, berthWidth, berthLength, dividerType, offset, gap))
             {
-                // Skip a boundary shared with slips added by an earlier call.
+                // Skip a boundary shared with berths added by an earlier call.
                 if (_dividers.Any(d => Vector2.DistanceSquared(d.Start, divider.Start) < 0.01f && d.Type == divider.Type)) continue;
-                var number = _dividers.Count(d => d.Id.StartsWith(SlipGenerator.DividerPrefix(Dock, side), StringComparison.Ordinal)) + 1;
-                _dividers.Add(divider with { Id = $"{SlipGenerator.DividerPrefix(Dock, side)}{number:00}" });
+                var number = _dividers.Count(d => d.Id.StartsWith(BerthGenerator.DividerPrefix(Pier, side), StringComparison.Ordinal)) + 1;
+                _dividers.Add(divider with { Id = $"{BerthGenerator.DividerPrefix(Pier, side)}{number:00}" });
             }
         }
 
-        _nextOffset[side] = offset + count * (slipWidth + gap);
+        _nextOffset[side] = offset + count * (berthWidth + gap);
         return this;
     }
 
-    /// <summary>Adds a single slip on one side of the dock at an explicit distance from the dock's start.</summary>
-    /// <param name="id">Unique slip id.</param>
-    /// <param name="side">Side of the dock.</param>
-    /// <param name="offsetAlong">Distance from the dock's start to the slip's near edge.</param>
-    /// <param name="slipWidth">Width along the dock, in meters.</param>
-    /// <param name="slipLength">Length away from the dock, in meters.</param>
-    /// <param name="customize">Optional callback to adjust the generated slip.</param>
-    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
-    public DockBuilder AddSlip(string id, DockSide side, float offsetAlong, float slipWidth, float slipLength, Func<Slip, Slip>? customize = null)
+    /// <summary>Adds a single berth on one side of the pier at an explicit distance from the pier's start.</summary>
+    /// <param name="id">Unique berth id.</param>
+    /// <param name="side">Side of the pier.</param>
+    /// <param name="offsetAlong">Distance from the pier's start to the berth's near edge.</param>
+    /// <param name="berthWidth">Width along the pier, in meters.</param>
+    /// <param name="berthLength">Length away from the pier, in meters.</param>
+    /// <param name="customize">Optional callback to adjust the generated berth.</param>
+    /// <exception cref="InvalidOperationException">The pier has no berths on <paramref name="side"/> (see <see cref="Pier.BerthingSides"/>).</exception>
+    public PierBuilder AddBerth(string id, PierSide side, float offsetAlong, float berthWidth, float berthLength, Func<Berth, Berth>? customize = null)
     {
-        var slip = SlipGenerator.AtDock(Dock, id, side, offsetAlong, slipWidth, slipLength);
-        _slips.Add(customize is null ? slip : customize(slip));
+        var berth = BerthGenerator.AtPier(Pier, id, side, offsetAlong, berthWidth, berthLength);
+        _berths.Add(customize is null ? berth : customize(berth));
         return this;
     }
 
-    /// <summary>Adds a slip defined by absolute position (its <see cref="Slip.DockId"/> is set to this dock).</summary>
-    public DockBuilder AddSlip(Slip slip)
+    /// <summary>Adds a berth defined by absolute position (its <see cref="Berth.PierId"/> is set to this pier).</summary>
+    public PierBuilder AddBerth(Berth berth)
     {
-        _slips.Add(slip.DockId == Dock.Id ? slip : slip with { DockId = Dock.Id });
+        _berths.Add(berth.PierId == Pier.Id ? berth : berth with { PierId = Pier.Id });
         return this;
     }
 
-    /// <summary>Adds a divider defined by absolute position (its <see cref="Divider.DockId"/> is set to this dock).</summary>
-    public DockBuilder AddDivider(Divider divider)
+    /// <summary>Adds a divider defined by absolute position (its <see cref="Divider.PierId"/> is set to this pier).</summary>
+    public PierBuilder AddDivider(Divider divider)
     {
-        _dividers.Add(divider.DockId == Dock.Id ? divider : divider with { DockId = Dock.Id });
+        _dividers.Add(divider.PierId == Pier.Id ? divider : divider with { PierId = Pier.Id });
         return this;
     }
 }
 
-/// <summary>Adds land slips to a single <see cref="LandArea"/> inside <see cref="MarinaLayoutBuilder"/>.</summary>
+/// <summary>Adds land berths to a single <see cref="LandArea"/> inside <see cref="MarinaLayoutBuilder"/>.</summary>
 public sealed class LandAreaBuilder
 {
-    private readonly List<Slip> _slips;
+    private readonly List<Berth> _berths;
 
-    internal LandAreaBuilder(LandArea landArea, List<Slip> slips)
+    internal LandAreaBuilder(LandArea landArea, List<Berth> berths)
     {
         LandArea = landArea;
-        _slips = slips;
+        _berths = berths;
     }
 
     /// <summary>The land area being configured.</summary>
     public LandArea LandArea { get; }
 
-    /// <summary>Adds a land slip centered at <paramref name="position"/> (see <see cref="Slip.OnLand"/>).</summary>
-    /// <param name="id">Unique slip id.</param>
+    /// <summary>Adds a land berth centered at <paramref name="position"/> (see <see cref="Berth.OnLand"/>).</summary>
+    /// <param name="id">Unique berth id.</param>
     /// <param name="position">Center of the spot in plan coordinates.</param>
     /// <param name="headingDegrees">Direction the stored boat's bow points.</param>
     /// <param name="length">Length along the heading, in meters.</param>
     /// <param name="width">Width across the heading, in meters.</param>
-    /// <param name="customize">Optional callback to set status, boat, label, flags... on the slip.</param>
-    public LandAreaBuilder AddSlip(string id, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f, Func<Slip, Slip>? customize = null)
+    /// <param name="customize">Optional callback to set status, boat, label, flags... on the berth.</param>
+    public LandAreaBuilder AddBerth(string id, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f, Func<Berth, Berth>? customize = null)
     {
-        var slip = Slip.OnLand(id, LandArea.Id, position, headingDegrees, length, width);
-        _slips.Add(customize is null ? slip : customize(slip));
+        var berth = Berth.OnLand(id, LandArea.Id, position, headingDegrees, length, width);
+        _berths.Add(customize is null ? berth : customize(berth));
         return this;
     }
 
     /// <summary>
-    /// Adds a row of <paramref name="count"/> land slips side by side, starting at <paramref name="firstPosition"/> and
-    /// continuing along <paramref name="rowHeadingDegrees"/>. Ids follow <c>{idPrefix}01</c>, continuing after slips
+    /// Adds a row of <paramref name="count"/> land berths side by side, starting at <paramref name="firstPosition"/> and
+    /// continuing along <paramref name="rowHeadingDegrees"/>. Ids follow <c>{idPrefix}01</c>, continuing after berths
     /// already added with the same prefix.
     /// </summary>
     /// <param name="idPrefix">Id prefix, e.g. "Y-".</param>
-    /// <param name="firstPosition">Center of the first slip.</param>
+    /// <param name="firstPosition">Center of the first berth.</param>
     /// <param name="rowHeadingDegrees">Direction the row runs in.</param>
-    /// <param name="count">Number of slips.</param>
-    /// <param name="slipWidth">Width of each slip (along the row), in meters.</param>
-    /// <param name="slipLength">Length of each slip (across the row), in meters.</param>
-    /// <param name="customize">Optional callback (index, slip) → slip.</param>
-    /// <param name="gap">Space between neighbouring slips.</param>
+    /// <param name="count">Number of berths.</param>
+    /// <param name="berthWidth">Width of each berth (along the row), in meters.</param>
+    /// <param name="berthLength">Length of each berth (across the row), in meters.</param>
+    /// <param name="customize">Optional callback (index, berth) → berth.</param>
+    /// <param name="gap">Space between neighbouring berths.</param>
     /// <param name="boatHeadingDegrees">Bow direction; defaults to <paramref name="rowHeadingDegrees"/> − 90° (boats parallel, across the row).</param>
-    public LandAreaBuilder AddSlips(
-        string idPrefix, Vector2 firstPosition, float rowHeadingDegrees, int count, float slipWidth, float slipLength,
-        Func<int, Slip, Slip>? customize = null, float gap = 0.5f, float? boatHeadingDegrees = null)
+    public LandAreaBuilder AddBerths(
+        string idPrefix, Vector2 firstPosition, float rowHeadingDegrees, int count, float berthWidth, float berthLength,
+        Func<int, Berth, Berth>? customize = null, float gap = 0.5f, float? boatHeadingDegrees = null)
     {
         ArgumentNullException.ThrowIfNull(idPrefix);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipWidth);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipLength);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(berthWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(berthLength);
 
         var direction = MarinaMath.HeadingToDirection(rowHeadingDegrees);
         var heading = boatHeadingDegrees ?? rowHeadingDegrees - 90f;
-        var existing = _slips.Count(s => s.Id.StartsWith(idPrefix, StringComparison.Ordinal));
+        var existing = _berths.Count(s => s.Id.StartsWith(idPrefix, StringComparison.Ordinal));
         for (var i = 0; i < count; i++)
         {
-            var slip = Slip.OnLand($"{idPrefix}{existing + i + 1:00}", LandArea.Id, firstPosition + direction * (i * (slipWidth + gap)), heading, slipLength, slipWidth);
-            _slips.Add(customize is null ? slip : customize(i, slip));
+            var berth = Berth.OnLand($"{idPrefix}{existing + i + 1:00}", LandArea.Id, firstPosition + direction * (i * (berthWidth + gap)), heading, berthLength, berthWidth);
+            _berths.Add(customize is null ? berth : customize(i, berth));
         }
 
         return this;
     }
 }
 
-/// <summary>Computes slip and divider geometry relative to a dock. Useful to ERP code that stores only slip numbers.</summary>
-public static class SlipGenerator
+/// <summary>Computes berth and divider geometry relative to a pier. Useful to ERP code that stores only berth numbers.</summary>
+public static class BerthGenerator
 {
-    internal static string SidePrefix(Dock dock, DockSide side) => $"{dock.Id}-{(side == DockSide.Left ? "L" : "R")}";
+    internal static string SidePrefix(Pier pier, PierSide side) => $"{pier.Id}-{(side == PierSide.Left ? "L" : "R")}";
 
-    internal static string DividerPrefix(Dock dock, DockSide side) => $"{SidePrefix(dock, side)}-D";
+    internal static string DividerPrefix(Pier pier, PierSide side) => $"{SidePrefix(pier, side)}-D";
 
     /// <summary>
-    /// Generates slips perpendicular to a dock, bows pointing at the dock.
-    /// Ids follow the pattern <c>{DockId}-L01</c> / <c>{DockId}-R01</c>.
+    /// Generates berths perpendicular to a pier, bows pointing at the pier.
+    /// Ids follow the pattern <c>{PierId}-L01</c> / <c>{PierId}-R01</c>.
     /// </summary>
-    /// <param name="dock">The dock.</param>
-    /// <param name="side">Side of the dock.</param>
-    /// <param name="count">Number of slips.</param>
-    /// <param name="slipWidth">Width of each slip along the dock, in meters.</param>
-    /// <param name="slipLength">Length of each slip away from the dock, in meters.</param>
-    /// <param name="startOffset">Distance from the dock's start to the edge of the first slip.</param>
-    /// <param name="gap">Extra spacing between consecutive slips.</param>
-    /// <param name="firstNumber">Number used for the first generated slip id.</param>
-    /// <example><code>marina.AddSlips(SlipGenerator.AlongDock(marina.GetDock("E")!, DockSide.Left, count: 10, slipWidth: 5, slipLength: 12));</code></example>
-    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
-    public static IReadOnlyList<Slip> AlongDock(
-        Dock dock, DockSide side, int count, float slipWidth, float slipLength,
+    /// <param name="pier">The pier.</param>
+    /// <param name="side">Side of the pier.</param>
+    /// <param name="count">Number of berths.</param>
+    /// <param name="berthWidth">Width of each berth along the pier, in meters.</param>
+    /// <param name="berthLength">Length of each berth away from the pier, in meters.</param>
+    /// <param name="startOffset">Distance from the pier's start to the edge of the first berth.</param>
+    /// <param name="gap">Extra spacing between consecutive berths.</param>
+    /// <param name="firstNumber">Number used for the first generated berth id.</param>
+    /// <example><code>marina.AddBerths(BerthGenerator.AlongPier(marina.GetPier("E")!, PierSide.Left, count: 10, berthWidth: 5, berthLength: 12));</code></example>
+    /// <exception cref="InvalidOperationException">The pier has no berths on <paramref name="side"/> (see <see cref="Pier.BerthingSides"/>).</exception>
+    public static IReadOnlyList<Berth> AlongPier(
+        Pier pier, PierSide side, int count, float berthWidth, float berthLength,
         float startOffset = 2f, float gap = 0f, int firstNumber = 1)
     {
-        ArgumentNullException.ThrowIfNull(dock);
+        ArgumentNullException.ThrowIfNull(pier);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipWidth);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipLength);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(berthWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(berthLength);
 
-        var prefix = SidePrefix(dock, side);
-        var result = new List<Slip>(count);
+        var prefix = SidePrefix(pier, side);
+        var result = new List<Berth>(count);
         for (var i = 0; i < count; i++)
         {
             var id = $"{prefix}{firstNumber + i:00}";
-            result.Add(AtDock(dock, id, side, startOffset + i * (slipWidth + gap), slipWidth, slipLength));
+            result.Add(AtPier(pier, id, side, startOffset + i * (berthWidth + gap), berthWidth, berthLength));
         }
 
         return result;
     }
 
-    /// <summary>A single slip perpendicular to the dock, bow toward it.</summary>
-    /// <param name="dock">The dock.</param>
-    /// <param name="id">Slip id (also used as its label).</param>
-    /// <param name="side">Side of the dock.</param>
-    /// <param name="offsetAlong">Distance from the dock's start to the slip's near edge.</param>
-    /// <param name="slipWidth">Width along the dock, in meters.</param>
-    /// <param name="slipLength">Length away from the dock, in meters.</param>
-    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
-    public static Slip AtDock(Dock dock, string id, DockSide side, float offsetAlong, float slipWidth, float slipLength)
+    /// <summary>A single berth perpendicular to the pier, bow toward it.</summary>
+    /// <param name="pier">The pier.</param>
+    /// <param name="id">Berth id (also used as its label).</param>
+    /// <param name="side">Side of the pier.</param>
+    /// <param name="offsetAlong">Distance from the pier's start to the berth's near edge.</param>
+    /// <param name="berthWidth">Width along the pier, in meters.</param>
+    /// <param name="berthLength">Length away from the pier, in meters.</param>
+    /// <exception cref="InvalidOperationException">The pier has no berths on <paramref name="side"/> (see <see cref="Pier.BerthingSides"/>).</exception>
+    public static Berth AtPier(Pier pier, string id, PierSide side, float offsetAlong, float berthWidth, float berthLength)
     {
-        ArgumentNullException.ThrowIfNull(dock);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipWidth);
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(slipLength);
+        ArgumentNullException.ThrowIfNull(pier);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(berthWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(berthLength);
 
-        ThrowIfNoBerths(dock, side);
+        ThrowIfNoBerths(pier, side);
 
-        var outward = Outward(dock, side);
-        var along = offsetAlong + slipWidth * 0.5f;
-        var center = dock.Start + dock.Direction * along + outward * (dock.Width * 0.5f + slipLength * 0.5f);
-        return new Slip(id, dock.Id, center, MarinaMath.DirectionToHeading(-outward), slipLength, slipWidth) { Label = id };
+        var outward = Outward(pier, side);
+        var along = offsetAlong + berthWidth * 0.5f;
+        var center = pier.Start + pier.Direction * along + outward * (pier.Width * 0.5f + berthLength * 0.5f);
+        return new Berth(id, pier.Id, center, MarinaMath.DirectionToHeading(-outward), berthLength, berthWidth) { Label = id };
     }
 
     /// <summary>
-    /// Dividers at the <paramref name="count"/> + 1 boundaries of slips laid out like <see cref="AlongDock"/>.
-    /// Finger piers are 75% of the slip length; piles and booms run the full length.
+    /// Dividers at the <paramref name="count"/> + 1 boundaries of berths laid out like <see cref="AlongPier"/>.
+    /// Finger piers are 75% of the berth length; piles and booms run the full length.
     /// </summary>
-    /// <param name="dock">The dock.</param>
-    /// <param name="side">Side of the dock.</param>
-    /// <param name="count">Number of slips (count + 1 dividers are produced, more when <paramref name="gap"/> &gt; 0).</param>
-    /// <param name="slipWidth">Width of each slip along the dock.</param>
-    /// <param name="slipLength">Length of each slip away from the dock.</param>
+    /// <param name="pier">The pier.</param>
+    /// <param name="side">Side of the pier.</param>
+    /// <param name="count">Number of berths (count + 1 dividers are produced, more when <paramref name="gap"/> &gt; 0).</param>
+    /// <param name="berthWidth">Width of each berth along the pier.</param>
+    /// <param name="berthLength">Length of each berth away from the pier.</param>
     /// <param name="type">Divider type.</param>
-    /// <param name="startOffset">Distance from the dock's start to the first slip.</param>
-    /// <param name="gap">Space between slips; each slip then gets its own pair of dividers.</param>
-    /// <exception cref="InvalidOperationException">The dock has no berths on <paramref name="side"/> (see <see cref="Dock.BerthingSides"/>).</exception>
-    public static IReadOnlyList<Divider> DividersAlongDock(
-        Dock dock, DockSide side, int count, float slipWidth, float slipLength, DividerType type,
+    /// <param name="startOffset">Distance from the pier's start to the first berth.</param>
+    /// <param name="gap">Space between berths; each berth then gets its own pair of dividers.</param>
+    /// <exception cref="InvalidOperationException">The pier has no berths on <paramref name="side"/> (see <see cref="Pier.BerthingSides"/>).</exception>
+    public static IReadOnlyList<Divider> DividersAlongPier(
+        Pier pier, PierSide side, int count, float berthWidth, float berthLength, DividerType type,
         float startOffset = 2f, float gap = 0f)
     {
-        ArgumentNullException.ThrowIfNull(dock);
+        ArgumentNullException.ThrowIfNull(pier);
         ArgumentOutOfRangeException.ThrowIfNegative(count);
-        ThrowIfNoBerths(dock, side);
+        ThrowIfNoBerths(pier, side);
 
-        var outward = Outward(dock, side);
+        var outward = Outward(pier, side);
         var heading = MarinaMath.DirectionToHeading(outward);
-        var length = type == DividerType.FingerPier ? slipLength * 0.75f : slipLength;
-        var prefix = DividerPrefix(dock, side);
+        var length = type == DividerType.FingerPier ? berthLength * 0.75f : berthLength;
+        var prefix = DividerPrefix(pier, side);
         var result = new List<Divider>();
         if (count == 0) return result;
 
         for (var i = 0; i <= count; i++)
         {
-            // With a gap, each slip gets its own pair of dividers.
+            // With a gap, each berth gets its own pair of dividers.
             var edges = gap > 0f && i > 0 && i < count
-                ? new[] { startOffset + i * (slipWidth + gap) - gap, startOffset + i * (slipWidth + gap) }
-                : new[] { startOffset + i * (slipWidth + gap) - (i == count ? gap : 0f) };
+                ? new[] { startOffset + i * (berthWidth + gap) - gap, startOffset + i * (berthWidth + gap) }
+                : new[] { startOffset + i * (berthWidth + gap) - (i == count ? gap : 0f) };
             foreach (var edge in edges)
             {
-                var start = dock.Start + dock.Direction * edge + outward * (dock.Width * 0.5f);
+                var start = pier.Start + pier.Direction * edge + outward * (pier.Width * 0.5f);
                 result.Add(new Divider($"{prefix}{result.Count + 1:00}", start, heading, length, type)
                 {
-                    DockId = dock.Id,
+                    PierId = pier.Id,
                     Width = type == DividerType.FingerPier ? 0.9f : type == DividerType.Boom ? 0.35f : 0.4f,
                     Spacing = type == DividerType.Piles ? MathF.Max(3f, length / 3f) : 1.6f,
                 });
@@ -375,13 +375,41 @@ public static class SlipGenerator
         return result;
     }
 
-    private static void ThrowIfNoBerths(Dock dock, DockSide side)
+    /// <summary>
+    /// One divider standing at <paramref name="offsetAlong"/> meters from the pier's start, running away from the pier on
+    /// <paramref name="side"/>: the boundary between two berths. Finger piers are 75% of the berth length, everything else runs the
+    /// full length.
+    /// </summary>
+    /// <param name="pier">The pier.</param>
+    /// <param name="id">Divider id.</param>
+    /// <param name="side">Side of the pier.</param>
+    /// <param name="offsetAlong">Distance from the pier's start.</param>
+    /// <param name="berthLength">Length of the berths it separates.</param>
+    /// <param name="type">Divider type.</param>
+    /// <exception cref="InvalidOperationException">The pier has no berths on <paramref name="side"/> (see <see cref="Pier.BerthingSides"/>).</exception>
+    public static Divider DividerAtPier(Pier pier, string id, PierSide side, float offsetAlong, float berthLength, DividerType type)
     {
-        if (!dock.HasBerthsOn(side))
+        ArgumentNullException.ThrowIfNull(pier);
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ThrowIfNoBerths(pier, side);
+
+        var outward = Outward(pier, side);
+        var length = type == DividerType.FingerPier ? berthLength * 0.75f : berthLength;
+        return new Divider(id, pier.Start + pier.Direction * offsetAlong + outward * (pier.Width * 0.5f), MarinaMath.DirectionToHeading(outward), length, type)
         {
-            throw new InvalidOperationException($"Dock '{dock.Id}' is single-sided ({dock.BerthingSides}); it has no berths on the {side} side.");
+            PierId = pier.Id,
+            Width = type == DividerType.FingerPier ? 0.9f : type == DividerType.Boom ? 0.35f : 0.4f,
+            Spacing = type == DividerType.Piles ? MathF.Max(3f, length / 3f) : 1.6f,
+        };
+    }
+
+    private static void ThrowIfNoBerths(Pier pier, PierSide side)
+    {
+        if (!pier.HasBerthsOn(side))
+        {
+            throw new InvalidOperationException($"Pier '{pier.Id}' is single-sided ({pier.BerthingSides}); it has no berths on the {side} side.");
         }
     }
 
-    private static Vector2 Outward(Dock dock, DockSide side) => dock.Right * (side == DockSide.Right ? 1f : -1f);
+    private static Vector2 Outward(Pier pier, PierSide side) => pier.Right * (side == PierSide.Right ? 1f : -1f);
 }

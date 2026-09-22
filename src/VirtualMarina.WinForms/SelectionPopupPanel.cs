@@ -1,10 +1,11 @@
-using System.Drawing.Drawing2D;
+﻿using System.Drawing.Drawing2D;
 using VirtualMarina.Core.Api;
+using VirtualMarina.WinForms.Resources;
 
 namespace VirtualMarina.WinForms;
 
 /// <summary>
-/// Custom-painted tooltip / actions window drawn over the 3D view, pointing at the selected slip.
+/// Custom-painted tooltip / actions window drawn over the 3D view, pointing at the selected berth.
 /// Shaped with a window region (rounded card plus caret) because child controls can't be transparent over OpenGL.
 /// </summary>
 internal sealed class SelectionPopupPanel : Control
@@ -30,9 +31,9 @@ internal sealed class SelectionPopupPanel : Control
     private readonly Font _iconFont = new("Segoe UI Emoji", 9f);
     private readonly ToolTip _hint = new() { InitialDelay = 400, ShowAlways = true };
 
-    private SlipPopup? _popup;
-    private readonly List<(SlipTooltipLine Line, Rectangle Label, Rectangle Value)> _lines = new();
-    private readonly List<(SlipAction Action, Rectangle Bounds)> _actions = new();
+    private BerthPopup? _popup;
+    private readonly List<(BerthTooltipLine Line, Rectangle Label, Rectangle Value)> _lines = new();
+    private readonly List<(BerthAction Action, Rectangle Bounds)> _actions = new();
     private readonly List<int> _separators = new();
     private Rectangle _titleRect;
     private Rectangle _subtitleRect;
@@ -57,7 +58,7 @@ internal sealed class SelectionPopupPanel : Control
 
     public event EventHandler? CloseClicked;
 
-    public SlipPopup? Popup => _popup;
+    public BerthPopup? Popup => _popup;
 
     private float DpiScale => DeviceDpi / 96f;
 
@@ -66,7 +67,7 @@ internal sealed class SelectionPopupPanel : Control
     private int CaretHeight => S(8);
 
     /// <summary>Lays out new popup content and resizes the control.</summary>
-    public void Present(SlipPopup popup)
+    public void Present(BerthPopup popup)
     {
         _popup = popup;
         _hoverAction = -1;
@@ -157,14 +158,14 @@ internal sealed class SelectionPopupPanel : Control
             var (action, bounds) = _actions[i];
             if (i == _hoverAction && action.Enabled)
             {
-                using var hover = new SolidBrush(action.Style == SlipActionStyle.Danger ? DangerHoverColor : HoverColor);
+                using var hover = new SolidBrush(action.Style == BerthActionStyle.Danger ? DangerHoverColor : HoverColor);
                 g.FillRectangle(hover, bounds);
             }
 
             var color = action.Style switch
             {
-                SlipActionStyle.Primary => PrimaryColor,
-                SlipActionStyle.Danger => DangerColor,
+                BerthActionStyle.Primary => PrimaryColor,
+                BerthActionStyle.Danger => DangerColor,
                 _ => TextColor,
             };
             if (!action.Enabled) color = Blend(color, CardColor, 0.55f);
@@ -177,7 +178,7 @@ internal sealed class SelectionPopupPanel : Control
 
             var shortcutWidth = string.IsNullOrEmpty(action.ShortcutText) ? 0 : TextRenderer.MeasureText(action.ShortcutText, _smallFont).Width;
             var captionRect = Rectangle.FromLTRB(iconRect.Right + S(6), bounds.Y, bounds.Right - S(8) - shortcutWidth, bounds.Bottom);
-            TextRenderer.DrawText(g, action.Caption, action.Style == SlipActionStyle.Primary ? _boldFont : _textFont, captionRect, color, SingleLine | TextFormatFlags.VerticalCenter);
+            TextRenderer.DrawText(g, action.Caption, action.Style == BerthActionStyle.Primary ? _boldFont : _textFont, captionRect, color, SingleLine | TextFormatFlags.VerticalCenter);
             if (shortcutWidth > 0)
             {
                 var shortcutRect = Rectangle.FromLTRB(bounds.Right - S(8) - shortcutWidth, bounds.Y, bounds.Right - S(8), bounds.Bottom);
@@ -201,7 +202,7 @@ internal sealed class SelectionPopupPanel : Control
         var clickable = overClose || (index >= 0 && _actions[index].Action.Enabled);
         Cursor = clickable ? Cursors.Hand : Cursors.Default;
 
-        var hint = index >= 0 ? _actions[index].Action.Description : overClose ? "Close (Esc)" : null;
+        var hint = index >= 0 ? _actions[index].Action.Description : overClose ? Strings.PopupClose : null;
         if (hint != _hintText)
         {
             _hintText = hint;
@@ -258,7 +259,7 @@ internal sealed class SelectionPopupPanel : Control
 
     // ---- Layout -------------------------------------------------------------------------------------
 
-    private void LayoutContent(SlipPopup popup)
+    private void LayoutContent(BerthPopup popup)
     {
         _lines.Clear();
         _actions.Clear();
@@ -278,7 +279,7 @@ internal sealed class SelectionPopupPanel : Control
             : 0;
         var wanted = minWidth;
         var title = TitleText(popup);
-        var hasHead = popup.Kind == SlipPopupKind.Actions || (showTooltip && (!string.IsNullOrWhiteSpace(tooltip.Title) || !string.IsNullOrWhiteSpace(tooltip.Subtitle)));
+        var hasHead = popup.Kind == BerthPopupKind.Actions || (showTooltip && (!string.IsNullOrWhiteSpace(tooltip.Title) || !string.IsNullOrWhiteSpace(tooltip.Subtitle)));
         if (hasHead)
         {
             wanted = Math.Max(wanted, pad * 2 + TextRenderer.MeasureText(title, _titleFont).Width + S(28));
@@ -350,7 +351,7 @@ internal sealed class SelectionPopupPanel : Control
             y += size.Height;
         }
 
-        if (popup.Kind == SlipPopupKind.Actions && popup.Actions.Count > 0)
+        if (popup.Kind == BerthPopupKind.Actions && popup.Actions.Count > 0)
         {
             y += S(8);
             _separators.Add(y);
@@ -382,8 +383,8 @@ internal sealed class SelectionPopupPanel : Control
         UpdateRegion();
     }
 
-    private static string TitleText(SlipPopup popup) =>
-        popup.Tooltip.IsVisible && !string.IsNullOrWhiteSpace(popup.Tooltip.Title) ? popup.Tooltip.Title! : popup.PrimarySlip.DisplayName;
+    private static string TitleText(BerthPopup popup) =>
+        popup.Tooltip.IsVisible && !string.IsNullOrWhiteSpace(popup.Tooltip.Title) ? popup.Tooltip.Title! : popup.PrimaryBerth.DisplayName;
 
     private void UpdateRegion()
     {

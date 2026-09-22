@@ -10,7 +10,7 @@ namespace VirtualMarina.Blazor;
 /// <remarks>
 /// Binary data goes to JavaScript as base64 little-endian float/uint32 buffers:
 /// meshes once per mesh-library version, instance data only when <see cref="RenderFrame.SceneVersion"/>
-/// changes. Per frame, only ~63 floats of camera/lighting/time uniforms cross the boundary;
+/// changes. Per frame, only ~67 floats of camera/lighting/time uniforms cross the boundary;
 /// waves, bobbing and pulses animate on the GPU.
 /// </remarks>
 public sealed class WebGlSceneRenderer : ISceneRenderer
@@ -19,12 +19,15 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
     public const int ObjectStride = 25;
 
     /// <summary>Length of the per-frame uniform array (layout mirrored in marinaWebGL.js).</summary>
-    public const int FrameLength = 63;
+    public const int FrameLength = 67;
 
     private readonly IJSInProcessObjectReference _module;
     private readonly int _viewId;
     private readonly float[] _frame = new float[FrameLength];
+    private readonly Dictionary<int, Core.Geometry.MeshData> _uploadedMeshes = new();
+    private readonly double[] _image = new double[8];
     private float[] _objects = Array.Empty<float>();
+    private int _uploadedImageKey = -1;
     private int _uploadedLibraryVersion = -1;
     private int _uploadedSceneVersion = -1;
     private bool _disposed;
@@ -51,7 +54,10 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
             ShaderSources.ModelVertex(ShaderDialect.WebGL2),
             ShaderSources.ModelFragment(ShaderDialect.WebGL2),
             ShaderSources.WaterVertex(ShaderDialect.WebGL2),
-            ShaderSources.WaterFragment(ShaderDialect.WebGL2));
+            ShaderSources.WaterFragment(ShaderDialect.WebGL2),
+            ShaderSources.ImageVertex(ShaderDialect.WebGL2),
+            ShaderSources.ImageFragment(ShaderDialect.WebGL2),
+            ShaderSources.ImageQuadCorners);
         if (error is not null) throw new InvalidOperationException("WebGL initialization failed: " + error);
 
         DeviceDescription = _module.Invoke<string?>("getDeviceDescription", _viewId);
@@ -70,13 +76,26 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
 
         if (frame.MeshLibraryVersion != _uploadedLibraryVersion)
         {
+            // Only new or replaced meshes cross the boundary (a large breakwater isn't re-sent when a pier is drawn).
+            var current = new HashSet<int>();
             foreach (var mesh in frame.Meshes.All)
             {
+                current.Add(mesh.Id);
+                if (_uploadedMeshes.TryGetValue(mesh.Id, out var uploaded) && ReferenceEquals(uploaded, mesh)) continue;
                 _module.InvokeVoid("uploadMesh", _viewId, mesh.Id, ToBase64(mesh.Vertices), ToBase64(mesh.Indices), mesh.IsWater);
+                _uploadedMeshes[mesh.Id] = mesh;
+            }
+
+            foreach (var stale in _uploadedMeshes.Keys.Where(id => !current.Contains(id)).ToList())
+            {
+                _module.InvokeVoid("deleteMesh", _viewId, stale);
+                _uploadedMeshes.Remove(stale);
             }
 
             _uploadedLibraryVersion = frame.MeshLibraryVersion;
         }
+
+        var imageValues = PackReferenceImage(frame.ReferenceImage);
 
         if (frame.SceneVersion != _uploadedSceneVersion)
         {
@@ -86,7 +105,38 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
         }
 
         PackFrame(frame, _frame);
-        _module.InvokeVoid("renderFrame", _viewId, _frame);
+        _module.InvokeVoid("renderFrame", _viewId, _frame, imageValues);
+    }
+
+    /// <summary>Uploads the reference image once per image and returns its per-frame placement, or null when there is none.</summary>
+    private double[]? PackReferenceImage(ReferenceImageLayer? layer)
+    {
+        if (layer is null) return null;
+
+        var image = layer.Image;
+        if (image.Key != _uploadedImageKey)
+        {
+            if (image.EncodedData is { } encoded)
+            {
+                _module.InvokeVoid("setReferenceImageEncoded", _viewId, image.Key, encoded, image.ContentType);
+            }
+            else if (image.Rgba is { } rgba)
+            {
+                _module.InvokeVoid("setReferenceImageRgba", _viewId, image.Key, rgba, image.PixelWidth, image.PixelHeight);
+            }
+
+            _uploadedImageKey = image.Key;
+        }
+
+        _image[0] = image.Key;
+        _image[1] = layer.Min.X;
+        _image[2] = layer.Min.Y;
+        _image[3] = layer.Max.X;
+        _image[4] = layer.Max.Y;
+        _image[5] = layer.Height;
+        _image[6] = layer.Opacity;
+        _image[7] = layer.AboveScene ? 1d : 0d;
+        return _image;
     }
 
     /// <summary>Stops rendering. GPU resources are released when the view is destroyed on the JS side.</summary>
@@ -140,6 +190,10 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
         f[i++] = w.WaveAmplitude;
         f[i++] = w.WaveFrequency;
         f[i++] = w.WaveSpeed;
+        f[i++] = Math.Clamp(w.SkyReflection, 0f, 1f);
+        f[i++] = Math.Clamp(w.Ripples, 0f, 2f);
+        f[i++] = Math.Clamp(w.SunGlints, 0f, 2f);
+        f[i++] = Math.Clamp(w.BoatMotion, 0f, 3f);
     }
 
     private static void WriteMatrix(float[] f, ref int i, System.Numerics.Matrix4x4 m)

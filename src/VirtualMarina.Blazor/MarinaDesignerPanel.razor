@@ -1,0 +1,304 @@
+﻿@namespace VirtualMarina.Blazor
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@using VirtualMarina.Core.Api
+@using VirtualMarina.Core.Design
+@using VirtualMarina.Core.Domain
+@using VirtualMarina.Blazor.Resources
+@implements IDisposable
+
+@* Ready-made tool panel for MarinaVisualizer.Designer. Styles are prefixed "vm-designer" so hosts can restyle them. *@
+<div class="vm-designer @CssClass">
+    <style>
+        .vm-designer { display: flex; flex-direction: column; gap: 8px; font: inherit; }
+        .vm-designer fieldset { margin: 0; }
+        .vm-designer__tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+        .vm-designer__tool { padding: 4px 9px; border: 1px solid #b9c3cc; border-radius: 5px; background: #fff; cursor: pointer; font: inherit; }
+        .vm-designer__tool--active { background: #1f5fd1; border-color: #1f5fd1; color: #fff; }
+        .vm-designer__tool:disabled { opacity: .45; cursor: default; }
+        .vm-designer__hint { color: #5d6b78; font-size: 12px; margin-top: 6px; min-height: 1.3em; }
+        .vm-designer__grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; align-items: center; margin-top: 4px; }
+        .vm-designer__grid input[type=number], .vm-designer__grid select { width: 100%; box-sizing: border-box; font: inherit; }
+        .vm-designer__row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+        .vm-designer__note { color: #5d6b78; font-size: 12px; }
+    </style>
+
+    <fieldset>
+        <legend>@Strings.SectionDesigner</legend>
+        <label class="vm-designer__row"><input type="checkbox" checked="@Designer.IsActive" @onchange="e => Designer.IsActive = e.Value is true" /> <strong>@Strings.DesignMode</strong></label>
+        <div class="vm-designer__tools">
+            @foreach (var tool in Tools)
+            {
+                @ToolButton(tool)
+            }
+        </div>
+        <div class="vm-designer__hint">@(Designer.IsActive ? Designer.ToolHint : Strings.TurnOnDesignMode)</div>
+        <div class="vm-designer__row">
+            <button class="vm-designer__tool" disabled="@(!Designer.CanUndo)" @onclick="() => Set(d => d.Undo())">@Strings.Undo</button>
+            <span class="vm-designer__note">@(Designer.UndoDescription ?? Strings.NothingToUndo)</span>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>@Strings.SectionLandArea</legend>
+        <div class="vm-designer__grid">
+            <span>@Strings.LandType</span>
+            <select value="@Designer.LandKind" @onchange="e => Set(d => d.LandKind = Enum.Parse<LandKind>((string)e.Value!))">
+                @foreach (var kind in Enum.GetValues<LandKind>())
+                {
+                    <option value="@kind">@kind.GetDisplayName()</option>
+                }
+            </select>
+            <span>@Strings.LandHeight</span>
+            <input type="number" min="0" max="50" step="0.1" value="@Format(Designer.LandHeight)" @onchange="e => SetNumber(e, (d, v) => d.LandHeight = v)" />
+            <span title="@Strings.TreeCoverageHint">@Strings.TreeCoverage</span>
+            <span class="vm-designer__row" style="margin:0;flex-wrap:nowrap">
+                <input type="range" min="0" max="100" step="1" value="@((int)MathF.Round(Designer.TreeDensity))" @oninput="e => SetNumber(e, (d, v) => d.TreeDensity = v)" style="flex:1" />
+                <span class="vm-designer__note" style="white-space:nowrap">@(Designer.TreeDensity > 0f ? Strings.Format(Strings.TreeDensity, Format(Designer.TreeDensity, "0")) : Strings.NoTrees)</span>
+            </span>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>@Strings.SectionPier</legend>
+        <div class="vm-designer__grid">
+            <span>@Strings.PierType</span>
+            <select value="@Designer.PierType" @onchange="e => Set(d => d.PierType = Enum.Parse<PierType>((string)e.Value!))">
+                @foreach (var type in Enum.GetValues<PierType>())
+                {
+                    <option value="@type">@Pier.GetDisplayName(type)</option>
+                }
+            </select>
+            <span>@Strings.PierWidth</span>
+            <input type="number" min="0.5" max="30" step="0.1" value="@Format(Designer.PierWidth)" @onchange="e => SetNumber(e, (d, v) => d.PierWidth = v)" />
+            <span>@Strings.PierBerths</span>
+            <select value="@Designer.PierBerthingSides" @onchange="e => Set(d => d.PierBerthingSides = Enum.Parse<PierSides>((string)e.Value!))">
+                @foreach (var sides in BerthingSides)
+                {
+                    <option value="@sides">@sides.GetDisplayName()</option>
+                }
+            </select>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>@Strings.SectionBerths</legend>
+        <div class="vm-designer__grid">
+            <span>@Strings.BerthWidth</span>
+            <input type="number" min="1" max="50" step="0.1" value="@Format(Designer.BerthWidth)" @onchange="e => SetNumber(e, (d, v) => d.BerthWidth = v)" />
+            <span>@Strings.BerthLength</span>
+            <input type="number" min="1" max="150" step="0.5" value="@Format(Designer.BerthLength)" @onchange="e => SetNumber(e, (d, v) => d.BerthLength = v)" />
+            <span>@Strings.BerthDepth</span>
+            <input type="number" min="0.1" max="50" step="0.1" value="@Format(Designer.BerthDepth)" @onchange="e => SetNumber(e, (d, v) => d.BerthDepth = v)" />
+            <span>@Strings.BerthSeparators</span>
+            <select value="@Designer.BerthSeparators" @onchange="e => Set(d => d.BerthSeparators = Enum.Parse<BerthSeparator>((string)e.Value!))">
+                @foreach (var separator in Separators)
+                {
+                    <option value="@separator">@separator.GetDisplayName()</option>
+                }
+            </select>
+            <span title="@Strings.BerthGapHint">@Strings.BerthGap</span>
+            <input type="number" min="0" max="20" step="0.1" value="@Format(Designer.BerthGap)" @onchange="e => SetNumber(e, (d, v) => d.BerthGap = v)" />
+            <span title="@Strings.AlignBerthsHint">@Strings.AlignBerthsLabel</span>
+            <label><input type="checkbox" checked="@Designer.AlignBerthsToExisting" @onchange="e => Set(d => d.AlignBerthsToExisting = e.Value is true)" /> @Strings.AlignBerths</label>
+            <span title="@Strings.BerthServicesHint">@Strings.BerthServices</span>
+            <select value="@Designer.BerthServices" @onchange="e => Set(d => d.BerthServices = Enum.Parse<PierServices>((string)e.Value!))">
+                @foreach (var services in Services)
+                {
+                    <option value="@services">@services.GetDisplayName()</option>
+                }
+            </select>
+            <span title="@Strings.LandBerthHeadingHint">@Strings.LandBerthHeading</span>
+            <input type="number" min="-180" max="180" step="15" value="@Format(Designer.LandBerthHeading, "0")" @onchange="e => SetNumber(e, (d, v) => d.LandBerthHeading = v)" />
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>@Strings.SectionReferenceImage</legend>
+        <div class="vm-designer__row">
+            <InputFile OnChange="LoadImageAsync" accept="image/png,image/jpeg,image/webp" />
+        </div>
+        @if (_imageError is not null)
+        {
+            <div class="vm-designer__note" style="color:#c62f28">@_imageError</div>
+        }
+        @{ var hasImage = Designer.ReferenceImage is not null; }
+        <div class="vm-designer__row">
+            <button class="vm-designer__tool" disabled="@(!hasImage)" @onclick="() => Set(d => d.ClearReferenceImage())">@Strings.RemoveImage</button>
+            <button class="vm-designer__tool" disabled="@(!hasImage)" @onclick="() => Set(d => d.FocusReferenceImage())">@Strings.ViewImage</button>
+            <button class="vm-designer__tool" @onclick="() => Set(d => d.ViewTopDown())">@Strings.TopViewNorthUp</button>
+        </div>
+        <div class="vm-designer__row">
+            <label><input type="checkbox" disabled="@(!hasImage)" checked="@Designer.ReferenceImageVisible" @onchange="e => Set(d => d.ReferenceImageVisible = e.Value is true)" /> @Strings.ShowImage</label>
+            <label><input type="checkbox" disabled="@(!hasImage)" checked="@Designer.ReferenceImageAboveScene" @onchange="e => Set(d => d.ReferenceImageAboveScene = e.Value is true)" /> @Strings.ImageAboveScene</label>
+        </div>
+        <div class="vm-designer__grid">
+            <span>@Strings.ImageOpacity</span>
+            <input type="range" min="0" max="100" disabled="@(!hasImage)" value="@((int)MathF.Round(Designer.ReferenceImageOpacity * 100f))" @oninput="e => SetNumber(e, (d, v) => d.ReferenceImageOpacity = v / 100f)" />
+        </div>
+        <div class="vm-designer__tools">
+            @ToolButton(DesignTool.MoveReferenceImage, !hasImage)
+            @ToolButton(DesignTool.MeasureScale, !hasImage)
+        </div>
+        <div class="vm-designer__note" style="margin-top:6px">
+            @if (!hasImage)
+            {
+                @Strings.NoImageYet
+            }
+            else if (Designer.ScaleLine is { } line)
+            {
+                @Strings.Format(Strings.ScaleLineDrawn, Format(System.Numerics.Vector2.Distance(line.Start, line.End)))
+            }
+            else
+            {
+                @Strings.Format(Strings.ImageSizeHint, Format(Designer.ReferenceImageSize.X, "0"), Format(Designer.ReferenceImageSize.Y, "0"))
+            }
+        </div>
+        <div class="vm-designer__grid">
+            <span>@Strings.ScaleBarLength</span>
+            <span class="vm-designer__row" style="margin:0;flex-wrap:nowrap">
+                <input type="number" min="0.01" step="1" disabled="@(Designer.ScaleLine is null)" @bind="_scaleLength" style="width:90px" />
+                <button class="vm-designer__tool" disabled="@(Designer.ScaleLine is null || !(_scaleLength > 0))" @onclick="Calibrate">@Strings.ApplyScale</button>
+            </span>
+            <span>@Strings.MetersPerPixel</span>
+            <input type="number" min="0.0001" step="0.01" disabled="@(!hasImage)" value="@Format(Designer.ReferenceImageMetersPerPixel, "0.####")" @onchange="e => SetNumber(e, (d, v) => d.ReferenceImageMetersPerPixel = v)" />
+        </div>
+    </fieldset>
+</div>
+
+@code {
+    private MarinaVisualizer? _subscribed;
+    private string? _imageError;
+    private float? _scaleLength;
+
+    /// <summary>The visualizer whose designer this panel drives. Required.</summary>
+    [Parameter, EditorRequired]
+    public MarinaVisualizer Marina { get; set; } = default!;
+
+    /// <summary>The view showing <see cref="Marina"/>; needed to decode image files in the browser.</summary>
+    [Parameter]
+    public MarinaView? View { get; set; }
+
+    /// <summary>Largest accepted image file, in bytes (default 25 MB).</summary>
+    [Parameter]
+    public long MaxImageFileSize { get; set; } = 25 * 1024 * 1024;
+
+    /// <summary>Extra CSS classes for the outer element.</summary>
+    [Parameter]
+    public string? CssClass { get; set; }
+
+    private MarinaDesigner Designer => Marina.Designer;
+
+    /// <summary>Subscribes to the designer's state changes.</summary>
+    protected override void OnParametersSet()
+    {
+        if (Marina is null) throw new InvalidOperationException($"{nameof(MarinaDesignerPanel)} requires the {nameof(Marina)} parameter.");
+        if (ReferenceEquals(_subscribed, Marina)) return;
+        Unsubscribe();
+        _subscribed = Marina;
+        Marina.Designer.StateChanged += OnStateChanged;
+        Marina.Designer.ScaleLineDrawn += OnScaleLineDrawn;
+    }
+
+    /// <summary>Unsubscribes from the designer.</summary>
+    public void Dispose() => Unsubscribe();
+
+    private void Unsubscribe()
+    {
+        if (_subscribed is null) return;
+        _subscribed.Designer.StateChanged -= OnStateChanged;
+        _subscribed.Designer.ScaleLineDrawn -= OnScaleLineDrawn;
+        _subscribed = null;
+    }
+
+    private void OnStateChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    private void OnScaleLineDrawn(object? sender, ScaleLineDrawnEventArgs e) => _scaleLength = null;
+
+    /// <summary>The tools offered in the toolbar, in the order they appear.</summary>
+    private static readonly DesignTool[] Tools =
+    {
+        DesignTool.Navigate, DesignTool.DrawLandArea, DesignTool.DrawPier,
+        DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlantTrees, DesignTool.Erase,
+    };
+
+    private static readonly PierSides[] BerthingSides = { PierSides.Both, PierSides.Left, PierSides.Right };
+
+    private static readonly BerthSeparator[] Separators =
+    {
+        BerthSeparator.FingerPiers, BerthSeparator.PairedFingerPiers, BerthSeparator.FingerPier,
+        BerthSeparator.Piles, BerthSeparator.SinglePile, BerthSeparator.Boom, BerthSeparator.None,
+    };
+
+    private static readonly PierServices[] Services =
+    {
+        PierServices.None, PierServices.PowerAndWater, PierServices.Power, PierServices.Water,
+    };
+
+    private RenderFragment ToolButton(DesignTool tool, bool disabled = false) => __builder =>
+    {
+        var active = Designer.IsActive && Designer.Tool == tool;
+        <button class="vm-designer__tool @(active ? "vm-designer__tool--active" : null)" disabled="@disabled"
+                @onclick="() => Set(d => { d.IsActive = true; d.Tool = tool; })">@tool.GetDisplayName()</button>
+    };
+
+    private void Set(Action<MarinaDesigner> change)
+    {
+        try
+        {
+            change(Designer);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            // Out-of-range input is ignored; the field shows the designer's value again.
+        }
+
+        StateHasChanged();
+    }
+
+    private void SetNumber(ChangeEventArgs e, Action<MarinaDesigner, float> change)
+    {
+        if (float.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            Set(d => change(d, value));
+        }
+    }
+
+    private void Calibrate()
+    {
+        if (_scaleLength is > 0f and var length) Set(d => d.CalibrateReferenceImage(length));
+    }
+
+    private async Task LoadImageAsync(InputFileChangeEventArgs e)
+    {
+        _imageError = null;
+        if (View is null)
+        {
+            _imageError = Strings.ViewParameterMissing;
+            return;
+        }
+
+        try
+        {
+            await using var stream = e.File.OpenReadStream(MaxImageFileSize);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            var contentType = string.IsNullOrWhiteSpace(e.File.ContentType) ? "image/png" : e.File.ContentType;
+            if (await View.LoadReferenceImageAsync(buffer.ToArray(), contentType) is null)
+            {
+                _imageError = Strings.ImageDecodeFailed;
+                return;
+            }
+
+            Designer.IsActive = true;
+            Designer.FocusReferenceImage();
+            Designer.Tool = DesignTool.MeasureScale;
+        }
+        catch (IOException ex)
+        {
+            _imageError = ex.Message;
+        }
+    }
+
+    private static string Format(float value, string format = "0.##") => value.ToString(format, CultureInfo.InvariantCulture);
+}

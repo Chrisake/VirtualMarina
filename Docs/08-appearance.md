@@ -1,32 +1,32 @@
 # Appearance
 
-## Slip labels on the water
+## Berth labels on the water
 
 ```csharp
-marina.SlipLabelMode = SlipLabelMode.NonOccupied;
+marina.BerthLabelMode = BerthLabelMode.NonOccupied;
 ```
 
-| `SlipLabelMode` | Labeled slips |
+| `BerthLabelMode` | Labeled berths |
 |---|---|
 | `None` (default) | None |
 | `OnlyFree` | Free |
 | `NonOccupied` | Free, Reserved, Temporarily Free |
-| `All` | Every slip |
+| `All` | Every berth |
 
-- **Text:** each labeled slip shows its `DisplayName` (its `Label`, or else its `Id`).
-- **Placement:** flat on the water just past the slip's open (seaward) end.
-- **Size:** at most 65% of the slip width and between 0.3 m and 1 m tall, so labels of neighboring slips stay apart.
-- **Orientation:** the top of the text points away from the dock, so it reads upright to someone on the dock looking at the slip.
-- **Colors:** white; yellow while the slip is hovered or selected; gray for disabled slips.
+- **Text:** each labeled berth shows its `DisplayName` (its `Label`, or else its `Id`).
+- **Placement:** flat on the water just past the berth's open (seaward) end.
+- **Size:** at most 65% of the berth width and between 0.3 m and 1 m tall, so labels of neighboring berths stay apart.
+- **Orientation:** the top of the text points away from the pier, so it reads upright to someone on the pier looking at the berth.
+- **Colors:** white; yellow while the berth is hovered or selected; gray for disabled berths.
 - **Waves:** the text sits just above the highest point the waves can reach (the sum of wave amplitudes × `Water.WaveAmplitude`), so waves never cover it from any camera position.
-- **Which slips:** hidden and filtered-out slips get no label.
+- **Which berths:** hidden and filtered-out berths get no label.
 - **Characters:** labels use a built-in stroke font (no textures) covering `A–Z`, `0–9` and `- _ + . , : / ( ) # ?`. Lowercase is drawn as uppercase and other characters as `?`.
 
-`SlipLabelModeExtensions.Includes(mode, status)` and `GetDisplayName(mode)` help build a mode picker.
+`BerthLabelModeExtensions.Includes(mode, status)` and `GetDisplayName(mode)` help build a mode picker.
 
 ## Status colors and overlays
 
-See [Slip status, boats and flags → Colors](04-status-and-flags.md#colors): `SetStatusColor`, `SetDisabledColor`, `SetOverlayOpacity`, `ResetStatusColors`.
+See [Berth status, boats and flags → Colors](04-status-and-flags.md#colors): `SetStatusColor`, `SetDisabledColor`, `SetOverlayOpacity`, `ResetStatusColors`.
 
 `ColorRgba` is a linear RGBA color (0–1):
 
@@ -100,7 +100,7 @@ Both renderers re-upload changed meshes automatically (`MeshLibrary.Version`). `
 | `Water` | Water grid |
 | `UnitBox` | 1 m cube (decks, fingers, land) |
 | `Piling` | Wooden piling |
-| `SlipPad` | Status pad quad |
+| `BerthPad` | Status pad quad |
 | `SelectionMarker` | Selection marker |
 | `Buoy` | Sphere (buoys, boom floats) |
 | `Cylinder` | Cylinder (steel piles, bollards) |

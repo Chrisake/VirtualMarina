@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Api;
 
 namespace VirtualMarina.Core.Input;
@@ -9,9 +9,11 @@ namespace VirtualMarina.Core.Input;
 /// </summary>
 /// <remarks>
 /// Defaults: left-drag pans (map-style), right-drag orbits, middle-drag pans, Shift+left-drag orbits,
-/// wheel zooms toward the cursor, click selects and shows the tooltip, Ctrl+click or Shift+click adds/removes slips,
-/// right-click opens the actions window, double-click focuses a slip, Escape closes the popup and then
-/// clears the selection, Home resets the view. The popup stays anchored above its slip while the camera moves.
+/// wheel zooms toward the cursor, click selects and shows the tooltip, Ctrl+click or Shift+click adds/removes berths,
+/// right-click opens the actions window, double-click focuses a berth, Escape closes the popup and then
+/// clears the selection, Home resets the view. The popup stays anchored above its berth while the camera moves.
+/// While <see cref="Design.MarinaDesigner.IsActive"/> is true, clicks, double-clicks, pointer movement and Enter/Backspace/Delete/Escape
+/// go to the designer instead (camera dragging, the wheel and navigation keys work as usual).
 /// </remarks>
 public sealed class MarinaInputController
 {
@@ -21,6 +23,7 @@ public sealed class MarinaInputController
     private Vector2 _downPosition;
     private Vector2 _lastPosition;
     private bool _dragging;
+    private bool _designerDrag;
 
     internal MarinaInputController(MarinaVisualizer marina)
     {
@@ -51,7 +54,7 @@ public sealed class MarinaInputController
     /// <summary>Angle a Shift+arrow or PageUp/PageDown press orbits or tilts, in degrees (default 10).</summary>
     public float KeyboardOrbitDegrees { get; set; } = 10f;
 
-    /// <summary>Hit-test on pointer move to highlight the slip under the cursor.</summary>
+    /// <summary>Hit-test on pointer move to highlight the berth under the cursor.</summary>
     public bool HoverEnabled { get; set; } = true;
 
     /// <summary>True while a button is held and the pointer has moved past <see cref="ClickTolerancePixels"/>.</summary>
@@ -69,6 +72,8 @@ public sealed class MarinaInputController
         _activeModifiers = modifiers;
         _downPosition = _lastPosition = new Vector2(x, y);
         _dragging = false;
+        _designerDrag = _marina.Designer.CapturesDrag(button);
+        if (_designerDrag) _marina.Designer.BeginImageDrag(x, y);
     }
 
     /// <summary>Forward pointer movement: hovers when no button is held, otherwise pans or orbits.</summary>
@@ -80,7 +85,8 @@ public sealed class MarinaInputController
         var position = new Vector2(x, y);
         if (_activeButton == PointerButton.None)
         {
-            if (HoverEnabled) _marina.HandlePointerHover(x, y);
+            if (_marina.Designer.IsActive) _marina.Designer.HandlePointerMove(x, y, modifiers);
+            else if (HoverEnabled) _marina.HandlePointerHover(x, y);
             return;
         }
 
@@ -94,6 +100,12 @@ public sealed class MarinaInputController
         }
 
         if (!_dragging) return;
+
+        if (_designerDrag)
+        {
+            _marina.Designer.DragImage(x, y);
+            return;
+        }
 
         switch (ResolveDragAction(_activeButton, _activeModifiers))
         {
@@ -118,18 +130,29 @@ public sealed class MarinaInputController
         var pressModifiers = _activeModifiers;
         _activeButton = PointerButton.None;
         _dragging = false;
+        if (_designerDrag)
+        {
+            _designerDrag = false;
+            _marina.Designer.EndImageDrag();
+        }
+
+        if (wasDragging) return;
 
         // Modifiers held at press or release both count, so Ctrl released a moment early still multi-selects.
-        if (!wasDragging) _marina.HandleClick(x, y, button, isDoubleClick: false, modifiers | pressModifiers);
+        if (_marina.Designer.IsActive) _marina.Designer.HandleClick(x, y, button, modifiers | pressModifiers);
+        else _marina.HandleClick(x, y, button, isDoubleClick: false, modifiers | pressModifiers);
     }
 
-    /// <summary>Forward a double-click. A left double-click on a slip focuses the camera on it (at <c>DefaultFocusAngle</c>).</summary>
+    /// <summary>Forward a double-click. A left double-click on a berth focuses the camera on it (at <c>DefaultFocusAngle</c>).</summary>
     /// <param name="x">Pointer X in view pixels.</param>
     /// <param name="y">Pointer Y in view pixels.</param>
     /// <param name="button">Button.</param>
     /// <param name="modifiers">Modifier keys held.</param>
-    public void DoubleClick(float x, float y, PointerButton button, InputModifiers modifiers = InputModifiers.None) =>
-        _marina.HandleClick(x, y, button, isDoubleClick: true, modifiers);
+    public void DoubleClick(float x, float y, PointerButton button, InputModifiers modifiers = InputModifiers.None)
+    {
+        if (_marina.Designer.IsActive) _marina.Designer.HandleDoubleClick(x, y, button, modifiers);
+        else _marina.HandleClick(x, y, button, isDoubleClick: true, modifiers);
+    }
 
     /// <summary>Wheel input in notches: positive zooms in.</summary>
     public void Wheel(float notches, float x, float y)
@@ -144,12 +167,25 @@ public sealed class MarinaInputController
     {
         _activeButton = PointerButton.None;
         _dragging = false;
+        if (_designerDrag)
+        {
+            _designerDrag = false;
+            _marina.Designer.EndImageDrag();
+        }
+
         _marina.HandlePointerLeave();
+        _marina.Designer.HandlePointerLeave();
     }
 
     /// <summary>Returns true when the key was handled.</summary>
     public bool KeyDown(MarinaKey key, InputModifiers modifiers = InputModifiers.None)
     {
+        if (_marina.Designer.IsActive && key is MarinaKey.Enter or MarinaKey.Backspace or MarinaKey.Delete or MarinaKey.Escape or MarinaKey.Undo &&
+            _marina.Designer.HandleKey(key))
+        {
+            return true;
+        }
+
         var camera = _marina.Camera;
         var orbit = (modifiers & InputModifiers.Shift) != 0;
         switch (key)

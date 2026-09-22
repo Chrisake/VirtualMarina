@@ -11,9 +11,9 @@ public class MarinaVisualizerTests
 {
     private static MarinaLayout SmallLayout() =>
         new MarinaLayoutBuilder("Test")
-            .AddDock("A", "Dock A", Vector2.Zero, 0f, 40f, dock => dock
-                .AddSlips(DockSide.Left, 3, 5f, 12f)
-                .AddSlips(DockSide.Right, 3, 5f, 12f))
+            .AddPier("A", "Pier A", Vector2.Zero, 0f, 40f, pier => pier
+                .AddBerths(PierSide.Left, 3, 5f, 12f)
+                .AddBerths(PierSide.Right, 3, 5f, 12f))
             .Build();
 
     private static MarinaVisualizer CreateMarina()
@@ -24,55 +24,55 @@ public class MarinaVisualizerTests
         return marina;
     }
 
-    /// <summary>Points the camera straight down at a slip so the view center is over it.</summary>
-    private static void LookAtSlip(MarinaVisualizer marina, string slipId)
+    /// <summary>Points the camera straight down at a berth so the view center is over it.</summary>
+    private static void LookAtBerth(MarinaVisualizer marina, string berthId)
     {
-        var slip = marina.GetSlip(slipId)!;
-        marina.Camera.SetPose(new CameraPose(new Vector3(slip.Center.X, 0, slip.Center.Y), 0f, 89f, 40f), immediate: true);
+        var berth = marina.GetBerth(berthId)!;
+        marina.Camera.SetPose(new CameraPose(new Vector3(berth.Center.X, 0, berth.Center.Y), 0f, 89f, 40f), immediate: true);
     }
 
     [Fact]
-    public void InitializeLayout_RejectsDuplicateSlipIds()
+    public void InitializeLayout_RejectsDuplicateBerthIds()
     {
         var layout = SmallLayout();
-        var broken = layout with { Slips = layout.Slips.Append(layout.Slips[0]).ToArray() };
+        var broken = layout with { Berths = layout.Berths.Append(layout.Berths[0]).ToArray() };
 
         var ex = Assert.Throws<MarinaLayoutException>(() => new MarinaVisualizer().InitializeLayout(broken));
-        Assert.Contains(ex.Errors, e => e.Contains("Duplicate slip id"));
+        Assert.Contains(ex.Errors, e => e.Contains("Duplicate berth id"));
     }
 
     [Fact]
-    public void SetSlipStatus_RaisesEvent_AndFreeClearsBoat()
+    public void SetBerthStatus_RaisesEvent_AndFreeClearsBoat()
     {
         var marina = CreateMarina();
-        var events = new List<SlipStatusChangedEventArgs>();
-        marina.SlipStatusChanged += (_, e) => events.Add(e);
+        var events = new List<BerthStatusChangedEventArgs>();
+        marina.BerthStatusChanged += (_, e) => events.Add(e);
         var boat = new Boat("B1", "Aurora", BoatType.MotorYacht) { LengthMeters = 10, BeamMeters = 3 };
 
         marina.AssignBoat("A-L01", boat);
-        var freed = marina.ReleaseSlip("A-L01");
+        var freed = marina.ReleaseBerth("A-L01");
 
         Assert.Equal(2, events.Count);
-        Assert.Equal(SlipStatus.Free, events[0].OldStatus);
-        Assert.Equal(SlipStatus.Occupied, events[0].NewStatus);
+        Assert.Equal(BerthStatus.Free, events[0].OldStatus);
+        Assert.Equal(BerthStatus.Occupied, events[0].NewStatus);
         Assert.Equal("Aurora", events[0].NewBoat?.Name);
-        Assert.Equal(SlipStatus.Free, freed.Status);
+        Assert.Equal(BerthStatus.Free, freed.Status);
         Assert.Null(freed.Boat);
     }
 
     [Fact]
-    public void SetSlipStatus_ReservedToOccupied_KeepsExpectedBoat()
+    public void SetBerthStatus_ReservedToOccupied_KeepsExpectedBoat()
     {
         var marina = CreateMarina();
-        marina.ReserveSlip("A-R02", new Boat("B2", "Zephyr", BoatType.JetSki));
+        marina.ReserveBerth("A-R02", new Boat("B2", "Zephyr", BoatType.JetSki));
 
-        var arrived = marina.SetSlipStatus("A-R02", SlipStatus.Occupied);
+        var arrived = marina.SetBerthStatus("A-R02", BerthStatus.Occupied);
 
         Assert.Equal("Zephyr", arrived.Boat?.Name);
     }
 
     [Fact]
-    public void BatchUpdate_AppliesValidUpdates_AndReportsMissingSlips()
+    public void BatchUpdate_AppliesValidUpdates_AndReportsMissingBerths()
     {
         var marina = CreateMarina();
         var layoutEvents = 0;
@@ -80,101 +80,101 @@ public class MarinaVisualizerTests
 
         var result = marina.BatchUpdate(new[]
         {
-            SlipUpdate.Reserve("A-L01"),
-            SlipUpdate.Occupy("A-L02", new Boat("B3", "Halcyon", BoatType.FishingBoat)),
-            SlipUpdate.Free("NOPE"),
+            BerthUpdate.Reserve("A-L01"),
+            BerthUpdate.Occupy("A-L02", new Boat("B3", "Halcyon", BoatType.FishingBoat)),
+            BerthUpdate.Free("NOPE"),
         });
 
         Assert.Equal(2, result.AppliedCount);
         Assert.Single(result.Errors);
-        Assert.Equal("NOPE", result.Errors[0].SlipId);
+        Assert.Equal("NOPE", result.Errors[0].BerthId);
         Assert.Equal(1, layoutEvents); // coalesced into one BatchUpdated notification
         Assert.Equal(new MarinaStatistics(6, 4, 1, 1), marina.GetStatistics());
     }
 
     [Fact]
-    public void AddAndRemoveSlip_UpdatesLayout()
+    public void AddAndRemoveBerth_UpdatesLayout()
     {
         var marina = CreateMarina();
-        marina.AddSlip(new Slip("A-X", "A", new Vector2(0, 50), 180, 10, 4));
+        marina.AddBerth(new Berth("A-X", "A", new Vector2(0, 50), 180, 10, 4));
 
-        Assert.NotNull(marina.GetSlip("a-x")); // ids are case-insensitive
-        Assert.True(marina.RemoveSlip("A-X"));
-        Assert.False(marina.RemoveSlip("A-X"));
-        Assert.Throws<MarinaLayoutException>(() => marina.AddSlip(new Slip("Z", "UNKNOWN-DOCK", Vector2.Zero, 0, 10, 4)));
+        Assert.NotNull(marina.GetBerth("a-x")); // ids are case-insensitive
+        Assert.True(marina.RemoveBerth("A-X"));
+        Assert.False(marina.RemoveBerth("A-X"));
+        Assert.Throws<MarinaLayoutException>(() => marina.AddBerth(new Berth("Z", "UNKNOWN-PIER", Vector2.Zero, 0, 10, 4)));
     }
 
     [Fact]
-    public void HitTest_ViewCenterOverSlip_ReturnsThatSlip()
+    public void HitTest_ViewCenterOverBerth_ReturnsThatBerth()
     {
         var marina = CreateMarina();
-        LookAtSlip(marina, "A-R03");
+        LookAtBerth(marina, "A-R03");
 
         var hit = marina.HitTest(400, 300);
 
-        Assert.Equal("A-R03", hit?.SlipId);
+        Assert.Equal("A-R03", hit?.BerthId);
     }
 
     [Fact]
-    public void HitTest_HitsTallBoatAboveNeighbouringSlip()
+    public void HitTest_HitsTallBoatAboveNeighbouringBerth()
     {
         var marina = CreateMarina();
         marina.AssignBoat("A-L01", new Boat("S1", "Wind Dancer", BoatType.MonohullSailboat) { LengthMeters = 10, BeamMeters = 3.3f });
-        var slip = marina.GetSlip("A-L01")!;
-        // Low camera looking along the dock: the ray passes through the mast region before reaching water.
-        marina.Camera.SetPose(new CameraPose(new Vector3(slip.Center.X, 6, slip.Center.Y), 90f, 10f, 30f), immediate: true);
+        var berth = marina.GetBerth("A-L01")!;
+        // Low camera looking along the pier: the ray passes through the mast region before reaching water.
+        marina.Camera.SetPose(new CameraPose(new Vector3(berth.Center.X, 6, berth.Center.Y), 90f, 10f, 30f), immediate: true);
 
         var hit = marina.HitTest(400, 300);
 
         Assert.NotNull(hit);
         Assert.True(hit!.Value.HitBoat);
-        Assert.Equal("A-L01", hit.Value.SlipId);
+        Assert.Equal("A-L01", hit.Value.BerthId);
     }
 
     [Fact]
-    public void StatusFilter_HidesSlipsFromPicking_AndClearsHiddenSelection()
+    public void StatusFilter_HidesBerthsFromPicking_AndClearsHiddenSelection()
     {
         var marina = CreateMarina();
-        Assert.True(marina.SelectSlip("A-R03"));
+        Assert.True(marina.SelectBerth("A-R03"));
         var cleared = false;
         marina.SelectionCleared += (_, _) => cleared = true;
 
-        marina.SetStatusFilter(SlipStatusFilter.Occupied | SlipStatusFilter.Reserved);
-        LookAtSlip(marina, "A-R03");
+        marina.SetStatusFilter(BerthStatusFilter.Occupied | BerthStatusFilter.Reserved);
+        LookAtBerth(marina, "A-R03");
 
         Assert.True(cleared);
-        Assert.Null(marina.SelectedSlip);
+        Assert.Null(marina.SelectedBerth);
         Assert.Null(marina.HitTest(400, 300));
-        Assert.False(marina.SelectSlip("A-R03"));
+        Assert.False(marina.SelectBerth("A-R03"));
     }
 
     [Fact]
     public void Click_ThroughInputController_SelectsAndRaisesEvents()
     {
         var marina = CreateMarina();
-        LookAtSlip(marina, "A-L02");
-        SlipEventArgs? clicked = null;
-        SlipEventArgs? selected = null;
-        marina.SlipClicked += (_, e) => clicked = e;
-        marina.SlipSelected += (_, e) => selected = e;
+        LookAtBerth(marina, "A-L02");
+        BerthEventArgs? clicked = null;
+        BerthEventArgs? selected = null;
+        marina.BerthClicked += (_, e) => clicked = e;
+        marina.BerthSelected += (_, e) => selected = e;
 
         marina.Input.PointerDown(400, 300, PointerButton.Left);
         marina.Input.PointerUp(401, 301, PointerButton.Left);
 
-        Assert.Equal("A-L02", clicked?.SlipId);
+        Assert.Equal("A-L02", clicked?.BerthId);
         Assert.Equal(PointerButton.Left, clicked?.Button);
-        Assert.Equal("A", clicked?.Dock?.Id);
-        Assert.Equal("A-L02", selected?.SlipId);
-        Assert.Equal("A-L02", marina.SelectedSlip?.Id);
+        Assert.Equal("A", clicked?.Pier?.Id);
+        Assert.Equal("A-L02", selected?.BerthId);
+        Assert.Equal("A-L02", marina.SelectedBerth?.Id);
     }
 
     [Fact]
     public void Drag_PansCamera_WithoutClicking()
     {
         var marina = CreateMarina();
-        LookAtSlip(marina, "A-L02");
+        LookAtBerth(marina, "A-L02");
         var clicks = 0;
-        marina.SlipClicked += (_, _) => clicks++;
+        marina.BerthClicked += (_, _) => clicks++;
         var before = marina.Camera.DesiredPose.Target;
 
         marina.Input.PointerDown(400, 300, PointerButton.Left);
@@ -191,7 +191,7 @@ public class MarinaVisualizerTests
         var marina = CreateMarina();
         var v1 = marina.BuildRenderFrame().SceneVersion;
         var v2 = marina.BuildRenderFrame().SceneVersion;
-        marina.ReserveSlip("A-L01");
+        marina.ReserveBerth("A-L01");
         var v3 = marina.BuildRenderFrame().SceneVersion;
 
         Assert.Equal(v1, v2);
@@ -199,13 +199,13 @@ public class MarinaVisualizerTests
     }
 
     [Fact]
-    public void Presets_IncludeOverviewAndOnePerDock()
+    public void Presets_IncludeOverviewAndOnePerPier()
     {
         var marina = new MarinaVisualizer();
         marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
 
         Assert.Contains(marina.CameraPresets, p => p.Name == MarinaVisualizer.OverviewPresetName);
-        Assert.Equal(6, marina.CameraPresets.Count(p => p.Name.StartsWith("Dock: ")));
+        Assert.Equal(6, marina.CameraPresets.Count(p => p.Name.StartsWith("Pier: ")));
         Assert.True(marina.ApplyCameraPreset("top down", immediate: true));
         Assert.True(marina.Camera.Pose.PitchDegrees > 85f);
     }
@@ -216,7 +216,7 @@ public class MarinaVisualizerTests
         var layout = MockMarinaFactory.CreateSampleMarina();
 
         Assert.Empty(layout.Validate());
-        var types = layout.Slips.Where(s => s.Boat is not null).Select(s => s.Boat!.Type).Distinct().ToList();
+        var types = layout.Berths.Where(s => s.Boat is not null).Select(s => s.Boat!.Type).Distinct().ToList();
         Assert.Equal(BoatTypeCatalog.All.Count, types.Count);
     }
 }

@@ -1,4 +1,4 @@
-# Hosting and custom views
+﻿# Hosting and custom views
 
 ## WinForms: `MarinaViewControl`
 
@@ -12,18 +12,18 @@ Namespace `VirtualMarina.WinForms`, project `VirtualMarina.WinForms` (net8.0-win
 | `Animate` | Pause or resume rendering |
 | `RendererDescription` | Backend and GPU after the first frame |
 | `RenderError` | Raised when OpenGL 3.3 can't be initialized or rendering fails. The loop stops. Without a handler the exception is rethrown. |
-| `SlipClicked`, `SlipSelected`, `MultiSlipSelected`, `SelectionChanged`, `SelectionCleared`, `SlipActionInvoked`, `PopupChanged`, `SlipHoverChanged`, `SlipStatusChanged`, `LayoutChanged` | The `Marina` events, forwarded by the control so they appear in the Visual Studio designer (Properties → Events → **Marina**). The sender is the control; the event data is identical. They follow `Marina` when it's swapped. |
+| `BerthClicked`, `BerthSelected`, `MultiBerthSelected`, `SelectionChanged`, `SelectionCleared`, `BerthActionInvoked`, `PopupChanged`, `BerthHoverChanged`, `BerthStatusChanged`, `LayoutChanged` | The `Marina` events, forwarded by the control so they appear in the Visual Studio designer (Properties → Events → **Marina**). The sender is the control; the event data is identical. They follow `Marina` when it's swapped. |
 
 The control:
 - **Rendering:** hosts an OpenGL 3.3 core surface with 4× MSAA.
 - **Input:** forwards mouse (including Ctrl, Shift and Alt) and keys (arrows, WASD, PageUp/PageDown, +/−, Home, Esc) to `Marina.Input`.
-- **Popup:** draws the tooltip/actions popup as a custom-painted child control. It is shaped as a rounded card with a caret, repositioned every frame and hidden while the slip is off-screen.
+- **Popup:** draws the tooltip/actions popup as a custom-painted child control. It is shaped as a rounded card with a caret, repositioned every frame and hidden while the berth is off-screen.
 
 ```csharp
 var view = new MarinaViewControl { Dock = DockStyle.Fill };
 form.Controls.Add(view);
 view.RenderError += (_, e) => log.Error(e.Exception);
-view.SlipSelected += (_, e) => e.Actions.Add("checkin", "Check in");     // same as view.Marina.SlipSelected
+view.BerthSelected += (_, e) => e.Actions.Add("checkin", "Check in");     // same as view.Marina.BerthSelected
 view.Marina.InitializeLayout(layout);
 ```
 
@@ -81,17 +81,23 @@ marina.PopupChanged += (_, e) => popupView.Show(e.Current);   // null = hide
 
 // every frame, after rendering
 if (marina.ActivePopup is { } popup && marina.TryGetPopupAnchor(out Vector2 anchor))
-    popupView.PlaceAbove(anchor);        // anchor = point above the primary slip, in view pixels
+    popupView.PlaceAbove(anchor);        // anchor = point above the primary berth, in view pixels
 else
     popupView.Hide();
 ```
 
-Render from `SlipPopup`:
+Render from `BerthPopup`:
 - `Kind` (`Tooltip` / `Actions`)
 - `Tooltip.Title`, `Subtitle`, `AccentColor`, `Lines`, `Footer`, `IsVisible`
 - `Actions` (visible only): `Caption`, `Icon`, `Enabled`, `Style`, `BeginGroup`, `ShortcutText`, `Description`
 
-When the user clicks an action, call `marina.InvokeSlipAction(action.ActionId)`. A close button should call `marina.ClosePopup()`.
+When the user clicks an action, call `marina.InvokeBerthAction(action.ActionId)`. A close button should call `marina.ClosePopup()`.
+
+## Designer panels
+
+`MarinaDesignerPanel` (WinForms control, and a Blazor component of the same name) is a ready-made tool panel for `marina.Designer`: design mode, tools, undo, land / pier / berth settings and the reference image. See [Designer](12-designer.md).
+
+A custom view needs nothing extra for the designer: forward input to `MarinaInputController` as usual (including `MarinaKey.Enter`, `Backspace` and `Delete`). It only has to draw `RenderFrame.ReferenceImage` if it wants the reference image.
 
 ## Rendering backends: `ISceneRenderer`
 
@@ -107,11 +113,12 @@ public interface ISceneRenderer : IDisposable
 
 Backend responsibilities:
 
-1. **Meshes:** upload every mesh in `frame.Meshes` by id, and re-upload when `frame.MeshLibraryVersion` changes. Vertex layout: 9 floats (position, normal, color); indices are `uint` triangles. The mesh with `IsWater` is drawn by the water pass.
+1. **Meshes:** upload every mesh in `frame.Meshes` by id. When `frame.MeshLibraryVersion` changes, upload meshes that are new or replaced (a different `MeshData` instance under the same id) and free those no longer in the library. Vertex layout: 9 floats (position, normal, color); indices are `uint` triangles. The mesh with `IsWater` is drawn by the water pass.
 2. **Opaque pass:** draw objects with `IsTransparent == false` using the model shader, with depth test and writes on.
 3. **Water pass:** draw the water grid with the water shader.
-4. **Transparent pass:** draw objects with `IsTransparent == true`, blending on (`SRC_ALPHA, ONE_MINUS_SRC_ALPHA`) and depth writes off.
-5. **Uniforms:**
+4. **Reference image** (when `frame.ReferenceImage` is set): upload a texture once per `Image.Key` and draw `ShaderSources.ImageQuadCorners` with the image shaders (`uView`, `uProjection`, `uImageMin`, `uImageMax`, `uImageHeight`, `uOpacity`, `uImage` on unit 0). Blending is on and depth writes off; the depth test is off when `AboveScene` is true.
+5. **Transparent pass:** draw objects with `IsTransparent == true`, blending on (`SRC_ALPHA, ONE_MINUS_SRC_ALPHA`) and depth writes off. This includes the designer's drawing previews.
+6. **Uniforms:**
    - Per frame: `uView`, `uProjection`, `uCameraPos`, `uTime`, `uSunDirection`, `uSunColor`, `uAmbientColor`, `uSpecularStrength`, `uShininess`, `uSkyColor`, `uFogColor`, `uFogDensity`, `uWaveAmplitude`, `uWaveFrequency`, `uWaveSpeed`; for water also `uWaterDeep` and `uWaterShallow`.
    - Per object: `uModel`, `uTint`, `uEmissive`, `uDesaturation`, `uAnimation` (int flags), `uPhase`.
 
@@ -122,8 +129,8 @@ Existing backends: `OpenGlSceneRenderer` (OpenTK; the host makes the context cur
 ## Hit testing
 
 ```csharp
-SlipHit? hit = marina.HitTest(x, y);       // nearest slip pad or boat under a pixel
-if (hit is { } h) Console.WriteLine($"{h.SlipId} at {h.WorldPoint} (boat: {h.HitBoat}, {h.Distance:0.0} m)");
+BerthHit? hit = marina.HitTest(x, y);       // nearest berth pad or boat under a pixel
+if (hit is { } h) Console.WriteLine($"{h.BerthId} at {h.WorldPoint} (boat: {h.HitBoat}, {h.Distance:0.0} m)");
 ```
 
-Hit testing runs on the CPU against slip footprints and the actual triangles of the boat models (hull, cabin, mast, sails), using the same placement code as rendering. A boat's bounding box is only a quick pre-check, so the empty space around a tall boat's mast never blocks clicks or hover on the boat or slip visible behind it. Hidden and filtered-out slips aren't hit. Disabled slips are hit but ignored by input.
+Hit testing runs on the CPU against berth footprints and the actual triangles of the boat models (hull, cabin, mast, sails), using the same placement code as rendering. A boat's bounding box is only a quick pre-check, so the empty space around a tall boat's mast never blocks clicks or hover on the boat or berth visible behind it. Hidden and filtered-out berths aren't hit. Disabled berths are hit but ignored by input.

@@ -13,26 +13,32 @@ public sealed partial class MarinaVisualizer
     // ---- Hover ----------------------------------------------------------------------------------
 
     /// <inheritdoc/>
-    public Slip? HoveredSlip => _hoveredSlipId is null ? null : GetSlip(_hoveredSlipId);
+    public Berth? HoveredBerth => _hoveredBerthId is null ? null : GetBerth(_hoveredBerthId);
 
-    private void SetHoveredSlip(Slip? slip)
+    private void SetHoveredBerth(Berth? berth)
     {
-        if (IdComparer.Equals(_hoveredSlipId, slip?.Id)) return;
-        _hoveredSlipId = slip?.Id;
+        if (IdComparer.Equals(_hoveredBerthId, berth?.Id)) return;
+        _hoveredBerthId = berth?.Id;
         MarkSceneDirty();
-        SlipHoverChanged?.Invoke(this, new SlipHoverEventArgs(slip));
+        BerthHoverChanged?.Invoke(this, new BerthHoverEventArgs(berth));
     }
 
     // ---- Called by MarinaInputController --------------------------------------------------------
 
-    /// <summary>Disabled slips are never hovered.</summary>
+    /// <summary>Disabled berths are never hovered, and nothing is while the designer is active.</summary>
     internal void HandlePointerHover(float x, float y)
     {
+        if (Designer.IsActive)
+        {
+            SetHoveredBerth(null);
+            return;
+        }
+
         var hit = HitTest(x, y);
-        SetHoveredSlip(hit is { } h && GetSlip(h.SlipId) is { IsInteractive: true } slip ? slip : null);
+        SetHoveredBerth(hit is { } h && GetBerth(h.BerthId) is { IsInteractive: true } berth ? berth : null);
     }
 
-    internal void HandlePointerLeave() => SetHoveredSlip(null);
+    internal void HandlePointerLeave() => SetHoveredBerth(null);
 
     // ---- Camera -----------------------------------------------------------------------------
 
@@ -70,53 +76,53 @@ public sealed partial class MarinaVisualizer
     public bool RemoveCameraPreset(string presetName) =>
         _presets.RemoveAll(p => !p.IsBuiltIn && string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase)) > 0;
 
-    // ---- Focus on slips ------------------------------------------------------------------------
+    // ---- Focus on berths ------------------------------------------------------------------------
 
     /// <summary>
-    /// Angle used when a focus call doesn't pass one (including double-click and <c>SelectSlip(id, focusCamera: true)</c>).
+    /// Angle used when a focus call doesn't pass one (including double-click and <c>SelectBerth(id, focusCamera: true)</c>).
     /// Null (default) keeps the current yaw and looks down at least 35°.
     /// </summary>
     public CameraAngle? DefaultFocusAngle { get; set; }
 
-    /// <summary>Fraction of the view kept free around focused slips on each side (0–0.45, default 0.12).</summary>
+    /// <summary>Fraction of the view kept free around focused berths on each side (0–0.45, default 0.12).</summary>
     public float FocusMargin
     {
         get => _focusMargin;
         set => _focusMargin = Math.Clamp(float.IsFinite(value) ? value : 0.12f, 0f, 0.45f);
     }
 
-    /// <summary>Closest the camera gets when focusing (so a single slip still shows some context). Default 25 m.</summary>
+    /// <summary>Closest the camera gets when focusing (so a single berth still shows some context). Default 25 m.</summary>
     public float MinFocusDistance { get; set; } = 25f;
 
     private float _focusMargin = 0.12f;
 
-    /// <summary>Centers the camera on a slip at <see cref="DefaultFocusAngle"/>, zoomed to show it whole.</summary>
-    public bool FocusSlip(string slipId, bool immediate = false) => FocusSlips(new[] { slipId }, null, immediate);
+    /// <summary>Centers the camera on a berth at <see cref="DefaultFocusAngle"/>, zoomed to show it whole.</summary>
+    public bool FocusBerth(string berthId, bool immediate = false) => FocusBerths(new[] { berthId }, null, immediate);
 
-    /// <summary>Centers the camera on a slip, seen from <paramref name="angle"/>, zoomed to show it whole.</summary>
-    public bool FocusSlip(string slipId, CameraAngle angle, bool immediate = false) => FocusSlips(new[] { slipId }, angle, immediate);
+    /// <summary>Centers the camera on a berth, seen from <paramref name="angle"/>, zoomed to show it whole.</summary>
+    public bool FocusBerth(string berthId, CameraAngle angle, bool immediate = false) => FocusBerths(new[] { berthId }, angle, immediate);
 
     /// <summary>
-    /// Moves the camera so every listed slip (and its boat) is in view: the target is the middle of the slips and the
+    /// Moves the camera so every listed berth (and its boat) is in view: the target is the middle of the berths and the
     /// distance is the closest that fits them, with <see cref="FocusMargin"/> around them.
     /// </summary>
-    /// <param name="slipIds">Slips to show; unknown ids are ignored. Hidden, disabled and filtered-out slips are included.</param>
+    /// <param name="berthIds">Berths to show; unknown ids are ignored. Hidden, disabled and filtered-out berths are included.</param>
     /// <param name="angle">Viewing angle, e.g. <see cref="CameraAngle.TopDown"/>. Null uses <see cref="DefaultFocusAngle"/>.</param>
     /// <param name="immediate">Jump instead of animating.</param>
     /// <returns>False when none of the ids exist.</returns>
-    public bool FocusSlips(IEnumerable<string> slipIds, CameraAngle? angle = null, bool immediate = false)
+    public bool FocusBerths(IEnumerable<string> berthIds, CameraAngle? angle = null, bool immediate = false)
     {
-        ArgumentNullException.ThrowIfNull(slipIds);
-        var slips = slipIds.Where(id => id is not null).Select(GetSlip).OfType<Slip>().DistinctBy(s => s.Id, IdComparer).ToList();
-        if (slips.Count == 0) return false;
+        ArgumentNullException.ThrowIfNull(berthIds);
+        var berths = berthIds.Where(id => id is not null).Select(GetBerth).OfType<Berth>().DistinctBy(s => s.Id, IdComparer).ToList();
+        if (berths.Count == 0) return false;
 
-        Camera.SetPose(ComputeFocusPose(slips, angle), immediate);
-        _lastFocus = new FocusRequest(slips.Select(s => s.Id).ToArray(), angle, Camera.DesiredPose);
+        Camera.SetPose(ComputeFocusPose(berths, angle), immediate);
+        _lastFocus = new FocusRequest(berths.Select(s => s.Id).ToArray(), angle, Camera.DesiredPose);
         return true;
     }
 
     /// <summary>The last focus, so it can be re-fitted when the view is resized (e.g. focus called before the view got its size).</summary>
-    private sealed record FocusRequest(string[] SlipIds, CameraAngle? Angle, CameraPose Pose);
+    private sealed record FocusRequest(string[] BerthIds, CameraAngle? Angle, CameraPose Pose);
 
     private FocusRequest? _lastFocus;
 
@@ -129,33 +135,33 @@ public sealed partial class MarinaVisualizer
             return;
         }
 
-        var slips = focus.SlipIds.Select(GetSlip).OfType<Slip>().ToList();
-        if (slips.Count == 0)
+        var berths = focus.BerthIds.Select(GetBerth).OfType<Berth>().ToList();
+        if (berths.Count == 0)
         {
             _lastFocus = null;
             return;
         }
 
         var arrived = Camera.Pose == Camera.DesiredPose;
-        Camera.SetPose(ComputeFocusPose(slips, focus.Angle), immediate: arrived);
+        Camera.SetPose(ComputeFocusPose(berths, focus.Angle), immediate: arrived);
         _lastFocus = focus with { Pose = Camera.DesiredPose };
     }
 
     /// <summary>Focuses on the current selection. Returns false when nothing is selected.</summary>
     public bool FocusSelection(CameraAngle? angle = null, bool immediate = false) =>
-        _selection.Count > 0 && FocusSlips(_selection, angle, immediate);
+        _selection.Count > 0 && FocusBerths(_selection, angle, immediate);
 
-    /// <summary>The pose <see cref="FocusSlips"/> would move to, without moving the camera.</summary>
-    public CameraPose ComputeFocusPose(IReadOnlyCollection<Slip> slips, CameraAngle? angle = null)
+    /// <summary>The pose <see cref="FocusBerths"/> would move to, without moving the camera.</summary>
+    public CameraPose ComputeFocusPose(IReadOnlyCollection<Berth> berths, CameraAngle? angle = null)
     {
-        ArgumentNullException.ThrowIfNull(slips);
-        if (slips.Count == 0) throw new ArgumentException("At least one slip is required.", nameof(slips));
+        ArgumentNullException.ThrowIfNull(berths);
+        if (berths.Count == 0) throw new ArgumentException("At least one berth is required.", nameof(berths));
 
         var resolved = angle ?? DefaultFocusAngle ?? new CameraAngle(Camera.DesiredPose.YawDegrees, MathF.Max(Camera.DesiredPose.PitchDegrees, 35f));
-        var points = FocusPoints(slips);
+        var points = FocusPoints(berths);
 
-        var (planMin, planMax) = MarinaLayout.ComputeBounds(slips.Select(s => s.Bounds));
-        var target = MarinaMath.ToWorld((planMin + planMax) * 0.5f, slips.Average(s => GroundHeight(s) ?? 0f));
+        var (planMin, planMax) = MarinaLayout.ComputeBounds(berths.Select(s => s.Bounds));
+        var target = MarinaMath.ToWorld((planMin + planMax) * 0.5f, berths.Average(s => GroundHeight(s) ?? 0f));
         var extent = MathF.Max(planMax.X - planMin.X, planMax.Y - planMin.Y);
         var limit = 1f - 2f * _focusMargin; // usable NDC half-extent
         var pose = Camera.Constrain(new CameraPose(target, resolved.YawDegrees, resolved.PitchDegrees, MathF.Max(MinFocusDistance, FitDistance(extent))));
@@ -213,15 +219,15 @@ public sealed partial class MarinaVisualizer
         return pose;
     }
 
-    /// <summary>Slip corners on the water (or land) and at the height of their boats (so masts stay in view from oblique angles).</summary>
-    private List<Vector3> FocusPoints(IEnumerable<Slip> slips)
+    /// <summary>Berth corners on the water (or land) and at the height of their boats (so masts stay in view from oblique angles).</summary>
+    private List<Vector3> FocusPoints(IEnumerable<Berth> berths)
     {
         var points = new List<Vector3>();
-        foreach (var slip in slips)
+        foreach (var berth in berths)
         {
-            var ground = GroundHeight(slip);
-            var top = slip.Boat is { } boat && slip.Status.CanHaveBoat() ? Picking.SlipPlacement.BoatTopHeight(boat, Meshes, ground) : (ground ?? 0f) + 1f;
-            foreach (var corner in slip.Bounds.GetCorners())
+            var ground = GroundHeight(berth);
+            var top = berth.Boat is { } boat && berth.Status.CanHaveBoat() ? Picking.BerthPlacement.BoatTopHeight(boat, Meshes, ground) : (ground ?? 0f) + 1f;
+            foreach (var corner in berth.Bounds.GetCorners())
             {
                 points.Add(MarinaMath.ToWorld(corner, ground ?? 0f));
                 points.Add(MarinaMath.ToWorld(corner, top));
@@ -260,31 +266,34 @@ public sealed partial class MarinaVisualizer
     }
 
     /// <inheritdoc/>
-    public bool FocusDock(string dockId, bool immediate = false)
+    public bool FocusPier(string pierId, bool immediate = false)
     {
-        var dock = GetDock(dockId);
-        if (dock is null) return false;
-        Camera.SetPose(CreateDockPose(dock), immediate);
+        var pier = GetPier(pierId);
+        if (pier is null) return false;
+        Camera.SetPose(CreatePierPose(pier), immediate);
         return true;
     }
 
-    private CameraPose CreateDockPose(Dock dock)
+    private CameraPose CreatePierPose(Pier pier)
     {
-        var slips = OrderedSlips().Where(s => IdComparer.Equals(s.DockId, dock.Id)).Select(s => s.Bounds).Append(dock.Bounds);
-        var (min, max) = MarinaLayout.ComputeBounds(slips);
+        var berths = OrderedBerths().Where(s => IdComparer.Equals(s.PierId, pier.Id)).Select(s => s.Bounds).Append(pier.Bounds);
+        var (min, max) = MarinaLayout.ComputeBounds(berths);
         var center = (min + max) * 0.5f;
         var extent = MathF.Max(max.X - min.X, max.Y - min.Y);
-        return new CameraPose(MarinaMath.ToWorld(center), dock.HeadingDegrees + 215f, 40f, MathF.Max(45f, FitDistance(extent) * 0.62f));
+        return new CameraPose(MarinaMath.ToWorld(center), pier.HeadingDegrees + 215f, 40f, MathF.Max(45f, FitDistance(extent) * 0.62f));
     }
 
     private float FitDistance(float extent) =>
         MathF.Max(40f, extent * 0.5f / MathF.Tan(Camera.FieldOfViewDegrees * MarinaMath.DegToRad * 0.5f) * 1.15f);
 
-    /// <summary>Regenerates the automatic presets and camera bounds from the current layout.</summary>
+    /// <summary>Widens the camera limits to the layout and the designer's reference image (called when the image moves or scales).</summary>
+    internal void RefreshCameraBounds() => RebuildBuiltInPresets();
+
+    /// <summary>Regenerates the automatic presets and camera bounds from the current layout (and the reference image, for the bounds).</summary>
     private void RebuildBuiltInPresets()
     {
-        var rects = OrderedDocks().Select(d => d.Bounds)
-            .Concat(OrderedSlips().Select(s => s.Bounds))
+        var rects = OrderedPiers().Select(d => d.Bounds)
+            .Concat(OrderedBerths().Select(s => s.Bounds))
             .Concat(OrderedDividers().Select(d => d.Bounds));
         var (min, max) = MarinaLayout.ComputeBounds(rects, OrderedLandAreas());
         var center = MarinaMath.ToWorld((min + max) * 0.5f);
@@ -292,9 +301,17 @@ public sealed partial class MarinaVisualizer
         var fit = FitDistance(extent);
 
         const float margin = 120f;
-        Camera.Constraints.TargetBoundsMin = min - new Vector2(margin);
-        Camera.Constraints.TargetBoundsMax = max + new Vector2(margin);
-        Camera.Constraints.MaxDistance = MathF.Max(250f, fit * 2.5f);
+        var (boundsMin, boundsMax) = (min, max);
+        if (Designer?.ReferenceImageBounds is { } image)
+        {
+            boundsMin = Vector2.Min(boundsMin, image.Min);
+            boundsMax = Vector2.Max(boundsMax, image.Max);
+        }
+
+        EnsureWaterCovers(boundsMin, boundsMax);
+        Camera.Constraints.TargetBoundsMin = boundsMin - new Vector2(margin);
+        Camera.Constraints.TargetBoundsMax = boundsMax + new Vector2(margin);
+        Camera.Constraints.MaxDistance = MathF.Max(250f, MathF.Max(fit, FitDistance(MathF.Max(boundsMax.X - boundsMin.X, boundsMax.Y - boundsMin.Y))) * 2.5f);
         Camera.FarPlane = MathF.Max(1500f, Camera.Constraints.MaxDistance * 4f);
 
         var builtIn = new List<CameraPreset>
@@ -307,9 +324,9 @@ public sealed partial class MarinaVisualizer
             new("Low Angle", new CameraPose(center, 225f, 14f, fit * 0.7f), "Close to the water line") { IsBuiltIn = true },
         };
 
-        foreach (var dock in OrderedDocks())
+        foreach (var pier in OrderedPiers())
         {
-            builtIn.Add(new CameraPreset($"Dock: {dock.Name}", CreateDockPose(dock), $"Close-up of {dock.Name}") { IsBuiltIn = true });
+            builtIn.Add(new CameraPreset($"Pier: {pier.Name}", CreatePierPose(pier), $"Close-up of {pier.Name}") { IsBuiltIn = true });
         }
 
         var custom = _presets.Where(p => !p.IsBuiltIn).ToList();

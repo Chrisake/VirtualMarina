@@ -105,26 +105,26 @@ public class MarinaViewControlEventTests
     {
         marina.SetViewportSize(800, 600);
         marina.InitializeLayout(SmallLayout());                                    // LayoutChanged
-        marina.SlipSelected += (_, e) => e.Actions.Add("checkin", "Check in");
+        marina.BerthSelected += (_, e) => e.Actions.Add("checkin", "Check in");
 
-        // Look straight down at a slip so the view center is over it.
-        var slip = marina.GetSlip("A-L01")!;
-        marina.Camera.SetPose(new CameraPose(new Vector3(slip.Center.X, 0, slip.Center.Y), 0f, 89f, 40f), immediate: true);
+        // Look straight down at a berth so the view center is over it.
+        var berth = marina.GetBerth("A-L01")!;
+        marina.Camera.SetPose(new CameraPose(new Vector3(berth.Center.X, 0, berth.Center.Y), 0f, 89f, 40f), immediate: true);
 
-        marina.Input.PointerMove(400, 300);                                        // SlipHoverChanged
+        marina.Input.PointerMove(400, 300);                                        // BerthHoverChanged
         marina.Input.PointerDown(400, 300, PointerButton.Left);
-        marina.Input.PointerUp(400, 300, PointerButton.Left);                      // SelectionChanged, SlipSelected, PopupChanged, SlipClicked
-        marina.AddToSelection("A-L02");                                            // MultiSlipSelected
-        marina.SelectSlip("A-L01");
+        marina.Input.PointerUp(400, 300, PointerButton.Left);                      // SelectionChanged, BerthSelected, PopupChanged, BerthClicked
+        marina.AddToSelection("A-L02");                                            // MultiBerthSelected
+        marina.SelectBerth("A-L01");
         marina.ShowActions();
-        marina.InvokeSlipAction("checkin");                                        // SlipActionInvoked
-        marina.AssignBoat("A-L03", new Boat("B1", "Aurora", BoatType.FishingBoat)); // SlipStatusChanged
+        marina.InvokeBerthAction("checkin");                                        // BerthActionInvoked
+        marina.AssignBoat("A-L03", new Boat("B1", "Aurora", BoatType.FishingBoat)); // BerthStatusChanged
         marina.ClearSelection();                                                   // SelectionCleared
     }
 
     private static MarinaLayout SmallLayout() =>
         new MarinaLayoutBuilder("Test")
-            .AddDock("A", "Dock A", Vector2.Zero, 0f, 40f, dock => dock.AddSlips(DockSide.Left, 3, 5f, 12f))
+            .AddPier("A", "Pier A", Vector2.Zero, 0f, 40f, pier => pier.AddBerths(PierSide.Left, 3, 5f, 12f))
             .Build();
 
     /// <summary>Subscribes to every public event of an object through reflection and records the calls.</summary>

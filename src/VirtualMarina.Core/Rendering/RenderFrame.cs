@@ -1,4 +1,5 @@
 using System.Numerics;
+using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Geometry;
 
 namespace VirtualMarina.Core.Rendering;
@@ -38,7 +39,24 @@ public sealed class RenderFrame
 
     /// <summary><see cref="MeshLibrary.Version"/>; re-upload meshes when it changes.</summary>
     public int MeshLibraryVersion => Meshes.Version;
+
+    /// <summary>
+    /// The designer's reference image, or null when none is shown. Draw it after the water and before the transparent objects
+    /// (so drawing previews stay on top), with the <see cref="ShaderSources.ImageVertex"/> / <see cref="ShaderSources.ImageFragment"/> program.
+    /// </summary>
+    public ReferenceImageLayer? ReferenceImage { get; init; }
 }
+
+/// <summary>A reference image laid flat in the scene, north (the top row) toward −Z.</summary>
+/// <param name="Image">The picture; upload a texture once per <see cref="Design.ReferenceImage.Key"/>.</param>
+/// <param name="Min">Plan-view corner at the image's top-left pixel (north-west): smallest X and Z.</param>
+/// <param name="Max">Plan-view corner at the image's bottom-right pixel (south-east): largest X and Z.</param>
+/// <param name="Height">World Y of the image plane (just above the highest wave).</param>
+/// <param name="Opacity">0 = invisible, 1 = opaque (uniform <c>uOpacity</c>).</param>
+/// <param name="AboveScene">
+/// True: draw without depth testing, over piers, land and boats. False: depth-tested, so land and structures hide it.
+/// </param>
+public sealed record ReferenceImageLayer(ReferenceImage Image, Vector2 Min, Vector2 Max, float Height, float Opacity, bool AboveScene);
 
 /// <summary>Per-object animations evaluated on the GPU (uniform <c>uAnimation</c>), so an animated scene needs no per-frame CPU updates.</summary>
 [Flags]
@@ -70,7 +88,7 @@ public enum RenderAnimation
 /// <param name="Emissive">0..1 highlight blend toward a brightened base color.</param>
 /// <param name="Animation">GPU-side animation flags.</param>
 /// <param name="Phase">Per-object animation phase offset in radians, so objects don't move in lockstep.</param>
-/// <param name="Desaturation">0 = full color, 1 = grayscale (used for disabled slips and their boats).</param>
+/// <param name="Desaturation">0 = full color, 1 = grayscale (used for disabled berths and their boats).</param>
 public readonly record struct RenderObject(
     int MeshId,
     Matrix4x4 World,

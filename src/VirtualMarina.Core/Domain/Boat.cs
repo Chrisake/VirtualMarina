@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>
-/// A vessel assigned to (or expected at) a slip. Immutable: use <c>with</c> expressions to derive changes.
+/// A vessel assigned to (or expected at) a berth. Immutable: use <c>with</c> expressions to derive changes.
 /// </summary>
 public sealed record Boat
 {
@@ -44,7 +44,7 @@ public sealed record Boat
     /// <summary>Registration number shown in the default tooltip.</summary>
     public string? RegistrationNumber { get; init; }
 
-    /// <summary>For reserved slips: when the boat is expected to arrive. For temporarily free slips: when it returns.</summary>
+    /// <summary>For reserved berths: when the boat is expected to arrive. For temporarily free berths: when it returns.</summary>
     public DateTimeOffset? ExpectedArrival { get; init; }
 
     /// <summary>Free-form ERP attributes carried through to events.</summary>

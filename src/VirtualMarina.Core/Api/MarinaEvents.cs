@@ -1,49 +1,49 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Input;
 
 namespace VirtualMarina.Core.Api;
 
 /// <summary>
-/// Data for <see cref="IMarinaVisualizer.SlipClicked"/> and the base of <see cref="SlipSelectedEventArgs"/>.
-/// Carries an immutable snapshot of the slip at the time of the event.
+/// Data for <see cref="IMarinaVisualizer.BerthClicked"/> and the base of <see cref="BerthSelectedEventArgs"/>.
+/// Carries an immutable snapshot of the berth at the time of the event.
 /// </summary>
-public class SlipEventArgs : EventArgs
+public class BerthEventArgs : EventArgs
 {
     /// <summary>Creates the event data.</summary>
-    /// <param name="slip">Snapshot of the slip.</param>
-    /// <param name="dock">The slip's dock, if it exists.</param>
+    /// <param name="berth">Snapshot of the berth.</param>
+    /// <param name="pier">The berth's pier, if it exists.</param>
     /// <param name="button">Button that triggered the event; <see cref="PointerButton.None"/> for API calls.</param>
     /// <param name="isDoubleClick">True for a double-click.</param>
     /// <param name="worldPoint">World-space point under the pointer, when the event came from a click.</param>
-    public SlipEventArgs(Slip slip, Dock? dock, PointerButton button = PointerButton.None, bool isDoubleClick = false, Vector3? worldPoint = null)
+    public BerthEventArgs(Berth berth, Pier? pier, PointerButton button = PointerButton.None, bool isDoubleClick = false, Vector3? worldPoint = null)
     {
-        Slip = slip;
-        Dock = dock;
+        Berth = berth;
+        Pier = pier;
         Button = button;
         IsDoubleClick = isDoubleClick;
         WorldPoint = worldPoint;
     }
 
-    /// <summary>Snapshot of the slip when the event was raised.</summary>
-    public Slip Slip { get; }
+    /// <summary>Snapshot of the berth when the event was raised.</summary>
+    public Berth Berth { get; }
 
-    /// <summary>The slip's id (<c>Slip.Id</c>).</summary>
-    public string SlipId => Slip.Id;
+    /// <summary>The berth's id (<c>Berth.Id</c>).</summary>
+    public string BerthId => Berth.Id;
 
-    /// <summary>The slip's status (<c>Slip.Status</c>).</summary>
-    public SlipStatus Status => Slip.Status;
+    /// <summary>The berth's status (<c>Berth.Status</c>).</summary>
+    public BerthStatus Status => Berth.Status;
 
-    /// <summary>Boat assigned to the slip (moored, expected or temporarily away), if known.</summary>
-    public Boat? Boat => Slip.Boat;
+    /// <summary>Boat assigned to the berth (moored, expected or temporarily away), if known.</summary>
+    public Boat? Boat => Berth.Boat;
 
-    /// <summary>Host-owned data bag of the slip; values written here persist with the slip (see <see cref="Slip.ExternalData"/>).</summary>
-    public SlipDataBag ExternalData => Slip.ExternalData;
+    /// <summary>Host-owned data bag of the berth; values written here persist with the berth (see <see cref="Berth.ExternalData"/>).</summary>
+    public BerthDataBag ExternalData => Berth.ExternalData;
 
-    /// <summary>The dock the slip belongs to; null for a land slip.</summary>
-    public Dock? Dock { get; }
+    /// <summary>The pier the berth belongs to; null for a land berth.</summary>
+    public Pier? Pier { get; }
 
-    /// <summary>The land area a land slip is on (<see cref="Slip.LandAreaId"/>); null for a water slip.</summary>
+    /// <summary>The land area a land berth is on (<see cref="Berth.LandAreaId"/>); null for a water berth.</summary>
     public LandArea? LandArea { get; init; }
 
     /// <summary>Button that triggered the event; <see cref="PointerButton.None"/> for programmatic selection.</summary>
@@ -56,76 +56,76 @@ public class SlipEventArgs : EventArgs
     public Vector3? WorldPoint { get; }
 }
 
-/// <summary>Why a selection event (<see cref="IMarinaVisualizer.SlipSelected"/> / <see cref="IMarinaVisualizer.MultiSlipSelected"/>) was raised.</summary>
+/// <summary>Why a selection event (<see cref="IMarinaVisualizer.BerthSelected"/> / <see cref="IMarinaVisualizer.MultiBerthSelected"/>) was raised.</summary>
 public enum SelectionReason
 {
-    /// <summary>The user clicked a slip (left or right button, possibly with Ctrl).</summary>
+    /// <summary>The user clicked a berth (left or right button, possibly with Ctrl).</summary>
     Pointer,
 
     /// <summary>Host code called a selection or popup method (e.g. <c>SetSelection</c>, <c>ShowActions</c>).</summary>
     Api,
 
     /// <summary>
-    /// The selection did not change, but a selected slip's data did (or <see cref="IMarinaVisualizer.RefreshPopup"/>
+    /// The selection did not change, but a selected berth's data did (or <see cref="IMarinaVisualizer.RefreshPopup"/>
     /// was called) while the popup was open, so the tooltip and actions are being rebuilt.
     /// </summary>
     Refresh,
 }
 
 /// <summary>
-/// Data for <see cref="IMarinaVisualizer.SlipSelected"/>: a single slip was selected (or re-clicked, or its popup content
+/// Data for <see cref="IMarinaVisualizer.BerthSelected"/>: a single berth was selected (or re-clicked, or its popup content
 /// needs refreshing). Fill <see cref="Tooltip"/> and <see cref="Actions"/> to control the popup: a left click shows the
 /// tooltip, a right click (<see cref="OpensActions"/>) shows the actions window.
 /// </summary>
 /// <example>
 /// <code>
-/// marina.SlipSelected += (s, e) =>
+/// marina.BerthSelected += (s, e) =>
 /// {
-///     e.Tooltip.AddLine("Contract", erp.ContractNumber(e.SlipId));
-///     e.Actions.Add("checkin", "Check in", enabled: e.Status == SlipStatus.Free, icon: "⚓").Style = SlipActionStyle.Primary;
-///     e.Actions.Add("release", "Release", enabled: e.Boat is not null).Style = SlipActionStyle.Danger;
+///     e.Tooltip.AddLine("Contract", erp.ContractNumber(e.BerthId));
+///     e.Actions.Add("checkin", "Check in", enabled: e.Status == BerthStatus.Free, icon: "⚓").Style = BerthActionStyle.Primary;
+///     e.Actions.Add("release", "Release", enabled: e.Boat is not null).Style = BerthActionStyle.Danger;
 /// };
 /// </code>
 /// </example>
-public sealed class SlipSelectedEventArgs : SlipEventArgs
+public sealed class BerthSelectedEventArgs : BerthEventArgs
 {
     /// <summary>Creates the event data (raised by the visualizer; hosts normally don't construct it).</summary>
-    /// <param name="slip">Snapshot of the selected slip.</param>
-    /// <param name="dock">The slip's dock.</param>
-    /// <param name="berth">The multi-slip berth the slip belongs to, if any.</param>
+    /// <param name="berth">Snapshot of the selected berth.</param>
+    /// <param name="pier">The berth's pier.</param>
+    /// <param name="multiBerth">The multi-berth the berth belongs to, if any.</param>
     /// <param name="tooltip">Pre-filled tooltip content.</param>
     /// <param name="actions">Actions collection for the handler to fill.</param>
     /// <param name="reason">Why the event was raised.</param>
-    /// <param name="isNewSelection">False when the slip was already the selection.</param>
+    /// <param name="isNewSelection">False when the berth was already the selection.</param>
     /// <param name="button">Button that triggered the event.</param>
     /// <param name="isDoubleClick">True for a double-click.</param>
     /// <param name="worldPoint">World-space point under the pointer.</param>
-    public SlipSelectedEventArgs(
-        Slip slip, Dock? dock, MultiSlipBerth? berth, SlipTooltip tooltip, SlipActionCollection actions,
+    public BerthSelectedEventArgs(
+        Berth berth, Pier? pier, MultiBerth? multiBerth, BerthTooltip tooltip, BerthActionCollection actions,
         SelectionReason reason, bool isNewSelection,
         PointerButton button = PointerButton.None, bool isDoubleClick = false, Vector3? worldPoint = null)
-        : base(slip, dock, button, isDoubleClick, worldPoint)
+        : base(berth, pier, button, isDoubleClick, worldPoint)
     {
-        Berth = berth;
+        MultiBerth = multiBerth;
         Tooltip = tooltip;
         Actions = actions;
         Reason = reason;
         IsNewSelection = isNewSelection;
     }
 
-    /// <summary>The multi-slip berth the slip belongs to, if any.</summary>
-    public MultiSlipBerth? Berth { get; }
+    /// <summary>The multi-berth the berth belongs to, if any.</summary>
+    public MultiBerth? MultiBerth { get; }
 
-    /// <summary>Pre-filled with slip, dock, status and boat details (<see cref="DefaultPopupContent.ForSlip"/>). Edit freely.</summary>
-    public SlipTooltip Tooltip { get; }
+    /// <summary>Pre-filled with berth, pier, status and boat details (<see cref="DefaultPopupContent.ForBerth"/>). Edit freely.</summary>
+    public BerthTooltip Tooltip { get; }
 
-    /// <summary>Empty by default. Add the actions available for this slip; they are shown on right-click.</summary>
-    public SlipActionCollection Actions { get; }
+    /// <summary>Empty by default. Add the actions available for this berth; they are shown on right-click.</summary>
+    public BerthActionCollection Actions { get; }
 
     /// <summary>Why the event was raised: a click, an API call, or a content refresh.</summary>
     public SelectionReason Reason { get; }
 
-    /// <summary>False when the slip was already the selection (re-click or refresh).</summary>
+    /// <summary>False when the berth was already the selection (re-click or refresh).</summary>
     public bool IsNewSelection { get; }
 
     /// <summary>True when the actions window will open (right-click), false for the tooltip.</summary>
@@ -133,23 +133,23 @@ public sealed class SlipSelectedEventArgs : SlipEventArgs
 }
 
 /// <summary>
-/// Data for <see cref="IMarinaVisualizer.MultiSlipSelected"/>: two or more slips are selected.
+/// Data for <see cref="IMarinaVisualizer.MultiBerthSelected"/>: two or more berths are selected.
 /// Fill <see cref="Tooltip"/> and <see cref="Actions"/> for the whole selection.
 /// </summary>
-public sealed class MultiSlipSelectedEventArgs : EventArgs
+public sealed class MultiBerthSelectedEventArgs : EventArgs
 {
     /// <summary>Creates the event data (raised by the visualizer; hosts normally don't construct it).</summary>
-    /// <param name="slips">Selected slips in selection order.</param>
+    /// <param name="berths">Selected berths in selection order.</param>
     /// <param name="tooltip">Pre-filled tooltip content.</param>
     /// <param name="actions">Actions collection for the handler to fill.</param>
     /// <param name="reason">Why the event was raised.</param>
-    /// <param name="isNewSelection">False when the set of selected slips did not change.</param>
+    /// <param name="isNewSelection">False when the set of selected berths did not change.</param>
     /// <param name="button">Button that triggered the event.</param>
-    public MultiSlipSelectedEventArgs(
-        IReadOnlyList<Slip> slips, SlipTooltip tooltip, SlipActionCollection actions,
+    public MultiBerthSelectedEventArgs(
+        IReadOnlyList<Berth> berths, BerthTooltip tooltip, BerthActionCollection actions,
         SelectionReason reason, bool isNewSelection, PointerButton button = PointerButton.None)
     {
-        Slips = slips;
+        Berths = berths;
         Tooltip = tooltip;
         Actions = actions;
         Reason = reason;
@@ -157,28 +157,28 @@ public sealed class MultiSlipSelectedEventArgs : EventArgs
         Button = button;
     }
 
-    /// <summary>Selected slips in selection order. The last one is <see cref="PrimarySlip"/>.</summary>
-    public IReadOnlyList<Slip> Slips { get; }
+    /// <summary>Selected berths in selection order. The last one is <see cref="PrimaryBerth"/>.</summary>
+    public IReadOnlyList<Berth> Berths { get; }
 
-    /// <summary>The most recently clicked slip; the popup is drawn above it.</summary>
-    public Slip PrimarySlip => Slips[^1];
+    /// <summary>The most recently clicked berth; the popup is drawn above it.</summary>
+    public Berth PrimaryBerth => Berths[^1];
 
-    /// <summary>Ids of <see cref="Slips"/>, in selection order.</summary>
-    public IReadOnlyList<string> SlipIds => Slips.Select(s => s.Id).ToArray();
+    /// <summary>Ids of <see cref="Berths"/>, in selection order.</summary>
+    public IReadOnlyList<string> BerthIds => Berths.Select(s => s.Id).ToArray();
 
-    /// <summary>Selected slips that are not read-only, i.e. the ones actions may apply to.</summary>
-    public IReadOnlyList<Slip> ActionableSlips => Slips.Where(s => s.AllowsActions).ToArray();
+    /// <summary>Selected berths that are not read-only, i.e. the ones actions may apply to.</summary>
+    public IReadOnlyList<Berth> ActionableBerths => Berths.Where(s => s.AllowsActions).ToArray();
 
-    /// <summary>Pre-filled with a summary of the selection (<see cref="DefaultPopupContent.ForSlips"/>). Edit freely.</summary>
-    public SlipTooltip Tooltip { get; }
+    /// <summary>Pre-filled with a summary of the selection (<see cref="DefaultPopupContent.ForBerths"/>). Edit freely.</summary>
+    public BerthTooltip Tooltip { get; }
 
     /// <summary>Empty by default. Add actions that apply to the whole selection.</summary>
-    public SlipActionCollection Actions { get; }
+    public BerthActionCollection Actions { get; }
 
     /// <summary>Why the event was raised: a click, an API call, or a content refresh.</summary>
     public SelectionReason Reason { get; }
 
-    /// <summary>False when the set of selected slips did not change (re-click or refresh).</summary>
+    /// <summary>False when the set of selected berths did not change (re-click or refresh).</summary>
     public bool IsNewSelection { get; }
 
     /// <summary>Button that triggered the event; <see cref="PointerButton.None"/> for API calls.</summary>
@@ -188,150 +188,150 @@ public sealed class MultiSlipSelectedEventArgs : EventArgs
     public bool OpensActions => Button == PointerButton.Right;
 }
 
-/// <summary>Data for <see cref="IMarinaVisualizer.SlipActionInvoked"/>: the user clicked an action in the actions window.</summary>
+/// <summary>Data for <see cref="IMarinaVisualizer.BerthActionInvoked"/>: the user clicked an action in the actions window.</summary>
 /// <example>
 /// <code>
-/// marina.SlipActionInvoked += (s, e) =>
+/// marina.BerthActionInvoked += (s, e) =>
 /// {
 ///     switch (e.ActionId)
 ///     {
-///         case "checkin": marina.AssignBoat(e.SlipId, erp.NextArrival(e.SlipId)); break;
-///         case "free-all": marina.BatchUpdate(e.ActionableSlips.Select(x => SlipUpdate.Free(x.Id))); break;
+///         case "checkin": marina.AssignBoat(e.BerthId, erp.NextArrival(e.BerthId)); break;
+///         case "free-all": marina.BatchUpdate(e.ActionableBerths.Select(x => BerthUpdate.Free(x.Id))); break;
 ///     }
 /// };
 /// </code>
 /// </example>
-public sealed class SlipActionInvokedEventArgs : EventArgs
+public sealed class BerthActionInvokedEventArgs : EventArgs
 {
     /// <summary>Creates the event data (raised by the visualizer; hosts normally don't construct it).</summary>
     /// <param name="action">The invoked action.</param>
-    /// <param name="slips">The slips the actions window was opened for; the last is the primary slip.</param>
-    public SlipActionInvokedEventArgs(SlipAction action, IReadOnlyList<Slip> slips)
+    /// <param name="berths">The berths the actions window was opened for; the last is the primary berth.</param>
+    public BerthActionInvokedEventArgs(BerthAction action, IReadOnlyList<Berth> berths)
     {
         Action = action;
-        Slips = slips;
+        Berths = berths;
     }
 
-    /// <summary>The <see cref="SlipAction.ActionId"/> of the clicked action.</summary>
+    /// <summary>The <see cref="BerthAction.ActionId"/> of the clicked action.</summary>
     public string ActionId => Action.ActionId;
 
-    /// <summary>The clicked action, including its <see cref="SlipAction.Tag"/>.</summary>
-    public SlipAction Action { get; }
+    /// <summary>The clicked action, including its <see cref="BerthAction.Tag"/>.</summary>
+    public BerthAction Action { get; }
 
-    /// <summary>The slip the actions window was opened on (the primary slip for a multi-selection).</summary>
-    public Slip Slip => Slips[^1];
+    /// <summary>The berth the actions window was opened on (the primary berth for a multi-selection).</summary>
+    public Berth Berth => Berths[^1];
 
-    /// <summary>Id of <see cref="Slip"/>.</summary>
-    public string SlipId => Slip.Id;
+    /// <summary>Id of <see cref="Berth"/>.</summary>
+    public string BerthId => Berth.Id;
 
-    /// <summary>Every slip the actions window was opened for (current snapshots).</summary>
-    public IReadOnlyList<Slip> Slips { get; }
+    /// <summary>Every berth the actions window was opened for (current snapshots).</summary>
+    public IReadOnlyList<Berth> Berths { get; }
 
-    /// <summary>The slips in <see cref="Slips"/> that are not read-only.</summary>
-    public IReadOnlyList<Slip> ActionableSlips => Slips.Where(s => s.AllowsActions).ToArray();
+    /// <summary>The berths in <see cref="Berths"/> that are not read-only.</summary>
+    public IReadOnlyList<Berth> ActionableBerths => Berths.Where(s => s.AllowsActions).ToArray();
 
-    /// <summary>True when the window was opened for two or more slips.</summary>
-    public bool IsMultiSelection => Slips.Count > 1;
+    /// <summary>True when the window was opened for two or more berths.</summary>
+    public bool IsMultiSelection => Berths.Count > 1;
 
-    /// <summary>Set true to keep the actions window open (it closes by default unless <see cref="SlipAction.KeepOpen"/> is set).</summary>
+    /// <summary>Set true to keep the actions window open (it closes by default unless <see cref="BerthAction.KeepOpen"/> is set).</summary>
     public bool KeepPopupOpen { get; set; }
 }
 
 /// <summary>Data for <see cref="IMarinaVisualizer.SelectionChanged"/>.</summary>
 public sealed class SelectionChangedEventArgs : EventArgs
 {
-    /// <summary>Creates the event data for a single-slip selection change.</summary>
-    /// <param name="previous">The previously selected slip, or null.</param>
-    /// <param name="current">The newly selected slip, or null when cleared.</param>
-    public SelectionChangedEventArgs(Slip? previous, Slip? current)
-        : this(previous is null ? Array.Empty<Slip>() : new[] { previous }, current is null ? Array.Empty<Slip>() : new[] { current })
+    /// <summary>Creates the event data for a single-berth selection change.</summary>
+    /// <param name="previous">The previously selected berth, or null.</param>
+    /// <param name="current">The newly selected berth, or null when cleared.</param>
+    public SelectionChangedEventArgs(Berth? previous, Berth? current)
+        : this(previous is null ? Array.Empty<Berth>() : new[] { previous }, current is null ? Array.Empty<Berth>() : new[] { current })
     {
     }
 
     /// <summary>Creates the event data.</summary>
-    /// <param name="previousSlips">The previous selection, in selection order.</param>
-    /// <param name="currentSlips">The new selection, in selection order (empty when cleared).</param>
-    public SelectionChangedEventArgs(IReadOnlyList<Slip> previousSlips, IReadOnlyList<Slip> currentSlips)
+    /// <param name="previousBerths">The previous selection, in selection order.</param>
+    /// <param name="currentBerths">The new selection, in selection order (empty when cleared).</param>
+    public SelectionChangedEventArgs(IReadOnlyList<Berth> previousBerths, IReadOnlyList<Berth> currentBerths)
     {
-        PreviousSlips = previousSlips;
-        CurrentSlips = currentSlips;
+        PreviousBerths = previousBerths;
+        CurrentBerths = currentBerths;
     }
 
-    /// <summary>The previous primary slip.</summary>
-    public Slip? Previous => PreviousSlips.Count > 0 ? PreviousSlips[^1] : null;
+    /// <summary>The previous primary berth.</summary>
+    public Berth? Previous => PreviousBerths.Count > 0 ? PreviousBerths[^1] : null;
 
-    /// <summary>The new primary (most recently clicked) slip, or null when the selection was cleared.</summary>
-    public Slip? Current => CurrentSlips.Count > 0 ? CurrentSlips[^1] : null;
+    /// <summary>The new primary (most recently clicked) berth, or null when the selection was cleared.</summary>
+    public Berth? Current => CurrentBerths.Count > 0 ? CurrentBerths[^1] : null;
 
     /// <summary>The previous selection, in selection order.</summary>
-    public IReadOnlyList<Slip> PreviousSlips { get; }
+    public IReadOnlyList<Berth> PreviousBerths { get; }
 
     /// <summary>The new selection, in selection order (empty when cleared).</summary>
-    public IReadOnlyList<Slip> CurrentSlips { get; }
+    public IReadOnlyList<Berth> CurrentBerths { get; }
 
-    /// <summary>True when two or more slips are now selected.</summary>
-    public bool IsMultiSelection => CurrentSlips.Count > 1;
+    /// <summary>True when two or more berths are now selected.</summary>
+    public bool IsMultiSelection => CurrentBerths.Count > 1;
 }
 
-/// <summary>Data for <see cref="IMarinaVisualizer.SlipHoverChanged"/>.</summary>
-public sealed class SlipHoverEventArgs : EventArgs
+/// <summary>Data for <see cref="IMarinaVisualizer.BerthHoverChanged"/>.</summary>
+public sealed class BerthHoverEventArgs : EventArgs
 {
     /// <summary>Creates the event data.</summary>
-    /// <param name="slip">Slip under the pointer, or null.</param>
-    public SlipHoverEventArgs(Slip? slip)
+    /// <param name="berth">Berth under the pointer, or null.</param>
+    public BerthHoverEventArgs(Berth? berth)
     {
-        Slip = slip;
+        Berth = berth;
     }
 
-    /// <summary>Slip under the pointer, or null when the pointer left all slips.</summary>
-    public Slip? Slip { get; }
+    /// <summary>Berth under the pointer, or null when the pointer left all berths.</summary>
+    public Berth? Berth { get; }
 }
 
 /// <summary>Data for <see cref="IMarinaVisualizer.PopupChanged"/>: the popup above the selection opened, closed, or changed content.</summary>
-public sealed class SlipPopupChangedEventArgs : EventArgs
+public sealed class BerthPopupChangedEventArgs : EventArgs
 {
     /// <summary>Creates the event data.</summary>
     /// <param name="previous">The popup shown before, or null.</param>
     /// <param name="current">The popup shown now, or null when it closed.</param>
-    public SlipPopupChangedEventArgs(SlipPopup? previous, SlipPopup? current)
+    public BerthPopupChangedEventArgs(BerthPopup? previous, BerthPopup? current)
     {
         Previous = previous;
         Current = current;
     }
 
     /// <summary>The popup shown before the change, or null.</summary>
-    public SlipPopup? Previous { get; }
+    public BerthPopup? Previous { get; }
 
     /// <summary>The popup now shown, or null when it closed.</summary>
-    public SlipPopup? Current { get; }
+    public BerthPopup? Current { get; }
 }
 
-/// <summary>Data for <see cref="IMarinaVisualizer.SlipStatusChanged"/>: a slip's status or assigned boat changed.</summary>
-public sealed class SlipStatusChangedEventArgs : EventArgs
+/// <summary>Data for <see cref="IMarinaVisualizer.BerthStatusChanged"/>: a berth's status or assigned boat changed.</summary>
+public sealed class BerthStatusChangedEventArgs : EventArgs
 {
     /// <summary>Creates the event data.</summary>
     /// <param name="previous">Snapshot before the change.</param>
     /// <param name="current">Snapshot after the change.</param>
-    public SlipStatusChangedEventArgs(Slip previous, Slip current)
+    public BerthStatusChangedEventArgs(Berth previous, Berth current)
     {
         Previous = previous;
         Current = current;
     }
 
-    /// <summary>Snapshot of the slip before the change.</summary>
-    public Slip Previous { get; }
+    /// <summary>Snapshot of the berth before the change.</summary>
+    public Berth Previous { get; }
 
-    /// <summary>Snapshot of the slip after the change.</summary>
-    public Slip Current { get; }
+    /// <summary>Snapshot of the berth after the change.</summary>
+    public Berth Current { get; }
 
-    /// <summary>The slip's id.</summary>
-    public string SlipId => Current.Id;
+    /// <summary>The berth's id.</summary>
+    public string BerthId => Current.Id;
 
     /// <summary>Status before the change.</summary>
-    public SlipStatus OldStatus => Previous.Status;
+    public BerthStatus OldStatus => Previous.Status;
 
     /// <summary>Status after the change.</summary>
-    public SlipStatus NewStatus => Current.Status;
+    public BerthStatus NewStatus => Current.Status;
 
     /// <summary>Boat before the change.</summary>
     public Boat? OldBoat => Previous.Boat;
@@ -349,23 +349,26 @@ public enum LayoutChangeKind
     /// <summary><see cref="IMarinaVisualizer.ClearLayout"/> removed everything.</summary>
     Cleared,
 
-    /// <summary>A dock was added (<see cref="LayoutChangedEventArgs.DockId"/>).</summary>
-    DockAdded,
+    /// <summary>A pier was added (<see cref="LayoutChangedEventArgs.PierId"/>).</summary>
+    PierAdded,
 
-    /// <summary>A dock was updated.</summary>
-    DockUpdated,
+    /// <summary>A pier was updated.</summary>
+    PierUpdated,
 
-    /// <summary>A dock was removed.</summary>
-    DockRemoved,
+    /// <summary>A pier was removed.</summary>
+    PierRemoved,
 
-    /// <summary>A slip was added (<see cref="LayoutChangedEventArgs.SlipId"/>).</summary>
-    SlipAdded,
+    /// <summary>A berth was added (<see cref="LayoutChangedEventArgs.BerthId"/>).</summary>
+    BerthAdded,
 
-    /// <summary>A slip was updated (geometry, status, boat, flags, ...).</summary>
-    SlipUpdated,
+    /// <summary>A berth was updated (geometry, status, boat, flags, ...).</summary>
+    BerthUpdated,
 
-    /// <summary>A slip was removed.</summary>
-    SlipRemoved,
+    /// <summary>A berth was removed.</summary>
+    BerthRemoved,
+
+    /// <summary>A berth was given another name (<see cref="LayoutChangedEventArgs.BerthId"/> is the new one).</summary>
+    BerthRenamed,
 
     /// <summary>Several changes made inside <see cref="IMarinaVisualizer.BeginUpdate"/> or a batch, coalesced into one notification.</summary>
     BatchUpdated,
@@ -379,14 +382,23 @@ public enum LayoutChangeKind
     /// <summary>A divider was removed.</summary>
     DividerRemoved,
 
-    /// <summary>A multi-slip berth was created (<see cref="LayoutChangedEventArgs.BerthId"/>).</summary>
-    BerthAdded,
+    /// <summary>A multi-berth was created (<see cref="LayoutChangedEventArgs.MultiBerthId"/>).</summary>
+    MultiBerthAdded,
 
-    /// <summary>A multi-slip berth changed boat, status, style or member slips.</summary>
-    BerthUpdated,
+    /// <summary>A multi-berth changed boat, status, style or member berths.</summary>
+    MultiBerthUpdated,
 
-    /// <summary>A multi-slip berth was released or dissolved.</summary>
-    BerthRemoved,
+    /// <summary>A multi-berth was released or dissolved.</summary>
+    MultiBerthRemoved,
+
+    /// <summary>A land area was added (<see cref="LayoutChangedEventArgs.LandAreaId"/>).</summary>
+    LandAreaAdded,
+
+    /// <summary>A land area was updated (outline, height, kind or name).</summary>
+    LandAreaUpdated,
+
+    /// <summary>A land area was removed.</summary>
+    LandAreaRemoved,
 }
 
 /// <summary>Data for <see cref="IMarinaVisualizer.LayoutChanged"/>. The id properties that apply to <see cref="Kind"/> are set.</summary>
@@ -394,31 +406,36 @@ public sealed class LayoutChangedEventArgs : EventArgs
 {
     /// <summary>Creates the event data.</summary>
     /// <param name="kind">What changed.</param>
-    /// <param name="dockId">Affected dock, if any.</param>
-    /// <param name="slipId">Affected slip, if any.</param>
+    /// <param name="pierId">Affected pier, if any.</param>
+    /// <param name="berthId">Affected berth, if any.</param>
     /// <param name="dividerId">Affected divider, if any.</param>
-    /// <param name="berthId">Affected multi-slip berth, if any.</param>
-    public LayoutChangedEventArgs(LayoutChangeKind kind, string? dockId = null, string? slipId = null, string? dividerId = null, string? berthId = null)
+    /// <param name="multiBerthId">Affected multi-berth, if any.</param>
+    /// <param name="landAreaId">Affected land area, if any.</param>
+    public LayoutChangedEventArgs(LayoutChangeKind kind, string? pierId = null, string? berthId = null, string? dividerId = null, string? multiBerthId = null, string? landAreaId = null)
     {
         Kind = kind;
-        DockId = dockId;
-        SlipId = slipId;
-        DividerId = dividerId;
+        PierId = pierId;
         BerthId = berthId;
+        DividerId = dividerId;
+        MultiBerthId = multiBerthId;
+        LandAreaId = landAreaId;
     }
 
     /// <summary>What changed.</summary>
     public LayoutChangeKind Kind { get; }
 
-    /// <summary>The affected dock (for dock, slip and divider changes), or null.</summary>
-    public string? DockId { get; }
+    /// <summary>The affected pier (for pier, berth and divider changes), or null.</summary>
+    public string? PierId { get; }
 
-    /// <summary>The affected slip, or null.</summary>
-    public string? SlipId { get; }
+    /// <summary>The affected berth, or null.</summary>
+    public string? BerthId { get; }
 
     /// <summary>The affected divider, or null.</summary>
     public string? DividerId { get; }
 
-    /// <summary>The affected multi-slip berth, or null.</summary>
-    public string? BerthId { get; }
+    /// <summary>The affected multi-berth, or null.</summary>
+    public string? MultiBerthId { get; }
+
+    /// <summary>The affected land area (for land area changes and land berth changes), or null.</summary>
+    public string? LandAreaId { get; }
 }

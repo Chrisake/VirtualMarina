@@ -1,10 +1,11 @@
+﻿@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>VirtualMarina – Blazor WebAssembly Test Host</PageTitle>
 
 <div class="shell">
     <div class="viewport">
-        <MarinaView Marina="_marina" OnRendererReady="OnRendererReady" OnRendererError="OnRendererError" />
+        <MarinaView @ref="_view" Marina="_marina" OnRendererReady="OnRendererReady" OnRendererError="OnRendererError" />
     </div>
 
     <div class="statusbar">
@@ -14,23 +15,57 @@
     </div>
 
     <aside class="side">
+        <div class="tabs">
+            <button class="@(_designerTab ? null : "active")" @onclick="() => ShowDesigner(false)">Berth desk</button>
+            <button class="@(_designerTab ? "active" : null)" @onclick="() => ShowDesigner(true)">Designer</button>
+        </div>
+
+        @if (_designerTab)
+        {
+            <fieldset>
+                <legend>Marina</legend>
+                <div class="buttons">
+                    <button @onclick="StartEmptyMarina">New empty marina</button>
+                    <button @onclick="ReloadLayout">Load sample marina</button>
+                    <button @onclick="ToggleExport">@(_export is null ? "Export objects" : "Hide export")</button>
+                    <button @onclick="DownloadDesign">Save design</button>
+                </div>
+                @* A design drawn in the VirtualMarina Designer: layout, look, motion, labels and camera in one file. *@
+                <div class="buttons" style="margin-top:6px">
+                    <InputFile OnChange="LoadDesignAsync" accept=".json,application/json" />
+                </div>
+                @if (_designError is not null)
+                {
+                    <div class="note" style="color:#c62f28">@_designError</div>
+                }
+                @if (_export is not null)
+                {
+                    <pre class="details export">@_export</pre>
+                }
+            </fieldset>
+
+            @* The library's ready-made designer panel: tools, land/pier/berth settings and the reference image. *@
+            <MarinaDesignerPanel Marina="_marina" View="_view" />
+        }
+        else
+        {
         <fieldset>
             <legend>Selection</legend>
             <pre class="details">@SelectionDetails()</pre>
             <div class="buttons">
-                <button class="free" @onclick="() => SetSelectedStatus(SlipStatus.Free)">Free</button>
-                <button class="occupied" @onclick="() => SetSelectedStatus(SlipStatus.Occupied)">Occupied</button>
-                <button class="reserved" @onclick="() => SetSelectedStatus(SlipStatus.Reserved)">Reserved</button>
-                <button class="temporarily-free" @onclick="() => SetSelectedStatus(SlipStatus.TemporarilyFree)">Temp. free</button>
+                <button class="free" @onclick="() => SetSelectedStatus(BerthStatus.Free)">Free</button>
+                <button class="occupied" @onclick="() => SetSelectedStatus(BerthStatus.Occupied)">Occupied</button>
+                <button class="reserved" @onclick="() => SetSelectedStatus(BerthStatus.Reserved)">Reserved</button>
+                <button class="temporarily-free" @onclick="() => SetSelectedStatus(BerthStatus.TemporarilyFree)">Temp. free</button>
                 <button @onclick="() => _marina.ShowActions()">Actions…</button>
                 <button @onclick="FocusSelected">Focus (top down)</button>
-                <button @onclick="SelectWholeDock">Select whole dock / land area</button>
+                <button @onclick="SelectWholePier">Select whole pier / land area</button>
                 <button @onclick="() => _marina.ClearSelection()">Clear</button>
             </div>
             <div class="buttons">
-                <button @onclick="() => _marina.SetSlipFlags(SelectedIds(), readOnly: true)">Read-only</button>
-                <button @onclick="() => _marina.SetSlipFlags(SelectedIds(), disabled: true)">Disable</button>
-                <button @onclick="() => _marina.SetSlipFlags(SelectedIds(), visible: false)">Hide</button>
+                <button @onclick="() => _marina.SetBerthFlags(SelectedIds(), readOnly: true)">Read-only</button>
+                <button @onclick="() => _marina.SetBerthFlags(SelectedIds(), disabled: true)">Disable</button>
+                <button @onclick="() => _marina.SetBerthFlags(SelectedIds(), visible: false)">Hide</button>
                 <button @onclick="() => _erp.ResetAllFlags()">Reset all flags</button>
             </div>
         </fieldset>
@@ -45,9 +80,9 @@
         </fieldset>
 
         <fieldset>
-            <legend>Slip labels on the water</legend>
-            <select value="@_marina.SlipLabelMode" @onchange="ApplyLabelMode">
-                @foreach (var mode in Enum.GetValues<SlipLabelMode>())
+            <legend>Berth labels on the water</legend>
+            <select value="@_marina.BerthLabelMode" @onchange="ApplyLabelMode">
+                @foreach (var mode in Enum.GetValues<BerthLabelMode>())
                 {
                     <option value="@mode">@mode.GetDisplayName()</option>
                 }
@@ -68,7 +103,7 @@
         <fieldset>
             <legend>Space management</legend>
             <div class="buttons">
-                <button @onclick="AddGuestSlip">Add guest slip (D)</button>
+                <button @onclick="AddGuestBerth">Add guest berth (D)</button>
                 <button @onclick="RemoveSelected">Remove selected</button>
                 <button @onclick="RunBatch">Batch: 15 random</button>
                 <button @onclick="() => _erp.MoorYachtAlongside(SelectedIds())">Moor yacht alongside selection</button>
@@ -78,9 +113,11 @@
             </div>
         </fieldset>
 
+        }
+
         <fieldset class="stats">
             <legend>Statistics</legend>
-            <span>@_stats.TotalSlips slips</span>
+            <span>@_stats.TotalBerths berths</span>
             <span style="color:var(--free)">Free @_stats.Free</span>
             <span style="color:var(--occupied)">Occupied @_stats.Occupied</span>
             <span style="color:var(--reserved)">Reserved @_stats.Reserved</span>
@@ -106,6 +143,10 @@
     private readonly Random _rng = new(7);
     private readonly LinkedList<string> _log = new();
     private SampleErpIntegration _erp = default!;
+    private MarinaView? _view;
+    private bool _designerTab;
+    private string? _designError;
+    private string? _export;
     private MarinaStatistics _stats = new(0, 0, 0, 0);
     private string _rendererInfo = "Starting WebGL…";
     private string _hoverText = string.Empty;
@@ -117,15 +158,25 @@
 
     protected override void OnInitialized()
     {
-        _marina.SlipClicked += OnSlipClicked;
+        _marina.BerthClicked += OnBerthClicked;
         _marina.SelectionChanged += OnSelectionChanged;
         _marina.SelectionCleared += OnSelectionCleared;
-        _marina.SlipHoverChanged += OnSlipHoverChanged;
-        _marina.SlipStatusChanged += OnSlipStatusChanged;
+        _marina.BerthHoverChanged += OnBerthHoverChanged;
+        _marina.BerthStatusChanged += OnBerthStatusChanged;
         _marina.LayoutChanged += OnLayoutChanged;
 
-        // Fills tooltips and actions, runs actions, and stores ERP objects in Slip.ExternalData.
+        // Fills tooltips and actions, runs actions, and stores ERP objects in Berth.ExternalData.
         _erp = new SampleErpIntegration(_marina, _rng, Log);
+
+        // Everything the designer does is reported to the host.
+        var designer = _marina.Designer;
+        designer.ActiveChanged += OnDesignerActiveChanged;
+        designer.ToolChanged += OnDesignToolChanged;
+        designer.DraftChanged += OnDraftChanged;
+        designer.ElementCreated += OnElementCreated;
+        designer.ElementErased += OnElementErased;
+        designer.ScaleLineDrawn += OnScaleLineDrawn;
+        designer.ReferenceImageChanged += OnReferenceImageChanged;
 
         _marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
     }
@@ -133,36 +184,154 @@
     public void Dispose()
     {
         _erp.Dispose();
-        _marina.SlipClicked -= OnSlipClicked;
+        _marina.BerthClicked -= OnBerthClicked;
         _marina.SelectionChanged -= OnSelectionChanged;
         _marina.SelectionCleared -= OnSelectionCleared;
-        _marina.SlipHoverChanged -= OnSlipHoverChanged;
-        _marina.SlipStatusChanged -= OnSlipStatusChanged;
+        _marina.BerthHoverChanged -= OnBerthHoverChanged;
+        _marina.BerthStatusChanged -= OnBerthStatusChanged;
         _marina.LayoutChanged -= OnLayoutChanged;
+        var designer = _marina.Designer;
+        designer.ActiveChanged -= OnDesignerActiveChanged;
+        designer.ToolChanged -= OnDesignToolChanged;
+        designer.DraftChanged -= OnDraftChanged;
+        designer.ElementCreated -= OnElementCreated;
+        designer.ElementErased -= OnElementErased;
+        designer.ScaleLineDrawn -= OnScaleLineDrawn;
+        designer.ReferenceImageChanged -= OnReferenceImageChanged;
     }
+
+    // ---- Designer ------------------------------------------------------------------------------
+
+    /// <summary>Loads a .marina.json design: one file brings the layout, the look and motion, the labels and the camera.</summary>
+    private async Task LoadDesignAsync(InputFileChangeEventArgs e)
+    {
+        _designError = null;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(32 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            var document = MarinaDocument.Parse(await reader.ReadToEndAsync());
+            document.ApplyTo(_marina);
+            Log($"Loaded design   {e.File.Name}: {document.Layout.Berths.Count} berths, format {document.Version}");
+        }
+        catch (Exception ex) when (ex is MarinaFormatException or MarinaLayoutException or IOException)
+        {
+            _designError = ex.Message;
+        }
+    }
+
+    /// <summary>Offers the marina on screen as a .marina.json file the designer (or another host) can open.</summary>
+    private async Task DownloadDesign()
+    {
+        var json = MarinaDocument.FromVisualizer(_marina, "VirtualMarina Blazor test host").ToJson();
+        await JS.InvokeVoidAsync("vmDownloadText", Sanitize(_marina.MarinaName) + MarinaDocument.FileExtension, json);
+        Log($"Saved design    {_marina.GetBerths().Count} berths");
+    }
+
+    private static string Sanitize(string name) =>
+        new string(name.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '-').ToArray()).Trim('-') is { Length: > 0 } cleaned ? cleaned : "marina";
+
+    private void ShowDesigner(bool show)
+    {
+        _designerTab = show;
+        _marina.Designer.IsActive = show;
+    }
+
+    private void StartEmptyMarina()
+    {
+        _export = null;
+        _marina.InitializeLayout(new MarinaLayout { Name = "New marina" });
+        _marina.Designer.IsActive = true;
+        _marina.Designer.Tool = DesignTool.DrawLandArea;
+        _marina.Designer.ViewTopDown(immediate: true);
+    }
+
+    /// <summary>What an ERP would store: every element of the marina, as returned by ExportObjects.</summary>
+    private void ToggleExport()
+    {
+        if (_export is not null)
+        {
+            _export = null;
+            return;
+        }
+
+        var objects = _marina.ExportObjects();
+        var text = new System.Text.StringBuilder($"{objects.Length} objects\n");
+        foreach (var element in objects)
+        {
+            text.AppendLine(element switch
+            {
+                LandArea l => $"LandArea {l.Id} {l.Kind} h={Fmt(l.Height)} [{string.Join("; ", l.Points.Select(Fmt))}]",
+                Pier d => $"Pier {d.Id} {d.Type} start {Fmt(d.Start)} heading {Fmt(d.HeadingDegrees)}° {Fmt(d.Length)}x{Fmt(d.Width)} m {d.BerthingSides}",
+                Divider v => $"Divider {v.Id} {v.Type} pier {v.PierId} start {Fmt(v.Start)} {Fmt(v.Length)} m",
+                Berth s => $"Berth {s.Id} {(s.PierId is null ? "land " + s.LandAreaId : "pier " + s.PierId)} center {Fmt(s.Center)} {Fmt(s.Width)}x{Fmt(s.Length)} m depth {(s.MaxDraft is { } draft ? Fmt(draft) : "-")} {s.Status}",
+                MultiBerth b => $"Berth {b.Id} {string.Join(",", b.BerthIds)} {b.Boat.Name}",
+                _ => element.ToString(),
+            });
+        }
+
+        _export = text.ToString();
+    }
+
+    private static string Fmt(float value) => value.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Fmt(System.Numerics.Vector2 p) => $"({Fmt(p.X)}, {Fmt(p.Y)})";
+
+    private void OnDesignerActiveChanged(object? sender, EventArgs e)
+    {
+        _designerTab = _marina.Designer.IsActive;
+        Log($"Designer        {(_marina.Designer.IsActive ? "on" : "off")}");
+    }
+
+    private void OnDesignToolChanged(object? sender, DesignToolChangedEventArgs e) => Log($"DesignTool      {e.Current}");
+
+    private void OnDraftChanged(object? sender, DesignDraftChangedEventArgs e) =>
+        Log($"Drawing         {e.Tool} {e.Change} ({e.Points.Count} pts{(e.Points.Count > 0 ? ", last " + Fmt(e.Points[^1]) : "")})");
+
+    private void OnElementCreated(object? sender, DesignElementCreatedEventArgs e)
+    {
+        _export = null;
+        Log(e switch
+        {
+            { LandArea: { } land } => $"Created         land {land.Id} {land.Kind} {land.Points.Count} corners {land.Area:0} m²",
+            { Pier: { } pier } => $"Created         pier {pier.Id} {pier.Type} {Fmt(pier.Length)}x{Fmt(pier.Width)} m {pier.BerthingSides}",
+            _ => $"Created         {e.Berths.Count} berth(s) {string.Join(",", e.Berths.Select(s => s.Id))}",
+        });
+    }
+
+    private void OnElementErased(object? sender, DesignElementErasedEventArgs e)
+    {
+        _export = null;
+        Log($"Erased          {e.Element.GetType().Name} ({e.RemovedBerths.Count} berths)");
+    }
+
+    private void OnScaleLineDrawn(object? sender, ScaleLineDrawnEventArgs e) => Log($"ScaleLine       {Fmt(e.MeasuredLength)} m at the current scale");
+
+    private void OnReferenceImageChanged(object? sender, ReferenceImageChangedEventArgs e) =>
+        Log($"ReferenceImage  {e.Change} {e.MetersPerPixel:0.####} m/px center {Fmt(e.Center)}");
 
     // ---- Library events (raised from canvas input via JS interop, or from API calls) ----------
 
-    private void OnSlipClicked(object? sender, SlipEventArgs e) =>
-        Log($"SlipClicked     {e.SlipId} [{e.Status}] button={e.Button}{(e.IsDoubleClick ? " (double)" : "")} boat={e.Boat?.Name ?? "-"}");
+    private void OnBerthClicked(object? sender, BerthEventArgs e) =>
+        Log($"BerthClicked     {e.BerthId} [{e.Status}] button={e.Button}{(e.IsDoubleClick ? " (double)" : "")} boat={e.Boat?.Name ?? "-"}");
 
     private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e) => StateHasChanged();
 
     private void OnSelectionCleared(object? sender, EventArgs e) => Log("SelectionCleared");
 
-    private void OnSlipHoverChanged(object? sender, SlipHoverEventArgs e)
+    private void OnBerthHoverChanged(object? sender, BerthHoverEventArgs e)
     {
-        _hoverText = e.Slip is null ? string.Empty : $"Hover: {e.Slip.DisplayName} ({e.Slip.Status.GetDisplayName()})";
+        _hoverText = e.Berth is null ? string.Empty : $"Hover: {e.Berth.DisplayName} ({e.Berth.Status.GetDisplayName()})";
         StateHasChanged();
     }
 
-    private void OnSlipStatusChanged(object? sender, SlipStatusChangedEventArgs e) =>
-        Log($"StatusChanged   {e.SlipId}: {e.OldStatus} -> {e.NewStatus} boat={e.NewBoat?.Name ?? "-"}");
+    private void OnBerthStatusChanged(object? sender, BerthStatusChangedEventArgs e) =>
+        Log($"StatusChanged   {e.BerthId}: {e.OldStatus} -> {e.NewStatus} boat={e.NewBoat?.Name ?? "-"}");
 
     private void OnLayoutChanged(object? sender, LayoutChangedEventArgs e)
     {
         _stats = _marina.GetStatistics();
-        Log($"LayoutChanged   {e.Kind} {e.DockId} {e.SlipId} {e.BerthId}".TrimEnd());
+        Log($"LayoutChanged   {e.Kind} {e.LandAreaId} {e.PierId} {e.BerthId} {e.MultiBerthId}".Replace("  ", " ").TrimEnd());
     }
 
     // ---- UI actions ----------------------------------------------------------------------------
@@ -171,16 +340,16 @@
 
     private void OnRendererError(string message) => _rendererInfo = "Renderer error: " + message;
 
-    private string[] SelectedIds() => _marina.SelectedSlips.Select(s => s.Id).ToArray();
+    private string[] SelectedIds() => _marina.SelectedBerths.Select(s => s.Id).ToArray();
 
-    private void SetSelectedStatus(SlipStatus status)
+    private void SetSelectedStatus(BerthStatus status)
     {
         using (_marina.BeginUpdate())
         {
-            foreach (var slip in _marina.SelectedSlips)
+            foreach (var berth in _marina.SelectedBerths)
             {
-                var boat = status == SlipStatus.Free ? null : slip.Boat ?? MockMarinaFactory.CreateBoatForSlip(slip, _rng);
-                _marina.SetSlipStatus(slip.Id, status, boat);
+                var boat = status == BerthStatus.Free ? null : berth.Boat ?? MockMarinaFactory.CreateBoatForBerth(berth, _rng);
+                _marina.SetBerthStatus(berth.Id, status, boat);
             }
         }
     }
@@ -188,24 +357,24 @@
     private void FocusSelected() => _marina.FocusSelection(CameraAngle.TopDown);
 
     /// <summary>
-    /// Selects every slip on the selected slip's dock, or every land slip on its land area (disabled ones are discarded),
+    /// Selects every berth on the selected berth's pier, or every land berth on its land area (disabled ones are discarded),
     /// and frames them top-down.
     /// </summary>
-    private void SelectWholeDock()
+    private void SelectWholePier()
     {
-        if (_marina.SelectedSlip?.LandAreaId is { } landAreaId)
+        if (_marina.SelectedBerth?.LandAreaId is { } landAreaId)
         {
-            var onLand = _marina.SetSelection(_marina.GetSlipsByLandArea(landAreaId).Select(s => s.Id), focusCamera: true, CameraAngle.TopDown);
+            var onLand = _marina.SetSelection(_marina.GetBerthsByLandArea(landAreaId).Select(s => s.Id), focusCamera: true, CameraAngle.TopDown);
             Log($"SetSelection    {onLand.Count} selected on land area {landAreaId}; skipped: {onLand.Rejected.Count}");
             return;
         }
 
-        var dockId = _marina.SelectedSlip?.DockId ?? _marina.GetDocks().FirstOrDefault()?.Id;
-        if (dockId is null) return;
+        var pierId = _marina.SelectedBerth?.PierId ?? _marina.GetPiers().FirstOrDefault()?.Id;
+        if (pierId is null) return;
 
-        var result = _marina.SetSelection(_marina.GetSlipsByDock(dockId).Select(s => s.Id), focusCamera: true, CameraAngle.TopDown);
-        Log($"SetSelection    {result.Count} selected on dock {dockId}; skipped: " +
-            (result.Rejected.Count == 0 ? "none" : string.Join(", ", result.Rejected.Select(r => $"{r.SlipId} ({r.Reason})"))));
+        var result = _marina.SetSelection(_marina.GetBerthsByPier(pierId).Select(s => s.Id), focusCamera: true, CameraAngle.TopDown);
+        Log($"SetSelection    {result.Count} selected on pier {pierId}; skipped: " +
+            (result.Rejected.Count == 0 ? "none" : string.Join(", ", result.Rejected.Select(r => $"{r.BerthId} ({r.Reason})"))));
     }
 
     private void ToggleFilter(ref bool field, ChangeEventArgs e)
@@ -222,20 +391,20 @@
 
     private void ApplyFilter()
     {
-        var filter = SlipStatusFilter.None;
-        if (_showFree) filter |= SlipStatusFilter.Free;
-        if (_showOccupied) filter |= SlipStatusFilter.Occupied;
-        if (_showReserved) filter |= SlipStatusFilter.Reserved;
-        if (_showTemporarilyFree) filter |= SlipStatusFilter.TemporarilyFree;
+        var filter = BerthStatusFilter.None;
+        if (_showFree) filter |= BerthStatusFilter.Free;
+        if (_showOccupied) filter |= BerthStatusFilter.Occupied;
+        if (_showReserved) filter |= BerthStatusFilter.Reserved;
+        if (_showTemporarilyFree) filter |= BerthStatusFilter.TemporarilyFree;
         _marina.SetStatusFilter(filter);
         Log($"Filter          {filter}");
     }
 
     private void ApplyLabelMode(ChangeEventArgs e)
     {
-        if (!Enum.TryParse<SlipLabelMode>(e.Value?.ToString(), out var mode)) return;
-        _marina.SlipLabelMode = mode;
-        Log($"SlipLabelMode   {mode}");
+        if (!Enum.TryParse<BerthLabelMode>(e.Value?.ToString(), out var mode)) return;
+        _marina.BerthLabelMode = mode;
+        Log($"BerthLabelMode   {mode}");
     }
 
     private void ApplyPreset(ChangeEventArgs e)
@@ -250,39 +419,39 @@
         _marina.ResetCamera();
     }
 
-    private void AddGuestSlip()
+    private void AddGuestBerth()
     {
-        var slip = MockMarinaFactory.CreateGuestSlip(_marina, "D");
-        if (slip is null)
+        var berth = MockMarinaFactory.CreateGuestBerth(_marina, "D");
+        if (berth is null)
         {
-            Log("Dock D guest berths are full.");
+            Log("Pier D guest berths are full.");
             return;
         }
 
-        _marina.AddSlip(slip);
-        _marina.SelectSlip(slip.Id, focusCamera: true);
+        _marina.AddBerth(berth);
+        _marina.SelectBerth(berth.Id, focusCamera: true);
     }
 
     private void RemoveSelected()
     {
         using (_marina.BeginUpdate())
         {
-            foreach (var id in SelectedIds()) _marina.RemoveSlip(id);
+            foreach (var id in SelectedIds()) _marina.RemoveBerth(id);
         }
     }
 
     private void ReleaseSelectedBerth()
     {
-        var berthIds = _marina.SelectedSlips.Select(s => s.BerthId).OfType<string>().Distinct().ToList();
-        if (berthIds.Count == 0) Log("Select a slip of a multi-slip berth first.");
-        foreach (var id in berthIds) _marina.ReleaseMultiSlipBerth(id);
+        var multiBerthIds = _marina.SelectedBerths.Select(s => s.MultiBerthId).OfType<string>().Distinct().ToList();
+        if (multiBerthIds.Count == 0) Log("Select a berth of a multi-berth first.");
+        foreach (var id in multiBerthIds) _marina.ReleaseMultiBerth(id);
     }
 
     private void RunBatch()
     {
-        var updates = MockMarinaFactory.CreateRandomActivity(_marina.GetSlips(), _rng, 15);
-        var result = _marina.BatchUpdate(updates.Append(SlipUpdate.Free("DOES-NOT-EXIST")));
-        Log($"BatchUpdate     applied={result.AppliedCount} errors={result.Errors.Count} ({string.Join("; ", result.Errors.Select(x => x.SlipId))})");
+        var updates = MockMarinaFactory.CreateRandomActivity(_marina.GetBerths(), _rng, 15);
+        var result = _marina.BatchUpdate(updates.Append(BerthUpdate.Free("DOES-NOT-EXIST")));
+        Log($"BatchUpdate     applied={result.AppliedCount} errors={result.Errors.Count} ({string.Join("; ", result.Errors.Select(x => x.BerthId))})");
     }
 
     private void ReloadLayout()
@@ -294,37 +463,37 @@
     private void ToggleReservedColor()
     {
         var purple = new ColorRgba(0.6f, 0.3f, 0.9f);
-        _marina.SetStatusColor(SlipStatus.Reserved,
-            _marina.GetStatusColor(SlipStatus.Reserved) == purple ? StatusColorScheme.DefaultReserved : purple);
+        _marina.SetStatusColor(BerthStatus.Reserved,
+            _marina.GetStatusColor(BerthStatus.Reserved) == purple ? StatusColorScheme.DefaultReserved : purple);
     }
 
     private string SelectionDetails()
     {
-        if (_marina.SelectedSlip is not { } slip) return "Click a slip or boat in the 3D view.\nCtrl+click or Shift+click to select several, right-click for actions.";
+        if (_marina.SelectedBerth is not { } berth) return "Click a berth or boat in the 3D view.\nCtrl+click or Shift+click to select several, right-click for actions.";
 
         var sb = new StringBuilder();
         if (_marina.IsMultiSelection)
         {
-            sb.AppendLine($"{_marina.SelectedSlips.Count} slips selected (primary last):");
-            foreach (var s in _marina.SelectedSlips) sb.AppendLine($"  {s.DisplayName,-12} {s.Status.GetDisplayName(),-16} {s.Boat?.Name}");
+            sb.AppendLine($"{_marina.SelectedBerths.Count} berths selected (primary last):");
+            foreach (var s in _marina.SelectedBerths) sb.AppendLine($"  {s.DisplayName,-12} {s.Status.GetDisplayName(),-16} {s.Boat?.Name}");
             return sb.ToString();
         }
 
-        sb.AppendLine($"Slip:    {slip.DisplayName} ({slip.Id})");
-        if (slip.LandAreaId is { } landAreaId)
+        sb.AppendLine($"Berth:    {berth.DisplayName} ({berth.Id})");
+        if (berth.LandAreaId is { } landAreaId)
         {
             sb.AppendLine($"Land:    {_marina.GetLandArea(landAreaId)?.DisplayName ?? landAreaId} (stored ashore)");
         }
-        else if (slip.DockId is { } dockId)
+        else if (berth.PierId is { } pierId)
         {
-            var dock = _marina.GetDock(dockId);
-            var sides = dock?.BerthingSides is DockSides.Left or DockSides.Right ? ", single-sided" : "";
-            sb.AppendLine($"Dock:    {dock?.Name} ({(dock is null ? "?" : Dock.GetDisplayName(dock.Type))}{sides})");
+            var pier = _marina.GetPier(pierId);
+            var sides = pier?.BerthingSides is PierSides.Left or PierSides.Right ? ", single-sided" : "";
+            sb.AppendLine($"Pier:    {pier?.Name} ({(pier is null ? "?" : Pier.GetDisplayName(pier.Type))}{sides})");
         }
 
-        sb.AppendLine($"Status:  {slip.Status.GetDisplayName()}");
-        sb.AppendLine($"Size:    {slip.Length:0.0} m x {slip.Width:0.0} m, draft {slip.MaxDraft?.ToString("0.0") ?? "?"} m");
-        if (slip.Boat is { } boat)
+        sb.AppendLine($"Status:  {berth.Status.GetDisplayName()}");
+        sb.AppendLine($"Size:    {berth.Length:0.0} m x {berth.Width:0.0} m, draft {berth.MaxDraft?.ToString("0.0") ?? "?"} m");
+        if (berth.Boat is { } boat)
         {
             sb.AppendLine($"Boat:    {boat.Name} ({boat.TypeDisplayName})");
             sb.AppendLine($"         {boat.LengthMeters:0.0} m x {boat.BeamMeters:0.0} m, {boat.RegistrationNumber}");
@@ -332,10 +501,10 @@
             if (boat.ExpectedArrival is { } eta) sb.AppendLine($"ETA:     {eta:g}");
         }
 
-        if (slip.BerthId is { } berthId) sb.AppendLine($"Berth:   {berthId} ({_marina.GetMultiSlipBerth(berthId)?.Style})");
-        if (slip.IsReadOnly) sb.AppendLine("Flags:   read-only");
-        foreach (var (key, value) in slip.Metadata) sb.AppendLine($"{key,-8} {value}");
-        foreach (var (key, value) in slip.ExternalData) sb.AppendLine($"ext:{key} = {value}");
+        if (berth.MultiBerthId is { } multiBerthId) sb.AppendLine($"Berth:   {multiBerthId} ({_marina.GetMultiBerth(multiBerthId)?.Style})");
+        if (berth.IsReadOnly) sb.AppendLine("Flags:   read-only");
+        foreach (var (key, value) in berth.Metadata) sb.AppendLine($"{key,-8} {value}");
+        foreach (var (key, value) in berth.ExternalData) sb.AppendLine($"ext:{key} = {value}");
         return sb.ToString();
     }
 
