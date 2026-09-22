@@ -813,9 +813,17 @@ internal static class Strings
     /// <summary>"{0} lane(s) found room out there."</summary>
     internal static string TrafficPasses => Get("TrafficPasses");
 
-    internal static string TrafficShowPath => Get("TrafficShowPath");
+    internal static string TrafficLanes => Get("TrafficLanes");
 
-    internal static string TrafficShowPathTip => Get("TrafficShowPathTip");
+    internal static string TrafficLanesTip => Get("TrafficLanesTip");
+
+    internal static string TrafficLaneSpacing => Get("TrafficLaneSpacing");
+
+    internal static string TrafficLaneSpacingTip => Get("TrafficLaneSpacingTip");
+
+    internal static string TrafficShowLanes => Get("TrafficShowLanes");
+
+    internal static string TrafficShowLanesTip => Get("TrafficShowLanesTip");
 
     /// <summary>"No room for a lane: lower the clearance, or widen the water."</summary>
     internal static string TrafficNoRoom => Get("TrafficNoRoom");
@@ -935,6 +943,8 @@ internal static class Strings
 
     /// <summary>"{0} vessels"</summary>
     internal static string ValueVessels => Get("ValueVessels");
+
+    internal static string ValueLanes => Get("ValueLanes");
 
     // ---- Inspector: reference image ------------------------------------------------------------------
 

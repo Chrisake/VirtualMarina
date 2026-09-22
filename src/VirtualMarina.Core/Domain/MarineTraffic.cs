@@ -11,8 +11,8 @@ namespace VirtualMarina.Core.Domain;
 public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, float HeadingDegrees, float Opacity);
 
 /// <summary>
-/// Passing traffic out at sea: vessels running along one line that follows the coast past the marina, fading in far
-/// out at one end of it and away again at the other.
+/// Passing traffic out at sea: vessels running along lanes that follow the coast past the marina, fading in far out
+/// at one end of a lane and away again at the other.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,14 +20,20 @@ public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, flo
 /// <see cref="Seed"/> rather than stored, so turning it up costs nothing in the file.
 /// </para>
 /// <para>
-/// <b>Where the path goes.</b> It is the shoreline pushed out to sea: each end runs alongside one of the shoreline's
-/// endless segments and the middle curves between them, so the shipping reads as following the coast rather than
-/// cutting across it. With no shoreline behind the marina the path is a straight line instead.
+/// <b>Where the lanes go.</b> Each is the shoreline pushed out to sea: its ends run alongside the shoreline's
+/// endless segments and its middle curves between them, so the shipping reads as following the coast rather than
+/// cutting across it. With no shoreline behind the marina the lanes are straight instead.
 /// </para>
 /// <para>
-/// <b>How near it comes.</b> <see cref="Clearance"/> is the closest the path gets to the middle of the marina, in
-/// meters, so the setting means the same thing whatever size the marina is. A path that would cross a land area is
-/// pushed further out until it does not, which is the only case where it ends up further away than asked.
+/// <b>How near they come.</b> <see cref="Clearance"/> is the closest the <i>nearest</i> lane gets to the middle of
+/// the marina, in meters, so the setting means the same thing whatever size the marina is; the rest step out to sea
+/// from there by <see cref="LaneSpacing"/> each. Lanes that would cross a land area are pushed further out until
+/// none does, which is the only case where they end up further away than asked.
+/// </para>
+/// <para>
+/// <b>Which way they run.</b> Every vessel in a lane runs the same way and neighbouring lanes run opposite ways, so
+/// nothing ever meets head-on. Lanes bulge gently seaward by differing amounts and each vessel wanders slowly across
+/// its own lane, so nothing looks drawn with a ruler — all of it bounded well inside <see cref="LaneSpacing"/>.
 /// </para>
 /// </remarks>
 /// <example>
@@ -39,6 +45,13 @@ public sealed record MarineTraffic
 {
     /// <summary>The most vessels <see cref="MaximumVessels"/> may be set to.</summary>
     public const int VesselLimit = 60;
+
+    /// <summary>The most lanes <see cref="LaneCount"/> may be set to.</summary>
+    /// <remarks>
+    /// Past a handful the lanes stop reading as shipping and start reading as a grid, and the outer ones are so far
+    /// out that nothing on them can be made out anyway.
+    /// </remarks>
+    public const int LaneLimit = 8;
 
     /// <summary>One knot in meters per second.</summary>
     private const float KnotsToMetersPerSecond = 0.514444f;
@@ -77,6 +90,18 @@ public sealed record MarineTraffic
     /// </summary>
     public float Clearance { get; init; } = 300f;
 
+    /// <summary>
+    /// How many lanes of traffic there are, 1–<see cref="LaneLimit"/> (default 2). The first passes at
+    /// <see cref="Clearance"/> and each one after it is <see cref="LaneSpacing"/> further out to sea.
+    /// </summary>
+    public int LaneCount { get; init; } = 2;
+
+    /// <summary>
+    /// How far apart the lanes are, in meters (default 160). It also sets how far a vessel may hold off the middle of
+    /// its lane and how far it wanders while it goes, so widening the lanes loosens the traffic on them too.
+    /// </summary>
+    public float LaneSpacing { get; init; } = 160f;
+
     /// <summary>How fast the vessels go, in knots (default 8). They are meant to drift slowly across the view.</summary>
     public float SpeedKnots { get; init; } = 8f;
 
@@ -98,6 +123,9 @@ public sealed record MarineTraffic
 
     /// <summary>Read-only string attributes the host application attaches to the traffic. Saved with the design.</summary>
     public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
+
+    /// <summary>How many lanes this actually lays out; 0 when it is switched off.</summary>
+    public int EffectiveLanes => IsEnabled ? Math.Clamp(LaneCount, 1, LaneLimit) : 0;
 
     /// <summary>How many vessels this asks for; 0 when it is switched off.</summary>
     public int VesselCount =>
@@ -123,6 +151,16 @@ public sealed record MarineTraffic
         }
 
         if (!float.IsFinite(Clearance) || Clearance < 0f) yield return "Marine traffic clearance must not be negative.";
+        if (LaneCount < 1 || LaneCount > LaneLimit)
+        {
+            yield return $"Marine traffic can run between 1 and {LaneLimit} lanes.";
+        }
+
+        if (!float.IsFinite(LaneSpacing) || LaneSpacing <= 0f)
+        {
+            yield return "Marine traffic lane spacing must be a positive distance.";
+        }
+
         if (!float.IsFinite(SpeedKnots) || SpeedKnots < 0f) yield return "Marine traffic speed must not be negative.";
         if (!float.IsFinite(Reach) || Reach <= 0f) yield return "Marine traffic reach must be a positive distance.";
         if (float.IsFinite(Reach) && float.IsFinite(Clearance) && Reach <= Clearance)

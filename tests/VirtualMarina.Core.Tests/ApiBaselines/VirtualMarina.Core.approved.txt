@@ -205,6 +205,7 @@ static class VirtualMarina.Core.Api.DisplayNames
 interface VirtualMarina.Core.Api.IMarinaVisualizer
     IReadOnlyList<VirtualMarina.Core.Camera.CameraPreset> CameraPresets { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> SelectedBerths { get; }
+    IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> TrafficLanes { get; }
     VirtualMarina.Core.Api.BerthLabelMode BerthLabelMode { get; set; }
     VirtualMarina.Core.Api.BerthPopup ActivePopup { get; }
     VirtualMarina.Core.Camera.CameraAngle? DefaultFocusAngle { get; set; }
@@ -215,7 +216,6 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     VirtualMarina.Core.Domain.BerthStatusFilter StatusFilter { get; }
     VirtualMarina.Core.Domain.MarineTraffic MarineTraffic { get; }
     VirtualMarina.Core.Domain.Shoreline Shoreline { get; }
-    VirtualMarina.Core.Geometry.TrafficPath TrafficPath { get; }
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; }
     VirtualMarina.Core.Rendering.MarinaStyle Style { get; set; }
     VirtualMarina.Core.Rendering.WaterSettings Water { get; }
@@ -313,7 +313,7 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     abstract void UpdatePier(VirtualMarina.Core.Domain.Pier pier)
     bool ActionsEnabled { get; set; }
     bool MultiSelectEnabled { get; set; }
-    bool ShowTrafficPath { get; set; }
+    bool ShowTrafficLanes { get; set; }
     bool TooltipsEnabled { get; set; }
     event EventHandler SelectionCleared
     event EventHandler<VirtualMarina.Core.Api.BerthActionInvokedEventArgs> BerthActionInvoked
@@ -396,6 +396,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     IReadOnlyList<VirtualMarina.Core.Domain.MultiBerth> GetMultiBerths()
     IReadOnlyList<VirtualMarina.Core.Domain.Pier> GetPiers()
     IReadOnlyList<VirtualMarina.Core.Domain.TrafficVessel> GetTrafficVessels()
+    IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> TrafficLanes { get; }
     Vector2 ViewportSize { get; }
     Vector3? GetWaterPoint(float x, float y)
     VirtualMarina.Core.Api.BatchUpdateResult BatchUpdate(IEnumerable<VirtualMarina.Core.Api.BerthUpdate> updates)
@@ -441,7 +442,6 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     VirtualMarina.Core.Domain.Pier UpdatePier(VirtualMarina.Core.Api.PierUpdate update)
     VirtualMarina.Core.Domain.Shoreline Shoreline { get; }
     VirtualMarina.Core.Geometry.MeshLibrary Meshes { get; }
-    VirtualMarina.Core.Geometry.TrafficPath TrafficPath { get; }
     VirtualMarina.Core.Input.MarinaInputController Input { get; }
     VirtualMarina.Core.Picking.BerthHit? HitTest(float x, float y)
     VirtualMarina.Core.Rendering.ColorRgba GetStatusColor(VirtualMarina.Core.Domain.BerthStatus status)
@@ -477,7 +477,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     bool ShowActions()
     bool ShowTooltip()
     bool ShowTooltipOnApiSelection { get; set; }
-    bool ShowTrafficPath { get; set; }
+    bool ShowTrafficLanes { get; set; }
     bool TooltipsEnabled { get; set; }
     bool TryGetPopupAnchor(out Vector2 screenPoint)
     bool TryProjectToScreen(Vector3 worldPoint, out Vector2 screenPoint)
@@ -1232,12 +1232,16 @@ sealed class VirtualMarina.Core.Domain.MarineTraffic : IEquatable<VirtualMarina.
     IReadOnlyList<VirtualMarina.Core.Domain.BoatType> Vessels { get; init; }
     bool Equals(VirtualMarina.Core.Domain.MarineTraffic other)
     bool IsEnabled { get; init; }
+    const int LaneLimit = 8
     const int VesselLimit = 60
     float Clearance { get; init; }
     float Intensity { get; init; }
+    float LaneSpacing { get; init; }
     float Reach { get; init; }
     float SpeedKnots { get; init; }
     float SpeedMetersPerSecond { get; }
+    int EffectiveLanes { get; }
+    int LaneCount { get; init; }
     int MaximumVessels { get; init; }
     int Seed { get; init; }
     int VesselCount { get; }
@@ -1451,8 +1455,8 @@ static class VirtualMarina.Core.Geometry.MarinaMeshFactory
     static VirtualMarina.Core.Geometry.MeshData CreateWaterGrid(int id, float size, int resolution, Vector2 center)
 
 static class VirtualMarina.Core.Geometry.MarineTrafficPlanner
-    static IEnumerable<VirtualMarina.Core.Domain.TrafficVessel> Place(VirtualMarina.Core.Geometry.TrafficPath path, VirtualMarina.Core.Domain.MarineTraffic traffic, double seconds)
-    static VirtualMarina.Core.Geometry.TrafficPath Plan(VirtualMarina.Core.Domain.MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<VirtualMarina.Core.Domain.LandArea> land, VirtualMarina.Core.Domain.Shoreline shoreline)
+    static IEnumerable<VirtualMarina.Core.Domain.TrafficVessel> Place(IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> lanes, VirtualMarina.Core.Domain.MarineTraffic traffic, double seconds)
+    static IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> Plan(VirtualMarina.Core.Domain.MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<VirtualMarina.Core.Domain.LandArea> land, VirtualMarina.Core.Domain.Shoreline shoreline)
 
 sealed class VirtualMarina.Core.Geometry.MeshBuilder
     .ctor()
@@ -1515,10 +1519,11 @@ static class VirtualMarina.Core.Geometry.ShadowProjection
     static Matrix4x4 OntoPlane(Vector3 sunDirection, float planeHeight)
     static bool CanCast(Vector3 sunDirection)
 
-sealed class VirtualMarina.Core.Geometry.TrafficPath
-    .ctor(IEnumerable<Vector2> points)
+sealed class VirtualMarina.Core.Geometry.TrafficLane
+    .ctor(IEnumerable<Vector2> points, bool reversed = false)
     IReadOnlyList<Vector2> Points { get; }
     ValueTuple<Vector2, Vector2> At(float along)
+    bool Reversed { get; }
     float DistanceTo(Vector2 point)
     float Length { get; }
     int VesselCount { get; }

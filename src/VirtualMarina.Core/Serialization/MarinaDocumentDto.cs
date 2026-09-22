@@ -220,7 +220,7 @@ internal sealed class LayoutDto : ExtensibleDto
 
 /// <summary>
 /// Passing traffic out at sea. Only the settings are written: the lanes and the vessels on them are worked out from
-/// the seed when the file is loaded, so a busy sea costs no more to store than an empty one.
+/// the seed and the shoreline when the file is loaded, so a busy sea costs no more to store than an empty one.
 /// </summary>
 internal sealed class MarineTrafficDto : ExtensibleDto
 {
@@ -235,6 +235,10 @@ internal sealed class MarineTrafficDto : ExtensibleDto
     public float Reach { get; set; } = 6000f;
 
     public int MaximumVessels { get; set; } = 24;
+
+    public int LaneCount { get; set; } = 2;
+
+    public float LaneSpacing { get; set; } = 160f;
 
     public int Seed { get; set; } = 1;
 
@@ -252,6 +256,8 @@ internal sealed class MarineTrafficDto : ExtensibleDto
         SpeedKnots = traffic.SpeedKnots,
         Reach = traffic.Reach,
         MaximumVessels = traffic.MaximumVessels,
+        LaneCount = traffic.LaneCount,
+        LaneSpacing = traffic.LaneSpacing,
         Seed = traffic.Seed,
         Vessels = traffic.Vessels.Count == 0 ? null : traffic.Vessels.ToList(),
         Metadata = Copy(traffic.Metadata),
@@ -265,6 +271,10 @@ internal sealed class MarineTrafficDto : ExtensibleDto
         SpeedKnots = SpeedKnots,
         Reach = Reach,
         MaximumVessels = MaximumVessels > 0 ? MaximumVessels : new MarineTraffic().MaximumVessels,
+
+        // A file written before the traffic had lanes has neither, and zero would fail validation and empty the sea.
+        LaneCount = LaneCount > 0 ? LaneCount : new MarineTraffic().LaneCount,
+        LaneSpacing = LaneSpacing > 0f ? LaneSpacing : new MarineTraffic().LaneSpacing,
         Seed = Seed,
         Vessels = Vessels?.ToArray() ?? Array.Empty<BoatType>(),
         Metadata = Read(Metadata),

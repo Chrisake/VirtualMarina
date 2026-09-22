@@ -882,20 +882,32 @@ Runtime      {4}
     <value>How fast the vessels cross, in knots.</value>
   </data>
   <data name="TrafficPasses">
-    <value>The path passes {0} m from the middle of the marina.</value>
-    <comment>{0} = closest approach in whole meters.</comment>
+    <value>{0} lane(s); the nearest passes {1} m from the middle of the marina.</value>
+    <comment>{0} = how many lanes, {1} = closest approach in whole meters.</comment>
   </data>
   <data name="TrafficNoRoom">
-    <value>No path could be found: lower the clearance, or widen the water.</value>
+    <value>No lane could be found: lower the clearance, or widen the water.</value>
   </data>
   <data name="TrafficHint">
-    <value>One path follows the coast past the marina. Vessels fade in and away far out to sea.</value>
+    <value>The lanes follow the coast past the marina, each running the opposite way to its neighbours. Vessels fade in and away far out to sea.</value>
   </data>
-  <data name="TrafficShowPath">
-    <value>Show the path</value>
+  <data name="TrafficLanes">
+    <value>Lanes</value>
   </data>
-  <data name="TrafficShowPathTip">
-    <value>Draws the line the shipping follows, so the clearance can be set by eye. It is not saved with the design.</value>
+  <data name="TrafficLanesTip">
+    <value>How many lanes of shipping there are. The nearest passes at the distance below, and the rest step out to sea from it.</value>
+  </data>
+  <data name="TrafficLaneSpacing">
+    <value>Space between lanes</value>
+  </data>
+  <data name="TrafficLaneSpacingTip">
+    <value>How far apart the lanes are. It also sets how far a vessel may wander across its own lane, so wider lanes look looser.</value>
+  </data>
+  <data name="TrafficShowLanes">
+    <value>Show the lanes</value>
+  </data>
+  <data name="TrafficShowLanesTip">
+    <value>Draws the lines the shipping follows, tinted by which way each one runs, so the spacing can be set by eye. It is not saved with the design.</value>
   </data>
   <data name="ValueKnots">
     <value>{0} kn</value>
@@ -1013,6 +1025,10 @@ Runtime      {4}
   </data>
   <data name="ValueVessels">
     <value>{0} vessels</value>
+    <comment>{0} = how many.</comment>
+  </data>
+  <data name="ValueLanes">
+    <value>{0} lanes</value>
     <comment>{0} = how many.</comment>
   </data>
   <!-- Inspector: reference image -->

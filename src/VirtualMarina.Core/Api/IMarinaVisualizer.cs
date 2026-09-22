@@ -368,16 +368,16 @@ public interface IMarinaVisualizer
     IReadOnlyList<TrafficVessel> GetTrafficVessels();
 
     /// <summary>
-    /// The line the traffic runs along, or null when there is none — the traffic is off, or its settings are unsound.
-    /// Useful for showing where the shipping will pass while the settings are being adjusted.
+    /// The lanes the traffic runs along, nearest the marina first, or empty when there are none — the traffic is off,
+    /// or its settings are unsound. Useful for showing where the shipping will pass while the settings are adjusted.
     /// </summary>
-    TrafficPath? TrafficPath { get; }
+    IReadOnlyList<TrafficLane> TrafficLanes { get; }
 
     /// <summary>
-    /// Draws the traffic's path on the water, so it can be seen where the shipping will pass while the clearance is
-    /// being set. Default false. It is a working aid and is not saved with the design.
+    /// Draws the traffic's lanes on the water, so it can be seen where the shipping will pass while the clearance and
+    /// the spacing are being set. Default false. It is a working aid and is not saved with the design.
     /// </summary>
-    bool ShowTrafficPath { get; set; }
+    bool ShowTrafficLanes { get; set; }
 
     /// <summary>Berths with a given status.</summary>
     IReadOnlyList<Berth> GetBerthsByStatus(BerthStatus status);

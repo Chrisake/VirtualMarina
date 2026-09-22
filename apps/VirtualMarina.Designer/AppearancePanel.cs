@@ -49,7 +49,7 @@ internal sealed class AppearancePanel : UserControl
     private readonly TrackBar _fill = new() { Minimum = 0, Maximum = 100, Value = 60 };
     private readonly Label _fillValue = new();
     private readonly Random _random = new();
-    private Label? _trafficPath;
+    private Label? _trafficLanes;
 
     /// <summary>One per control: puts the value the marina holds back into it. Run by <see cref="Sync"/>.</summary>
     private readonly List<Action> _refresh = new();
@@ -302,19 +302,23 @@ internal sealed class AppearancePanel : UserControl
             v => SetTraffic(t => t with { Intensity = v / 100f }), MarineTraffic.None.Intensity * 100f, Percentage, Strings.TrafficIntensityTip);
         Percent(table, Strings.TrafficClearance, 50, 1200, () => Traffic.Clearance,
             v => SetTraffic(t => t with { Clearance = v }), MarineTraffic.None.Clearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip);
+        Percent(table, Strings.TrafficLanes, 1, MarineTraffic.LaneLimit, () => Traffic.LaneCount,
+            v => SetTraffic(t => t with { LaneCount = (int)v }), MarineTraffic.None.LaneCount, v => Strings.Format(Strings.ValueLanes, v), Strings.TrafficLanesTip);
+        Percent(table, Strings.TrafficLaneSpacing, 40, 600, () => Traffic.LaneSpacing,
+            v => SetTraffic(t => t with { LaneSpacing = v }), MarineTraffic.None.LaneSpacing, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficLaneSpacingTip);
         Percent(table, Strings.TrafficMaximum, 1, MarineTraffic.VesselLimit, () => Traffic.MaximumVessels,
             v => SetTraffic(t => t with { MaximumVessels = (int)v }), MarineTraffic.None.MaximumVessels, v => Strings.Format(Strings.ValueVessels, v), Strings.TrafficMaximumTip);
         Percent(table, Strings.TrafficSpeed, 1, 30, () => Traffic.SpeedKnots,
             v => SetTraffic(t => t with { SpeedKnots = v }), MarineTraffic.None.SpeedKnots, v => Strings.Format(Strings.ValueKnots, v), Strings.TrafficSpeedTip);
 
-        Check(table, Strings.TrafficShowPath, () => _marina.ShowTrafficPath, v => Changed(() => _marina.ShowTrafficPath = v), Strings.TrafficShowPathTip);
+        Check(table, Strings.TrafficShowLanes, () => _marina.ShowTrafficLanes, v => Changed(() => _marina.ShowTrafficLanes = v), Strings.TrafficShowLanesTip);
 
         Theme.FullRow(table, Theme.Hint(Strings.TrafficHint));
         Theme.FullRow(table, where);
 
         // Where the path ended up is only known once it has been planned, so it is refreshed after every change.
-        _trafficPath = where;
-        UpdateTrafficPath();
+        _trafficLanes = where;
+        UpdateTrafficLanes();
         return card;
     }
 
@@ -322,18 +326,18 @@ internal sealed class AppearancePanel : UserControl
     private void SetTraffic(Func<MarineTraffic, MarineTraffic> change)
     {
         Changed(() => _marina.SetMarineTraffic(change(_marina.MarineTraffic)));
-        UpdateTrafficPath();
+        UpdateTrafficLanes();
     }
 
-    /// <summary>Says how near the planned path actually comes, which is what the clearance slider is really setting.</summary>
-    private void UpdateTrafficPath()
+    /// <summary>Says how near the nearest lane actually comes, which is what the clearance slider is really setting.</summary>
+    private void UpdateTrafficLanes()
     {
-        if (_trafficPath is null) return;
+        if (_trafficLanes is null) return;
 
-        var center = Center();
-        _trafficPath.Text = !Traffic.IsEnabled ? string.Empty
-            : _marina.TrafficPath is not { } path ? Strings.TrafficNoRoom
-            : Strings.Format(Strings.TrafficPasses, (int)MathF.Round(path.DistanceTo(center)));
+        var lanes = _marina.TrafficLanes;
+        _trafficLanes.Text = !Traffic.IsEnabled ? string.Empty
+            : lanes.Count == 0 ? Strings.TrafficNoRoom
+            : Strings.Format(Strings.TrafficPasses, lanes.Count, (int)MathF.Round(lanes.Min(lane => lane.DistanceTo(Center()))));
     }
 
     /// <summary>The middle of the marina in plan coordinates, which the traffic's clearance is measured from.</summary>
@@ -513,7 +517,7 @@ internal sealed class AppearancePanel : UserControl
         try
         {
             foreach (var refresh in _refresh) refresh();
-            UpdateTrafficPath();
+            UpdateTrafficLanes();
         }
         finally
         {

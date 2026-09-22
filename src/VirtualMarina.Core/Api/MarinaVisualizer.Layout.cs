@@ -491,20 +491,25 @@ public sealed partial class MarinaVisualizer
     }
 
     /// <inheritdoc/>
-    public IReadOnlyList<TrafficVessel> GetTrafficVessels() =>
-        MarineTrafficPlanner.Place(_trafficPath, _traffic, _time).ToArray();
-
-    /// <inheritdoc/>
-    public TrafficPath? TrafficPath => _trafficPath;
-
-    /// <inheritdoc/>
-    public bool ShowTrafficPath
+    public IReadOnlyList<TrafficVessel> GetTrafficVessels()
     {
-        get => _showTrafficPath;
+        // The lanes are planned around the marina, so a host that asks before the next frame is drawn would
+        // otherwise get vessels laid out around whatever the marina was when the traffic was last set.
+        if (_trafficDirty && (_traffic.IsEnabled || _trafficLanes.Count > 0)) ReplanTraffic();
+        return MarineTrafficPlanner.Place(_trafficLanes, _traffic, _time).ToArray();
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<TrafficLane> TrafficLanes => _trafficLanes;
+
+    /// <inheritdoc/>
+    public bool ShowTrafficLanes
+    {
+        get => _showTrafficLanes;
         set
         {
-            if (_showTrafficPath == value) return;
-            _showTrafficPath = value;
+            if (_showTrafficLanes == value) return;
+            _showTrafficLanes = value;
             MarkSceneDirty();
         }
     }
@@ -733,7 +738,7 @@ public sealed partial class MarinaVisualizer
         _landOrder.Clear();
         _shoreline = null;
         _traffic = MarineTraffic.None;
-        _trafficPath = null;
+        _trafficLanes = Array.Empty<TrafficLane>();
         _selection.Clear();
         _hoveredBerthId = null;
         _popupRefreshPending = false;
