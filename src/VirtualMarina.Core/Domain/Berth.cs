@@ -126,6 +126,17 @@ public sealed record Berth
     /// <summary>When true the berth looks normal and can be selected and show its tooltip, but its actions window does not open.</summary>
     public bool IsReadOnly { get; init; }
 
+    /// <summary>
+    /// Power and water at this berth, overriding <see cref="Pier.Services"/>. Null (the default) takes whatever the
+    /// pier offers, which is what most berths do; set it where one stretch of a pier was upgraded and the rest was not.
+    /// </summary>
+    /// <remarks>
+    /// A pedestal stands between every two berths, so it is drawn when either of the pair asks for it, and offers
+    /// what the two of them together ask for.
+    /// </remarks>
+    /// <example><code>berth with { Services = PierServices.PowerAndWater }</code></example>
+    public PierServices? Services { get; init; }
+
     /// <summary>Id of the <see cref="MultiBerth"/> this berth belongs to, if any. Managed by the visualizer.</summary>
     public string? MultiBerthId { get; internal init; }
 

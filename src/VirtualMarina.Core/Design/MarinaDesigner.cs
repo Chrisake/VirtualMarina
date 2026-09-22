@@ -81,6 +81,7 @@ public sealed class MarinaDesigner
     private static readonly Vector4 EraseColor = new(0.95f, 0.2f, 0.15f, 0.55f);
     private static readonly Vector4 ImageOutlineColor = new(1f, 0.6f, 0.15f, 0.95f);
     private static readonly Vector4 ScaleLineColor = new(1f, 0.35f, 0.85f, 0.95f);
+    private static readonly Vector4 ServicePreviewColor = new(0.99f, 0.78f, 0.15f, 0.6f);
     private static readonly Vector4 TextColor = new(1f, 1f, 1f, 0.97f);
 
     private readonly MarinaVisualizer _marina;
@@ -246,6 +247,7 @@ public sealed class MarinaDesigner
         DesignTool.AddLandBerths => Strings.HintAddLandBerthsHeading,
         DesignTool.Erase => Strings.HintErase,
         DesignTool.Rename => Strings.HintRename,
+        DesignTool.EditServices => Strings.HintEditServices,
         DesignTool.PlantTrees => _treeDensity > 0f ? Strings.HintPlantTrees : Strings.HintPlantTreesNone,
         DesignTool.MoveReferenceImage => _image is null ? Strings.HintReferenceImageMissing : Strings.HintMoveReferenceImage,
         DesignTool.MeasureScale when _image is null => Strings.HintReferenceImageMissing,
@@ -699,6 +701,57 @@ public sealed class MarinaDesigner
     }
 
     /// <summary>
+    /// Gives berths the pedestals in <see cref="BerthServices"/>, and records one step for <see cref="Undo"/>.
+    /// This is what <see cref="DesignTool.EditServices"/> does when a berth is clicked.
+    /// </summary>
+    /// <param name="berthId">The berth clicked.</param>
+    /// <param name="wholeSide">
+    /// True to change every berth down that side of the pier, false for the one berth.
+    /// </param>
+    /// <returns>The berths that changed; empty when the id is unknown or they already had these pedestals.</returns>
+    public IReadOnlyList<Berth> SetBerthServices(string berthId, bool wholeSide = false)
+    {
+        ArgumentNullException.ThrowIfNull(berthId);
+        return _marina.GetBerth(berthId) is { } berth ? SetBerthServices(berth, wholeSide) : Array.Empty<Berth>();
+    }
+
+    private IReadOnlyList<Berth> SetBerthServices(Berth berth, bool wholeSide)
+    {
+        var targets = ServiceTargets(berth, wholeSide).Where(b => b.Services != _berthServices).ToArray();
+        if (targets.Length == 0) return Array.Empty<Berth>();
+
+        var action = new DesignAction(Strings.Format(Strings.UndoSetServices, _berthServices.GetDisplayName(), targets.Length));
+        using (_marina.BeginUpdate())
+        {
+            foreach (var target in targets)
+            {
+                action.ChangedBerths.Add(target);
+                _marina.UpdateBerth(target with { Services = _berthServices });
+            }
+        }
+
+        Record(action);
+        _marina.MarkSceneDirty();
+        RaiseStateChanged();
+        return targets;
+    }
+
+    /// <summary>The berths a pedestal change would touch: the one clicked, or its whole side of the pier.</summary>
+    private IReadOnlyList<Berth> ServiceTargets(Berth berth, bool wholeSide)
+    {
+        if (!wholeSide || berth.PierId is not { } pierId || _marina.GetPier(pierId) is not { } pier) return new[] { berth };
+
+        var side = MathF.Sign(Vector2.Dot(berth.Center - pier.Center, pier.Right));
+        return _marina.GetBerthsByPier(pier.Id)
+            .Where(other => MathF.Sign(Vector2.Dot(other.Center - pier.Center, pier.Right)) == side)
+            .ToArray();
+    }
+
+    /// <summary>Alt or Ctrl widens a pedestal change from one berth to the whole side.</summary>
+    private static bool WholeSideWanted(InputModifiers modifiers) =>
+        (modifiers & (InputModifiers.Alt | InputModifiers.Control)) != 0;
+
+    /// <summary>
     /// Gives a pier another id, which its berths and dividers follow, and records the change for <see cref="Undo"/>.
     /// Returns the pier under its new id.
     /// </summary>
@@ -996,6 +1049,7 @@ public sealed class MarinaDesigner
 
                 foreach (var land in action.ChangedLandAreas.Where(land => _marina.GetLandArea(land.Id) is not null)) _marina.UpdateLandArea(land);
                 foreach (var pier in action.ChangedPiers.Where(pier => _marina.GetPier(pier.Id) is not null)) _marina.UpdatePier(pier);
+                foreach (var berth in action.ChangedBerths.Where(berth => _marina.GetBerth(berth.Id) is not null)) _marina.UpdateBerth(berth);
 
                 foreach (var (from, to) in action.RenamedBerths.Where(r => _marina.GetBerth(r.To) is not null)) _marina.RenameBerth(to, from);
                 foreach (var (from, to) in action.RenamedPiers.Where(r => _marina.GetPier(r.To) is not null)) _marina.ChangePierId(to, from);
@@ -1247,7 +1301,7 @@ public sealed class MarinaDesigner
     {
         _modifiers = modifiers;
         UpdatePointer(x, y);
-        if (_tool is DesignTool.Erase or DesignTool.Rename) _eraseTarget = FindEraseTarget(x, y);
+        if (_tool is DesignTool.Erase or DesignTool.Rename or DesignTool.EditServices) _eraseTarget = FindEraseTarget(x, y);
         if (_tool == DesignTool.PlantTrees) _eraseTarget = FindLandUnderPointer(x, y, LandKind.Grass);
         if (_tool == DesignTool.AddLandBerths) _eraseTarget = _berthLandId is null ? FindLandUnderPointer(x, y) : _marina.GetLandArea(_berthLandId);
         _marina.MarkSceneDirty();
@@ -1305,6 +1359,14 @@ public sealed class MarinaDesigner
 
             case DesignTool.Rename:
                 if (FindEraseTarget(x, y) is { } toRename) AskToRename(toRename);
+                break;
+
+            case DesignTool.EditServices:
+                if (FindEraseTarget(x, y) is Berth berthToServe)
+                {
+                    SetBerthServices(berthToServe, WholeSideWanted(modifiers));
+                }
+
                 break;
 
             case DesignTool.PlantTrees when (modifiers & InputModifiers.Control) != 0:
@@ -1417,6 +1479,13 @@ public sealed class MarinaDesigner
             case DesignTool.Erase:
             case DesignTool.Rename:
                 AppendEraseTarget(overlay);
+                break;
+            case DesignTool.EditServices when _eraseTarget is Berth serving:
+                foreach (var berth in ServiceTargets(serving, WholeSideWanted(_modifiers)))
+                {
+                    overlay.Pad(berth, BerthPlacement.PadHeightFor(SceneBuilder.GroundHeight(berth, _marina.GetLandArea)) + 0.04f, ServicePreviewColor);
+                }
+
                 break;
             case DesignTool.PlantTrees when _eraseTarget is LandArea target:
                 var outlineY = target.Height + 0.1f;
@@ -2191,6 +2260,9 @@ public sealed class MarinaDesigner
         /// <summary>The piers as they were before the change (service pedestals and names).</summary>
         public List<Pier> ChangedPiers { get; } = new();
 
+        /// <summary>The berths as they were before the change (pedestals, for now).</summary>
+        public List<Berth> ChangedBerths { get; } = new();
+
         /// <summary>Berths that were renamed, as (old name, new name); undoing names them back.</summary>
         public List<(string From, string To)> RenamedBerths { get; } = new();
 
@@ -2200,7 +2272,7 @@ public sealed class MarinaDesigner
         public bool IsEmpty =>
             AddedLandAreas.Count + AddedPiers.Count + AddedDividers.Count + AddedBerths.Count +
             RemovedLandAreas.Count + RemovedPiers.Count + RemovedDividers.Count + RemovedBerths.Count +
-            ChangedLandAreas.Count + ChangedPiers.Count + RenamedBerths.Count + RenamedPiers.Count == 0;
+            ChangedLandAreas.Count + ChangedPiers.Count + ChangedBerths.Count + RenamedBerths.Count + RenamedPiers.Count == 0;
     }
 
     /// <summary>Emits preview geometry (thin boxes, dots, pads and text) into the transparent pass, so it shows above the reference image.</summary>

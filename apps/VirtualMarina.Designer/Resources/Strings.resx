@@ -613,6 +613,18 @@ Renderer: {2}</value>
     <value>Ctrl+Z brings back anything you remove by mistake.</value>
   </data>
   <!-- Renaming -->
+  <data name="CardServices">
+    <value>Pedestals</value>
+  </data>
+  <data name="TitleServices">
+    <value>Pedestals</value>
+  </data>
+  <data name="ServicesHint">
+    <value>Pick what the pedestals offer, then click a berth. Hold Alt or Ctrl to change every berth down that side of the pier.</value>
+  </data>
+  <data name="ServicesInheritHint">
+    <value>A berth left alone takes whatever its pier offers, so only the ones you change carry their own setting.</value>
+  </data>
   <data name="CardRename">
     <value>Rename</value>
   </data>
@@ -646,6 +658,12 @@ Renderer: {2}</value>
   </data>
   <data name="ToolRename">
     <value>Rename</value>
+  </data>
+  <data name="ToolServices">
+    <value>Pedestals</value>
+  </data>
+  <data name="ToolServicesTip">
+    <value>Give berths power and water; Alt or Ctrl changes a whole side of a pier</value>
   </data>
   <data name="ToolRenameTip">
     <value>Click a berth or a pier to give it another name</value>

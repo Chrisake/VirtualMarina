@@ -187,6 +187,7 @@ internal sealed class MainForm : Form
         AddToolButton(DesignTool.PlantTrees, Strings.ToolTrees, Strings.ToolTreesTip);
         AddToolButton(DesignTool.Erase, Strings.ToolErase, Strings.ToolEraseTip);
         AddToolButton(DesignTool.Rename, Strings.ToolRename, Strings.ToolRenameTip);
+        AddToolButton(DesignTool.EditServices, Strings.ToolServices, Strings.ToolServicesTip);
         _toolbar.Items.Add(new ToolStripSeparator());
 
         _undoButton.Text = Strings.Undo;

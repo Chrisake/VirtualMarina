@@ -1202,6 +1202,7 @@ What clicks in the 3D view do while `MarinaDesigner.IsActive` is true.
 | `PlantTrees` = 7 | Click a lawn (`LandKind.Grass`) to scatter trees on it at `MarinaDesigner.TreeDensity`. Each click replaces the trees it has with new, randomly placed ones; Ctrl+click (or a right-click) removes them. |
 | `AddLandBerths` = 8 | Click a land area to put a land berth (`Berth.OnLand`) there, then click again to aim its bow (Shift snaps to 15°). Clicking the same spot twice uses `MarinaDesigner.LandBerthHeading`. |
 | `Rename` = 9 | Click a berth or a pier to give it another name. The designer asks the host for the new name through `MarinaDesigner.ElementRenaming`, so the application decides how to ask for it. |
+| `EditServices` = 10 | Click a berth to give it the pedestals in `MarinaDesigner.BerthServices`; hold Alt or Ctrl to change every berth down that side of the pier at once. The berths about to change are highlighted. |
 
 <a id="designtoolchangedeventargs"></a>
 ### DesignToolChangedEventArgs
@@ -1341,6 +1342,7 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `LandArea? RemoveTrees(string landAreaId)` | Removes every tree from a land area (of any kind) and raises `MarinaDesigner.TreesPlanted` with an empty `LandArea.Trees`. Returns the updated land area, or null when it doesn't exist or has no trees. |
 | `Berth RenameBerth(string berthId, string newBerthId)` | Gives one berth another name, keeping everything else about it, and records the change for `MarinaDesigner.Undo`. Returns the renamed berth. |
 | `Pier RenamePier(string pierId, string name)` | Gives a pier a display name (`Pier.Name`), the one shown in tooltips and the camera preset, and records the change for `MarinaDesigner.Undo`. The pier's id, and the berth names built from it, stay as they are. Returns the renamed pier. |
+| `IReadOnlyList<Berth> SetBerthServices(string berthId, bool wholeSide = false)` | Gives berths the pedestals in `MarinaDesigner.BerthServices`, and records one step for `MarinaDesigner.Undo`. This is what `DesignTool.EditServices` does when a berth is clicked. |
 | `void SetReferenceImage(ReferenceImage image, float? metersPerPixel = null, Vector2? center = null)` | Shows an image to trace (north at the top). Without `metersPerPixel` it is sized to cover the current layout (at least 300 m wide) until calibrated; without `center` it is centered on the camera target. |
 | `bool Undo()` | Reverts the last change the designer made: a drawn land area, pier, berth row or land berth is removed again, erased elements come back with their dividers, and trees are restored. Raises `MarinaDesigner.ActionUndone` (and the usual `LayoutChanged` notifications). Returns false when there is nothing to undo. |
 | `void ViewTopDown(bool immediate = false)` | Looks straight down with north (−Z) at the top of the view, as aerial images are shown: the best angle to trace an image. Keeps the camera target and distance. |
@@ -1440,6 +1442,7 @@ The one deliberate exception is `Berth.ExternalData`, a mutable bag shared by ev
 | `bool IsVisible { get; init; }` | When false the berth is not drawn at all (not even its finger piers) and cannot be interacted with. |
 | `bool IsDisabled { get; init; }` | When true the berth is drawn in gray (its boat desaturated) and cannot be hovered, selected, right-clicked or acted on. |
 | `bool IsReadOnly { get; init; }` | When true the berth looks normal and can be selected and show its tooltip, but its actions window does not open. |
+| `PierServices? Services { get; init; }` | Power and water at this berth, overriding `Pier.Services`. Null (the default) takes whatever the pier offers, which is what most berths do; set it where one stretch of a pier was upgraded and the rest was not. |
 | `string? MultiBerthId { get; }` | Id of the `MultiBerth` this berth belongs to, if any. Managed by the visualizer. |
 | `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes supplied with the berth definition (e.g. power, water). For mutable host objects use `Berth.ExternalData`. |
 | `MarinaDataBag ExternalData { get; init; }` | Host-owned objects attached to this berth (contract ids, cached ERP records, ...). The same instance is shared by every snapshot of the berth, so values written from an event handler are visible in later events and in `GetBerth`. The visualizer never reads it. |

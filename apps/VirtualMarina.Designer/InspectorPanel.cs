@@ -73,6 +73,10 @@ internal sealed class InspectorPanel : Panel
     // Rename
     private readonly Panel _renameCard;
 
+    // Pedestals
+    private readonly Panel _servicesCard;
+    private readonly ComboBox _servicesChoice = Theme.Choice();
+
     // Trees
     private readonly Panel _treeCard;
     private readonly TrackBar _treeDensity = new() { Minimum = 0, Maximum = 60 };
@@ -130,11 +134,12 @@ internal sealed class InspectorPanel : Panel
         _treeCard = BuildTreeCard();
         _eraseCard = BuildEraseCard();
         _renameCard = BuildRenameCard();
+        _servicesCard = BuildServicesCard();
         _imageCard = BuildImageCard(out _imageMove, out _imageMeasure, out _applyScale);
         _summaryCard = BuildSummaryCard();
 
         _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _treeCard, _eraseCard, _renameCard, _imageCard, _summaryCard })
+        foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _treeCard, _eraseCard, _renameCard, _servicesCard, _imageCard, _summaryCard })
         {
             // Top, not Fill: the column still decides the width, but the height stays the card's own.
             card.Dock = DockStyle.Top;
@@ -174,6 +179,7 @@ internal sealed class InspectorPanel : Panel
             _treeCard.Visible = tool == DesignTool.PlantTrees || (tool == DesignTool.DrawLandArea && designer.LandKind == LandKind.Grass);
             _eraseCard.Visible = tool == DesignTool.Erase;
             _renameCard.Visible = tool == DesignTool.Rename;
+            _servicesCard.Visible = tool == DesignTool.EditServices;
             _imageCard.Visible = tool is DesignTool.Navigate or DesignTool.MoveReferenceImage or DesignTool.MeasureScale;
             _summaryCard.Visible = tool is DesignTool.Navigate or DesignTool.Erase;
 
@@ -191,6 +197,7 @@ internal sealed class InspectorPanel : Panel
             SetNumber(_berthGap, designer.BerthGap);
             _alignBerths.Checked = designer.AlignBerthsToExisting;
             _services.SelectedItem = Choice.Of(_services, designer.BerthServices);
+            _servicesChoice.SelectedItem = Choice.Of(_servicesChoice, designer.BerthServices);
             _separatorHint.Text = SeparatorHint(designer.BerthSeparators, designer.BerthWidth, designer.BerthGap);
 
             var naming = designer.BerthNaming;
@@ -264,6 +271,7 @@ internal sealed class InspectorPanel : Panel
         DesignTool.PlantTrees => Strings.TitleTrees,
         DesignTool.Erase => Strings.TitleErase,
         DesignTool.Rename => Strings.TitleRename,
+        DesignTool.EditServices => Strings.TitleServices,
         DesignTool.MoveReferenceImage => Strings.TitleMoveImage,
         DesignTool.MeasureScale => Strings.TitleMeasureScale,
         _ => Strings.TitleNavigate,
@@ -380,6 +388,16 @@ internal sealed class InspectorPanel : Panel
         return card;
     }
 
+    private Panel BuildServicesCard()
+    {
+        var card = Theme.Card(Strings.CardServices, out var table);
+        Choice.Fill(_servicesChoice, PierServices.None, PierServices.PowerAndWater, PierServices.Power, PierServices.Water);
+        Theme.Row(table, Strings.BerthServices, _servicesChoice, Strings.BerthServicesTip);
+        Theme.FullRow(table, Theme.Hint(Strings.ServicesHint));
+        Theme.FullRow(table, Theme.Hint(Strings.ServicesInheritHint));
+        return card;
+    }
+
     private Panel BuildRenameCard()
     {
         var card = Theme.Card(Strings.CardRename, out var table);
@@ -450,6 +468,7 @@ internal sealed class InspectorPanel : Panel
         _berthGap.ValueChanged += (_, _) => Apply(d => d.BerthGap = (float)_berthGap.Value);
         _alignBerths.CheckedChanged += (_, _) => Apply(d => d.AlignBerthsToExisting = _alignBerths.Checked);
         _services.SelectedIndexChanged += (_, _) => Apply(d => d.BerthServices = Choice.Value<PierServices>(_services));
+        _servicesChoice.SelectedIndexChanged += (_, _) => Apply(d => d.BerthServices = Choice.Value<PierServices>(_servicesChoice));
         _berthPattern.TextChanged += (_, _) => ApplyNaming(n => string.IsNullOrWhiteSpace(_berthPattern.Text) ? n : n with { Pattern = _berthPattern.Text });
         _berthStartNumber.ValueChanged += (_, _) => ApplyNaming(n => n with { StartNumber = (int)_berthStartNumber.Value });
         _berthIncrement.ValueChanged += (_, _) => ApplyNaming(n => (int)_berthIncrement.Value == 0 ? n : n with { Increment = (int)_berthIncrement.Value });

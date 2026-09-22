@@ -399,4 +399,58 @@ public class NamingTests
         Assert.True(designer.Undo());
         Assert.Equal(left.Count, marina.GetBerthsByPier("A").Count);
     }
+
+    [Fact]
+    public void SetBerthServices_ChangesOneBerth_OrTheWholeSide_AndCanBeUndone()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
+        var designer = marina.Designer;
+        designer.IsActive = true;
+        designer.BerthWidth = 5f;
+        var left = designer.CreateBerths("A", PierSide.Left, 0f, 20f);
+        var right = designer.CreateBerths("A", PierSide.Right, 0f, 20f);
+        Assert.True(left.Count > 1 && right.Count > 1);
+
+        // A berth takes its pier's pedestals until it is given its own.
+        Assert.Null(marina.GetBerth(left[0].Id)!.Services);
+
+        designer.BerthServices = PierServices.PowerAndWater;
+        var one = designer.SetBerthServices(left[0].Id);
+        Assert.Single(one);
+        Assert.Equal(PierServices.PowerAndWater, marina.GetBerth(left[0].Id)!.Services);
+        Assert.Null(marina.GetBerth(left[1].Id)!.Services); // its neighbour is untouched
+
+        // Alt or Ctrl takes the whole side, and leaves the other side alone.
+        designer.BerthServices = PierServices.Power;
+        var side = designer.SetBerthServices(left[1].Id, wholeSide: true);
+        Assert.Equal(left.Count, side.Count);
+        Assert.All(left, berth => Assert.Equal(PierServices.Power, marina.GetBerth(berth.Id)!.Services));
+        Assert.All(right, berth => Assert.Null(marina.GetBerth(berth.Id)!.Services));
+
+        // Asking for what they already have changes nothing.
+        Assert.Empty(designer.SetBerthServices(left[1].Id, wholeSide: true));
+
+        Assert.True(designer.Undo());
+        Assert.Equal(PierServices.PowerAndWater, marina.GetBerth(left[0].Id)!.Services);
+    }
+
+    [Fact]
+    public void BerthServices_SurviveASaveAndLoad()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f) { Services = PierServices.Power });
+        var designer = marina.Designer;
+        designer.IsActive = true;
+        var berths = designer.CreateBerths("A", PierSide.Left, 0f, 15f);
+        designer.BerthServices = PierServices.PowerAndWater;
+        designer.SetBerthServices(berths[0].Id);
+
+        var copy = new MarinaVisualizer();
+        MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson()).ApplyTo(copy);
+
+        Assert.Equal(PierServices.PowerAndWater, copy.GetBerth(berths[0].Id)!.Services);
+        Assert.Null(copy.GetBerth(berths[1].Id)!.Services);
+        Assert.Equal(PierServices.Power, copy.GetPier("A")!.Services);
+    }
 }

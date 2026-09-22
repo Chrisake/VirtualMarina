@@ -776,6 +776,7 @@ enum VirtualMarina.Core.Design.DesignTool : IComparable, IConvertible, IFormatta
     AddLandBerths = 8
     DrawLandArea = 1
     DrawPier = 2
+    EditServices = 10
     Erase = 4
     MeasureScale = 6
     MoveReferenceImage = 5
@@ -824,6 +825,7 @@ sealed class VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMari
 sealed class VirtualMarina.Core.Design.MarinaDesigner
     IReadOnlyList<Vector2> DraftPoints { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> CreateBerths(string pierId, VirtualMarina.Core.Domain.PierSide side, float fromAlong, float toAlong)
+    IReadOnlyList<VirtualMarina.Core.Domain.Berth> SetBerthServices(string berthId, bool wholeSide = false)
     ValueTuple<Vector2, Vector2>? ReferenceImageBounds { get; }
     ValueTuple<Vector2, Vector2>? ScaleLine { get; }
     Vector2 ReferenceImageCenter { get; set; }
@@ -939,6 +941,7 @@ sealed class VirtualMarina.Core.Domain.Berth : IEquatable<VirtualMarina.Core.Dom
     VirtualMarina.Core.Domain.Boat Boat { get; init; }
     VirtualMarina.Core.Domain.MarinaDataBag ExternalData { get; init; }
     VirtualMarina.Core.Domain.OrientedRect Bounds { get; }
+    VirtualMarina.Core.Domain.PierServices? Services { get; init; }
     bool AllowsActions { get; }
     bool Equals(VirtualMarina.Core.Domain.Berth other)
     bool HasFingerPiers { get; init; }

@@ -189,6 +189,9 @@ internal static class Strings
     /// <summary>"Rename"</summary>
     internal static string ToolRename => Get("ToolRename");
 
+    /// <summary>"Pedestals"</summary>
+    internal static string ToolEditServices => Get("ToolEditServices");
+
     /// <summary>"Move image"</summary>
     internal static string ToolMoveReferenceImage => Get("ToolMoveReferenceImage");
 
@@ -303,6 +306,9 @@ internal static class Strings
     /// <summary>"Click a berth or a pier to give it another name."</summary>
     internal static string HintRename => Get("HintRename");
 
+    /// <summary>"Click a berth to give it the pedestals chosen above; Alt or Ctrl changes that whole side of t..."</summary>
+    internal static string HintEditServices => Get("HintEditServices");
+
     /// <summary>"Click a lawn to scatter trees on it (replacing the ones it has); Ctrl+click or right-click re..."</summary>
     internal static string HintPlantTrees => Get("HintPlantTrees");
 
@@ -358,6 +364,9 @@ internal static class Strings
 
     /// <summary>"Rename {0} to {1}"</summary>
     internal static string UndoRenameBerth => Get("UndoRenameBerth");
+
+    /// <summary>"Set {0} on {1} berth(s)"</summary>
+    internal static string UndoSetServices => Get("UndoSetServices");
 
     /// <summary>"Change pier id {0} to {1}"</summary>
     internal static string UndoChangePierId => Get("UndoChangePierId");

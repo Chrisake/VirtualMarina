@@ -1,4 +1,4 @@
-using VirtualMarina.Core.Design;
+﻿using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Resources;
 
@@ -26,6 +26,7 @@ public static class DisplayNames
         DesignTool.PlantTrees => Strings.ToolPlantTrees,
         DesignTool.Erase => Strings.ToolErase,
         DesignTool.Rename => Strings.ToolRename,
+        DesignTool.EditServices => Strings.ToolEditServices,
         DesignTool.MoveReferenceImage => Strings.ToolMoveReferenceImage,
         DesignTool.MeasureScale => Strings.ToolMeasureScale,
         _ => tool.ToString(),

@@ -549,6 +549,18 @@ internal static class Strings
 
     // ---- Renaming ------------------------------------------------------------------------------------
 
+    /// <summary>"Pedestals"</summary>
+    internal static string CardServices => Get("CardServices");
+
+    /// <summary>"Pedestals"</summary>
+    internal static string TitleServices => Get("TitleServices");
+
+    /// <summary>"Pick what the pedestals offer, then click a berth. Hold Alt or Ctrl to change every berth dow..."</summary>
+    internal static string ServicesHint => Get("ServicesHint");
+
+    /// <summary>"A berth left alone takes whatever its pier offers, so only the ones you change carry their ow..."</summary>
+    internal static string ServicesInheritHint => Get("ServicesInheritHint");
+
     /// <summary>"Rename"</summary>
     internal static string CardRename => Get("CardRename");
 
@@ -581,6 +593,12 @@ internal static class Strings
 
     /// <summary>"Rename"</summary>
     internal static string ToolRename => Get("ToolRename");
+
+    /// <summary>"Pedestals"</summary>
+    internal static string ToolServices => Get("ToolServices");
+
+    /// <summary>"Give berths power and water; Alt or Ctrl changes a whole side of a pier"</summary>
+    internal static string ToolServicesTip => Get("ToolServicesTip");
 
     /// <summary>"Click a berth or a pier to give it another name"</summary>
     internal static string ToolRenameTip => Get("ToolRenameTip");

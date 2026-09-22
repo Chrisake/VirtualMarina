@@ -127,7 +127,10 @@ internal static class SceneBuilder
         foreach (var pier in state.Piers)
         {
             AddPier(output, pier);
-            if (pier.Services != PierServices.None) AddServicePedestals(output, pier, berths);
+            if (pier.Services != PierServices.None || berths.Any(berth => berth.Services is { } own && own != PierServices.None))
+            {
+                AddServicePedestals(output, pier, berths);
+            }
         }
 
         foreach (var divider in state.Dividers) AddDivider(output, divider, divider.PierId is null ? null : state.PierLookup(divider.PierId));
@@ -417,8 +420,6 @@ internal static class SceneBuilder
     {
         const float postHeight = 0.95f;
         var top = pier.DeckHeight;
-        var power = (pier.Services & PierServices.Power) != 0;
-        var both = pier.Services == PierServices.PowerAndWater;
 
         foreach (var side in BerthSides(pier))
         {
@@ -426,25 +427,37 @@ internal static class SceneBuilder
             var row = BerthSpansAlong(pier, berths, side);
             for (var i = 0; i < row.Count; i += 2)
             {
+                // One pedestal serves the pair, so it offers whatever the two of them together ask for.
+                var services = ServicesOf(row[i].Berth, pier);
+                if (i + 1 < row.Count) services |= ServicesOf(row[i + 1].Berth, pier);
+                if (services == PierServices.None) continue;
+
                 // Between the two berths of a pair, or halfway along a berth left on its own at the end of the row.
                 var along = i + 1 < row.Count ? (row[i].Max + row[i + 1].Min) * 0.5f : (row[i].Min + row[i].Max) * 0.5f;
                 var at = pier.Start + pier.Direction * Math.Clamp(along, 0.25f, MathF.Max(0.25f, pier.Length - 0.25f)) + offset;
+                var power = (services & PierServices.Power) != 0;
                 output.Add(Box(pier, at, 0f, new Vector3(0.28f, postHeight, 0.28f), top + postHeight * 0.5f, Pedestal));
                 output.Add(Box(pier, at, 0f, new Vector3(0.34f, 0.1f, 0.34f), top + postHeight + 0.05f, power ? PowerTop : WaterTop));
-                if (both) output.Add(Box(pier, at, 0f, new Vector3(0.3f, 0.14f, 0.3f), top + postHeight * 0.45f, WaterTop));
+                if (services == PierServices.PowerAndWater)
+                {
+                    output.Add(Box(pier, at, 0f, new Vector3(0.3f, 0.14f, 0.3f), top + postHeight * 0.45f, WaterTop));
+                }
             }
         }
     }
+
+    /// <summary>What a berth actually offers: its own setting, or the pier's when it has none of its own.</summary>
+    internal static PierServices ServicesOf(Berth berth, Pier pier) => berth.Services ?? pier.Services;
 
     /// <summary>
     /// The stretch each berth on one side of a pier covers along it (distance from the pier's start to its near and far edges), in
     /// order along the pier.
     /// </summary>
-    internal static IReadOnlyList<(float Min, float Max)> BerthSpansAlong(Pier pier, IEnumerable<Berth> berths, float side)
+    internal static IReadOnlyList<(Berth Berth, float Min, float Max)> BerthSpansAlong(Pier pier, IEnumerable<Berth> berths, float side)
     {
         ArgumentNullException.ThrowIfNull(pier);
         ArgumentNullException.ThrowIfNull(berths);
-        var row = new List<(float Min, float Max)>();
+        var row = new List<(Berth Berth, float Min, float Max)>();
         foreach (var berth in berths)
         {
             if (!berth.IsVisible || !string.Equals(berth.PierId, pier.Id, StringComparison.OrdinalIgnoreCase)) continue;
@@ -453,7 +466,7 @@ internal static class SceneBuilder
             var along = Vector2.Dot(berth.Center - pier.Start, pier.Direction);
             var extent = MathF.Abs(Vector2.Dot(berth.Right, pier.Direction)) * berth.Width * 0.5f +
                          MathF.Abs(Vector2.Dot(berth.Forward, pier.Direction)) * berth.Length * 0.5f;
-            row.Add((along - extent, along + extent));
+            row.Add((berth, along - extent, along + extent));
         }
 
         row.Sort((a, b) => a.Min.CompareTo(b.Min));

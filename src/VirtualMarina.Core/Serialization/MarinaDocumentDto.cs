@@ -397,6 +397,9 @@ internal sealed class BerthDto : ExtensibleDto
 
     public bool HasFingerPiers { get; set; } = true;
 
+    /// <summary>Pedestals at this berth alone; absent means it takes whatever its pier offers.</summary>
+    public PierServices? Services { get; set; }
+
     /// <inheritdoc cref="Status"/>
     public bool? IsVisible { get; set; }
 
@@ -432,6 +435,7 @@ internal sealed class BerthDto : ExtensibleDto
         MaxDraft = berth.MaxDraft,
         // Status, the flags and any boat are left out on purpose: see the Status property.
         HasFingerPiers = berth.HasFingerPiers,
+        Services = berth.Services,
         Metadata = berth.Metadata.Count == 0 ? null : berth.Metadata.ToDictionary(e => e.Key, e => e.Value),
     };
 
@@ -449,6 +453,7 @@ internal sealed class BerthDto : ExtensibleDto
             Status = Status ?? BerthStatus.Free,
             Boat = Boat?.ToDomain(),
             HasFingerPiers = LandAreaId is { Length: > 0 } ? false : HasFingerPiers,
+            Services = Services,
             IsVisible = IsVisible ?? true,
             IsDisabled = IsDisabled ?? false,
             IsReadOnly = IsReadOnly ?? false,

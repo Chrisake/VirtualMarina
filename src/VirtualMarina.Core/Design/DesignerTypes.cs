@@ -53,6 +53,12 @@ public enum DesignTool
     /// <see cref="MarinaDesigner.ElementRenaming"/>, so the application decides how to ask for it.
     /// </summary>
     Rename = 9,
+
+    /// <summary>
+    /// Click a berth to give it the pedestals in <see cref="MarinaDesigner.BerthServices"/>; hold Alt or Ctrl to
+    /// change every berth down that side of the pier at once. The berths about to change are highlighted.
+    /// </summary>
+    EditServices = 10,
 }
 
 /// <summary>
