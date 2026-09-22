@@ -42,6 +42,75 @@ internal sealed class CamerasPanel : UserControl
 
     private bool _updating;
 
+    /// <summary>
+    /// The names the rows were last built for, so an unchanged list rebuilds nothing. Null until they have been
+    /// built at all, which an empty list would otherwise look exactly like.
+    /// </summary>
+    private string? _automaticRows;
+    private string? _savedRows;
+
+    /// <summary>The tick of each automatic view, by name, so they can be brought in line without a rebuild.</summary>
+    private readonly Dictionary<string, CheckBox> _ticks = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>True when a sync actually added or removed a row, so only then is a layout worth doing.</summary>
+    private bool _rowsChanged;
+
+    private TableLayoutPanel _header = null!;
+
+    /// <summary>
+    /// Shows or hides the panel by its height rather than by <see cref="Control.Visible"/>.
+    /// </summary>
+    /// <remarks>
+    /// WinForms does not lay out a hidden control, so hiding one throws its layout away and showing it again works
+    /// the whole tree out afresh — most of a second on a panel with a few hundred nested auto-sized controls.
+    /// Collapsing to nothing leaves it laid out, and the swap becomes a resize.
+    /// </remarks>
+    public bool Collapsed
+    {
+        get => _collapsed;
+        set
+        {
+            _collapsed = value;
+            if (value) Height = 0;
+            else ContentChanged();
+        }
+    }
+
+    /// <summary>How tall the panel wants to be: its heading plus its cards. Measured once per width.</summary>
+    private int ContentHeight
+    {
+        get
+        {
+            if (_contentHeight <= 0)
+            {
+                _contentHeight = _header.PreferredSize.Height + _stack.PreferredSize.Height;
+                _measuredWidth = Width;
+            }
+
+            return _contentHeight;
+        }
+    }
+
+    /// <summary>Measures again, after something changed how much there is to show or how wide it is shown in.</summary>
+    private void ContentChanged()
+    {
+        _contentHeight = 0;
+        if (!_collapsed) Height = ContentHeight;
+    }
+
+    /// <summary>A panel shown in a different width wraps differently, so its height has to be worked out again.</summary>
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (_collapsed || Width == _measuredWidth) return;
+        ContentChanged();
+    }
+
+    private bool _collapsed;
+    private int _contentHeight;
+    private int _measuredWidth = -1;
+
+
     /// <summary>Creates the panel over a visualizer.</summary>
     /// <param name="marina">The marina whose views are being managed.</param>
     /// <param name="log">Where to note what happened, for the activity log.</param>
@@ -52,7 +121,7 @@ internal sealed class CamerasPanel : UserControl
         BackColor = Theme.Background;
         Dock = DockStyle.Fill;
 
-        var header = new TableLayoutPanel
+        _header = new TableLayoutPanel
         {
             ColumnCount = 1,
             AutoSize = true,
@@ -61,6 +130,7 @@ internal sealed class CamerasPanel : UserControl
             BackColor = Theme.Background,
             Padding = new Padding(12, 12, 12, 0),
         };
+        var header = _header;
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
         header.Controls.Add(new Label { Text = Strings.TitleCameras, Font = new Font("Segoe UI Semibold", 13f), ForeColor = Theme.Text, AutoSize = true, Dock = DockStyle.Fill }, 0, 0);
         header.Controls.Add(new Label { Text = Strings.CamerasHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
@@ -99,8 +169,10 @@ internal sealed class CamerasPanel : UserControl
         _scroller.AutoSize = true;
         _scroller.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Dock = DockStyle.Top;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+        // The height is ours to set, so that collapsing to nothing can stand in for hiding.
+        AutoSize = false;
+        Height = ContentHeight;
     }
 
     /// <summary>Rebuilds the two lists from the marina, e.g. after a pier was added or a view saved.</summary>
@@ -108,6 +180,12 @@ internal sealed class CamerasPanel : UserControl
     {
         if (_updating) return;
         _updating = true;
+
+        // Suspend the whole panel, not just the tables: adding a row to a live table lays out every container above
+        // it as well, which is most of the cost of putting one view in the list.
+        SuspendLayout();
+        _stack.SuspendLayout();
+        _rowsChanged = false;
         try
         {
             var presets = _marina.CameraPresets;
@@ -117,22 +195,73 @@ internal sealed class CamerasPanel : UserControl
         finally
         {
             _updating = false;
+            _stack.ResumeLayout(performLayout: false);
+
+            // Nothing moved on most refreshes, and laying out anyway is the whole cost of them.
+            ResumeLayout(performLayout: _rowsChanged);
+            if (_rowsChanged) ContentChanged();
         }
     }
 
-    /// <summary>One row per view: a tick for the automatic ones, a name that goes there, and a way to remove a saved one.</summary>
+    /// <summary>
+    /// One row per view: a tick for the automatic ones, a name that goes there, and a way to remove a saved one.
+    /// </summary>
+    /// <remarks>
+    /// The rows are left alone unless the list of views has actually changed. Rebuilding them is the expensive part
+    /// of this panel, and it used to happen on every refresh; now saving a view costs one new row rather than all of
+    /// them.
+    /// </remarks>
     private void Fill(TableLayoutPanel table, IReadOnlyList<CameraPreset> presets, bool automatic)
     {
-        table.SuspendLayout();
-        while (table.Controls.Count > 0)
+        // What the rows would have to say. Unchanged means there is nothing to do but tick the boxes.
+        var names = presets.Select(preset => preset.Name).ToList();
+        var wanted = string.Join("\u001f", names);
+        var built = automatic ? _automaticRows : _savedRows;
+        if (built is not null && string.Equals(built, wanted, StringComparison.Ordinal))
         {
-            var old = table.Controls[0];
-            table.Controls.Remove(old);
-            old.Dispose();
+            if (automatic) UpdateTicks(presets);
+            return;
         }
 
-        table.RowStyles.Clear();
-        table.RowCount = 0;
+        // Saving a view leaves the rows already there untouched and adds one, which is the common case and the one
+        // that used to cost a rebuild of the whole list.
+        var keep = CommonPrefix(built ?? string.Empty, wanted);
+        _rowsChanged = true;
+        table.SuspendLayout();
+
+        if (keep == 0)
+        {
+            while (table.Controls.Count > 0)
+            {
+                var old = table.Controls[0];
+                table.Controls.Remove(old);
+                old.Dispose();
+            }
+
+            table.RowStyles.Clear();
+            table.RowCount = 0;
+            if (automatic) _ticks.Clear();
+        }
+        else
+        {
+            // Drop only the tail that no longer matches.
+            while (table.RowCount > keep)
+            {
+                var last = table.GetControlFromPosition(0, table.RowCount - 1);
+                if (last is not null)
+                {
+                    if (automatic) _ticks.Remove(last.Tag as string ?? string.Empty);
+                    table.Controls.Remove(last);
+                    last.Dispose();
+                }
+
+                table.RowStyles.RemoveAt(table.RowCount - 1);
+                table.RowCount--;
+            }
+        }
+
+        if (automatic) _automaticRows = wanted;
+        else _savedRows = wanted;
 
         if (presets.Count == 0)
         {
@@ -141,7 +270,7 @@ internal sealed class CamerasPanel : UserControl
             return;
         }
 
-        foreach (var preset in presets)
+        foreach (var preset in presets.Skip(keep))
         {
             var row = new TableLayoutPanel
             {
@@ -154,6 +283,7 @@ internal sealed class CamerasPanel : UserControl
             };
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            row.Tag = preset.Name;
 
             // The row holds its own preset rather than looking one up by name, so a saved view named after an
             // automatic one still goes where its own row says.
@@ -166,6 +296,7 @@ internal sealed class CamerasPanel : UserControl
                 tick.CheckedChanged += (_, _) => SetEnabled(name, tick.Checked);
                 Theme.Tips.SetToolTip(tick, preset.Description ?? name);
                 row.Controls.Add(tick, 0, 0);
+                _ticks[name] = tick;
             }
             else
             {
@@ -189,6 +320,37 @@ internal sealed class CamerasPanel : UserControl
         }
 
         table.ResumeLayout();
+    }
+
+    /// <summary>
+    /// How many rows at the start of the list are already right, comparing the names the rows were built for with
+    /// the names wanted now. Both are the names joined by a separator that cannot appear in one.
+    /// </summary>
+    private static int CommonPrefix(string built, string wanted)
+    {
+        if (built.Length == 0 || wanted.Length == 0) return 0;
+
+        var before = built.Split('\u001f');
+        var after = wanted.Split('\u001f');
+        var shared = 0;
+        while (shared < before.Length && shared < after.Length && string.Equals(before[shared], after[shared], StringComparison.Ordinal))
+        {
+            shared++;
+        }
+
+        return shared;
+    }
+
+    /// <summary>Brings the ticks in line with which views are offered, without touching the rows themselves.</summary>
+    private void UpdateTicks(IReadOnlyList<CameraPreset> presets)
+    {
+        foreach (var preset in presets)
+        {
+            if (_ticks.TryGetValue(preset.Name, out var tick) && tick.Checked != preset.IsEnabled)
+            {
+                tick.Checked = preset.IsEnabled;
+            }
+        }
     }
 
     private void SetEnabled(string name, bool enabled)

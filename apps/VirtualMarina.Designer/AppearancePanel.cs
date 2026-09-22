@@ -56,6 +56,62 @@ internal sealed class AppearancePanel : UserControl
     /// <summary>True while values are being read back, so the controls do not write what they are being given.</summary>
     private bool _updating;
 
+    private TableLayoutPanel _header = null!;
+
+    /// <summary>
+    /// Shows or hides the panel by its height rather than by <see cref="Control.Visible"/>.
+    /// </summary>
+    /// <remarks>
+    /// WinForms does not lay out a hidden control, so hiding one throws its layout away and showing it again works
+    /// the whole tree out afresh — most of a second on a panel with a few hundred nested auto-sized controls.
+    /// Collapsing to nothing leaves it laid out, and the swap becomes a resize.
+    /// </remarks>
+    public bool Collapsed
+    {
+        get => _collapsed;
+        set
+        {
+            _collapsed = value;
+            if (value) Height = 0;
+            else ContentChanged();
+        }
+    }
+
+    /// <summary>How tall the panel wants to be: its heading plus its cards. Measured once per width.</summary>
+    private int ContentHeight
+    {
+        get
+        {
+            if (_contentHeight <= 0)
+            {
+                _contentHeight = _header.PreferredSize.Height + _stack.PreferredSize.Height;
+                _measuredWidth = Width;
+            }
+
+            return _contentHeight;
+        }
+    }
+
+    /// <summary>Measures again, after something changed how much there is to show or how wide it is shown in.</summary>
+    private void ContentChanged()
+    {
+        _contentHeight = 0;
+        if (!_collapsed) Height = ContentHeight;
+    }
+
+    /// <summary>A panel shown in a different width wraps differently, so its height has to be worked out again.</summary>
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (_collapsed || Width == _measuredWidth) return;
+        ContentChanged();
+    }
+
+    private bool _collapsed;
+    private int _contentHeight;
+    private int _measuredWidth = -1;
+
+
     /// <summary>Creates the panel over a visualizer.</summary>
     /// <param name="marina">The marina whose look is being changed.</param>
     /// <param name="log">Where to note what happened, for the activity log.</param>
@@ -66,7 +122,7 @@ internal sealed class AppearancePanel : UserControl
         BackColor = Theme.Background;
         Dock = DockStyle.Fill;
 
-        var header = new TableLayoutPanel
+        _header = new TableLayoutPanel
         {
             ColumnCount = 1,
             AutoSize = true,
@@ -75,6 +131,7 @@ internal sealed class AppearancePanel : UserControl
             BackColor = Theme.Background,
             Padding = new Padding(12, 12, 12, 0),
         };
+        var header = _header;
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
         header.Controls.Add(new Label { Text = Strings.TitleLook, Font = new Font("Segoe UI Semibold", 13f), ForeColor = Theme.Text, AutoSize = true, Dock = DockStyle.Fill }, 0, 0);
         header.Controls.Add(new Label { Text = Strings.LookHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
@@ -104,8 +161,10 @@ internal sealed class AppearancePanel : UserControl
         _scroller.AutoSize = true;
         _scroller.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Dock = DockStyle.Top;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+        // The height is ours to set, so that collapsing to nothing can stand in for hiding.
+        AutoSize = false;
+        Height = ContentHeight;
     }
 
     private WaterSettings Water => _marina.Style.Water;

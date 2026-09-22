@@ -63,8 +63,8 @@ internal sealed class MainForm : Form
         Marina.Designer.IsActive = true;
         Marina.Designer.Tool = DesignTool.Navigate;
         _inspector = new InspectorPanel(Marina, LoadReferenceImage);
-        _appearance = new AppearancePanel(Marina, Log) { Visible = false };
-        _cameras = new CamerasPanel(Marina, Log) { Visible = false };
+        _appearance = new AppearancePanel(Marina, Log);
+        _cameras = new CamerasPanel(Marina, Log);
 
         BuildMenu();
         BuildToolbar();
@@ -115,6 +115,8 @@ internal sealed class MainForm : Form
         _appearance.UseOuterScrolling();
         _cameras.UseOuterScrolling();
         _inspector.UseOuterScrolling();
+        _appearance.Collapsed = true;
+        _cameras.Collapsed = true;
         _side.Controls.Add(_appearance);
         _side.Controls.Add(_cameras);
         _side.Controls.Add(_inspector);
@@ -396,8 +398,8 @@ internal sealed class MainForm : Form
         var pose = Marina.Camera.Pose;
         _statusCamera.Text = string.Format(CultureInfo.CurrentCulture, Strings.StatusCamera, pose.Distance, pose.PitchDegrees);
         _inspector.Sync();
-        if (_cameras.Visible) _cameras.Sync();
-        if (_appearance.Visible) _appearance.Sync();
+        if (!_cameras.Collapsed) _cameras.Sync();
+        if (!_appearance.Collapsed) _appearance.Sync();
     }
 
     private void ShowPointer(Point location)
@@ -575,9 +577,13 @@ internal sealed class MainForm : Form
             _updatingSidePanel = false;
         }
 
-        _appearance.Visible = which == SidePanel.Look;
-        _cameras.Visible = which == SidePanel.Cameras;
-        if (_cameras.Visible) _cameras.Sync();
+        // Collapsed rather than hidden: a hidden panel loses its layout and costs most of a second to show again.
+        if (which == SidePanel.Cameras) _cameras.Sync();
+
+        _side.SuspendLayout();
+        _appearance.Collapsed = which != SidePanel.Look;
+        _cameras.Collapsed = which != SidePanel.Cameras;
+        _side.ResumeLayout(performLayout: true);
 
         // The tool settings are always there, at the top of the column, however far it has been scrolled.
         _side.AutoScrollPosition = Point.Empty;

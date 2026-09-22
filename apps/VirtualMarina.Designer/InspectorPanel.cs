@@ -129,10 +129,58 @@ internal sealed class InspectorPanel : Panel
     private TableLayoutPanel _header = null!;
 
     /// <summary>
-    /// How tall this panel would like to be: its heading plus the cards the current tool shows. The window uses it
-    /// to sit the tool settings above the look or camera settings without leaving a gap.
+    /// Shows or hides the panel by its height rather than by <see cref="Control.Visible"/>.
     /// </summary>
-    public int PreferredPanelHeight => _header.PreferredSize.Height + _stack.PreferredSize.Height;
+    /// <remarks>
+    /// WinForms does not lay out a hidden control, so hiding one throws its layout away and showing it again works
+    /// the whole tree out afresh — most of a second on a panel with a few hundred nested auto-sized controls.
+    /// Collapsing to nothing leaves it laid out, and the swap becomes a resize.
+    /// </remarks>
+    public bool Collapsed
+    {
+        get => _collapsed;
+        set
+        {
+            _collapsed = value;
+            if (value) Height = 0;
+            else ContentChanged();
+        }
+    }
+
+    /// <summary>How tall the panel wants to be: its heading plus its cards. Measured once per width.</summary>
+    private int ContentHeight
+    {
+        get
+        {
+            if (_contentHeight <= 0)
+            {
+                _contentHeight = _header.PreferredSize.Height + _stack.PreferredSize.Height;
+                _measuredWidth = Width;
+            }
+
+            return _contentHeight;
+        }
+    }
+
+    /// <summary>Measures again, after something changed how much there is to show or how wide it is shown in.</summary>
+    private void ContentChanged()
+    {
+        _contentHeight = 0;
+        if (!_collapsed) Height = ContentHeight;
+    }
+
+    /// <summary>A panel shown in a different width wraps differently, so its height has to be worked out again.</summary>
+    protected override void OnSizeChanged(EventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (_collapsed || Width == _measuredWidth) return;
+        ContentChanged();
+    }
+
+    private bool _collapsed;
+    private int _contentHeight;
+    private int _measuredWidth = -1;
+
 
     public InspectorPanel(MarinaVisualizer marina, Action loadImage)
     {
@@ -204,8 +252,10 @@ internal sealed class InspectorPanel : Panel
         _scroller.AutoSize = true;
         _scroller.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Dock = DockStyle.Top;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
+
+        // The height is ours to set, so that collapsing to nothing can stand in for hiding.
+        AutoSize = false;
+        Height = ContentHeight;
     }
 
     /// <summary>Brings the panel in line with the designer: the tool's name and hint, its settings, and which cards are shown.</summary>
@@ -299,6 +349,9 @@ internal sealed class InspectorPanel : Panel
         {
             _updating = false;
         }
+
+        // Each tool shows a different set of cards, so how tall the panel wants to be changes with it.
+        ContentChanged();
     }
 
     private string Summary()
