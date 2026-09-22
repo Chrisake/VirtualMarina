@@ -397,20 +397,12 @@ public sealed partial class MarinaVisualizer
     /// window. Foreshortening cannot be approximated either — at a low angle the near edge is much closer than the
     /// middle and projects far larger — so the answer is found by halving the range until the corners fit.
     /// </remarks>
-    /// <param name="plan">Plan-view bounds to frame.</param>
+    /// <param name="corners">World points the view has to hold, usually the outline of the marina.</param>
     /// <param name="center">The middle of the marina, where the search starts from.</param>
     /// <param name="yawDegrees">Which way it faces.</param>
     /// <param name="pitchDegrees">How far down it looks.</param>
-    private (Vector3 Target, float Distance) FitView((Vector2 Min, Vector2 Max) plan, Vector3 center, float yawDegrees, float pitchDegrees)
+    private (Vector3 Target, float Distance) FitView(IReadOnlyList<Vector3> corners, Vector3 center, float yawDegrees, float pitchDegrees)
     {
-        var corners = new[]
-        {
-            MarinaMath.ToWorld(plan.Min),
-            MarinaMath.ToWorld(new Vector2(plan.Max.X, plan.Min.Y)),
-            MarinaMath.ToWorld(plan.Max),
-            MarinaMath.ToWorld(new Vector2(plan.Min.X, plan.Max.Y)),
-        };
-
         // Room left around the marina, as the share of the view it may fill.
         const float limit = 1f / FitMargin;
 
@@ -472,6 +464,37 @@ public sealed partial class MarinaVisualizer
         return (best, far);
     }
 
+    /// <summary>
+    /// The convex outline of a cloud of plan points, as world positions. Everything inside it is inside the hull
+    /// too, so framing the hull frames the lot, and a few dozen points is far cheaper to project than a few
+    /// thousand while the fit halves its way in.
+    /// </summary>
+    /// <param name="points">The points to wrap, in plan coordinates.</param>
+    private static IReadOnlyList<Vector3> Outline(IEnumerable<Vector2> points)
+    {
+        var sorted = points.Distinct().OrderBy(p => p.X).ThenBy(p => p.Y).ToArray();
+        if (sorted.Length < 3) return sorted.Select(point => MarinaMath.ToWorld(point)).ToArray();
+
+        // Andrew's monotone chain: the lower hull left to right, then the upper hull back again.
+        var hull = new List<Vector2>(sorted.Length + 1);
+        foreach (var pass in new[] { sorted, sorted.Reverse().ToArray() })
+        {
+            var start = hull.Count;
+            foreach (var point in pass)
+            {
+                while (hull.Count >= start + 2 && !TurnsLeft(hull[^2], hull[^1], point)) hull.RemoveAt(hull.Count - 1);
+                hull.Add(point);
+            }
+
+            hull.RemoveAt(hull.Count - 1);   // the last point of each pass starts the next one
+        }
+
+        return hull.Select(point => MarinaMath.ToWorld(point)).ToArray();
+    }
+
+    private static bool TurnsLeft(Vector2 a, Vector2 b, Vector2 c) =>
+        ((b.X - a.X) * (c.Y - a.Y)) - ((b.Y - a.Y) * (c.X - a.X)) > 0f;
+
     /// <summary>Room left around the marina in an automatic view, so it does not sit against the edges.</summary>
     private const float FitMargin = 1.15f;
 
@@ -481,11 +504,35 @@ public sealed partial class MarinaVisualizer
     /// <summary>Regenerates the automatic presets and camera bounds from the current layout (and the reference image, for the bounds).</summary>
     private void RebuildBuiltInPresets()
     {
-        var rects = OrderedPiers().Select(d => d.Bounds)
+        var structures = OrderedPiers().Select(d => d.Bounds)
             .Concat(OrderedBerths().Select(s => s.Bounds))
-            .Concat(OrderedDividers().Select(d => d.Bounds));
-        var (min, max) = MarinaLayout.ComputeBounds(rects, OrderedLandAreas());
-        var center = MarinaMath.ToWorld((min + max) * 0.5f);
+            .Concat(OrderedDividers().Select(d => d.Bounds))
+            .ToArray();
+
+        // Everything there is, for panning, the water grid and the far plane.
+        var (min, max) = MarinaLayout.ComputeBounds(structures, OrderedLandAreas());
+
+        // What the automatic views actually frame: the piers, berths and separators, without the land. A
+        // breakwater or the quay behind the marina can run hundreds of meters past the last berth, and framing
+        // those leaves the marina itself small and off to one side of the picture. A layout that is nothing but
+        // land has to fall back to it, or there would be nothing to look at.
+        var (frameMin, frameMax) = structures.Length > 0
+            ? MarinaLayout.ComputeBounds(structures)
+            : (min, max);
+
+        // The outline of the marina rather than the box around it. A box drawn round an L-shaped marina has two
+        // corners standing in open water, and centring those leaves the berths off to one side of the picture.
+        var frame = structures.Length > 0
+            ? Outline(structures.SelectMany(rect => rect.GetCorners()))
+            : new[]
+            {
+                MarinaMath.ToWorld(frameMin),
+                MarinaMath.ToWorld(new Vector2(frameMax.X, frameMin.Y)),
+                MarinaMath.ToWorld(frameMax),
+                MarinaMath.ToWorld(new Vector2(frameMin.X, frameMax.Y)),
+            };
+
+        var center = MarinaMath.ToWorld((frameMin + frameMax) * 0.5f);
         var extent = MathF.Max(max.X - min.X, max.Y - min.Y);
         var fit = FitDistance(extent);
 
@@ -509,7 +556,7 @@ public sealed partial class MarinaVisualizer
         // distance worked out without reference to where they stand.
         CameraPreset Fitted(string name, float yaw, float pitch, string description)
         {
-            var (target, distance) = FitView((min, max), center, yaw, pitch);
+            var (target, distance) = FitView(frame, center, yaw, pitch);
             return new CameraPreset(name, new CameraPose(target, yaw, pitch, distance), description) { IsBuiltIn = true };
         }
 

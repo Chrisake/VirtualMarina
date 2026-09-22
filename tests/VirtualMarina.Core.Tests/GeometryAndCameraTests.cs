@@ -254,37 +254,36 @@ public class GeometryAndCameraTests
 
         Assert.Equal(4, compass.Select(name => marina.CameraPresets.Single(p => p.Name == name).Pose.YawDegrees).Distinct().Count());
 
-        // And every one of them actually holds the marina, in a tall window and a wide one alike. Each works out its
-        // own distance: a view along the marina needs less room than one across it.
-        var (min, max) = marina.GetLayout().ComputeBounds();
-        var corners = new[]
-        {
-            MarinaMath.ToWorld(min),
-            MarinaMath.ToWorld(new Vector2(max.X, min.Y)),
-            MarinaMath.ToWorld(max),
-            MarinaMath.ToWorld(new Vector2(min.X, max.Y)),
-        };
+        // And every one of them actually holds the marina, in a tall window and a wide one alike. The marina is the
+        // berths and the piers, not the box around everything: this layout has breakwaters running well past the
+        // last berth, and framing those leaves the berths small and off to one side.
+        var marinaPoints = marina.GetBerths().Select(berth => MarinaMath.ToWorld(berth.Center))
+            .Concat(marina.GetPiers().SelectMany(pier => new[] { MarinaMath.ToWorld(pier.Start), MarinaMath.ToWorld(pier.End) }))
+            .ToArray();
 
-        // And the marina is actually worth looking at: it fills the view rather than sitting in the middle of it.
-        marina.SetViewportSize(1400f, 900f);
-        Assert.True(marina.ApplyBuiltInCameraPreset(MarinaVisualizer.OverviewPresetName, immediate: true));
-        Assert.True(TryScreenBounds(marina, corners, out var seen));
-        Assert.True(
-            MathF.Max((seen.Max.X - seen.Min.X) / 1400f, (seen.Max.Y - seen.Min.Y) / 900f) > 0.75f,
-            "the overview leaves the marina small in the middle of an empty view");
+        var views = compass.Concat(new[] { MarinaVisualizer.OverviewPresetName, MarinaVisualizer.TopDownPresetName }).ToArray();
 
-        foreach (var (width, height) in new[] { (1080f, 800f), (700f, 900f), (1900f, 600f) })
+        foreach (var (width, height) in new[] { (1400f, 900f), (1080f, 800f), (700f, 900f), (1900f, 600f) })
         {
             marina.SetViewportSize(width, height);
-            foreach (var name in compass.Concat(new[] { MarinaVisualizer.OverviewPresetName, MarinaVisualizer.TopDownPresetName }))
+            foreach (var name in views)
             {
                 Assert.True(marina.ApplyBuiltInCameraPreset(name, immediate: true), $"no automatic view called {name}");
-                foreach (var corner in corners)
-                {
-                    Assert.True(marina.TryProjectToScreen(corner, out var screen), $"{name} puts a corner behind the camera at {width}x{height}");
-                    Assert.InRange(screen.X, 0f, width);
-                    Assert.InRange(screen.Y, 0f, height);
-                }
+                Assert.True(TryScreenBounds(marina, marinaPoints, out var seen), $"{name} puts the marina behind the camera at {width}x{height}");
+
+                Assert.InRange(seen.Min.X, 0f, width);
+                Assert.InRange(seen.Min.Y, 0f, height);
+                Assert.InRange(seen.Max.X, 0f, width);
+                Assert.InRange(seen.Max.Y, 0f, height);
+
+                // Worth looking at: the marina fills the view rather than sitting small in the middle of it.
+                var fill = MathF.Max((seen.Max.X - seen.Min.X) / width, (seen.Max.Y - seen.Min.Y) / height);
+                Assert.True(fill > 0.6f, $"{name} fills only {fill:P0} of a {width}x{height} view");
+
+                // And it is roughly in the middle, not pushed into a corner.
+                var offset = ((seen.Min + seen.Max) * 0.5f) - new Vector2(width * 0.5f, height * 0.5f);
+                Assert.True(MathF.Abs(offset.X) < width * 0.1f, $"{name} pushes the marina {offset.X:0} px off centre sideways");
+                Assert.True(MathF.Abs(offset.Y) < height * 0.1f, $"{name} pushes the marina {offset.Y:0} px off centre vertically");
             }
         }
     }
