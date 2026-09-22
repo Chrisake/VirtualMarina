@@ -725,6 +725,12 @@ internal static class Strings
     /// <summary>"&amp;Rename"</summary>
     internal static string MenuRename => Get("MenuRename");
 
+    /// <summary>"Name already used"</summary>
+    internal static string RenameTakenTitle => Get("RenameTakenTitle");
+
+    /// <summary>"{0} is already used by something else in this marina. Pick another."</summary>
+    internal static string RenameTakenBody => Get("RenameTakenBody");
+
     /// <summary>"Renamed {0} to {1}"</summary>
     internal static string LogRenamed => Get("LogRenamed");
 

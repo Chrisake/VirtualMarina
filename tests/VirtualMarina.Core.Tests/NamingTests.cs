@@ -351,7 +351,7 @@ public class NamingTests
         var moved = designer.ChangePierId("A", "WEST");
 
         Assert.Equal("WEST", moved.Id);
-        Assert.Equal("Pier A", moved.Name); // the display name is untouched
+        Assert.Equal("Pier WEST", moved.Name); // the generated name follows the id
         Assert.Null(marina.GetPier("A"));
         Assert.Equal(berths.Count, marina.GetBerthsByPier("WEST").Count);
         Assert.Equal("WEST", marina.GetDivider("A-D1")!.PierId);
@@ -475,5 +475,98 @@ public class NamingTests
         Assert.Equal(PierServices.PowerAndWater, copy.GetBerth(berths[0].Id)!.Services);
         Assert.Null(copy.GetBerth(berths[1].Id)!.Services);
         Assert.Equal(PierServices.Power, copy.GetPier("A")!.Services);
+    }
+
+    [Fact]
+    public void ChangePierId_KeepsAPierNameSomeoneChose()
+    {
+        var marina = WithPier(out var designer);
+        designer.RenamePier("A", "West pontoon");
+
+        var moved = designer.ChangePierId("A", "W");
+
+        Assert.Equal("West pontoon", moved.Name);
+        Assert.Equal("W", moved.Id);
+    }
+
+    [Fact]
+    public void ChangePierId_OnASingleSidedPier_DropsTheSideLetterFromItsBerths()
+    {
+        var marina = new MarinaVisualizer();
+        var designer = marina.Designer;
+
+        // Built as a two-sided pier, so its berths carry the side letter.
+        designer.PierBerthingSides = PierSides.Both;
+        var pier = designer.CreatePier(new Vector2(0, 0), new Vector2(0, 60))!;
+        var berths = designer.CreateBerths(pier.Id, PierSide.Right, 0f, 40f);
+        Assert.True(berths.Count >= 3);
+        Assert.All(berths, berth => Assert.Contains("-R", berth.Id, StringComparison.Ordinal));
+
+        // It turns out to run along the quay, so it only berths on one side.
+        marina.UpdatePier(marina.GetPier(pier.Id)! with { BerthingSides = PierSides.Right });
+
+        // Renaming it rebuilds the names from the scheme, which no longer has a side to tell apart.
+        designer.ChangePierId(pier.Id, "Q");
+
+        var renamed = marina.GetBerthsByPier("Q");
+        Assert.Equal(berths.Count, renamed.Count);
+        Assert.All(renamed, berth => Assert.DoesNotContain("-R", berth.Id, StringComparison.Ordinal));
+        Assert.All(renamed, berth => Assert.StartsWith("Q-", berth.Id, StringComparison.Ordinal));
+
+        // The running numbers are the ones the berths already had.
+        Assert.Equal(
+            berths.Select(berth => berth.Id[^2..]).ToList(),
+            renamed.Select(berth => berth.Id[^2..]).ToList());
+    }
+
+    [Fact]
+    public void AnIdAlreadyInUse_IsNotFree()
+    {
+        var marina = WithPier(out var designer);
+        marina.AddPier(new Pier("B", "Pier B", new Vector2(40, 0), 0f, 30f));
+        var berths = designer.CreateBerths("A", PierSide.Left, 0f, 10f);
+
+        Assert.False(designer.IsPierIdAvailable("B"));
+        Assert.False(designer.IsPierIdAvailable("b"));           // ids ignore case
+        Assert.False(designer.IsPierIdAvailable(" "));
+        Assert.True(designer.IsPierIdAvailable("B", forPierId: "B"));   // keeping its own is fine
+        Assert.True(designer.IsPierIdAvailable("C"));
+
+        Assert.False(designer.IsBerthNameAvailable(berths[0].Id));
+        Assert.True(designer.IsBerthNameAvailable(berths[0].Id, forBerthId: berths[0].Id));
+        Assert.True(designer.IsBerthNameAvailable("Harbourmaster"));
+
+        // And the rename itself still refuses a taken id.
+        Assert.Throws<InvalidOperationException>(() => designer.ChangePierId("A", "B"));
+    }
+
+    [Fact]
+    public void RenumberBerths_PutsRightNamesLeftOverFromAnOlderId()
+    {
+        var marina = new MarinaVisualizer();
+        var designer = marina.Designer;
+        designer.PierBerthingSides = PierSides.Right;
+        var pier = designer.CreatePier(new Vector2(0, 0), new Vector2(0, 60))!;
+        var berths = designer.CreateBerths(pier.Id, PierSide.Right, 0f, 30f);
+        Assert.True(berths.Count >= 3);
+
+        // A berth given a name of its own has no running number, so it is left out of a renumber.
+        designer.RenameBerth(berths[0].Id, "Harbourmaster");
+
+        // Names left behind by an id this pier no longer has.
+        foreach (var berth in berths.Skip(1)) marina.RenameBerth(berth.Id, "OLD" + berth.Id[pier.Id.Length..]);
+        Assert.StartsWith("OLD", marina.GetBerthsByPier(pier.Id)[1].Id, StringComparison.Ordinal);
+
+        var renamed = designer.RenumberBerths(pier.Id);
+
+        Assert.Equal(berths.Count - 1, renamed.Count);
+        Assert.NotNull(marina.GetBerth("Harbourmaster"));
+        Assert.All(
+            marina.GetBerthsByPier(pier.Id).Where(b => b.Id != "Harbourmaster"),
+            berth => Assert.StartsWith(pier.Id + "-", berth.Id, StringComparison.Ordinal));
+
+        // One step of undo puts every one of them back.
+        Assert.True(designer.Undo());
+        Assert.StartsWith("OLD", marina.GetBerthsByPier(pier.Id)[1].Id, StringComparison.Ordinal);
     }
 }

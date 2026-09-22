@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
@@ -180,6 +180,51 @@ public class LandAndSingleSidedPierTests
         Assert.NotEmpty(mooringPoints);
         Assert.All(mooringPoints, x => Assert.True(x > 0f, $"mooring point at x = {x} on the closed side"));
     }
+
+    [Theory]
+    [InlineData(PierType.Concrete)]
+    [InlineData(PierType.FloatingWooden)]
+    public void SingleSidedPier_RaisesItsEdgeOnlyOnTheSideBoatsComeTo(PierType type)
+    {
+        // Heading 0 (along +Z): looking from the start, the left-hand side is +X.
+        var single = Drawn(type, PierSides.Left);
+        var edges = RaisedEdges(single, type);
+
+        Assert.NotEmpty(edges);
+        Assert.All(edges, x => Assert.True(x > 0f, $"a raised edge at x = {x} on the side with no berths"));
+
+        // A pier that berths on both sides still gets both of its edges.
+        var both = RaisedEdges(Drawn(type, PierSides.Both), type);
+        Assert.Contains(both, x => x > 0f);
+        Assert.Contains(both, x => x < 0f);
+        Assert.Equal(edges.Count * 2, both.Count);
+    }
+
+    /// <summary>One pier of the given kind, drawn on its own.</summary>
+    private static IReadOnlyList<RenderObject> Drawn(PierType type, PierSides sides)
+    {
+        var marina = new MarinaVisualizer();
+        marina.Style.Shadows.IsEnabled = false;   // a shadow is a second copy of everything; this counts originals
+        marina.InitializeLayout(new MarinaLayout
+        {
+            Piers = new[] { new Pier("Q", "Quay pontoon", Vector2.Zero, 0f, 40f, 3f, type) { BerthingSides = sides } },
+        });
+
+        return marina.BuildRenderFrame().Objects;
+    }
+
+    /// <summary>
+    /// Where the long raised strips along a pier's edges are: the kerb of a fixed pier, the waler of a wooden one.
+    /// Both run the whole length, which is what tells them from the deck, the seams and the fittings.
+    /// </summary>
+    private static IReadOnlyList<float> RaisedEdges(IReadOnlyList<RenderObject> objects, PierType type) =>
+        objects
+            .Where(o => o.MeshId == MeshIds.UnitBox)
+            .Where(o => o.World.M33 >= 39f)                                  // runs the length of the pier
+            .Where(o => o.World.M11 <= 0.4f)                                 // and is a narrow strip, not the deck
+            .Where(o => type != PierType.Concrete || o.World.Translation.Y > 0.5f)   // a kerb stands on the deck
+            .Select(o => o.World.Translation.X)
+            .ToList();
 
     [Theory]
     [InlineData(PierType.FloatingWooden)]

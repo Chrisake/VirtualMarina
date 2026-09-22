@@ -388,11 +388,11 @@ internal static class SceneBuilder
         var top = pier.DeckHeight;
         output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width, slab, pier.Length), top - slab * 0.5f, ConcreteDeck));
 
-        foreach (var side in Sides)
+        // Only the sides boats come alongside get a kerb: a pier against the quay has nothing to edge its back.
+        var singleSided = pier.BerthingSides is PierSides.Left or PierSides.Right;
+        foreach (var side in BerthSides(pier))
         {
-            // A pier that berths on one side only gets a taller edge there, the kerb boats come alongside.
-            var berthing = pier.HasBerthsOn(side < 0f ? PierSide.Left : PierSide.Right);
-            var height = berthing && pier.BerthingSides is PierSides.Left or PierSides.Right ? 0.34f : 0.16f;
+            var height = singleSided ? 0.34f : 0.16f;
             var curbOffset = pier.Right * side * (pier.Width * 0.5f - 0.14f);
             output.Add(Box(pier, pier.Center + curbOffset, 0f, new Vector3(0.28f, height, pier.Length), top + height * 0.5f, ConcreteCurb));
         }
@@ -430,7 +430,7 @@ internal static class SceneBuilder
             output.Add(Box(pier, pier.Start + pier.Direction * along, 0f, new Vector3(pier.Width, 0.012f, 0.05f), top + 0.004f, WoodSeam));
         }
 
-        foreach (var side in Sides)
+        foreach (var side in BerthSides(pier))
         {
             var waler = pier.Right * side * (pier.Width * 0.5f + 0.09f);
             output.Add(Box(pier, pier.Center + waler, 0f, new Vector3(0.18f, 0.3f, pier.Length), top - 0.17f, WoodWaler));

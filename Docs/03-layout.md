@@ -105,6 +105,11 @@ builder.AddPier(pontoon, pier => pier.AddBerths(PierSide.Right, 9, 5, 10));
 ```
 
 - Mooring points are drawn on the open side only: bollards (`Concrete`), cleats and rubber fenders (`FloatingConcrete`).
+- The raised edge boats come alongside — the kerb of a `Concrete` pier, the waler of a `FloatingWooden` one — is drawn
+  on the open side only, and taller than it would be on a pier that berths both sides. The closed side, which sits against
+  the quay, is left flush.
+- Berth names leave the side out, since there is no other side to tell them from: `A-01`, not `A-R01`. `MarinaDesigner.RenumberBerths`
+  puts existing names right after a pier changes which sides it berths on.
 - `PierBuilder.AddBerths`, `BerthGenerator.AtPier`, `AlongPier` and `DividersAlongPier` throw `InvalidOperationException` for the closed side. Berths placed by absolute position aren't checked, so guest berths off the pier's end still work.
 - `PierUpdate.BerthingSides` changes it at runtime; existing berths are not moved or removed.
 

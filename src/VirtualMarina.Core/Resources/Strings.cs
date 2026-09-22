@@ -414,6 +414,9 @@ internal static class Strings
     /// <summary>"Rename {0} to {1}"</summary>
     internal static string UndoRenameBerth => Get("UndoRenameBerth");
 
+    /// <summary>"Rename {0} berths on {1}"</summary>
+    internal static string UndoRenumberBerths => Get("UndoRenumberBerths");
+
     /// <summary>"Set {0} on {1} berth(s)"</summary>
     internal static string UndoSetServices => Get("UndoSetServices");
 

@@ -447,6 +447,10 @@
     <value>Rename {0} to {1}</value>
     <comment>{0} = the old berth name, {1} = the new one.</comment>
   </data>
+  <data name="UndoRenumberBerths">
+    <value>Rename {0} berths on {1}</value>
+    <comment>{0} = how many, {1} = the pier name.</comment>
+  </data>
   <data name="UndoSetServices">
     <value>Set {0} on {1} berth(s)</value>
     <comment>{0} = what the pedestals offer, {1} = how many berths.</comment>

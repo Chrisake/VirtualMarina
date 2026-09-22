@@ -850,6 +850,7 @@ sealed class VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMari
     void ApplyTo(VirtualMarina.Core.Design.MarinaDesigner designer)
 
 sealed class VirtualMarina.Core.Design.MarinaDesigner
+    IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId)
     IReadOnlyList<Vector2> DraftPoints { get; }
     IReadOnlyList<Vector2> SelectionQuad { get; }
     IReadOnlyList<Vector2> ShorelineAwaitingSide { get; }
@@ -895,6 +896,8 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     bool FocusReferenceImage(bool immediate = false)
     bool HasDraft { get; }
     bool IsActive { get; set; }
+    bool IsBerthNameAvailable(string berthName, string forBerthId = null)
+    bool IsPierIdAvailable(string pierId, string forPierId = null)
     bool ReferenceImageAboveScene { get; set; }
     bool ReferenceImageVisible { get; set; }
     bool RemoveLastPoint()
@@ -927,6 +930,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     float SnapDistancePixels { get; set; }
     float TreeDensity { get; set; }
     int UndoCount { get; }
+    string GeneratedPierName(string pierId)
     string PierNamePattern { get; set; }
     string ToolHint { get; }
     string UndoDescription { get; }

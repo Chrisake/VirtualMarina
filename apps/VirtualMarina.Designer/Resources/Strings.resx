@@ -793,6 +793,13 @@ Runtime      {4}
   <data name="MenuRename">
     <value>&amp;Rename</value>
   </data>
+  <data name="RenameTakenTitle">
+    <value>Name already used</value>
+  </data>
+  <data name="RenameTakenBody">
+    <value>{0} is already used by something else in this marina. Pick another.</value>
+    <comment>{0} = the name that is taken.</comment>
+  </data>
   <data name="LogRenamed">
     <value>Renamed {0} to {1}</value>
     <comment>{0} = the old name, {1} = the new one.</comment>

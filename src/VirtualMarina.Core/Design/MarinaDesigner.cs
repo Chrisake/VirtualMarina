@@ -404,6 +404,42 @@ public sealed class MarinaDesigner
     }
 
     /// <summary>
+    /// True when a pier could be given this id: nothing is using it, or the pier using it is the one asking. Ids are
+    /// compared without regard to case, and an empty one is never free.
+    /// </summary>
+    /// <param name="pierId">The id being asked for.</param>
+    /// <param name="forPierId">The pier that wants it, so keeping its own id counts as free. Null for a new pier.</param>
+    public bool IsPierIdAvailable(string? pierId, string? forPierId = null)
+    {
+        if (string.IsNullOrWhiteSpace(pierId)) return false;
+        var wanted = pierId.Trim();
+        if (forPierId is not null && string.Equals(wanted, forPierId, StringComparison.OrdinalIgnoreCase)) return true;
+        return _marina.GetPier(wanted) is null;
+    }
+
+    /// <summary>
+    /// True when a berth could be given this name. A berth's name is also its id, so it has to be free across the
+    /// whole marina.
+    /// </summary>
+    /// <param name="berthName">The name being asked for.</param>
+    /// <param name="forBerthId">The berth that wants it, so keeping its own name counts as free.</param>
+    public bool IsBerthNameAvailable(string? berthName, string? forBerthId = null)
+    {
+        if (string.IsNullOrWhiteSpace(berthName)) return false;
+        var wanted = berthName.Trim();
+        if (forBerthId is not null && string.Equals(wanted, forBerthId, StringComparison.OrdinalIgnoreCase)) return true;
+        return _marina.GetBerth(wanted) is null;
+    }
+
+    /// <summary>The name <see cref="PierNamePattern"/> gives a pier with this id, e.g. "Pier C".</summary>
+    /// <param name="pierId">The pier id to put in the pattern.</param>
+    public string GeneratedPierName(string pierId)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        return _pierNamePattern.Replace("{pier}", pierId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
     /// Name given to a pier as it is drawn (default <c>Pier {pier}</c>, e.g. "Pier A"). <c>{pier}</c> stands for the
     /// pier's generated id; text without it names every new pier the same, which is allowed — names need not be unique.
     /// </summary>
@@ -665,7 +701,7 @@ public sealed class MarinaDesigner
         if (!(length >= MinimumPierLength)) throw new ArgumentException($"A pier must be at least {MinimumPierLength} m long.", nameof(end));
 
         var id = NextPierId();
-        var pier = new Pier(id, _pierNamePattern.Replace("{pier}", id, StringComparison.OrdinalIgnoreCase), start, MarinaMath.DirectionToHeading(end - start), length, _pierWidth, _pierType)
+        var pier = new Pier(id, GeneratedPierName(id), start, MarinaMath.DirectionToHeading(end - start), length, _pierWidth, _pierType)
         {
             BerthingSides = _pierSides,
             Services = _berthServices,
@@ -899,7 +935,15 @@ public sealed class MarinaDesigner
 
         var action = new DesignAction(Strings.Format(Strings.UndoChangePierId, before, moved.Id));
         action.RenamedPiers.Add((before, moved.Id));
-        foreach (var (from, to) in RenameBerthsAfterPier(moved.Id, before, moved.Id)) action.RenamedBerths.Add((from, to));
+        foreach (var (from, to) in RenameBerthsAfterPier(moved.Id, before)) action.RenamedBerths.Add((from, to));
+
+        // A pier still carrying the name generated for its old id gets the one for its new id.
+        if (string.Equals(moved.Name, GeneratedPierName(before), StringComparison.Ordinal))
+        {
+            _marina.UpdatePier(moved with { Name = GeneratedPierName(moved.Id) });
+            action.ChangedPiers.Add(moved);
+            moved = _marina.GetPier(moved.Id)!;
+        }
 
         Record(action);
         RaiseStateChanged();
@@ -907,34 +951,83 @@ public sealed class MarinaDesigner
     }
 
     /// <summary>
-    /// Re-points the berths of a pier at its new id, for the ones whose name starts with the old one.
+    /// Names a pier's berths again from <see cref="BerthNaming"/>, keeping the number each one already has, and
+    /// records it for <see cref="Undo"/>. Returns the berths that were renamed, as (old name, new name).
     /// </summary>
-    /// <param name="pierId">The pier whose berths are being renamed (already under its new id).</param>
-    /// <param name="oldPrefix">The pier id the names were built from.</param>
-    /// <param name="newPrefix">What to put in its place.</param>
-    /// <returns>Each rename that happened, as (old name, new name).</returns>
-    private List<(string From, string To)> RenameBerthsAfterPier(string pierId, string oldPrefix, string newPrefix)
+    /// <param name="pierId">The pier whose berths to put right.</param>
+    /// <remarks>
+    /// This is the repair for berths whose names no longer match the pier: one that used to take boats on both sides
+    /// and now takes them on one still has the side letter in its berth names, and this takes it out. A berth named
+    /// by hand keeps its name.
+    /// </remarks>
+    /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
+    /// <example><code>designer.RenumberBerths("E");   // E-R01 becomes E-01 on a pier that berths to one side</code></example>
+    public IReadOnlyList<(string From, string To)> RenumberBerths(string pierId)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        var pier = _marina.GetPier(pierId) ?? throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
+
+        // Asked for outright, this puts every numbered berth right, including ones still carrying a prefix from an
+        // id the pier had long ago. Only a berth named without a number on the end is taken to be named by hand.
+        var renamed = RenameBerthsAfterPier(pier.Id, namedFrom: null);
+        if (renamed.Count == 0) return renamed;
+
+        var action = new DesignAction(Strings.Format(Strings.UndoRenumberBerths, renamed.Count, pier.Name));
+        foreach (var entry in renamed) action.RenamedBerths.Add(entry);
+        Record(action);
+        RaiseStateChanged();
+        return renamed;
+    }
+
+    /// <summary>
+    /// Builds the names of a pier's berths again from <see cref="BerthNaming"/>, keeping the number each one already
+    /// has. Returns every rename that happened, as (old name, new name).
+    /// </summary>
+    /// <param name="pierId">The pier whose berths are being renamed.</param>
+    /// <param name="namedFrom">
+    /// The pier id the current names were built from, so berths named after something else are left alone. Null takes
+    /// every berth with a running number, which is what an outright renumber wants.
+    /// </param>
+    /// <remarks>
+    /// Going through the scheme rather than swapping the prefix is what drops the side letter from a pier that berths
+    /// on one side only: under pier K, <c>K-R07</c> becomes <c>T-07</c> when the pier becomes T. A berth whose name
+    /// was not built from the pier id, or has no running number on the end, was named by hand and is left alone.
+    /// </remarks>
+    private List<(string From, string To)> RenameBerthsAfterPier(string pierId, string? namedFrom)
     {
         var renamed = new List<(string From, string To)>();
+        if (_marina.GetPier(pierId) is not { } pier) return renamed;
+
         foreach (var berth in _marina.GetBerthsByPier(pierId))
         {
-            if (!berth.Id.StartsWith(oldPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+            if (namedFrom is not null && !berth.Id.StartsWith(namedFrom, StringComparison.OrdinalIgnoreCase)) continue;
+            if (NumberIn(berth.Id) is not { } number) continue;
 
-            var wanted = newPrefix + berth.Id[oldPrefix.Length..];
+            var wanted = _berthNaming.Format(pier, SideOf(pier, berth), number);
             if (string.Equals(wanted, berth.Id, StringComparison.Ordinal)) continue;
             if (_marina.GetBerth(wanted) is not null) continue;   // already taken; leave this one as it was
 
+            var repeatedItsId = berth.Label is null || string.Equals(berth.Label, berth.Id, StringComparison.Ordinal);
             var moved = _marina.RenameBerth(berth.Id, wanted);
             renamed.Add((berth.Id, moved.Id));
 
             // A label that merely repeated the old name follows it; one the user wrote is left alone.
-            if (berth.Label is { } label && label.StartsWith(oldPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                _marina.UpdateBerth(moved with { Label = newPrefix + label[oldPrefix.Length..] });
-            }
+            if (repeatedItsId && moved.Label is not null) _marina.UpdateBerth(moved with { Label = wanted });
         }
 
         return renamed;
+    }
+
+    /// <summary>Which side of its pier a berth lies on, from where it actually is.</summary>
+    private static PierSide SideOf(Pier pier, Berth berth) =>
+        Vector2.Dot(berth.Center - pier.Start, pier.Right) < 0f ? PierSide.Left : PierSide.Right;
+
+    /// <summary>The running number at the end of a generated berth name, or null when there is none.</summary>
+    private static int? NumberIn(string berthId)
+    {
+        var digits = berthId.Length;
+        while (digits > 0 && char.IsAsciiDigit(berthId[digits - 1])) digits--;
+        return digits < berthId.Length && int.TryParse(berthId[digits..], out var number) ? number : null;
     }
 
     /// <summary>
@@ -1055,10 +1148,15 @@ public sealed class MarinaDesigner
             else if (args.Pier is { } pier)
             {
                 // The id moves first, so the display name is applied to the pier under its new id.
-                var current = args.NewPierId is { } id && !string.Equals(id.Trim(), pier.Id, StringComparison.Ordinal)
-                    ? ChangePierId(pier.Id, id).Id
-                    : pier.Id;
+                var wantedId = args.NewPierId?.Trim();
+                var moving = !string.IsNullOrEmpty(wantedId) && !string.Equals(wantedId, pier.Id, StringComparison.Ordinal);
+
+                // The id moves first, so the display name is applied to the pier under its new id.
+                var current = moving ? ChangePierId(pier.Id, wantedId!).Id : pier.Id;
                 RenamePier(current, args.NewName);
+
+                // Moving the id already put the berth names right; otherwise this is the chance to.
+                if (!moving) RenumberBerths(current);
             }
         }
         catch (InvalidOperationException)

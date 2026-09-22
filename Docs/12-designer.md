@@ -113,10 +113,21 @@ Berths are perpendicular to the pier, bows toward it, on the side you click. A r
 `Rename` asks the host for the new name through `ElementRenaming`, so the application decides how to ask. A berth's
 name is also its id, so each one has to be free.
 
-Giving a **pier** another id takes its berths with it: on pier `A`, berth `A-L01` becomes `B-L01` when the pier
-becomes `B`. A berth someone renamed by hand, so that its name no longer starts with the pier id, keeps the name it
-was given, as does one whose new name is already taken. Every id that moved is reported through `LayoutChanged`, so a
-host tracking berths by id can follow them, and one Ctrl+Z puts the whole move back.
+Giving a **pier** another id takes its berths with it, and the names are built again from the naming scheme rather
+than having the old prefix swapped out. That matters on a pier that berths to one side: the scheme leaves the side
+letter out, so `K-R07` becomes `T-07`, not `T-R07`. The running number each berth already has is kept.
+
+The pier's own name follows too, when it is still the generated one — `Pier K` becomes `Pier T` — while a name
+someone chose is left as it is. `IsPierIdAvailable` and `IsBerthNameAvailable` say whether a name is free; the
+designer application asks again rather than letting a clash through, and `ChangePierId` throws on one.
+
+A berth someone named by hand keeps that name, as does one whose new name is already taken. Every id that moved is
+reported through `LayoutChanged`, so a host tracking berths by id can follow them, and one Ctrl+Z puts the whole move
+back.
+
+`RenumberBerths(pierId)` does the same on its own, without changing the id. It is the repair for berths whose names
+no longer match their pier — one that used to take boats on both sides and now takes them on one, or berths still
+carrying a prefix from an id the pier had long ago. Renaming a pier in the designer runs it too.
 
 ### The mainland
 

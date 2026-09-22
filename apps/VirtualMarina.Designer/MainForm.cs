@@ -610,43 +610,50 @@ internal sealed class MainForm : Form
     }
 
     /// <summary>Answers the designer's rename request with a name typed by the user.</summary>
+    /// <summary>
+    /// Asks for a new name, and keeps asking while the answer is one something else already has. A berth's name is
+    /// its id and a pier's id is what its berths are named after, so neither may collide.
+    /// </summary>
     private void AskForName(DesignElementRenamingEventArgs e)
     {
         var berth = e.Berth is not null;
+        var name = e.CurrentName;
+        var pierId = e.Pier?.Id ?? string.Empty;
 
-        // A pier has a display name and an id its berths point at, so it is asked for both.
-        using var form = new TextInputForm(
-            berth ? Strings.RenameBerthTitle : Strings.RenamePierTitle,
-            berth ? Strings.RenameBerthQuestion : Strings.RenamePierQuestion,
-            e.CurrentName,
-            berth ? null : Strings.RenamePierIdQuestion,
-            e.Pier?.Id);
-
-        if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
+        while (true)
         {
-            e.Cancel = true;
-            return;
-        }
+            // A pier has a display name and an id its berths point at, so it is asked for both.
+            using var form = new TextInputForm(
+                berth ? Strings.RenameBerthTitle : Strings.RenamePierTitle,
+                berth ? Strings.RenameBerthQuestion : Strings.RenamePierQuestion,
+                name,
+                berth ? null : Strings.RenamePierIdQuestion,
+                pierId);
 
-        var name = form.Value.Trim();
-        if (berth && !string.Equals(name, e.CurrentName, StringComparison.OrdinalIgnoreCase) && Marina.GetBerth(name) is not null)
-        {
-            e.Cancel = true;
-            Log(Strings.Format(Strings.LogRenameRefused, name, e.CurrentName));
-            return;
+            if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
+            {
+                e.Cancel = true;
+                return;
+            }
+
+            name = form.Value.Trim();
+            if (!berth) pierId = form.SecondValue.Trim();
+
+            var taken = berth
+                ? !Designer.IsBerthNameAvailable(name, e.Berth!.Id) ? name : null
+                : pierId.Length > 0 && !Designer.IsPierIdAvailable(pierId, e.Pier!.Id) ? pierId : null;
+
+            if (taken is null) break;
+
+            Log(Strings.Format(Strings.LogRenameRefused, taken, berth ? e.CurrentName : pierId));
+            MessageBox.Show(
+                this, Strings.Format(Strings.RenameTakenBody, taken), Strings.RenameTakenTitle,
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
 
         if (!berth && e.Pier is { } pier)
         {
-            var id = form.SecondValue.Trim();
-            if (string.IsNullOrEmpty(id)) id = pier.Id;
-            if (!string.Equals(id, pier.Id, StringComparison.OrdinalIgnoreCase) && Marina.GetPier(id) is not null)
-            {
-                e.Cancel = true;
-                Log(Strings.Format(Strings.LogRenameRefused, id, pier.Id));
-                return;
-            }
-
+            var id = pierId.Length == 0 ? pier.Id : pierId;
             e.NewPierId = id;
             if (!string.Equals(id, pier.Id, StringComparison.Ordinal))
             {
