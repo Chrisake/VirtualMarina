@@ -304,6 +304,59 @@ public static class ShaderSources
 
         out vec4 fragColor;
 
+        float vmHash21(vec2 p)
+        {
+            p = fract(p * vec2(127.31, 311.7));
+            p += dot(p, p + 34.12);
+            return fract(p.x * p.y);
+        }
+
+        // Whitecaps: each is a short streak that appears, runs a few meters with the swell and dies away, rather
+        // than a line drawn across the sea. The water is cut into cells, some of which break; a cell's crest gets
+        // its place, its timing and its size from the cell's own hash, so the pattern is stable but never repeats
+        // visibly. Only the nine cells around the pixel are looked at, which keeps it cheap.
+        float vmWhitecapFoam(vec2 p, vec2 swell, vec2 travel, float time, float coverage)
+        {
+            const float CELL = 17.0;        // average spacing between breaking crests, in meters
+            const float TRAVEL = 9.0;       // how far one runs before it is gone
+
+            // The crest lies across the swell, near enough the same way everywhere, so the sea reads as one
+            // weather rather than as rings around the marina. Only where each crest travels leans shoreward.
+            vec2 home = floor(p / CELL);
+            float foam = 0.0;
+
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    vec2 cell = home + vec2(float(dx), float(dy));
+                    float place = vmHash21(cell);
+                    float timing = vmHash21(cell + 19.37);
+                    float breaks = vmHash21(cell + 41.13);
+                    float wobble = (vmHash21(cell + 7.71) - 0.5) * 0.44;   // a few degrees either way, so they are not a comb
+
+                    // Only some of the sea is breaking at any time; more of it as the setting is turned up.
+                    if (breaks > coverage) continue;
+
+                    // Born, carried along, spent: a full life between 3 and 7 seconds.
+                    float life = fract(time / (3.0 + timing * 4.0) + place);
+                    vec2 start = (cell + vec2(place, timing)) * CELL;
+                    vec2 at = start + travel * (life * TRAVEL);
+
+                    // Short across the swell and longer along the crest, the way a breaker looks.
+                    vec2 face = vec2(swell.x * cos(wobble) - swell.y * sin(wobble), swell.x * sin(wobble) + swell.y * cos(wobble));
+                    vec2 offset = p - at;
+                    float across = dot(offset, face) / (1.3 + timing * 0.7);
+                    float along = dot(offset, vec2(-face.y, face.x)) / (3.5 + place * 3.0);
+                    float fade = sin(life * 3.14159265);
+
+                    foam = max(foam, exp(-(across * across + along * along) * 1.6) * fade * fade);
+                }
+            }
+
+            return foam;
+        }
+
         void main()
         {
             vec2 grad;
@@ -330,24 +383,26 @@ public static class ShaderSources
             float sparkle = pow(max(dot(reflect(-L, N), V), 0.0), 90.0) * (0.35 + 0.65 * clamp(detail, 0.0, 1.0)) * uSunGlints;
             color += uSunColor * sparkle;
 
-            // White crests, out at sea only. They run in toward the marina, leaning into the prevailing swell, and
-            // fade in over a band so there is no line on the water where they suddenly begin.
+            // White crests, out at sea only, running in toward the marina and leaning into the prevailing swell.
+            // They fade in over a band, so there is no line on the water where they suddenly begin.
             if (uWhitecaps > 0.001)
             {
                 vec2 toMarina = uMarinaCenter - p;
                 float offshore = length(toMarina);
                 float far = smoothstep(uWhitecapDistance, uWhitecapDistance * 1.9, offshore);
-                if (far > 0.001)
+
+                // Nothing breaks on flat water, and a pixel covering many crests would only shimmer.
+                float swell = clamp(abs(uWaveAmplitude) * 12.0, 0.0, 1.0);
+                float legible = clamp(2.0 - footprint * 2.5, 0.0, 1.0);
+                float strength = far * swell * legible * uWhitecaps;
+
+                if (strength > 0.004)
                 {
                     vec2 inward = offshore > 0.001 ? toMarina / offshore : vec2(0.0, 1.0);
-                    vec2 drift = normalize(mix(inward, vec2(0.98, 0.20), 0.45));
-                    float along = dot(p, drift) * 0.055 * uWaveFrequency - t * 1.15;
-                    // Two frequencies, so the crests are broken lines rather than a corduroy pattern.
-                    float band = sin(along) * 0.65 + sin(along * 2.37 + dot(p, vec2(-drift.y, drift.x)) * 0.021) * 0.35;
-                    float crest = smoothstep(0.55, 0.92, band);
-                    // Thin them out where the water is flat: no swell, no breaking.
-                    crest *= clamp(abs(uWaveAmplitude) * 12.0, 0.0, 1.0);
-                    color = mix(color, vec3(0.92, 0.95, 0.97), crest * far * uWhitecaps * 0.85);
+                    vec2 swell = normalize(vec2(0.98, 0.20));
+                    vec2 travel = normalize(mix(swell, inward, 0.35));
+                    float foam = vmWhitecapFoam(p, swell, travel, t, 0.10 + 0.35 * uWhitecaps);
+                    color = mix(color, vec3(0.93, 0.96, 0.98), clamp(foam, 0.0, 1.0) * strength);
                 }
             }
 
