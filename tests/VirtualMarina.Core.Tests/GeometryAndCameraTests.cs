@@ -1,8 +1,11 @@
-using System.Numerics;
+﻿using System.Numerics;
+using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Rendering;
+using VirtualMarina.Core.Serialization;
+using VirtualMarina.SampleData;
 
 namespace VirtualMarina.Core.Tests;
 
@@ -134,5 +137,77 @@ public class GeometryAndCameraTests
         var c = ColorRgba.FromHex("#3366FF");
         Assert.Equal("#3366FF", c.ToHex());
         Assert.Equal(1f, c.A);
+    }
+
+    [Fact]
+    public void TheBuiltInViews_AreTheMarina_StraightDown_AndTheFourCompassPoints()
+    {
+        var marina = new MarinaVisualizer();
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+
+        var builtIn = marina.CameraPresets.Where(preset => preset.IsBuiltIn).Select(preset => preset.Name).ToList();
+        Assert.Contains(MarinaVisualizer.OverviewPresetName, builtIn);
+        Assert.Contains(MarinaVisualizer.TopDownPresetName, builtIn);
+        foreach (var point in new[] { "North", "East", "South", "West" }) Assert.Contains(point, builtIn);
+
+        // One per pier, on top of those.
+        foreach (var pier in marina.GetPiers()) Assert.Contains($"Pier: {pier.Name}", builtIn);
+
+        // Every compass view looks at the middle of the marina from far enough back to hold it.
+        var overview = marina.CameraPresets.Single(preset => preset.Name == MarinaVisualizer.OverviewPresetName);
+        foreach (var name in new[] { "North", "East", "South", "West" })
+        {
+            var preset = marina.CameraPresets.Single(p => p.Name == name);
+            Assert.Equal(overview.Pose.Target, preset.Pose.Target);
+            Assert.Equal(overview.Pose.Distance, preset.Pose.Distance, 1);
+        }
+
+        // They really do come from four different sides.
+        var yaws = new[] { "North", "East", "South", "West" }
+            .Select(name => marina.CameraPresets.Single(p => p.Name == name).Pose.YawDegrees)
+            .ToList();
+        Assert.Equal(4, yaws.Distinct().Count());
+    }
+
+    [Fact]
+    public void AViewCanBeSwitchedOff_AndStaysOffThroughALayoutChangeAndAFile()
+    {
+        var marina = new MarinaVisualizer();
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+
+        Assert.All(marina.CameraPresets, preset => Assert.True(preset.IsEnabled));
+        Assert.True(marina.SetCameraPresetEnabled("South", false));
+        Assert.False(marina.SetCameraPresetEnabled("Nowhere", false));
+        Assert.False(marina.CameraPresets.Single(p => p.Name == "South").IsEnabled);
+
+        // Switched off is not the same as gone: it can still be applied by name on purpose.
+        Assert.True(marina.ApplyCameraPreset("South", immediate: true));
+
+        // Adding a pier rebuilds the built-in views; the choice survives.
+        marina.AddPier(new Pier("Z", "Pier Z", new Vector2(200, -6), 0f, 30f));
+        Assert.False(marina.CameraPresets.Single(p => p.Name == "South").IsEnabled);
+        Assert.True(marina.CameraPresets.Single(p => p.Name == "North").IsEnabled);
+
+        var copy = new MarinaVisualizer();
+        MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina, generator: "tests").ToJson()).ApplyTo(copy);
+        Assert.False(copy.CameraPresets.Single(p => p.Name == "South").IsEnabled);
+        Assert.True(copy.CameraPresets.Single(p => p.Name == "West").IsEnabled);
+    }
+
+    [Fact]
+    public void TheDetailedWater_CanBeWidenedWhileTheMarinaIsOnScreen()
+    {
+        var marina = new MarinaVisualizer();
+        Assert.Equal(4200f, marina.Water.Size, 1);
+
+        var before = marina.BuildRenderFrame().WaterDetailRadius;
+        marina.Water.Size = 9000f;
+
+        var after = marina.BuildRenderFrame().WaterDetailRadius;
+        Assert.Equal(4500f, after, 1);
+        Assert.True(after > before);
+
+        // Reading the frame again does not keep rebuilding the grid.
+        Assert.Equal(after, marina.BuildRenderFrame().WaterDetailRadius, 1);
     }
 }

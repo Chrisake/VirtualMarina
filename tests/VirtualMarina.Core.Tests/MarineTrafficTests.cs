@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
@@ -78,7 +78,7 @@ public class MarineTrafficTests
         var busy = Busy() with { Intensity = 1f };
 
         Assert.Equal(6, quiet.VesselCount);
-        Assert.Equal(MarineTraffic.MaximumVessels, busy.VesselCount);
+        Assert.Equal(busy.MaximumVessels, busy.VesselCount);
         Assert.Equal(0, (busy with { IsEnabled = false }).VesselCount);
 
         Assert.Equal(quiet.VesselCount, Count(MarineTrafficPlanner.Plan(quiet, MarinaBounds(), land, null)));
@@ -217,6 +217,55 @@ public class MarineTrafficTests
                 DistanceToBox(vessel.Position, reach) >= 100f,
                 $"a vessel sails {DistanceToBox(vessel.Position, reach):0} m from the new pier");
         }
+    }
+
+    [Fact]
+    public void ALaneStartsFarOut_CrossesTheWaterNearTheMarina_AndLeavesOnTheOtherSide()
+    {
+        const float waterRadius = 2100f;
+        var traffic = MarineTraffic.None with
+        {
+            IsEnabled = true, Intensity = 1f, Clearance = 200f, Reach = 6000f, Seed = 3,
+        };
+
+        var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), new[] { Quay() }, null, waterRadius);
+        Assert.NotEmpty(lanes);
+
+        var centre = (MarinaBounds().Min + MarinaBounds().Max) * 0.5f;
+        foreach (var lane in lanes)
+        {
+            // Both ends are far outside the water, so vessels fade in and out where nobody is looking.
+            Assert.True(Vector2.Distance(lane.Start, centre) > waterRadius, "a lane starts inside the detailed water");
+            Assert.True(Vector2.Distance(lane.End, centre) > waterRadius, "a lane ends inside the detailed water");
+
+            // And it passes close enough to be seen crossing among the waves.
+            var nearest = Enumerable.Range(0, 401)
+                .Select(step => Vector2.Distance(Vector2.Lerp(lane.Start, lane.End, step / 400f), centre))
+                .Min();
+            Assert.True(nearest < waterRadius, $"a lane never comes nearer than {nearest:0} m, outside the water");
+            Assert.True(nearest >= traffic.Clearance - 1f, $"a lane passes {nearest:0} m from the marina");
+        }
+    }
+
+    [Fact]
+    public void MaximumVessels_CapsWhatABusySeaPutsOut()
+    {
+        var land = new[] { Quay() };
+        var traffic = MarineTraffic.None with
+        {
+            IsEnabled = true, Intensity = 1f, Clearance = 200f, Reach = 3000f, Seed = 1, MaximumVessels = 8,
+        };
+
+        Assert.Equal(8, traffic.VesselCount);
+        Assert.Equal(8, Count(MarineTrafficPlanner.Plan(traffic, MarinaBounds(), land, null, 1500f)));
+
+        // Half as busy puts out half as many, and raising the cap raises both.
+        Assert.Equal(4, (traffic with { Intensity = 0.5f }).VesselCount);
+        Assert.Equal(40, (traffic with { MaximumVessels = 40 }).VesselCount);
+
+        // A cap outside the allowed range is refused rather than silently clamped.
+        Assert.NotEmpty((traffic with { MaximumVessels = 0 }).Validate());
+        Assert.NotEmpty((traffic with { MaximumVessels = MarineTraffic.VesselLimit + 1 }).Validate());
     }
 
     private static int Count(IReadOnlyList<TrafficLane> lanes) => lanes.Sum(lane => lane.VesselCount);

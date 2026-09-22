@@ -144,6 +144,9 @@
   <data name="MenuBerthLabels">
     <value>Berth &amp;Labels</value>
   </data>
+  <data name="MenuCameras">
+    <value>&amp;Cameras…</value>
+  </data>
   <data name="MenuHelp">
     <value>&amp;Help</value>
   </data>
@@ -196,19 +199,6 @@
   <data name="ToolEraseTip">
     <value>Remove what you click</value>
   </data>
-  <data name="Undo">
-    <value>Undo</value>
-  </data>
-  <data name="UndoTip">
-    <value>Undo the last change (Ctrl+Z)</value>
-  </data>
-  <data name="UndoTipWith">
-    <value>Undo: {0} (Ctrl+Z)</value>
-    <comment>{0} = what would be undone.</comment>
-  </data>
-  <data name="NothingToUndo">
-    <value>Nothing to undo</value>
-  </data>
   <data name="CommandTopView">
     <value>Top View</value>
   </data>
@@ -220,12 +210,6 @@
   </data>
   <data name="CommandFitMarinaTip">
     <value>Frame the whole marina (Ctrl+F)</value>
-  </data>
-  <data name="CommandReferenceImage">
-    <value>Reference Image…</value>
-  </data>
-  <data name="CommandReferenceImageTip">
-    <value>Trace a map or aerial photo to get the real shape and scale (Ctrl+I)</value>
   </data>
   <!-- Status bar and log -->
   <data name="StatusCamera">
@@ -910,6 +894,92 @@ Runtime      {4}
   </data>
   <data name="LandRoof">
     <value>Town roofs</value>
+  </data>
+  <!-- Cameras panel -->
+  <data name="ToolCameras">
+    <value>Cameras</value>
+  </data>
+  <data name="ToolCamerasTip">
+    <value>Saved views of the marina, and which of the automatic ones to offer</value>
+  </data>
+  <data name="TitleCameras">
+    <value>Cameras</value>
+  </data>
+  <data name="CamerasHint">
+    <value>Pick a view to go there. Untick one to leave it out of the list the host application offers.</value>
+  </data>
+  <data name="CardCameraSave">
+    <value>Save this view</value>
+  </data>
+  <data name="CameraName">
+    <value>Name</value>
+  </data>
+  <data name="CameraNameTip">
+    <value>What to call the view you are looking at now.</value>
+  </data>
+  <data name="CameraSave">
+    <value>Save view</value>
+  </data>
+  <data name="CameraSaveHint">
+    <value>Saves where the camera is now, so you and the host application can come back to it.</value>
+  </data>
+  <data name="CardCameraAutomatic">
+    <value>Automatic views</value>
+  </data>
+  <data name="CardCameraSaved">
+    <value>Saved views</value>
+  </data>
+  <data name="CameraNoneSaved">
+    <value>No saved views yet.</value>
+  </data>
+  <data name="CameraGoTo">
+    <value>Go</value>
+  </data>
+  <data name="CameraGoToTip">
+    <value>Move the camera to this view</value>
+  </data>
+  <data name="CameraDelete">
+    <value>Delete</value>
+  </data>
+  <data name="CameraDeleteTip">
+    <value>Remove this saved view</value>
+  </data>
+  <data name="CameraDefaultName">
+    <value>View {0}</value>
+    <comment>{0} = a number, to make a name up when the box is empty.</comment>
+  </data>
+  <data name="LogCameraSaved">
+    <value>Saved the view {0}</value>
+    <comment>{0} = the view name.</comment>
+  </data>
+  <data name="LogCameraDeleted">
+    <value>Deleted the view {0}</value>
+    <comment>{0} = the view name.</comment>
+  </data>
+  <data name="LogCameraDisabled">
+    <value>{0} is no longer offered</value>
+    <comment>{0} = the view name.</comment>
+  </data>
+  <data name="LogCameraEnabled">
+    <value>{0} is offered again</value>
+    <comment>{0} = the view name.</comment>
+  </data>
+  <!-- Look: the water area -->
+  <data name="WaterArea">
+    <value>Detailed area</value>
+  </data>
+  <data name="WaterAreaTip">
+    <value>How far out the water has waves, reflections and glints. Past it the sea carries on flat to the horizon, which costs nothing to draw.</value>
+  </data>
+  <data name="TrafficMaximum">
+    <value>At most</value>
+  </data>
+  <data name="TrafficMaximumTip">
+    <value>The most vessels on the water at once. How busy is a share of this.</value>
+  </data>
+  <data name="ValueVessels">
+    <value>{0} vessels</value>
+    <comment>{0} = how many.</comment>
   </data>
   <!-- Inspector: reference image -->
   <data name="ImageLoad">

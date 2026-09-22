@@ -280,6 +280,7 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     abstract bool RemovePier(string pierId, bool removeBerths = true)
     abstract bool RemoveShoreline()
     abstract bool SelectBerth(string berthId, bool focusCamera = false)
+    abstract bool SetCameraPresetEnabled(string presetName, bool enabled)
     abstract bool ShowActions()
     abstract bool ShowTooltip()
     abstract bool TryGetPopupAnchor(out Vector2 screenPoint)
@@ -468,6 +469,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     bool RemovePier(string pierId, bool removeBerths = true)
     bool RemoveShoreline()
     bool SelectBerth(string berthId, bool focusCamera = false)
+    bool SetCameraPresetEnabled(string presetName, bool enabled)
     bool ShowActions()
     bool ShowTooltip()
     bool ShowTooltipOnApiSelection { get; set; }
@@ -475,6 +477,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     bool TryGetPopupAnchor(out Vector2 screenPoint)
     bool TryProjectToScreen(Vector3 worldPoint, out Vector2 screenPoint)
     const string OverviewPresetName = "Overview"
+    const string TopDownPresetName = "Top Down"
     double Time { get; }
     event EventHandler SelectionCleared
     event EventHandler<VirtualMarina.Core.Api.BerthActionInvokedEventArgs> BerthActionInvoked
@@ -674,6 +677,7 @@ sealed class VirtualMarina.Core.Camera.CameraPreset : IEquatable<VirtualMarina.C
     VirtualMarina.Core.Camera.CameraPose Pose { get; init; }
     bool Equals(VirtualMarina.Core.Camera.CameraPreset other)
     bool IsBuiltIn { get; init; }
+    bool IsEnabled { get; init; }
     static bool op_Equality(VirtualMarina.Core.Camera.CameraPreset left, VirtualMarina.Core.Camera.CameraPreset right)
     static bool op_Inequality(VirtualMarina.Core.Camera.CameraPreset left, VirtualMarina.Core.Camera.CameraPreset right)
     string Description { get; init; }
@@ -1219,12 +1223,13 @@ sealed class VirtualMarina.Core.Domain.MarineTraffic : IEquatable<VirtualMarina.
     IReadOnlyList<VirtualMarina.Core.Domain.BoatType> Vessels { get; init; }
     bool Equals(VirtualMarina.Core.Domain.MarineTraffic other)
     bool IsEnabled { get; init; }
-    const int MaximumVessels = 24
+    const int VesselLimit = 60
     float Clearance { get; init; }
     float Intensity { get; init; }
     float Reach { get; init; }
     float SpeedKnots { get; init; }
     float SpeedMetersPerSecond { get; }
+    int MaximumVessels { get; init; }
     int Seed { get; init; }
     int VesselCount { get; }
     static IReadOnlyList<VirtualMarina.Core.Domain.BoatType> DefaultVessels { get; }
@@ -1434,6 +1439,7 @@ static class VirtualMarina.Core.Geometry.MarinaMeshFactory
 static class VirtualMarina.Core.Geometry.MarineTrafficPlanner
     static IEnumerable<VirtualMarina.Core.Domain.TrafficVessel> Place(IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> lanes, VirtualMarina.Core.Domain.MarineTraffic traffic, double seconds)
     static IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> Plan(VirtualMarina.Core.Domain.MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<VirtualMarina.Core.Domain.LandArea> land, VirtualMarina.Core.Domain.Shoreline shoreline)
+    static IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> Plan(VirtualMarina.Core.Domain.MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<VirtualMarina.Core.Domain.LandArea> land, VirtualMarina.Core.Domain.Shoreline shoreline, float passWithin)
 
 sealed class VirtualMarina.Core.Geometry.MeshBuilder
     .ctor()
@@ -1788,7 +1794,7 @@ sealed class VirtualMarina.Core.Rendering.WaterSettings
     Vector3 ShallowColor { get; set; }
     float BoatMotion { get; set; }
     float Ripples { get; set; }
-    float Size { get; init; }
+    float Size { get; set; }
     float SkyReflection { get; set; }
     float SunGlints { get; set; }
     float WaveAmplitude { get; set; }
@@ -1801,6 +1807,7 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     DateTimeOffset? SavedUtc { get; set; }
     IDictionary<string, JsonElement> Extensions { get; }
     IReadOnlyList<VirtualMarina.Core.Camera.CameraPreset> CameraPresets { get; set; }
+    IReadOnlyList<string> DisabledCameraPresets { get; set; }
     IReadOnlyList<string> Validate()
     T GetExtension<T>(string key)
     Version Version { get; }

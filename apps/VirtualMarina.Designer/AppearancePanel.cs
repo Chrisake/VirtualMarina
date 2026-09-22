@@ -105,6 +105,7 @@ internal sealed class AppearancePanel : UserControl
         Percent(table, Strings.Reflections, 0, 100, () => Water.SkyReflection * 100f, v => Water.SkyReflection = v / 100f, Defaults.Water.SkyReflection * 100f, Percentage);
         Percent(table, Strings.Ripples, 0, 200, () => Water.Ripples * 100f, v => Water.Ripples = v / 100f, Defaults.Water.Ripples * 100f, Percentage);
         Percent(table, Strings.SunGlints, 0, 200, () => Water.SunGlints * 100f, v => Water.SunGlints = v / 100f, Defaults.Water.SunGlints * 100f, Percentage);
+        Percent(table, Strings.WaterArea, 800, 12000, () => Water.Size, v => Water.Size = v, Defaults.Water.Size, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.WaterAreaTip);
         Color(table, Strings.DeepWater, () => Vector(Water.DeepColor), c => Water.DeepColor = Value(c), Vector(Defaults.Water.DeepColor));
         Color(table, Strings.ShallowWater, () => Vector(Water.ShallowColor), c => Water.ShallowColor = Value(c), Vector(Defaults.Water.ShallowColor));
         return card;
@@ -203,6 +204,8 @@ internal sealed class AppearancePanel : UserControl
             v => SetTraffic(t => t with { Intensity = v / 100f }), MarineTraffic.None.Intensity * 100f, Percentage, Strings.TrafficIntensityTip);
         Percent(table, Strings.TrafficClearance, 50, 1200, () => Traffic.Clearance,
             v => SetTraffic(t => t with { Clearance = v }), MarineTraffic.None.Clearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip);
+        Percent(table, Strings.TrafficMaximum, 1, MarineTraffic.VesselLimit, () => Traffic.MaximumVessels,
+            v => SetTraffic(t => t with { MaximumVessels = (int)v }), MarineTraffic.None.MaximumVessels, v => Strings.Format(Strings.ValueVessels, v), Strings.TrafficMaximumTip);
         Percent(table, Strings.TrafficSpeed, 1, 30, () => Traffic.SpeedKnots,
             v => SetTraffic(t => t with { SpeedKnots = v }), MarineTraffic.None.SpeedKnots, v => Strings.Format(Strings.ValueKnots, v), Strings.TrafficSpeedTip);
 

@@ -10,15 +10,24 @@ It is built on the same pieces as any other host: a `MarinaViewControl` and `mar
 
 ## The window
 
-- **A fixed toolbar** across the top: Navigate, Land, Pier, Berths, Ashore, Trees, Erase, Rename, Pedestals, Select and Coast, then Look, Undo and the view commands. The tool in hand is highlighted, and the toolbar never scrolls away.
+- **A fixed toolbar** across the top, grouped by what each tool is for: Navigate and Select; Coast, Land, Piers, Berths and Ashore; Trees and Pedestals; Rename and Erase; then Look, Cameras and the two view commands. The tool in hand is highlighted, and the toolbar never scrolls away. Undo is not on it — Ctrl+Z and Edit ▸ Undo are where people look for it.
 - **The marina fills the window.** Left-drag pans, right-drag orbits, the wheel zooms, exactly as in the viewer.
 - **One panel beside it** showing the name of the current tool, a line telling you what to do with it, and only that tool's settings. Picking "Berths" shows berth sizes, separators, the gap, the pedestals and how the berths are named; picking "Land" shows the surface and height. Nothing else is on screen to scroll past.
 - **A status bar** with the same instruction, the position of the pointer in meters and the camera's height and tilt — so you can see where you are while tracing a map.
 - **The activity log is hidden** (View ▸ Show activity log), because it is only useful when something looks wrong.
 
-## The Look tab
+## The Look and Cameras tabs
 
-**Look** swaps the tool panel for the appearance settings, so the marina stays visible while they are changed. Water
+**Look** and **Cameras** open beneath the current tool's settings rather than replacing them, so switching to them
+never means losing sight of what the tool in hand is doing. The tool's own settings keep the top of the panel (and
+scroll on their own if they are tall), with the rest underneath.
+
+**Cameras** lists the views. *Save this view* stores where the camera is now under a name you choose, so you and the
+host application can come back to it. *Automatic views* — the whole marina, straight down, one from each compass
+point, and one per pier — each have a tick: untick one to leave it out of the list the host application offers. That
+choice is saved with the design. Saved views can be gone to or deleted.
+
+**Look** shows the appearance settings, so the marina stays visible while they are changed. Water
 and waves, light and air, berth colours, the land and its trees, berth labels — each setting has a small ↺ beside it
 that puts only that one back to its default, and a full reset sits at the bottom.
 

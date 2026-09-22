@@ -593,8 +593,25 @@ public interface IMarinaVisualizer
     /// <summary>The orbit camera. Use it for low-level control (poses, constraints, field of view).</summary>
     OrbitCamera Camera { get; }
 
-    /// <summary>Built-in presets (Overview, Top Down, Sea Side, East, West, Low Angle, one per pier) followed by custom presets.</summary>
+    /// <summary>
+    /// Built-in presets (Overview, Top Down, North, East, South, West, and one per pier) followed by custom ones.
+    /// Every built-in view is centred on the marina and pulled back far enough to hold all of it.
+    /// </summary>
+    /// <remarks>
+    /// The list includes views that have been switched off; <see cref="CameraPreset.IsEnabled"/> says which. Offer the
+    /// enabled ones and leave the rest out.
+    /// </remarks>
     IReadOnlyList<CameraPreset> CameraPresets { get; }
+
+    /// <summary>
+    /// Switches a view on or off. A switched-off view stays in <see cref="CameraPresets"/> marked
+    /// <see cref="CameraPreset.IsEnabled"/> false, and can still be applied by name; it is simply not one a host
+    /// should offer. Which built-in views are off is saved with the design.
+    /// </summary>
+    /// <param name="presetName">Preset name (case-insensitive).</param>
+    /// <param name="enabled">True to offer it again.</param>
+    /// <returns>False when no preset has this name.</returns>
+    bool SetCameraPresetEnabled(string presetName, bool enabled);
 
     /// <summary>Moves the camera to the Overview preset.</summary>
     /// <param name="immediate">Jump instead of animating.</param>

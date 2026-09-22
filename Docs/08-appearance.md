@@ -65,7 +65,7 @@ marina.Lighting.SunColor = new Vector3(1.0f, 0.75f, 0.55f);
 
 | Property | Default | Notes |
 |---|---|---|
-| `Size` | 1400 m | Grid edge length. Set at construction only (`MarinaVisualizerOptions.Water`) |
+| `Size` | 4200 m | Edge length of the **detailed** water. Can be changed at any time |
 | `GridResolution` | 160 | Cells per side. Construction only |
 | `DeepColor`, `ShallowColor` | teal tones | Water body colors |
 | `WaveAmplitude` | 0.08 m | Base wave height |
@@ -82,7 +82,8 @@ marina.Water.WaveSpeed = 0;   // calm, static water
 
 The water grid is re-centered on the layout by `InitializeLayout`.
 
-**The sea does not end.** `Size` is only the part drawn in detail. Around it the grid carries a flat skirt of eight
+**The sea does not end.** `Size` is only the part drawn in detail, and it can be changed while the marina is on
+screen — the visualizer notices and rebuilds the grid on the next frame. Around it the grid carries a flat skirt of eight
 triangles reaching `MarinaMeshFactory.SeaReach` (30 km), and the shader fades the waves, the sky reflection and the
 sun glints out over the outer third of the detailed grid. So the water runs to the horizon and the fog takes it into
 the sky, while everything that costs anything to draw stays near the marina. Widen `Size` to push the detailed water
@@ -96,7 +97,7 @@ Vessels crossing the bay beyond the marina, so the sea is not empty. It is off u
 marina.SetMarineTraffic(MarineTraffic.None with
 {
     IsEnabled = true,
-    Intensity = 0.45f,   // 0-1, up to MarineTraffic.MaximumVessels
+    Intensity = 0.45f,   // 0-1, as a share of MaximumVessels
     Clearance = 300f,    // meters a lane must keep from the marina and any land
     SpeedKnots = 8f,
     Seed = 12,           // the same seed always puts the same traffic in the same place
@@ -106,10 +107,11 @@ marina.SetMarineTraffic(MarineTraffic.None with
 | Property | Default | Notes |
 |---|---|---|
 | `IsEnabled` | false | Off until asked for |
-| `Intensity` | 0.5 | Scales the vessel count up to `MaximumVessels` (24) |
+| `Intensity` | 0.5 | How busy, as a share of `MaximumVessels` |
+| `MaximumVessels` | 24 | The most on the water at once, up to `MarineTraffic.VesselLimit` (60) |
 | `Clearance` | 300 m | How far lanes stay from the marina, the land areas and the mainland |
 | `SpeedKnots` | 8 | How fast they cross |
-| `Reach` | 600 m | Half a lane's length; capped by what the water grid covers |
+| `Reach` | 6000 m | Half a lane's length: where a vessel appears and where it finally fades |
 | `Seed` | 1 | Fixes the lanes and the vessels on them |
 | `Vessels` | empty | The mix to draw from; empty means `MarineTraffic.DefaultVessels` |
 
@@ -118,7 +120,9 @@ from the marina, from every land area and from the mainland behind the shore —
 quay or through the piers. Asking for more clearance than the open water allows leaves fewer lanes; `TrafficLaneCount`
 says how many were found room for, and 0 means the traffic cannot be drawn at all.
 
-Vessels fade in at one end of their lane and out at the other, so nothing pops into view. They are decoration: they are
+A lane runs right across the map. Both ends sit far outside the detailed water, so a vessel fades in well out of
+sight, crosses within view of the marina, and fades out again on the far side; each lane is made to pass inside the
+detailed water so it is actually seen among the waves rather than only skirting the horizon. They are decoration: they are
 not berths, they cannot be clicked or hit-tested, and they take no part in selection. `GetTrafficVessels()` returns
 where they are right now, for a host that wants to draw its own marker.
 

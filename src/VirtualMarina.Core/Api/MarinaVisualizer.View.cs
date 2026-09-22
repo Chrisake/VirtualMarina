@@ -10,6 +10,37 @@ public sealed partial class MarinaVisualizer
     /// <summary>Name of the built-in whole-marina preset used by <see cref="ResetCamera"/>.</summary>
     public const string OverviewPresetName = "Overview";
 
+    /// <summary>Name of the built-in plan view.</summary>
+    public const string TopDownPresetName = "Top Down";
+
+    /// <summary>Built-in views the user switched off, by name. Kept across layout changes and saved with the design.</summary>
+    private readonly HashSet<string> _disabledPresets = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <inheritdoc/>
+    public bool SetCameraPresetEnabled(string presetName, bool enabled)
+    {
+        ArgumentNullException.ThrowIfNull(presetName);
+        var index = _presets.FindIndex(p => string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase));
+        if (index < 0) return false;
+
+        if (enabled) _disabledPresets.Remove(_presets[index].Name);
+        else _disabledPresets.Add(_presets[index].Name);
+
+        _presets[index] = _presets[index] with { IsEnabled = enabled };
+        return true;
+    }
+
+    /// <summary>The names of the built-in views that are switched off, for saving with the design.</summary>
+    internal IReadOnlyCollection<string> DisabledCameraPresets => _disabledPresets;
+
+    /// <summary>Restores which built-in views are switched off, when a design is loaded.</summary>
+    internal void RestoreDisabledCameraPresets(IEnumerable<string> names)
+    {
+        _disabledPresets.Clear();
+        foreach (var name in names) _disabledPresets.Add(name);
+        RebuildBuiltInPresets();
+    }
+
     // ---- Hover ----------------------------------------------------------------------------------
 
     /// <inheritdoc/>
@@ -354,14 +385,16 @@ public sealed partial class MarinaVisualizer
         Camera.Constraints.MaxDistance = MathF.Max(250f, MathF.Max(fit, FitDistance(MathF.Max(boundsMax.X - boundsMin.X, boundsMax.Y - boundsMin.Y))) * 2.5f);
         Camera.FarPlane = MathF.Max(1500f, Camera.Constraints.MaxDistance * 4f);
 
+        // The whole marina, straight down on it, and one from each compass point — all centred on the marina and
+        // pulled back far enough to hold it — then one per pier.
         var builtIn = new List<CameraPreset>
         {
-            new(OverviewPresetName, new CameraPose(center, 200f, 42f, fit), "Whole marina from the shore side") { IsBuiltIn = true },
-            new("Top Down", new CameraPose(center, 180f, 89f, fit * 1.05f), "Plan view, shore at the bottom") { IsBuiltIn = true },
-            new("Sea Side", new CameraPose(center, 20f, 30f, fit * 0.95f), "Looking back toward the shore") { IsBuiltIn = true },
-            new("East", new CameraPose(center, 90f, 35f, fit * 0.9f), "From the east") { IsBuiltIn = true },
-            new("West", new CameraPose(center, 270f, 35f, fit * 0.9f), "From the west") { IsBuiltIn = true },
-            new("Low Angle", new CameraPose(center, 225f, 14f, fit * 0.7f), "Close to the water line") { IsBuiltIn = true },
+            new(OverviewPresetName, new CameraPose(center, 200f, 42f, fit), "The whole marina") { IsBuiltIn = true },
+            new(TopDownPresetName, new CameraPose(center, 180f, 89f, fit * 1.05f), "Straight down, north up") { IsBuiltIn = true },
+            new("North", new CameraPose(center, 0f, 35f, fit), "From the north") { IsBuiltIn = true },
+            new("East", new CameraPose(center, 90f, 35f, fit), "From the east") { IsBuiltIn = true },
+            new("South", new CameraPose(center, 180f, 35f, fit), "From the south") { IsBuiltIn = true },
+            new("West", new CameraPose(center, 270f, 35f, fit), "From the west") { IsBuiltIn = true },
         };
 
         foreach (var pier in OrderedPiers())
@@ -371,7 +404,7 @@ public sealed partial class MarinaVisualizer
 
         var custom = _presets.Where(p => !p.IsBuiltIn).ToList();
         _presets.Clear();
-        _presets.AddRange(builtIn);
+        _presets.AddRange(builtIn.Select(preset => preset with { IsEnabled = !_disabledPresets.Contains(preset.Name) }));
         _presets.AddRange(custom);
     }
 }

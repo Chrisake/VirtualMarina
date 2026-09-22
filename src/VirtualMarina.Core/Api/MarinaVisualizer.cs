@@ -91,6 +91,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private Vector2 _waterCenter;
     private Vector2 _marinaCenter;
     private float _waterSize;
+    private float _requestedWaterSize;
     private string _marinaName = "Marina";
 
     /// <summary>Creates an empty marina with default water and lighting. Load one with <see cref="InitializeLayout"/>.</summary>
@@ -108,6 +109,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         Meshes = MeshLibrary.CreateDefault(Water.Size, Water.GridResolution, options.WaterCenter);
         _waterCenter = options.WaterCenter;
         _waterSize = Water.Size;
+        _requestedWaterSize = Water.Size;
         Camera = new OrbitCamera();
         AttachStyle(_style);
         Input = new MarinaInputController(this);
@@ -248,6 +250,10 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// <summary>Builds the frame description for a renderer. Rebuilds instance data only when the scene changed.</summary>
     public RenderFrame BuildRenderFrame()
     {
+        // Water.Size can be set at any time; the grid is rebuilt when it actually changes, not when the grid has
+        // merely been grown to cover the layout.
+        if (MathF.Abs(Water.Size - _requestedWaterSize) > 0.5f) SetWaterGrid(_waterCenter, MathF.Max(50f, Water.Size));
+
         if (Designer.OverlayNeedsRefresh()) _sceneDirty = true;
         if (_sceneDirty)
         {
@@ -434,6 +440,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// <summary>Rebuilds the water grid around <paramref name="center"/>.</summary>
     private void SetWaterGrid(Vector2 center, float size)
     {
+        _requestedWaterSize = Water.Size;
         // Keep the cell size of the configured grid as it grows (within limits).
         var resolution = Math.Clamp((int)MathF.Round(Water.GridResolution * size / Water.Size), Water.GridResolution, 400);
         Meshes.Register(MarinaMeshFactory.CreateWaterGrid(MeshIds.Water, size, resolution, center));
@@ -513,12 +520,10 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
                 .Concat(OrderedDividers().Select(divider => divider.Bounds)),
             OrderedLandAreas());
 
-        // A lane past the edge of the water would put vessels on nothing, so it is kept inside the grid. Only the
-        // reach is capped; the speed the vessels run at is the one that was asked for.
-        var afloat = MathF.Max(1f, _waterSize * 0.5f - 40f);
-        var fitted = _traffic.Reach > afloat ? _traffic with { Reach = afloat } : _traffic;
-
-        _trafficLanes = MarineTrafficPlanner.Plan(fitted, bounds, OrderedLandAreas(), _shoreline);
+        // Lanes run right across the map, starting and ending far outside the detailed water, but each one has to
+        // pass within sight of the marina rather than only skirting the horizon.
+        var afloat = MathF.Max(1f, _waterSize * 0.5f);
+        _trafficLanes = MarineTrafficPlanner.Plan(_traffic, bounds, OrderedLandAreas(), _shoreline, afloat);
         _trafficDirty = false;
         _staticObjectCount = -1;
     }

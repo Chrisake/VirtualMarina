@@ -58,12 +58,13 @@ This is used by `FocusBerth(id)`, `FocusBerths(ids)` or `FocusSelection()` witho
 
 | Built-in preset | View |
 |---|---|
-| `Overview` (`MarinaVisualizer.OverviewPresetName`) | Whole marina from the shore side |
-| `Top Down` | Plan view, shore at the bottom |
-| `Sea Side` | Looking back toward the shore |
-| `East`, `West` | From the sides |
-| `Low Angle` | Close to the water line |
+| `Overview` (`MarinaVisualizer.OverviewPresetName`) | The whole marina |
+| `Top Down` (`MarinaVisualizer.TopDownPresetName`) | Straight down, north up |
+| `North`, `East`, `South`, `West` | From each compass point |
 | `Pier: {Name}` | Close-up of each pier |
+
+Every one of them is centred on the middle of the marina and pulled back far enough to hold all of it, so they stay
+right as the layout grows.
 
 ```csharp
 marina.ResetCamera();                                    // Overview
@@ -75,6 +76,18 @@ foreach (CameraPreset p in marina.CameraPresets) menu.Add(p.Name, p.Description)
 ```
 
 Built-in presets are regenerated whenever the layout changes. Custom presets are kept.
+
+### Switching a view off
+
+Not every marina wants every automatic view offered. `SetCameraPresetEnabled(name, false)` marks one as not to be
+offered; it stays in `CameraPresets` with `IsEnabled` false and can still be applied by name on purpose.
+
+```csharp
+marina.SetCameraPresetEnabled("South", false);
+foreach (var p in marina.CameraPresets.Where(p => p.IsEnabled)) menu.Add(p.Name, p.Description);
+```
+
+Which built-in views are switched off is saved with the design, and survives the layout changing under them.
 
 ## The orbit camera
 

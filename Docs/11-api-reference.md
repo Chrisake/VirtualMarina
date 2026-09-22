@@ -457,7 +457,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `BerthLabelMode BerthLabelMode { get; set; }` | Which berths have their name written on the water: None (default), OnlyFree, NonOccupied or All. |
 | `BerthStatusFilter StatusFilter { get; }` | Statuses currently shown. Filtered-out berths keep their structure but lose status visuals, boats, labels and interaction. |
 | `OrbitCamera Camera { get; }` | The orbit camera. Use it for low-level control (poses, constraints, field of view). |
-| `IReadOnlyList<CameraPreset> CameraPresets { get; }` | Built-in presets (Overview, Top Down, Sea Side, East, West, Low Angle, one per pier) followed by custom presets. |
+| `IReadOnlyList<CameraPreset> CameraPresets { get; }` | Built-in presets (Overview, Top Down, North, East, South, West, and one per pier) followed by custom ones. Every built-in view is centred on the marina and pulled back far enough to hold all of it. |
 | `CameraAngle? DefaultFocusAngle { get; set; }` | Angle used by focus calls that don't pass one, by `SelectBerth(id, focusCamera: true)` and by double-click. Null (default) keeps the current yaw and looks down at least 35°. Set `CameraAngle.TopDown` for a plan view. |
 | `LightingSettings Lighting { get; }` | Sun, ambient light, specular and fog. Changes apply on the next frame. |
 | `WaterSettings Water { get; }` | Water colors and wave animation. Changes apply on the next frame. The same object as `Style.Water`. |
@@ -544,6 +544,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `Berth SetBerthReadOnly(string berthId, bool readOnly)` | Makes a berth read-only: it can be selected and shows its tooltip, but its actions window never opens. |
 | `Berth SetBerthStatus(string berthId, BerthStatus status, Boat? boat = null)` | Sets a berth's status. Free always removes the boat; for other statuses a null `boat` keeps the current boat. |
 | `Berth SetBerthVisible(string berthId, bool visible)` | Shows or hides a berth. Hidden berths draw nothing (not even finger piers) and cannot be interacted with. |
+| `bool SetCameraPresetEnabled(string presetName, bool enabled)` | Switches a view on or off. A switched-off view stays in `IMarinaVisualizer.CameraPresets` marked `CameraPreset.IsEnabled` false, and can still be applied by name; it is simply not one a host should offer. Which built-in views are off is saved with the design. |
 | `void SetMarineTraffic(MarineTraffic? traffic)` | Sets the passing traffic and lays out the lanes it runs along. Lanes are kept clear of the marina, the land areas and the mainland by `MarineTraffic.Clearance`, so nothing sails over a quay. |
 | `SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, CameraAngle? focusAngle = null)` | Replaces the selection with one or more berths. Disabled berths are discarded, as are hidden, filtered-out and unknown ids and duplicates; `SelectionResult.Rejected` lists them with the reason. The rest are selected in the given order (the last becomes primary) and `IMarinaVisualizer.BerthSelected` or `IMarinaVisualizer.MultiBerthSelected` is raised. When nothing remains the selection is cleared. |
 | `SelectionResult SetSelection(params string[] berthIds)` | Replaces the selection with the given berths (disabled ones are discarded), without moving the camera. |
@@ -657,6 +658,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `MarinaVisualizer()` | Creates an empty marina with default water and lighting. Load one with `MarinaVisualizer.InitializeLayout`. |
 | `MarinaVisualizer(MarinaVisualizerOptions options)` | Creates an empty marina with custom water and lighting settings. |
 | `const string OverviewPresetName = "Overview"` | Name of the built-in whole-marina preset used by `MarinaVisualizer.ResetCamera`. |
+| `const string TopDownPresetName = "Top Down"` | Name of the built-in plan view. |
 | `string MarinaName { get; set; }` | *(See the interface member.)* |
 | `OrbitCamera Camera { get; }` | *(See the interface member.)* |
 | `MarinaInputController Input { get; }` | Platform-neutral input handling. Host views forward pointer and keyboard events here; configure drag bindings, zoom step and hover through it. |
@@ -773,6 +775,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `Berth SetBerthReadOnly(string berthId, bool readOnly)` | Read-only berths can be selected and show their tooltip, but their actions window does not open. |
 | `Berth SetBerthStatus(string berthId, BerthStatus status, Boat? boat = null)` | *(See the interface member.)* |
 | `Berth SetBerthVisible(string berthId, bool visible)` | Hidden berths are not drawn at all and cannot be interacted with. |
+| `bool SetCameraPresetEnabled(string presetName, bool enabled)` | *(See the interface member.)* |
 | `void SetDisabledColor(ColorRgba color)` | Changes the pad and buoy color used for disabled berths (boats of disabled berths are always desaturated). |
 | `void SetMarineTraffic(MarineTraffic? traffic)` | *(See the interface member.)* |
 | `void SetOverlayOpacity(float padOpacity, float ghostBoatOpacity)` | Sets the opacity of status pads and of reserved/temporarily free "ghost" boats. Values are clamped to 0.05–1. |
@@ -1014,6 +1017,7 @@ A named viewpoint staff can jump to (`IMarinaVisualizer.ApplyCameraPreset`).
 | `CameraPose Pose { get; init; }` | Camera target, angles and distance. |
 | `string? Description { get; init; }` | Optional description, e.g. for a tooltip in a preset menu. |
 | `bool IsBuiltIn { get; init; }` | True for presets generated automatically from the layout (rebuilt when the layout changes). |
+| `bool IsEnabled { get; init; }` | False when this view has been switched off, so a host should leave it out of the list it offers. Switched-off views are still in `CameraPresets` and can still be applied by name; see `IMarinaVisualizer.SetCameraPresetEnabled`. |
 
 <a id="orbitcamera"></a>
 ### OrbitCamera
@@ -1829,14 +1833,15 @@ It is decoration, not layout: the vessels are not berths, cannot be clicked, and
 | Member | Description |
 |---|---|
 | `MarineTraffic()` | Creates an instance with default values. |
-| `const int MaximumVessels = 24` | The most vessels drawn at once, at `MarineTraffic.Intensity` 1. |
+| `const int VesselLimit = 60` | The most vessels `MarineTraffic.MaximumVessels` may be set to. |
 | `static MarineTraffic None { get; }` | Empty sea. This is what a marina has until traffic is switched on. |
 | `static IReadOnlyList<BoatType> DefaultVessels { get; }` | The mix used when `MarineTraffic.Vessels` is left empty: what is plausibly passing a marina offshore. |
 | `bool IsEnabled { get; init; }` | Draw the traffic. Default false, so a marina is in empty sea until it is asked for. |
 | `float Intensity { get; init; }` | How busy the sea is, 0–1 (default 0.5). Scales the number of vessels up to `MarineTraffic.MaximumVessels`. |
+| `int MaximumVessels { get; init; }` | The most vessels on the water at once, 1–`MarineTraffic.VesselLimit` (default 24). `MarineTraffic.Intensity` is a fraction of this, so raising it makes a busy sea busier without touching the setting that says how busy. |
 | `float Clearance { get; init; }` | How far a lane must stay from the marina and from any land, in meters (default 300). Nothing is drawn closer than this, so the traffic never crosses a quay, a breakwater or the piers. |
 | `float SpeedKnots { get; init; }` | How fast the vessels go, in knots (default 8). They are meant to drift slowly across the view. |
-| `float Reach { get; init; }` | Half the length of a lane, in meters (default 600): how far out the traffic runs before it fades away. This is the edge of the map as far as the traffic is concerned. |
+| `float Reach { get; init; }` | Half the length of a lane, in meters (default 6000): how far out a vessel starts and where it finally fades away. It is deliberately far beyond the detailed water, so vessels appear and disappear out of sight rather than popping into view at the edge of the waves. |
 | `int Seed { get; init; }` | Keeps the lanes and the vessels on them the same between sessions. Any number will do. |
 | `IReadOnlyList<BoatType> Vessels { get; init; }` | The kinds of vessel out there, drawn from at random. Repeat a type to make it more common. Empty means `MarineTraffic.DefaultVessels`. |
 | `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes the host application attaches to the traffic. Saved with the design. |
@@ -2171,6 +2176,7 @@ A lane is a straight line across the map. Lanes are tried at random from the tra
 |---|---|
 | `static IEnumerable<TrafficVessel> Place(IReadOnlyList<TrafficLane> lanes, MarineTraffic traffic, double seconds)` | Where every vessel is at a moment in time. Cheap enough to call on every frame: it is a walk along lines that were already checked when they were planned. |
 | `static IReadOnlyList<TrafficLane> Plan(MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<LandArea> land, Shoreline? shoreline)` | Works out the lanes and the vessels on them. The result is fixed for a given traffic setting and layout, so it is planned once and then only walked forward in time. |
+| `static IReadOnlyList<TrafficLane> Plan(MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<LandArea> land, Shoreline? shoreline, float passWithin)` | Works out the lanes and the vessels on them, keeping every lane within sight of the marina. |
 
 <a id="meshbuilder"></a>
 ### MeshBuilder
@@ -2751,12 +2757,12 @@ Camera optics and motion (`MarinaStyle.View`). Applied to `MarinaVisualizer.Came
 
 `sealed class WaterSettings`
 
-Water surface look and wave animation (`MarinaStyle.Water`). Applied every frame. `WaterSettings.Size` and `WaterSettings.GridResolution` are only read when the visualizer is created.
+Water surface look and wave animation (`MarinaStyle.Water`). Applied every frame. `WaterSettings.GridResolution` is only read when the visualizer is created.
 
 | Member | Description |
 |---|---|
 | `WaterSettings()` | Creates an instance with default values. |
-| `float Size { get; init; }` | Edge length of the square water grid in meters. |
+| `float Size { get; set; }` | Edge length of the detailed water, in meters (default 4200). This is the part that has waves, reflections and sun glints; beyond it the sea carries on flat to the horizon, so raising it buys detail rather than more sea. |
 | `int GridResolution { get; init; }` | Cells per side of the water grid. Higher values give smoother waves. |
 | `Vector3 DeepColor { get; set; }` | Water color in shade (RGB, linear). |
 | `Vector3 ShallowColor { get; set; }` | Water color where the sun lights it (RGB, linear). |
@@ -2793,6 +2799,7 @@ The format is `{ "format": "virtualmarina.marina", "formatVersion": "1.0", ... }
 | `BerthLabelMode BerthLabels { get; set; }` | Which berths show their name on the water. |
 | `CameraPose? Camera { get; set; }` | Where the camera should start, or null to use the automatic overview. |
 | `IReadOnlyList<CameraPreset> CameraPresets { get; set; }` | Named viewpoints saved with the design, offered by the host as "go to this view". The ones generated from the layout (Overview, Top Down, one per pier) are not stored: they are rebuilt from the piers on load, so they stay right when the marina changes. |
+| `IReadOnlyList<string> DisabledCameraPresets { get; set; }` | Names of the built-in views the designer switched off. The built-in views themselves are rebuilt from the layout, so only the choice of which to offer is stored. |
 | `DesignerSettings? Designer { get; set; }` | The designer's tool settings when the file was saved, so a design reopens the way it was left. Null when not stored. |
 | `ReferenceImageRecord? ReferenceImage { get; set; }` | The picture the marina was traced on, with its place and scale, or null. Stored so a design can be reopened and corrected against the same photo later; see `ReferenceImageRecord`. |
 | `Version Version { get; }` | Version of the format the document was read from; `MarinaDocument.CurrentVersion` for a new one. |

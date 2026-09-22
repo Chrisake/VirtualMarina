@@ -71,6 +71,9 @@ internal sealed class DocumentDto : ExtensibleDto
     public ReferenceImageDto? ReferenceImage { get; set; }
 
     public List<CameraPresetDto>? CameraPresets { get; set; }
+
+    /// <summary>Names of the built-in views that are switched off; written only when there are any.</summary>
+    public List<string>? DisabledCameraPresets { get; set; }
 }
 
 /// <summary>A viewpoint saved with the design.</summary>
@@ -229,7 +232,9 @@ internal sealed class MarineTrafficDto : ExtensibleDto
 
     public float SpeedKnots { get; set; } = 8f;
 
-    public float Reach { get; set; } = 600f;
+    public float Reach { get; set; } = 6000f;
+
+    public int MaximumVessels { get; set; } = 24;
 
     public int Seed { get; set; } = 1;
 
@@ -246,6 +251,7 @@ internal sealed class MarineTrafficDto : ExtensibleDto
         Clearance = traffic.Clearance,
         SpeedKnots = traffic.SpeedKnots,
         Reach = traffic.Reach,
+        MaximumVessels = traffic.MaximumVessels,
         Seed = traffic.Seed,
         Vessels = traffic.Vessels.Count == 0 ? null : traffic.Vessels.ToList(),
         Metadata = Copy(traffic.Metadata),
@@ -258,6 +264,7 @@ internal sealed class MarineTrafficDto : ExtensibleDto
         Clearance = Clearance,
         SpeedKnots = SpeedKnots,
         Reach = Reach,
+        MaximumVessels = MaximumVessels > 0 ? MaximumVessels : new MarineTraffic().MaximumVessels,
         Seed = Seed,
         Vessels = Vessels?.ToArray() ?? Array.Empty<BoatType>(),
         Metadata = Read(Metadata),

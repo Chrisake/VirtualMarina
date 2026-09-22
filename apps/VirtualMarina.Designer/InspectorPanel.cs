@@ -126,6 +126,13 @@ internal sealed class InspectorPanel : Panel
     private readonly Label _summary = Theme.Hint(string.Empty);
 
     private bool _updating;
+    private TableLayoutPanel _header = null!;
+
+    /// <summary>
+    /// How tall this panel would like to be: its heading plus the cards the current tool shows. The window uses it
+    /// to sit the tool settings above the look or camera settings without leaving a gap.
+    /// </summary>
+    public int PreferredPanelHeight => _header.PreferredSize.Height + _stack.PreferredSize.Height;
 
     public InspectorPanel(MarinaVisualizer marina, Action loadImage)
     {
@@ -176,6 +183,7 @@ internal sealed class InspectorPanel : Panel
         // A last row that soaks up the space left over, so the cards stay at the top instead of spreading out.
         _scroller.Controls.Add(_stack);
         Controls.Add(_scroller);
+        _header = header;
         Controls.Add(header);
 
         Wire();

@@ -78,6 +78,12 @@ public sealed class MarinaDocument
     /// </summary>
     public IReadOnlyList<CameraPreset> CameraPresets { get; set; } = Array.Empty<CameraPreset>();
 
+    /// <summary>
+    /// Names of the built-in views the designer switched off. The built-in views themselves are rebuilt from the
+    /// layout, so only the choice of which to offer is stored.
+    /// </summary>
+    public IReadOnlyList<string> DisabledCameraPresets { get; set; } = Array.Empty<string>();
+
     /// <summary>The designer's tool settings when the file was saved, so a design reopens the way it was left. Null when not stored.</summary>
     public DesignerSettings? Designer { get; set; }
 
@@ -132,6 +138,7 @@ public sealed class MarinaDocument
             BerthLabels = marina.BerthLabelMode,
             Camera = includeCamera ? marina.Camera.DesiredPose : null,
             CameraPresets = includeCamera ? marina.CameraPresets.Where(preset => !preset.IsBuiltIn).ToArray() : Array.Empty<CameraPreset>(),
+            DisabledCameraPresets = includeCamera ? marina.DisabledCameraPresets.ToArray() : Array.Empty<string>(),
             Designer = includeDesignerSettings ? DesignerSettings.FromDesigner(marina.Designer) : null,
             ReferenceImage = includeReferenceImage ? ReferenceImageRecord.FromDesigner(marina.Designer) : null,
             Generator = generator,
@@ -163,6 +170,7 @@ public sealed class MarinaDocument
         if (applyCamera)
         {
             foreach (var preset in CameraPresets) marina.AddCameraPreset(preset with { IsBuiltIn = false });
+            marina.RestoreDisabledCameraPresets(DisabledCameraPresets);
             if (Camera is { } pose) marina.Camera.SetPose(pose, immediate: true);
         }
 
@@ -219,6 +227,7 @@ public sealed class MarinaDocument
             Designer = dto.Designer?.ToDomain(),
             ReferenceImage = dto.ReferenceImage?.ToDomain(),
             CameraPresets = dto.CameraPresets?.Select(preset => preset.ToDomain()).ToArray() ?? Array.Empty<CameraPreset>(),
+            DisabledCameraPresets = dto.DisabledCameraPresets?.ToArray() ?? Array.Empty<string>(),
         };
 
         document.Name = document.Layout.Name is { Length: > 0 } && dto.Marina?.Name is null ? document.Layout.Name : document.Name;
@@ -251,6 +260,7 @@ public sealed class MarinaDocument
             Designer = Designer is { } settings ? DesignerDto.From(settings) : null,
             ReferenceImage = ReferenceImage is { } image ? ReferenceImageDto.From(image) : null,
             CameraPresets = CameraPresets.Count == 0 ? null : CameraPresets.Select(CameraPresetDto.From).ToList(),
+            DisabledCameraPresets = DisabledCameraPresets.Count == 0 ? null : DisabledCameraPresets.ToList(),
             Extra = Extensions.Count == 0 ? null : new Dictionary<string, JsonElement>(Extensions, StringComparer.Ordinal),
         };
 

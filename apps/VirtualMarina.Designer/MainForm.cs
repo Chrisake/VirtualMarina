@@ -22,11 +22,15 @@ internal sealed class MainForm : Form
     private readonly MarinaViewControl _view = new() { Dock = DockStyle.Fill };
     private readonly InspectorPanel _inspector;
     private readonly AppearancePanel _appearance;
+    private readonly CamerasPanel _cameras;
     private ToolStripButton _lookButton = null!;
+    private ToolStripButton _camerasButton = null!;
+
+    /// <summary>How much of the side panel the tool settings may take before they scroll on their own.</summary>
+    private const int MaxToolSettingsHeight = 360;
     private SplitContainer _split = null!;
     private readonly ToolStrip _toolbar = new();
     private readonly Dictionary<DesignTool, ToolStripButton> _toolButtons = new();
-    private readonly ToolStripButton _undoButton = new();
     private readonly StatusStrip _status = new();
     private readonly ToolStripStatusLabel _statusHint = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
     private readonly ToolStripStatusLabel _statusPointer = new() { AutoSize = true, TextAlign = ContentAlignment.MiddleRight };
@@ -52,6 +56,7 @@ internal sealed class MainForm : Form
         Marina.Designer.Tool = DesignTool.Navigate;
         _inspector = new InspectorPanel(Marina, LoadReferenceImage);
         _appearance = new AppearancePanel(Marina, Log) { Visible = false };
+        _cameras = new CamerasPanel(Marina, Log) { Visible = false };
 
         BuildMenu();
         BuildToolbar();
@@ -97,7 +102,9 @@ internal sealed class MainForm : Form
         };
         _split = split;
         split.Panel1.Controls.Add(_view);
+        // Fill first, Top second: the tool settings sit above whichever side panel is open.
         split.Panel2.Controls.Add(_appearance);
+        split.Panel2.Controls.Add(_cameras);
         split.Panel2.Controls.Add(_inspector);
 
         var logHeader = new Label
@@ -159,7 +166,8 @@ internal sealed class MainForm : Form
         view.DropDownItems.Add(_logMenuItem);
 
         var marina = new ToolStripMenuItem(Strings.MenuMarina);
-        marina.DropDownItems.Add(Menu(Strings.MenuAppearance, Keys.None, () => _lookButton.Checked = true));
+        marina.DropDownItems.Add(Menu(Strings.MenuAppearance, Keys.None, () => ShowSidePanel(SidePanel.Look)));
+        marina.DropDownItems.Add(Menu(Strings.MenuCameras, Keys.None, () => ShowSidePanel(SidePanel.Cameras)));
         marina.DropDownItems.Add(Menu(Strings.MenuBerthLabels, Keys.None, ToggleLabels));
 
         var help = new ToolStripMenuItem(Strings.MenuHelp);
@@ -217,21 +225,37 @@ internal sealed class MainForm : Form
             ForeColor = Theme.Text,
             CheckOnClick = true,
         };
-        _lookButton.CheckedChanged += (_, _) => ShowAppearance(_lookButton.Checked);
+        _lookButton.CheckedChanged += (_, _) => ShowSidePanel(_lookButton.Checked ? SidePanel.Look : SidePanel.Tools);
         _toolbar.Items.Add(_lookButton);
-        _toolbar.Items.Add(new ToolStripSeparator());
 
-        _undoButton.Text = Strings.Undo;
-        _undoButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
-        _undoButton.Padding = new Padding(10, 4, 10, 4);
-        _undoButton.ToolTipText = Strings.UndoTip;
-        _undoButton.Click += (_, _) => Designer.Undo();
-        _toolbar.Items.Add(_undoButton);
+        _camerasButton = new ToolStripButton(Strings.ToolCameras)
+        {
+            DisplayStyle = ToolStripItemDisplayStyle.Text,
+            Padding = new Padding(12, 4, 12, 4),
+            ToolTipText = Strings.ToolCamerasTip,
+            ForeColor = Theme.Text,
+            CheckOnClick = true,
+        };
+        _camerasButton.CheckedChanged += (_, _) => ShowSidePanel(_camerasButton.Checked ? SidePanel.Cameras : SidePanel.Tools);
+        _toolbar.Items.Add(_camerasButton);
 
+        // Undo is not here on purpose: Ctrl+Z and Edit ▸ Undo are where people look for it.
         _toolbar.Items.Add(new ToolStripSeparator());
         _toolbar.Items.Add(Command(Strings.CommandTopView, Strings.CommandTopViewTip, () => Designer.ViewTopDown()));
         _toolbar.Items.Add(Command(Strings.CommandFitMarina, Strings.CommandFitMarinaTip, () => Marina.ResetCamera()));
-        _toolbar.Items.Add(Command(Strings.CommandReferenceImage, Strings.CommandReferenceImageTip, LoadReferenceImage));
+    }
+
+    /// <summary>Which settings sit beside the marina.</summary>
+    private enum SidePanel
+    {
+        /// <summary>Only the current tool's settings.</summary>
+        Tools = 0,
+
+        /// <summary>The tool's settings, then how the marina is drawn.</summary>
+        Look = 1,
+
+        /// <summary>The tool's settings, then the saved and automatic views.</summary>
+        Cameras = 2,
     }
 
     /// <summary>
@@ -355,12 +379,12 @@ internal sealed class MainForm : Form
     {
         if (IsDisposed) return;
         foreach (var (tool, button) in _toolButtons) button.Checked = Designer.Tool == tool;
-        _undoButton.Enabled = Designer.CanUndo;
-        _undoButton.ToolTipText = Designer.CanUndo ? Strings.Format(Strings.UndoTipWith, Designer.UndoDescription) : Strings.NothingToUndo;
         _statusHint.Text = Designer.ToolHint;
         var pose = Marina.Camera.Pose;
         _statusCamera.Text = string.Format(CultureInfo.CurrentCulture, Strings.StatusCamera, pose.Distance, pose.PitchDegrees);
         _inspector.Sync();
+        if (_cameras.Visible) _cameras.Sync();
+        SizeToolSettings();
     }
 
     private void ShowPointer(Point location)
@@ -508,22 +532,53 @@ internal sealed class MainForm : Form
     // ---- Dialogs -------------------------------------------------------------------------------
 
     /// <summary>
-    /// Swaps the panel beside the view between the drawing tools and the look settings. While the look settings are
-    /// up the scene is drawn with its full atmosphere — the haze the designer normally damps down so the shapes it
-    /// is tracing stay crisp — because that haze is one of the things being set.
+    /// Chooses what sits beside the marina. The current tool's settings stay on top whatever is open underneath, so
+    /// switching to the look or camera settings does not mean losing sight of what the tool in hand is doing.
     /// </summary>
-    /// <param name="showing">True for the look settings, false for the tools.</param>
-    private void ShowAppearance(bool showing)
+    /// <remarks>
+    /// While the look settings are up the scene is drawn with its full atmosphere — the haze the designer normally
+    /// damps down so the shapes it is tracing stay crisp — because that haze is one of the things being set.
+    /// </remarks>
+    /// <param name="which">Which settings to show under the tool's own.</param>
+    private void ShowSidePanel(SidePanel which)
     {
-        _appearance.Visible = showing;
-        _inspector.Visible = !showing;
-        if (showing) _appearance.BringToFront();
-        else _inspector.BringToFront();
+        if (_updatingSidePanel) return;
+        _updatingSidePanel = true;
+        try
+        {
+            _lookButton.Checked = which == SidePanel.Look;
+            _camerasButton.Checked = which == SidePanel.Cameras;
+        }
+        finally
+        {
+            _updatingSidePanel = false;
+        }
 
-        Designer.FogFactor = showing ? 1f : DesigningFogFactor;
-        if (showing) MarkDirty();
+        _appearance.Visible = which == SidePanel.Look;
+        _cameras.Visible = which == SidePanel.Cameras;
+        if (_cameras.Visible) _cameras.Sync();
+
+        // The tool settings are always there: filling the panel on their own, or a band across the top of it.
+        _inspector.Dock = which == SidePanel.Tools ? DockStyle.Fill : DockStyle.Top;
+        SizeToolSettings();
+
+        Designer.FogFactor = which == SidePanel.Look ? 1f : DesigningFogFactor;
+        if (which == SidePanel.Look) MarkDirty();
         RefreshUi();
     }
+
+    /// <summary>
+    /// Gives the tool settings the height they ask for when they share the panel, capped so they cannot crowd out
+    /// what is underneath. Past the cap they scroll on their own.
+    /// </summary>
+    private void SizeToolSettings()
+    {
+        if (_inspector.Dock != DockStyle.Top) return;
+        var wanted = Math.Min(MaxToolSettingsHeight, Math.Max(80, _inspector.PreferredPanelHeight));
+        if (_inspector.Height != wanted) _inspector.Height = wanted;
+    }
+
+    private bool _updatingSidePanel;
 
     private void ToggleLabels()
     {

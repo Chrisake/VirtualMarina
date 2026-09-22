@@ -45,13 +45,20 @@ public sealed class LightingSettings
 }
 
 /// <summary>
-/// Water surface look and wave animation (<see cref="MarinaStyle.Water"/>). Applied every frame. <see cref="Size"/> and
-/// <see cref="GridResolution"/> are only read when the visualizer is created.
+/// Water surface look and wave animation (<see cref="MarinaStyle.Water"/>). Applied every frame.
+/// <see cref="GridResolution"/> is only read when the visualizer is created.
 /// </summary>
 public sealed class WaterSettings
 {
-    /// <summary>Edge length of the square water grid in meters.</summary>
-    public float Size { get; init; } = 1400f;
+    /// <summary>
+    /// Edge length of the detailed water, in meters (default 4200). This is the part that has waves, reflections and
+    /// sun glints; beyond it the sea carries on flat to the horizon, so raising it buys detail rather than more sea.
+    /// </summary>
+    /// <remarks>
+    /// It can be changed at any time — the visualizer notices and rebuilds the grid on the next frame — and the grid
+    /// is grown automatically when a layout or a reference image reaches past it.
+    /// </remarks>
+    public float Size { get; set; } = 4200f;
 
     /// <summary>Cells per side of the water grid. Higher values give smoother waves.</summary>
     public int GridResolution { get; init; } = 160;

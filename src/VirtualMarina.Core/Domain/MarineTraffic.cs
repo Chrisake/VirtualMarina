@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Numerics;
 
 namespace VirtualMarina.Core.Domain;
@@ -33,8 +33,8 @@ public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, flo
 /// </example>
 public sealed record MarineTraffic
 {
-    /// <summary>The most vessels drawn at once, at <see cref="Intensity"/> 1.</summary>
-    public const int MaximumVessels = 24;
+    /// <summary>The most vessels <see cref="MaximumVessels"/> may be set to.</summary>
+    public const int VesselLimit = 60;
 
     /// <summary>One knot in meters per second.</summary>
     private const float KnotsToMetersPerSecond = 0.514444f;
@@ -61,6 +61,12 @@ public sealed record MarineTraffic
     public float Intensity { get; init; } = 0.5f;
 
     /// <summary>
+    /// The most vessels on the water at once, 1–<see cref="VesselLimit"/> (default 24). <see cref="Intensity"/> is a
+    /// fraction of this, so raising it makes a busy sea busier without touching the setting that says how busy.
+    /// </summary>
+    public int MaximumVessels { get; init; } = 24;
+
+    /// <summary>
     /// How far a lane must stay from the marina and from any land, in meters (default 300). Nothing is drawn closer
     /// than this, so the traffic never crosses a quay, a breakwater or the piers.
     /// </summary>
@@ -70,14 +76,11 @@ public sealed record MarineTraffic
     public float SpeedKnots { get; init; } = 8f;
 
     /// <summary>
-    /// Half the length of a lane, in meters (default 600): how far out the traffic runs before it fades away. This is
-    /// the edge of the map as far as the traffic is concerned.
+    /// Half the length of a lane, in meters (default 6000): how far out a vessel starts and where it finally fades
+    /// away. It is deliberately far beyond the detailed water, so vessels appear and disappear out of sight rather
+    /// than popping into view at the edge of the waves.
     /// </summary>
-    /// <remarks>
-    /// It is capped at what the water grid actually covers, since a vessel past the edge of the water would be sailing
-    /// on nothing. Widen <c>WaterSettings.Size</c> to make room for traffic further out.
-    /// </remarks>
-    public float Reach { get; init; } = 600f;
+    public float Reach { get; init; } = 6000f;
 
     /// <summary>Keeps the lanes and the vessels on them the same between sessions. Any number will do.</summary>
     public int Seed { get; init; } = 1;
@@ -92,7 +95,8 @@ public sealed record MarineTraffic
     public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>How many vessels this asks for; 0 when it is switched off.</summary>
-    public int VesselCount => IsEnabled ? (int)MathF.Round(Math.Clamp(Intensity, 0f, 1f) * MaximumVessels) : 0;
+    public int VesselCount =>
+        IsEnabled ? (int)MathF.Round(Math.Clamp(Intensity, 0f, 1f) * Math.Clamp(MaximumVessels, 1, VesselLimit)) : 0;
 
     /// <summary><see cref="SpeedKnots"/> in meters per second.</summary>
     public float SpeedMetersPerSecond => SpeedKnots * KnotsToMetersPerSecond;
@@ -106,6 +110,11 @@ public sealed record MarineTraffic
         if (!float.IsFinite(Intensity) || Intensity < 0f || Intensity > 1f)
         {
             yield return "Marine traffic intensity must be between 0 and 1.";
+        }
+
+        if (MaximumVessels < 1 || MaximumVessels > VesselLimit)
+        {
+            yield return $"Marine traffic can show between 1 and {VesselLimit} vessels at once.";
         }
 
         if (!float.IsFinite(Clearance) || Clearance < 0f) yield return "Marine traffic clearance must not be negative.";

@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace VirtualMarina.Core.Camera;
 
@@ -33,6 +33,13 @@ public sealed record CameraPreset(string Name, CameraPose Pose, string? Descript
 {
     /// <summary>True for presets generated automatically from the layout (rebuilt when the layout changes).</summary>
     public bool IsBuiltIn { get; init; }
+
+    /// <summary>
+    /// False when this view has been switched off, so a host should leave it out of the list it offers. Switched-off
+    /// views are still in <c>CameraPresets</c> and can still be applied by name; see
+    /// <c>IMarinaVisualizer.SetCameraPresetEnabled</c>.
+    /// </summary>
+    public bool IsEnabled { get; init; } = true;
 }
 
 /// <summary>Limits that keep the camera usable: no flipping, no dipping under water, no flying away.</summary>

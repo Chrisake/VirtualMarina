@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Mathematics;
 
@@ -41,7 +41,28 @@ public static class MarineTrafficPlanner
         MarineTraffic traffic,
         (Vector2 Min, Vector2 Max) marina,
         IEnumerable<LandArea> land,
-        Shoreline? shoreline)
+        Shoreline? shoreline) =>
+        Plan(traffic, marina, land, shoreline, 0f);
+
+    /// <summary>
+    /// Works out the lanes and the vessels on them, keeping every lane within sight of the marina.
+    /// </summary>
+
+    /// <param name="traffic">The traffic settings. Returns nothing when it is off or unsound.</param>
+    /// <param name="marina">Plan-view bounds of the marina, which lanes must keep clear of.</param>
+    /// <param name="land">Land areas to keep clear of.</param>
+    /// <param name="shoreline">The mainland behind the shore, or null.</param>
+    /// <param name="passWithin">
+    /// How near the middle of the marina a lane has to come, in meters — normally the radius of the detailed water,
+    /// so every lane spends part of its run in sight among the waves rather than only out on the flat sea. 0 lets a
+    /// lane pass anywhere within <see cref="MarineTraffic.Reach"/>.
+    /// </param>
+    public static IReadOnlyList<TrafficLane> Plan(
+        MarineTraffic traffic,
+        (Vector2 Min, Vector2 Max) marina,
+        IEnumerable<LandArea> land,
+        Shoreline? shoreline,
+        float passWithin)
     {
         ArgumentNullException.ThrowIfNull(traffic);
         ArgumentNullException.ThrowIfNull(land);
@@ -63,10 +84,12 @@ public static class MarineTrafficPlanner
             var direction = new Vector2(MathF.Cos(heading), MathF.Sin(heading));
             var sideways = new Vector2(-direction.Y, direction.X);
 
-            // How far off to one side of the marina the lane passes, never nearer than the clearance asks.
+            // How far off to one side of the marina the lane passes: never nearer than the clearance asks, and
+            // never further than the water it has to be seen crossing.
             var nearest = traffic.Clearance + Vector2.Distance(marina.Min, marina.Max) * 0.5f;
-            if (nearest >= traffic.Reach) break;
-            var offset = nearest + (float)random.NextDouble() * (traffic.Reach - nearest);
+            var furthest = passWithin > nearest ? passWithin : traffic.Reach;
+            if (nearest >= furthest) break;
+            var offset = nearest + (float)random.NextDouble() * (furthest - nearest);
             if (random.Next(2) == 0) offset = -offset;
 
             var middle = center + sideways * offset;
@@ -98,7 +121,7 @@ public static class MarineTrafficPlanner
     /// Where every vessel is at a moment in time. Cheap enough to call on every frame: it is a walk along lines that
     /// were already checked when they were planned.
     /// </summary>
-    /// <param name="lanes">Lanes from <see cref="Plan"/>.</param>
+    /// <param name="lanes">Lanes from <c>Plan</c>.</param>
     /// <param name="traffic">The traffic settings the lanes were planned with.</param>
     /// <param name="seconds">Seconds since the visualizer started.</param>
     public static IEnumerable<TrafficVessel> Place(IReadOnlyList<TrafficLane> lanes, MarineTraffic traffic, double seconds)

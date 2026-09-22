@@ -116,6 +116,9 @@ internal static class Strings
     /// <summary>"Berth &amp;Labels"</summary>
     internal static string MenuBerthLabels => Get("MenuBerthLabels");
 
+    /// <summary>"&amp;Cameras…"</summary>
+    internal static string MenuCameras => Get("MenuCameras");
+
     /// <summary>"&amp;Help"</summary>
     internal static string MenuHelp => Get("MenuHelp");
 
@@ -169,18 +172,6 @@ internal static class Strings
     /// <summary>"Remove what you click"</summary>
     internal static string ToolEraseTip => Get("ToolEraseTip");
 
-    /// <summary>"Undo"</summary>
-    internal static string Undo => Get("Undo");
-
-    /// <summary>"Undo the last change (Ctrl+Z)"</summary>
-    internal static string UndoTip => Get("UndoTip");
-
-    /// <summary>"Undo: {0} (Ctrl+Z)"</summary>
-    internal static string UndoTipWith => Get("UndoTipWith");
-
-    /// <summary>"Nothing to undo"</summary>
-    internal static string NothingToUndo => Get("NothingToUndo");
-
     /// <summary>"Top View"</summary>
     internal static string CommandTopView => Get("CommandTopView");
 
@@ -192,12 +183,6 @@ internal static class Strings
 
     /// <summary>"Frame the whole marina (Ctrl+F)"</summary>
     internal static string CommandFitMarinaTip => Get("CommandFitMarinaTip");
-
-    /// <summary>"Reference Image…"</summary>
-    internal static string CommandReferenceImage => Get("CommandReferenceImage");
-
-    /// <summary>"Trace a map or aerial photo to get the real shape and scale (Ctrl+I)"</summary>
-    internal static string CommandReferenceImageTip => Get("CommandReferenceImageTip");
 
     // ---- Status bar and log --------------------------------------------------------------------------
 
@@ -838,6 +823,88 @@ internal static class Strings
 
     /// <summary>"Town roofs"</summary>
     internal static string LandRoof => Get("LandRoof");
+
+    // ---- Cameras panel -------------------------------------------------------------------------------
+
+    /// <summary>"Cameras"</summary>
+    internal static string ToolCameras => Get("ToolCameras");
+
+    /// <summary>"Saved views of the marina, and which of the automatic ones to offer"</summary>
+    internal static string ToolCamerasTip => Get("ToolCamerasTip");
+
+    /// <summary>"Cameras"</summary>
+    internal static string TitleCameras => Get("TitleCameras");
+
+    /// <summary>"Pick a view to go there. Untick one to leave it out of the list the host application offers."</summary>
+    internal static string CamerasHint => Get("CamerasHint");
+
+    /// <summary>"Save this view"</summary>
+    internal static string CardCameraSave => Get("CardCameraSave");
+
+    /// <summary>"Name"</summary>
+    internal static string CameraName => Get("CameraName");
+
+    /// <summary>"What to call the view you are looking at now."</summary>
+    internal static string CameraNameTip => Get("CameraNameTip");
+
+    /// <summary>"Save view"</summary>
+    internal static string CameraSave => Get("CameraSave");
+
+    /// <summary>"Saves where the camera is now, so you and the host application can come back to it."</summary>
+    internal static string CameraSaveHint => Get("CameraSaveHint");
+
+    /// <summary>"Automatic views"</summary>
+    internal static string CardCameraAutomatic => Get("CardCameraAutomatic");
+
+    /// <summary>"Saved views"</summary>
+    internal static string CardCameraSaved => Get("CardCameraSaved");
+
+    /// <summary>"No saved views yet."</summary>
+    internal static string CameraNoneSaved => Get("CameraNoneSaved");
+
+    /// <summary>"Go"</summary>
+    internal static string CameraGoTo => Get("CameraGoTo");
+
+    /// <summary>"Move the camera to this view"</summary>
+    internal static string CameraGoToTip => Get("CameraGoToTip");
+
+    /// <summary>"Delete"</summary>
+    internal static string CameraDelete => Get("CameraDelete");
+
+    /// <summary>"Remove this saved view"</summary>
+    internal static string CameraDeleteTip => Get("CameraDeleteTip");
+
+    /// <summary>"View {0}"</summary>
+    internal static string CameraDefaultName => Get("CameraDefaultName");
+
+    /// <summary>"Saved the view {0}"</summary>
+    internal static string LogCameraSaved => Get("LogCameraSaved");
+
+    /// <summary>"Deleted the view {0}"</summary>
+    internal static string LogCameraDeleted => Get("LogCameraDeleted");
+
+    /// <summary>"{0} is no longer offered"</summary>
+    internal static string LogCameraDisabled => Get("LogCameraDisabled");
+
+    /// <summary>"{0} is offered again"</summary>
+    internal static string LogCameraEnabled => Get("LogCameraEnabled");
+
+    // ---- Look: the water area ------------------------------------------------------------------------
+
+    /// <summary>"Detailed area"</summary>
+    internal static string WaterArea => Get("WaterArea");
+
+    /// <summary>"How far out the water has waves, reflections and glints. Past it the sea carries on flat to t..."</summary>
+    internal static string WaterAreaTip => Get("WaterAreaTip");
+
+    /// <summary>"At most"</summary>
+    internal static string TrafficMaximum => Get("TrafficMaximum");
+
+    /// <summary>"The most vessels on the water at once. How busy is a share of this."</summary>
+    internal static string TrafficMaximumTip => Get("TrafficMaximumTip");
+
+    /// <summary>"{0} vessels"</summary>
+    internal static string ValueVessels => Get("ValueVessels");
 
     // ---- Inspector: reference image ------------------------------------------------------------------
 
