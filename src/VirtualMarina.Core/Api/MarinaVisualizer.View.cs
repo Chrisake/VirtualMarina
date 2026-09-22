@@ -513,13 +513,16 @@ public sealed partial class MarinaVisualizer
             return new CameraPreset(name, new CameraPose(target, yaw, pitch, distance), description) { IsBuiltIn = true };
         }
 
+        // Yaw is where the camera stands, not where it looks: 0 puts it on the +Z side, which is south, and 180
+        // puts it north. So a view "from the north" is 180, and a top-down view with north at the top of the
+        // screen is 0 — the camera standing south of the marina, looking north up the page.
         var builtIn = new List<CameraPreset>
         {
             Fitted(OverviewPresetName, 200f, 42f, "The whole marina"),
-            Fitted(TopDownPresetName, 180f, 89f, "Straight down, north up"),
-            Fitted("North", 0f, 35f, "From the north"),
+            Fitted(TopDownPresetName, 0f, 89f, "Straight down, north up"),
+            Fitted("North", 180f, 35f, "From the north"),
             Fitted("East", 90f, 35f, "From the east"),
-            Fitted("South", 180f, 35f, "From the south"),
+            Fitted("South", 0f, 35f, "From the south"),
             Fitted("West", 270f, 35f, "From the west"),
         };
 

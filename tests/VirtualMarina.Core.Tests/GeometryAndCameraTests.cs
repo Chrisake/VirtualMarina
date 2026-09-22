@@ -170,6 +170,64 @@ public class GeometryAndCameraTests
     }
 
     [Fact]
+    public void TheCompassViews_StandOnTheSideTheyAreNamedAfter()
+    {
+        var marina = new MarinaVisualizer();
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+        marina.SetViewportSize(1400f, 900f);
+
+        var (min, max) = marina.GetLayout().ComputeBounds();
+        var middle = (min + max) * 0.5f;
+        var across = MathF.Max(max.X - min.X, max.Y - min.Y) * 0.25f;
+
+        // North is −Y in plan, so a view "from the north" puts the camera at a smaller Y than the marina. Getting
+        // this backwards is not visible in a screenshot of the framing, which is why it went unnoticed: the marina
+        // fills the view either way, seen from the wrong side.
+        var expected = new (string Name, float X, float Y)[]
+        {
+            ("North", 0f, -1f),
+            ("East", 1f, 0f),
+            ("South", 0f, 1f),
+            ("West", -1f, 0f),
+        };
+
+        foreach (var (name, x, y) in expected)
+        {
+            Assert.True(marina.ApplyBuiltInCameraPreset(name, immediate: true), $"no automatic view called {name}");
+
+            var eye = MarinaMath.ToPlan(marina.Camera.Position);
+            var offset = eye - middle;
+
+            if (x != 0f) Assert.True(MathF.Sign(offset.X) == MathF.Sign(x) && MathF.Abs(offset.X) > across, $"{name} does not stand to the {(x > 0 ? "east" : "west")}");
+            else Assert.True(MathF.Abs(offset.X) < across, $"{name} is off to one side rather than due {name.ToLowerInvariant()}");
+
+            if (y != 0f) Assert.True(MathF.Sign(offset.Y) == MathF.Sign(y) && MathF.Abs(offset.Y) > across, $"{name} does not stand to the {(y > 0 ? "south" : "north")}");
+            else Assert.True(MathF.Abs(offset.Y) < across, $"{name} is off to one side rather than due {name.ToLowerInvariant()}");
+        }
+    }
+
+    [Fact]
+    public void TheTopDownView_HasNorthAtTheTopOfTheScreen()
+    {
+        var marina = new MarinaVisualizer();
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+        marina.SetViewportSize(1400f, 900f);
+        Assert.True(marina.ApplyBuiltInCameraPreset(MarinaVisualizer.TopDownPresetName, immediate: true));
+
+        var (min, max) = marina.GetLayout().ComputeBounds();
+        var middle = (min + max) * 0.5f;
+        var step = MathF.Max(max.X - min.X, max.Y - min.Y) * 0.25f;
+
+        Assert.True(marina.TryProjectToScreen(MarinaMath.ToWorld(middle), out var centre));
+        Assert.True(marina.TryProjectToScreen(MarinaMath.ToWorld(middle - new Vector2(0f, step)), out var north));
+        Assert.True(marina.TryProjectToScreen(MarinaMath.ToWorld(middle + new Vector2(step, 0f)), out var east));
+
+        // Screen Y grows downward, so north being up means a smaller Y than the middle.
+        Assert.True(north.Y < centre.Y, "north is not at the top of the screen");
+        Assert.True(east.X > centre.X, "east is not to the right of the screen");
+    }
+
+    [Fact]
     public void TheBuiltInViews_AreTheMarina_StraightDown_AndTheFourCompassPoints()
     {
         var marina = new MarinaVisualizer();
