@@ -608,9 +608,9 @@ public interface IMarinaVisualizer
     /// <see cref="CameraPreset.IsEnabled"/> false, and can still be applied by name; it is simply not one a host
     /// should offer. Which built-in views are off is saved with the design.
     /// </summary>
-    /// <param name="presetName">Preset name (case-insensitive).</param>
+    /// <param name="presetName">Name of an automatic view (case-insensitive).</param>
     /// <param name="enabled">True to offer it again.</param>
-    /// <returns>False when no preset has this name.</returns>
+    /// <returns>False when no automatic view has this name.</returns>
     bool SetCameraPresetEnabled(string presetName, bool enabled);
 
     /// <summary>Moves the camera to the Overview preset.</summary>
@@ -618,9 +618,24 @@ public interface IMarinaVisualizer
     void ResetCamera(bool immediate = false);
 
     /// <summary>Moves the camera to a preset by name (case-insensitive). Returns false when no preset has this name.</summary>
+    /// <remarks>
+    /// A saved view and an automatic one may share a name. This picks the saved one, since someone chose it
+    /// deliberately; use <see cref="ApplyCameraPreset(CameraPreset, bool)"/> to say exactly which.
+    /// </remarks>
     bool ApplyCameraPreset(string presetName, bool immediate = false);
 
-    /// <summary>Adds a custom preset, replacing one with the same name. Custom presets survive layout changes.</summary>
+    /// <summary>
+    /// Moves the camera to a preset taken from <see cref="CameraPresets"/>, which says exactly which one even when a
+    /// saved view and an automatic one share a name.
+    /// </summary>
+    /// <param name="preset">The preset to go to.</param>
+    /// <param name="immediate">Jump instead of animating.</param>
+    void ApplyCameraPreset(CameraPreset preset, bool immediate = false);
+
+    /// <summary>
+    /// Adds a custom preset, replacing a custom preset of the same name. An automatic view of that name is left
+    /// alone, so the two live side by side. Custom presets survive layout changes and are saved with the design.
+    /// </summary>
     void AddCameraPreset(CameraPreset preset);
 
     /// <summary>

@@ -20,7 +20,7 @@ public sealed partial class MarinaVisualizer
     public bool SetCameraPresetEnabled(string presetName, bool enabled)
     {
         ArgumentNullException.ThrowIfNull(presetName);
-        var index = _presets.FindIndex(p => string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase));
+        var index = _presets.FindIndex(p => p.IsBuiltIn && string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase));
         if (index < 0) return false;
 
         if (enabled) _disabledPresets.Remove(_presets[index].Name);
@@ -88,21 +88,34 @@ public sealed partial class MarinaVisualizer
     /// <inheritdoc/>
     public bool ApplyCameraPreset(string presetName, bool immediate = false)
     {
-        var preset = _presets.FirstOrDefault(p => string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase));
+        // A saved view of the same name wins: someone made it deliberately, over a name the layout generated.
+        var preset = _presets.FirstOrDefault(p => !p.IsBuiltIn && string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase))
+            ?? _presets.FirstOrDefault(p => string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase));
+
         if (preset is null) return false;
         Camera.SetPose(preset.Pose, immediate);
         return true;
     }
 
-    /// <summary>Adds a custom preset (replacing one with the same name). Custom presets survive layout changes.</summary>
+    /// <inheritdoc/>
+    public void ApplyCameraPreset(CameraPreset preset, bool immediate = false)
+    {
+        ArgumentNullException.ThrowIfNull(preset);
+        Camera.SetPose(preset.Pose, immediate);
+    }
+
+    /// <summary>
+    /// Adds a saved view, replacing a saved view of the same name. An automatic view of that name is left alone: the
+    /// two live side by side, and a list shows both.
+    /// </summary>
     public void AddCameraPreset(CameraPreset preset)
     {
         ArgumentNullException.ThrowIfNull(preset);
-        _presets.RemoveAll(p => string.Equals(p.Name, preset.Name, StringComparison.OrdinalIgnoreCase));
+        _presets.RemoveAll(p => !p.IsBuiltIn && string.Equals(p.Name, preset.Name, StringComparison.OrdinalIgnoreCase));
         _presets.Add(preset with { IsBuiltIn = false });
     }
 
-    /// <summary>Removes a custom preset by name. Built-in presets can't be removed. Returns false when nothing was removed.</summary>
+    /// <summary>Removes a saved view by name. Automatic views can't be removed. Returns false when nothing was removed.</summary>
     /// <param name="presetName">Preset name (case-insensitive).</param>
     public bool RemoveCameraPreset(string presetName) =>
         _presets.RemoveAll(p => !p.IsBuiltIn && string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase)) > 0;

@@ -210,4 +210,71 @@ public class GeometryAndCameraTests
         // Reading the frame again does not keep rebuilding the grid.
         Assert.Equal(after, marina.BuildRenderFrame().WaterDetailRadius, 1);
     }
+
+    [Fact]
+    public void ASavedView_MayBeNamedAfterAnAutomaticOne_AndBothStay()
+    {
+        var marina = new MarinaVisualizer();
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+
+        var automatic = marina.CameraPresets.Single(p => p.Name == "North");
+        marina.Camera.SetPose(new CameraPose(new Vector3(12, 0, -40), 33f, 41f, 180f), immediate: true);
+        var saved = marina.SaveCameraPreset("North", "My own north");
+
+        // Two views called North now: the one the layout made, and the one the user made.
+        var both = marina.CameraPresets.Where(p => p.Name == "North").ToList();
+        Assert.Equal(2, both.Count);
+        Assert.Single(both, p => p.IsBuiltIn);
+        Assert.Single(both, p => !p.IsBuiltIn);
+        Assert.Equal(automatic.Pose, both.Single(p => p.IsBuiltIn).Pose);
+
+        // Either can be gone to, by handing over the one that is meant.
+        marina.ApplyCameraPreset(both.Single(p => p.IsBuiltIn), immediate: true);
+        Assert.Equal(automatic.Pose.Distance, marina.Camera.Pose.Distance, 1);
+
+        marina.ApplyCameraPreset(both.Single(p => !p.IsBuiltIn), immediate: true);
+        Assert.Equal(180f, marina.Camera.Pose.Distance, 1);
+
+        // Asked for by name alone, the one the user saved wins.
+        marina.ApplyCameraPreset(MarinaVisualizer.OverviewPresetName, immediate: true);
+        Assert.True(marina.ApplyCameraPreset("North", immediate: true));
+        Assert.Equal(180f, marina.Camera.Pose.Distance, 1);
+
+        // Ticking the automatic one off does not touch the saved one.
+        Assert.True(marina.SetCameraPresetEnabled("North", false));
+        Assert.False(marina.CameraPresets.Single(p => p.Name == "North" && p.IsBuiltIn).IsEnabled);
+        Assert.True(marina.CameraPresets.Single(p => p.Name == "North" && !p.IsBuiltIn).IsEnabled);
+
+        // Deleting the saved one leaves the automatic one alone.
+        Assert.True(marina.RemoveCameraPreset("North"));
+        Assert.Single(marina.CameraPresets, p => p.Name == "North");
+        Assert.True(marina.CameraPresets.Single(p => p.Name == "North").IsBuiltIn);
+        Assert.Equal("My own north", saved.Description);
+    }
+
+    [Fact]
+    public void SavedViews_TravelInTheConfigurationFile_ForTheHostToOffer()
+    {
+        var marina = new MarinaVisualizer();
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+        marina.Camera.SetPose(new CameraPose(new Vector3(8, 0, -14), 120f, 30f, 95f), immediate: true);
+        marina.SaveCameraPreset("Fuel dock", "By the pumps");
+        marina.SaveCameraPreset("North");                       // shares its name with an automatic one
+        marina.SetCameraPresetEnabled("West", false);
+
+        var json = MarinaDocument.FromVisualizer(marina, generator: "tests").ToJson();
+        Assert.Contains("\"Fuel dock\"", json);
+
+        var copy = new MarinaVisualizer();
+        MarinaDocument.Parse(json).ApplyTo(copy);
+
+        var fuel = copy.CameraPresets.Single(p => p.Name == "Fuel dock");
+        Assert.False(fuel.IsBuiltIn);
+        Assert.Equal("By the pumps", fuel.Description);
+        Assert.Equal(95f, fuel.Pose.Distance, 1);
+
+        // The automatic North came back from the layout, and the saved North came back from the file.
+        Assert.Equal(2, copy.CameraPresets.Count(p => p.Name == "North"));
+        Assert.False(copy.CameraPresets.Single(p => p.Name == "West").IsEnabled);
+    }
 }

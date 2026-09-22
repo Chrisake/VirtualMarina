@@ -110,8 +110,9 @@ internal sealed class CamerasPanel : UserControl
         _updating = true;
         try
         {
-            Fill(_automatic, _marina.CameraPresets.Where(preset => preset.IsBuiltIn).ToList(), automatic: true);
-            Fill(_saved, _marina.CameraPresets.Where(preset => !preset.IsBuiltIn).ToList(), automatic: false);
+            var presets = _marina.CameraPresets;
+            Fill(_automatic, presets.Where(preset => preset.IsBuiltIn).ToList(), automatic: true);
+            Fill(_saved, presets.Where(preset => !preset.IsBuiltIn).ToList(), automatic: false);
         }
         finally
         {
@@ -154,6 +155,9 @@ internal sealed class CamerasPanel : UserControl
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
+            // The row holds its own preset rather than looking one up by name, so a saved view named after an
+            // automatic one still goes where its own row says.
+            var entry = preset;
             var name = preset.Name;
             if (automatic)
             {
@@ -165,21 +169,16 @@ internal sealed class CamerasPanel : UserControl
             }
             else
             {
-                var label = new Label { Text = name, AutoSize = true, ForeColor = Theme.Text, Font = Theme.Body, Margin = new Padding(3, 7, 3, 3) };
+                var label = new Label { Text = name, AutoSize = true, ForeColor = Theme.Text, Font = Theme.Body, Margin = new Padding(3, 5, 3, 3) };
                 Theme.Tips.SetToolTip(label, preset.Description ?? name);
                 row.Controls.Add(label, 0, 0);
             }
 
             var buttons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = Padding.Empty, WrapContents = false };
-            var go = Theme.Action(Strings.CameraGoTo, (_, _) => _marina.ApplyCameraPreset(name));
-            Theme.Tips.SetToolTip(go, Strings.CameraGoToTip);
-            buttons.Controls.Add(go);
-
+            buttons.Controls.Add(Theme.Icon(Strings.CameraGoToGlyph, Strings.CameraGoToTip, (_, _) => _marina.ApplyCameraPreset(entry)));
             if (!automatic)
             {
-                var remove = Theme.Action(Strings.CameraDelete, (_, _) => Delete(name));
-                Theme.Tips.SetToolTip(remove, Strings.CameraDeleteTip);
-                buttons.Controls.Add(remove);
+                buttons.Controls.Add(Theme.Icon(Strings.CameraDeleteGlyph, Strings.CameraDeleteTip, (_, _) => Delete(name), danger: true));
             }
 
             row.Controls.Add(buttons, 1, 0);

@@ -932,14 +932,16 @@ Runtime      {4}
   <data name="CameraNoneSaved">
     <value>No saved views yet.</value>
   </data>
-  <data name="CameraGoTo">
-    <value>Go</value>
+  <data name="CameraGoToGlyph">
+    <value>▶</value>
+    <comment>Face of the go-to-this-view button. A symbol, not words; leave it as it is.</comment>
   </data>
   <data name="CameraGoToTip">
     <value>Move the camera to this view</value>
   </data>
-  <data name="CameraDelete">
-    <value>Delete</value>
+  <data name="CameraDeleteGlyph">
+    <value>✕</value>
+    <comment>Face of the delete-this-view button. A symbol, not words; leave it as it is.</comment>
   </data>
   <data name="CameraDeleteTip">
     <value>Remove this saved view</value>

@@ -862,14 +862,14 @@ internal static class Strings
     /// <summary>"No saved views yet."</summary>
     internal static string CameraNoneSaved => Get("CameraNoneSaved");
 
-    /// <summary>"Go"</summary>
-    internal static string CameraGoTo => Get("CameraGoTo");
+    /// <summary>"▶"</summary>
+    internal static string CameraGoToGlyph => Get("CameraGoToGlyph");
 
     /// <summary>"Move the camera to this view"</summary>
     internal static string CameraGoToTip => Get("CameraGoToTip");
 
-    /// <summary>"Delete"</summary>
-    internal static string CameraDelete => Get("CameraDelete");
+    /// <summary>"✕"</summary>
+    internal static string CameraDeleteGlyph => Get("CameraDeleteGlyph");
 
     /// <summary>"Remove this saved view"</summary>
     internal static string CameraDeleteTip => Get("CameraDeleteTip");

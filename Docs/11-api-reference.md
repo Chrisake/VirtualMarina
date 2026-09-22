@@ -475,13 +475,14 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `void AddBerth(Berth berth)` | Adds a berth. Its position, heading and size are absolute plan coordinates (see `Berth`). |
 | `Berth AddBerth(string berthId, string pierId, Vector2 center, float headingDegrees, float length, float width, string? label = null)` | Adds a Free berth at an explicit position, orientation and size. |
 | `void AddBerths(IEnumerable<Berth> berths)` | Adds several berths with a single `IMarinaVisualizer.LayoutChanged` notification. |
-| `void AddCameraPreset(CameraPreset preset)` | Adds a custom preset, replacing one with the same name. Custom presets survive layout changes. |
+| `void AddCameraPreset(CameraPreset preset)` | Adds a custom preset, replacing a custom preset of the same name. An automatic view of that name is left alone, so the two live side by side. Custom presets survive layout changes and are saved with the design. |
 | `void AddDivider(Divider divider)` | Adds a divider between berths: a finger pier, a row of piles or a floating boom. |
 | `void AddDividers(IEnumerable<Divider> dividers)` | Adds several dividers with a single `IMarinaVisualizer.LayoutChanged` notification. |
 | `void AddLandArea(LandArea landArea)` | Adds a land area (quay, lawn or breakwater) and builds its mesh. |
 | `void AddPier(Pier pier)` | Adds a pier. Use the `Pier` constructor (shore-end start point) or `Pier.FromCenter` (center point) to set position, size, orientation and `PierType`. |
 | `bool AddToSelection(string berthId)` | Adds a berth to the selection, making it primary. Returns false when it can't be selected. |
 | `bool ApplyCameraPreset(string presetName, bool immediate = false)` | Moves the camera to a preset by name (case-insensitive). Returns false when no preset has this name. |
+| `void ApplyCameraPreset(CameraPreset preset, bool immediate = false)` | Moves the camera to a preset taken from `IMarinaVisualizer.CameraPresets`, which says exactly which one even when a saved view and an automatic one share a name. |
 | `Berth AssignBoat(string berthId, Boat boat)` | Marks the berth Occupied (red) by `boat`. |
 | `MultiBerth AssignBoatToBerths(IEnumerable<string> berthIds, Boat boat, BerthStatus status = BerthStatus.Occupied, MooringStyle style = MooringStyle.Alongside, string? multiBerthId = null)` | Puts a single boat in several berths at once. Every member berth takes `status` and `boat` and gets `Berth.MultiBerthId`; the boat is drawn once across them and finger piers between them are hidden. |
 | `BatchUpdateResult BatchUpdate(IEnumerable<BerthUpdate> updates)` | Applies many partial updates with a single scene rebuild and one `IMarinaVisualizer.LayoutChanged`. Failing updates (unknown berth, invalid values) are collected in the result instead of throwing; the others are applied. |
@@ -701,13 +702,14 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `void AddBerth(Berth berth)` | *(See the interface member.)* |
 | `Berth AddBerth(string berthId, string pierId, Vector2 center, float headingDegrees, float length, float width, string? label = null)` | *(See the interface member.)* |
 | `void AddBerths(IEnumerable<Berth> berths)` | *(See the interface member.)* |
-| `void AddCameraPreset(CameraPreset preset)` | Adds a custom preset (replacing one with the same name). Custom presets survive layout changes. |
+| `void AddCameraPreset(CameraPreset preset)` | Adds a saved view, replacing a saved view of the same name. An automatic view of that name is left alone: the two live side by side, and a list shows both. |
 | `void AddDivider(Divider divider)` | *(See the interface member.)* |
 | `void AddDividers(IEnumerable<Divider> dividers)` | *(See the interface member.)* |
 | `void AddLandArea(LandArea landArea)` | *(See the interface member.)* |
 | `void AddPier(Pier pier)` | *(See the interface member.)* |
 | `bool AddToSelection(string berthId)` | Adds a berth to the selection (making it primary). Returns false when it can't be selected. |
 | `bool ApplyCameraPreset(string presetName, bool immediate = false)` | *(See the interface member.)* |
+| `void ApplyCameraPreset(CameraPreset preset, bool immediate = false)` | *(See the interface member.)* |
 | `Berth AssignBoat(string berthId, Boat boat)` | *(See the interface member.)* |
 | `MultiBerth AssignBoatToBerths(IEnumerable<string> berthIds, Boat boat, BerthStatus status = BerthStatus.Occupied, MooringStyle style = MooringStyle.Alongside, string? multiBerthId = null)` | Puts a single boat in several berths at once. Every member berth takes `status` and `boat`, and the boat is drawn once across them. |
 | `BatchUpdateResult BatchUpdate(IEnumerable<BerthUpdate> updates)` | *(See the interface member.)* |
@@ -757,7 +759,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `Berth ReleaseBerth(string berthId)` | *(See the interface member.)* |
 | `bool ReleaseMultiBerth(string multiBerthId)` | Removes the multi-berth and sets all its berths Free. |
 | `bool RemoveBerth(string berthId)` | *(See the interface member.)* |
-| `bool RemoveCameraPreset(string presetName)` | Removes a custom preset by name. Built-in presets can't be removed. Returns false when nothing was removed. |
+| `bool RemoveCameraPreset(string presetName)` | Removes a saved view by name. Automatic views can't be removed. Returns false when nothing was removed. |
 | `bool RemoveDivider(string dividerId)` | *(See the interface member.)* |
 | `bool RemoveFromSelection(string berthId)` | *(See the interface member.)* |
 | `bool RemoveLandArea(string landAreaId, bool removeBerths = true)` | *(See the interface member.)* |

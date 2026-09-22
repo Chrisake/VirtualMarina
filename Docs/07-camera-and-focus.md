@@ -77,6 +77,16 @@ foreach (CameraPreset p in marina.CameraPresets) menu.Add(p.Name, p.Description)
 
 Built-in presets are regenerated whenever the layout changes. Custom presets are kept.
 
+### Saved views
+
+`SaveCameraPreset(name)` stores where the camera is now. Saved views are written to the marina file, so the host
+application gets them with the layout and can offer them as "go to this view".
+
+A saved view may be named after an automatic one — a marina really can want its own "North". Both are kept, and both
+appear in `CameraPresets`, told apart by `IsBuiltIn`. Hand the one you mean to `ApplyCameraPreset(preset)`; asked for
+by name alone, the saved one wins, since someone chose it deliberately. Deleting a saved view leaves the automatic
+one of that name untouched, and switching an automatic view off never touches a saved one.
+
 ### Switching a view off
 
 Not every marina wants every automatic view offered. `SetCameraPresetEnabled(name, false)` marks one as not to be

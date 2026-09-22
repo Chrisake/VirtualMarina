@@ -202,6 +202,35 @@ internal static class Theme
         return control;
     }
 
+    /// <summary>
+    /// A small square button carrying a glyph instead of a label, for rows where a worded button would push the
+    /// line taller than the text beside it.
+    /// </summary>
+    /// <param name="glyph">The face: one character, not words.</param>
+    /// <param name="tooltip">What it does, since the face alone does not say.</param>
+    /// <param name="onClick">What it does when pressed.</param>
+    /// <param name="danger">True to draw it as a destructive action.</param>
+    public static Button Icon(string glyph, string tooltip, EventHandler onClick, bool danger = false)
+    {
+        var button = new Button
+        {
+            Text = glyph,
+            Width = 24,
+            Height = 22,
+            FlatStyle = FlatStyle.Flat,
+            Font = Body,
+            BackColor = Surface,
+            ForeColor = danger ? Danger : TextSoft,
+            Margin = new Padding(3, 2, 3, 2),
+            Cursor = Cursors.Hand,
+            TabStop = false,
+        };
+        button.FlatAppearance.BorderColor = Border;
+        button.Click += onClick;
+        Tips.SetToolTip(button, tooltip);
+        return button;
+    }
+
     public static CheckBox Check(string text) => new()
     {
         Text = text,
