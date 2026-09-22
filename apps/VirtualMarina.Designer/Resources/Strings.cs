@@ -889,6 +889,26 @@ internal static class Strings
     /// <summary>"{0} is offered again"</summary>
     internal static string LogCameraEnabled => Get("LogCameraEnabled");
 
+    // ---- Look: shadows -------------------------------------------------------------------------------
+
+    /// <summary>"Shadows"</summary>
+    internal static string CardShadows => Get("CardShadows");
+
+    /// <summary>"Cast shadows"</summary>
+    internal static string ShadowsShow => Get("ShadowsShow");
+
+    /// <summary>"The boats and the piers throw their shape onto the water and the quays. Turning it off makes ..."</summary>
+    internal static string ShadowsShowTip => Get("ShadowsShowTip");
+
+    /// <summary>"Darkness"</summary>
+    internal static string ShadowStrength => Get("ShadowStrength");
+
+    /// <summary>"How dark a shadow is. Past about 40% the places where a boat overlaps its own shadow start to..."</summary>
+    internal static string ShadowStrengthTip => Get("ShadowStrengthTip");
+
+    /// <summary>"Shadows follow the sun above. They land on the ground an object stands over, so a boat ashore..."</summary>
+    internal static string ShadowHint => Get("ShadowHint");
+
     // ---- Look: the water area ------------------------------------------------------------------------
 
     /// <summary>"Detailed area"</summary>

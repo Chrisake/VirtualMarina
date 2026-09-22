@@ -966,6 +966,25 @@ Runtime      {4}
     <value>{0} is offered again</value>
     <comment>{0} = the view name.</comment>
   </data>
+  <!-- Look: shadows -->
+  <data name="CardShadows">
+    <value>Shadows</value>
+  </data>
+  <data name="ShadowsShow">
+    <value>Cast shadows</value>
+  </data>
+  <data name="ShadowsShowTip">
+    <value>The boats and the piers throw their shape onto the water and the quays. Turning it off makes a big marina cheaper to draw.</value>
+  </data>
+  <data name="ShadowStrength">
+    <value>Darkness</value>
+  </data>
+  <data name="ShadowStrengthTip">
+    <value>How dark a shadow is. Past about 40% the places where a boat overlaps its own shadow start to show.</value>
+  </data>
+  <data name="ShadowHint">
+    <value>Shadows follow the sun above. They land on the ground an object stands over, so a boat ashore shades the yard rather than the water.</value>
+  </data>
   <!-- Look: the water area -->
   <data name="WaterArea">
     <value>Detailed area</value>

@@ -1496,6 +1496,11 @@ sealed class VirtualMarina.Core.Geometry.MeshLibrary
     static VirtualMarina.Core.Geometry.MeshLibrary CreateDefault(float waterSize, int waterResolution, Vector2 waterCenter)
     void Register(VirtualMarina.Core.Geometry.MeshData mesh)
 
+static class VirtualMarina.Core.Geometry.ShadowProjection
+    const float MinimumSunHeight = 0.07
+    static Matrix4x4 OntoPlane(Vector3 sunDirection, float planeHeight)
+    static bool CanCast(Vector3 sunDirection)
+
 sealed class VirtualMarina.Core.Geometry.TrafficLane
     .ctor(Vector2 start, Vector2 end)
     Vector2 Direction { get; }
@@ -1678,6 +1683,7 @@ sealed class VirtualMarina.Core.Rendering.MarinaStyle
     VirtualMarina.Core.Rendering.LandStyle Land { get; init; }
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; init; }
     VirtualMarina.Core.Rendering.SelectionStyle Selection { get; init; }
+    VirtualMarina.Core.Rendering.ShadowStyle Shadows { get; init; }
     VirtualMarina.Core.Rendering.StructureStyle Piers { get; init; }
     VirtualMarina.Core.Rendering.ViewStyle View { get; init; }
     VirtualMarina.Core.Rendering.WaterSettings Water { get; init; }
@@ -1763,6 +1769,11 @@ static class VirtualMarina.Core.Rendering.ShaderSources
     static string ModelVertex(VirtualMarina.Core.Rendering.ShaderDialect dialect)
     static string WaterFragment(VirtualMarina.Core.Rendering.ShaderDialect dialect)
     static string WaterVertex(VirtualMarina.Core.Rendering.ShaderDialect dialect)
+
+sealed class VirtualMarina.Core.Rendering.ShadowStyle : VirtualMarina.Core.Rendering.StyleSection
+    .ctor()
+    bool IsEnabled { get; set; }
+    float Strength { get; set; }
 
 sealed class VirtualMarina.Core.Rendering.StructureStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()

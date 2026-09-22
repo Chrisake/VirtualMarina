@@ -835,6 +835,8 @@ internal sealed class PresentationDto : ExtensibleDto
 
     public ViewDto? View { get; set; }
 
+    public ShadowDto? Shadows { get; set; }
+
     public BerthLabelMode BerthLabels { get; set; }
 
     /// <summary>Berth labels were called slip labels up to format 1.x.</summary>
@@ -850,6 +852,7 @@ internal sealed class PresentationDto : ExtensibleDto
         Labels = LabelDto.From(style.Labels),
         Selection = SelectionDto.From(style.Selection),
         View = ViewDto.From(style.View),
+        Shadows = ShadowDto.From(style.Shadows),
         BerthLabels = labels,
     };
 
@@ -867,6 +870,7 @@ internal sealed class PresentationDto : ExtensibleDto
         Structures?.ApplyTo(style.Piers);
         Labels?.ApplyTo(style.Labels);
         Selection?.ApplyTo(style.Selection);
+        Shadows?.ApplyTo(style.Shadows);
         return style;
     }
 }
@@ -1214,6 +1218,26 @@ internal sealed class SelectionDto : ExtensibleDto
         selection.SelectedGlow = SelectedGlow;
         selection.HoverGlow = HoverGlow;
         selection.Pulse = Pulse;
+    }
+}
+
+/// <summary>Whether the marina casts shadows, and how dark they are.</summary>
+internal sealed class ShadowDto : ExtensibleDto
+{
+    public bool Enabled { get; set; } = true;
+
+    public float Strength { get; set; } = 0.25f;
+
+    public static ShadowDto From(ShadowStyle shadows) => new()
+    {
+        Enabled = shadows.IsEnabled,
+        Strength = shadows.Strength,
+    };
+
+    public void ApplyTo(ShadowStyle shadows)
+    {
+        shadows.IsEnabled = Enabled;
+        shadows.Strength = Strength;
     }
 }
 

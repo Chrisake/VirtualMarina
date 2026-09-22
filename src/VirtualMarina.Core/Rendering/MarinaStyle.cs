@@ -49,10 +49,13 @@ public sealed class MarinaStyle
     /// <summary>Camera field of view and animation smoothing.</summary>
     public ViewStyle View { get; init; } = new();
 
+    /// <summary>Whether the boats and piers cast shadows on the ground, and how dark those shadows are.</summary>
+    public ShadowStyle Shadows { get; init; } = new();
+
     /// <summary>A copy of the defaults.</summary>
     public static MarinaStyle CreateDefault() => new();
 
-    internal IEnumerable<StyleSection> SceneSections => new StyleSection[] { Status, Piers, Labels, Selection };
+    internal IEnumerable<StyleSection> SceneSections => new StyleSection[] { Status, Piers, Labels, Selection, Shadows };
 }
 
 /// <summary>Base of the style sections that notify the visualizer when they change.</summary>
@@ -237,6 +240,29 @@ public sealed class SelectionStyle : StyleSection
 
     /// <summary>Pulse the glow of selected berths. Default true.</summary>
     public bool Pulse { get => _pulse; set => SetField(ref _pulse, value); }
+}
+
+/// <summary>
+/// Shadows cast on the ground by the boats and the piers (<see cref="MarinaStyle.Shadows"/>).
+/// </summary>
+/// <remarks>
+/// Each shadow is the object itself squashed onto the ground along the sun's rays, so it costs one more instance per
+/// object. That is cheap enough for a phone but not free on a large marina, which is what <see cref="IsEnabled"/> is
+/// for. See <see cref="Geometry.ShadowProjection"/> for what this kind of shadow can and cannot do.
+/// </remarks>
+public sealed class ShadowStyle : StyleSection
+{
+    private bool _isEnabled = true;
+    private float _strength = 0.25f;
+
+    /// <summary>Cast shadows at all. Default true; turning it off drops every shadow instance from the scene.</summary>
+    public bool IsEnabled { get => _isEnabled; set => SetField(ref _isEnabled, value); }
+
+    /// <summary>
+    /// How dark a shadow is, 0–1 (default 0.25). A flattened object overlaps itself, so the darkness on screen is
+    /// rather more than this; past about 0.4 the overlaps start to show as blotches.
+    /// </summary>
+    public float Strength { get => _strength; set => SetField(ref _strength, Clamp(value, 0f, 1f)); }
 }
 
 /// <summary>Camera optics and motion (<see cref="MarinaStyle.View"/>). Applied to <c>MarinaVisualizer.Camera</c> when they change.</summary>

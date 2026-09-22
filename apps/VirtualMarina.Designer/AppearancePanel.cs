@@ -74,7 +74,7 @@ internal sealed class AppearancePanel : UserControl
         header.Controls.Add(new Label { Text = Strings.LookHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
 
         _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        foreach (var card in new[] { BuildWaterCard(), BuildBoatsCard(), BuildLightCard(), BuildStatusCard(), BuildLandCard(), BuildTrafficCard(), BuildLabelCard(), BuildPreviewCard(), BuildResetCard() })
+        foreach (var card in new[] { BuildWaterCard(), BuildBoatsCard(), BuildLightCard(), BuildStatusCard(), BuildLandCard(), BuildShadowCard(), BuildTrafficCard(), BuildLabelCard(), BuildPreviewCard(), BuildResetCard() })
         {
             card.Dock = DockStyle.Top;
             _stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -109,6 +109,8 @@ internal sealed class AppearancePanel : UserControl
     private LandStyle Land => _marina.Style.Land;
 
     private MarineTraffic Traffic => _marina.MarineTraffic;
+
+    private ShadowStyle Shadows => _marina.Style.Shadows;
 
     // ---- Cards --------------------------------------------------------------------------------
 
@@ -199,6 +201,22 @@ internal sealed class AppearancePanel : UserControl
         trees.Checked = Land.ShowTrees;
         trees.CheckedChanged += (_, _) => Changed(() => Land.ShowTrees = trees.Checked);
         Theme.FullRow(table, trees);
+        return card;
+    }
+
+    /// <summary>Shadows cast by the boats and the piers, and how dark they are.</summary>
+    private Panel BuildShadowCard()
+    {
+        var card = Theme.Card(Strings.CardShadows, out var table);
+
+        var show = Theme.Check(Strings.ShadowsShow);
+        show.Checked = Shadows.IsEnabled;
+        show.CheckedChanged += (_, _) => Changed(() => Shadows.IsEnabled = show.Checked);
+        Theme.Tips.SetToolTip(Theme.FullRow(table, show), Strings.ShadowsShowTip);
+
+        Percent(table, Strings.ShadowStrength, 0, 100, () => Shadows.Strength * 100f,
+            v => Shadows.Strength = v / 100f, Defaults.Shadows.Strength * 100f, Percentage, Strings.ShadowStrengthTip);
+        Theme.FullRow(table, Theme.Hint(Strings.ShadowHint));
         return card;
     }
 

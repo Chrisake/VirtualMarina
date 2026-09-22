@@ -27,7 +27,9 @@ host application can come back to it. *Automatic views* — the whole marina, st
 point, and one per pier — each have a tick: untick one to leave it out of the list the host application offers. That
 choice is saved with the design. Saved views can be gone to or deleted.
 
-**Look** shows the appearance settings, so the marina stays visible while they are changed. Water
+**Look** shows the appearance settings, so the marina stays visible while they are changed. Among them is
+**Shadows**: whether the boats and piers cast any, and how dark. They follow the sun above them, so the two sets
+of settings are worth using together. Water
 and waves, light and air, berth colours, the land and its trees, berth labels — each setting has a small ↺ beside it
 that puts only that one back to its default, and a full reset sits at the bottom.
 

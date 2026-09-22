@@ -21,6 +21,9 @@ public class DesignerTests
         marina.Camera.SetPose(new CameraPose(Vector3.Zero, 0f, 89f, 150f), immediate: true);
         marina.Designer.IsActive = true;
         marina.Designer.Tool = tool;
+        // These tests count what the scene draws. Shadows add a second instance of everything that casts one, which
+        // is what ShadowTests is for; here they would only be noise.
+        marina.Style.Shadows.IsEnabled = false;
         return marina;
     }
 

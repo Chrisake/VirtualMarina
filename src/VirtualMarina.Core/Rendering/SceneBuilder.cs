@@ -118,6 +118,31 @@ internal static class SceneBuilder
     /// <param name="ground">Land height of a land berth; 0 on the water.</param>
     public static float MarkerBaseHeight(float boatTop, float ground = 0f) => MathF.Max(boatTop, ground + 2.5f) + MarkerClearance;
 
+    /// <summary>
+    /// How far a shadow floats above the ground it lands on, in meters. Enough to stay off the surface it is drawn
+    /// over without reading as a gap.
+    /// </summary>
+    private const float ShadowLift = 0.03f;
+
+    /// <summary>
+    /// Adds the shadows of everything added to <paramref name="source"/> since <paramref name="from"/>: the same
+    /// geometry squashed onto the ground along the sun's rays and drawn dark.
+    /// </summary>
+    /// <remarks>
+    /// The animation is carried over, so a boat's shadow rides the same wave the boat does instead of staying flat
+    /// while the water under it moves.
+    /// </remarks>
+    private static void CastShadows(List<RenderObject> shadows, List<RenderObject> source, int from, float groundHeight, Vector3 sun, float strength)
+    {
+        var flatten = ShadowProjection.OntoPlane(sun, groundHeight + ShadowLift);
+        var tint = new Vector4(0f, 0f, 0f, strength);
+        for (var i = from; i < source.Count; i++)
+        {
+            var caster = source[i];
+            shadows.Add(caster with { World = caster.World * flatten, Tint = tint, Emissive = 0f, Desaturation = 0f });
+        }
+    }
+
     /// <summary>Height of the land under a land berth, or null for a water berth (or a land berth whose land area is missing).</summary>
     public static float? GroundHeight(Berth berth, Func<string, LandArea?> landLookup) =>
         berth.LandAreaId is { } id && landLookup(id) is { } land ? land.Height : null;
@@ -132,9 +157,16 @@ internal static class SceneBuilder
 
         var berths = state.Berths as IReadOnlyCollection<Berth> ?? state.Berths.ToList();
 
+        // Shadows are flat and blended, so they go in with the other transparent things, after the water they lie on.
+        var shadowStyle = state.Style.Shadows;
+        var sun = state.Style.Lighting.SunDirection;
+        var casting = shadowStyle.IsEnabled && shadowStyle.Strength > 0.004f && ShadowProjection.CanCast(sun);
+        var shadows = new List<RenderObject>();
+
         // The mainland goes down first, so the land areas traced along the shore sit on top of it.
         if (state.HasShoreline) output.Add(new RenderObject(MeshIds.Shoreline, Matrix4x4.Identity, White));
         foreach (var land in state.Land) output.Add(new RenderObject(state.LandMeshId(land), Matrix4x4.Identity, White));
+        var structureFrom = output.Count;
         foreach (var pier in state.Piers)
         {
             AddPier(output, pier);
@@ -146,6 +178,9 @@ internal static class SceneBuilder
 
         foreach (var divider in state.Dividers) AddDivider(output, divider, divider.PierId is null ? null : state.PierLookup(divider.PierId));
 
+        // Piers and what stands on them are over water, so their shadows land on it.
+        if (casting) CastShadows(shadows, output, structureFrom, 0f, sun, shadowStyle.Strength);
+
         // Boats first, so the selection marker can sit above them.
         Func<Berth, float?> ground = berth => GroundHeight(berth, state.LandLookup);
         var boatTops = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
@@ -153,7 +188,12 @@ internal static class SceneBuilder
         {
             var top = BerthPlacement.BoatTopHeight(boat.Boat, state.Meshes, boat.Ground);
             foreach (var member in boat.Berths) boatTops[member.Id] = top;
+
+            var boatFrom = output.Count;
             AddBoat(output, transparent, boat, state);
+
+            // A boat ashore throws its shadow on the yard it stands in, not on the water below it.
+            if (casting) CastShadows(shadows, output, boatFrom, boat.Ground ?? 0f, sun, shadowStyle.Strength);
         }
 
         foreach (var berth in berths)
@@ -162,7 +202,12 @@ internal static class SceneBuilder
             if (!berth.IsVisible) continue;
 
             var berthGround = ground(berth);
-            if (berth.HasFingerPiers && !berth.IsOnLand) AddFingerPiers(output, berth, berth.PierId is null ? null : state.PierLookup(berth.PierId), state);
+            if (berth.HasFingerPiers && !berth.IsOnLand)
+            {
+                var fingersFrom = output.Count;
+                AddFingerPiers(output, berth, berth.PierId is null ? null : state.PierLookup(berth.PierId), state);
+                if (casting) CastShadows(shadows, output, fingersFrom, 0f, sun, shadowStyle.Strength);
+            }
 
             // The status filter hides status visuals and boats, but not structure.
             if (!state.Filter.Includes(berth.Status)) continue;
@@ -223,6 +268,10 @@ internal static class SceneBuilder
         }
 
         state.Overlay?.Invoke(transparent);
+
+        // Shadows first of the transparent things: the status pads, labels and the designer's drawing all belong on
+        // top of them rather than under them.
+        output.AddRange(shadows);
         output.AddRange(transparent);
     }
 

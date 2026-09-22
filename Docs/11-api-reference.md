@@ -9,11 +9,11 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
 - **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MarineTraffic](#marinetraffic), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TrafficVessel](#trafficvessel), [TreeShape](#treeshape)
-- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [TrafficLane](#trafficlane)
+- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [ShadowProjection](#shadowprojection), [TrafficLane](#trafficlane)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [BerthHit](#berthhit), [Ray](#ray)
-- **VirtualMarina.Core.Rendering**: [ColorRgba](#colorrgba), [ISceneRenderer](#iscenerenderer), [LabelStyle](#labelstyle), [LandStyle](#landstyle), [LightingSettings](#lightingsettings), [MarinaStyle](#marinastyle), [ReferenceImageLayer](#referenceimagelayer), [RenderAnimation](#renderanimation), [RenderFrame](#renderframe), [RenderObject](#renderobject), [SelectionStyle](#selectionstyle), [ShaderDialect](#shaderdialect), [ShaderSources](#shadersources), [StructureStyle](#structurestyle), [StyleSection](#stylesection), [ViewStyle](#viewstyle), [WaterSettings](#watersettings)
+- **VirtualMarina.Core.Rendering**: [ColorRgba](#colorrgba), [ISceneRenderer](#iscenerenderer), [LabelStyle](#labelstyle), [LandStyle](#landstyle), [LightingSettings](#lightingsettings), [MarinaStyle](#marinastyle), [ReferenceImageLayer](#referenceimagelayer), [RenderAnimation](#renderanimation), [RenderFrame](#renderframe), [RenderObject](#renderobject), [SelectionStyle](#selectionstyle), [ShaderDialect](#shaderdialect), [ShaderSources](#shadersources), [ShadowStyle](#shadowstyle), [StructureStyle](#structurestyle), [StyleSection](#stylesection), [ViewStyle](#viewstyle), [WaterSettings](#watersettings)
 - **VirtualMarina.Core.Serialization**: [MarinaDocument](#marinadocument), [MarinaFormatException](#marinaformatexception), [MarinaJson](#marinajson), [ReferenceImageRecord](#referenceimagerecord)
 - **VirtualMarina.Rendering.OpenGL**: [OpenGlSceneRenderer](#openglscenerenderer)
 - **VirtualMarina.WinForms**: [MarinaDesignerPanel](#marinadesignerpanel), [MarinaViewControl](#marinaviewcontrol), [ReferenceImageLoader](#referenceimageloader)
@@ -2269,6 +2269,21 @@ The set of meshes a scene can reference. Renderers upload each mesh once, keyed 
 | `bool TryGet(int id, out MeshData mesh)` | Looks up a mesh by id. |
 | `bool Unregister(int id)` | Removes a mesh. Returns false when no mesh has this id. |
 
+<a id="shadowprojection"></a>
+### ShadowProjection
+
+`static class ShadowProjection`
+
+Flattens geometry onto a horizontal plane along the sun's rays, which is how the marina casts its shadows.
+
+A marina is almost all flat ground: water at nought, quays and yards a meter or two above it. Squashing the boats and the piers onto that ground and drawing them dark is enough to read as sunlight, and it costs one extra instance per object rather than a depth pass and a shadow map in every backend. What it does not do: a shadow lands on one plane, so a boat's shadow falls on the water rather than up the side of the pier beside it, and nothing shadows itself. Trees and hinterland buildings are baked into the land mesh, which is the ground the shadows fall on, so they cast none.
+
+| Member | Description |
+|---|---|
+| `const float MinimumSunHeight = 0.07f` | How low the sun may be before shadows are dropped, as the Y of its unit direction (about 4° above the horizon). |
+| `static bool CanCast(Vector3 sunDirection)` | True when the sun is high enough for a shadow to be worth drawing. |
+| `static Matrix4x4 OntoPlane(Vector3 sunDirection, float planeHeight)` | The transform that drops a point straight down the sun's rays onto a horizontal plane. |
+
 <a id="trafficlane"></a>
 ### TrafficLane
 
@@ -2577,6 +2592,7 @@ Change properties at any time; the view updates on the next frame. Assign a whol
 | `LabelStyle Labels { get; init; }` | Colors of berth names written on the water. |
 | `SelectionStyle Selection { get; init; }` | Selection marker and hover/selection highlights. |
 | `ViewStyle View { get; init; }` | Camera field of view and animation smoothing. |
+| `ShadowStyle Shadows { get; init; }` | Whether the boats and piers cast shadows on the ground, and how dark those shadows are. |
 | `static MarinaStyle CreateDefault()` | A copy of the defaults. |
 
 <a id="referenceimagelayer"></a>
@@ -2703,6 +2719,21 @@ Attributes: location 0 = position, 1 = normal, 2 = color. Frame uniforms: uView,
 | `static string ModelVertex(ShaderDialect dialect)` | Vertex shader for all objects: placement plus GPU animations (floating, spin, above-waves lift). |
 | `static string WaterFragment(ShaderDialect dialect)` | Fragment shader for the water: fresnel sky reflection, ripples, sun glints and fog. |
 | `static string WaterVertex(ShaderDialect dialect)` | Vertex shader for the water grid: displaces vertices by the wave function. |
+
+<a id="shadowstyle"></a>
+### ShadowStyle
+
+`sealed class ShadowStyle : StyleSection`
+
+Shadows cast on the ground by the boats and the piers (`MarinaStyle.Shadows`).
+
+Each shadow is the object itself squashed onto the ground along the sun's rays, so it costs one more instance per object. That is cheap enough for a phone but not free on a large marina, which is what `ShadowStyle.IsEnabled` is for. See `ShadowProjection` for what this kind of shadow can and cannot do.
+
+| Member | Description |
+|---|---|
+| `ShadowStyle()` | Creates an instance with default values. |
+| `bool IsEnabled { get; set; }` | Cast shadows at all. Default true; turning it off drops every shadow instance from the scene. |
+| `float Strength { get; set; }` | How dark a shadow is, 0–1 (default 0.25). A flattened object overlaps itself, so the darkness on screen is rather more than this; past about 0.4 the overlaps start to show as blotches. |
 
 <a id="structurestyle"></a>
 ### StructureStyle

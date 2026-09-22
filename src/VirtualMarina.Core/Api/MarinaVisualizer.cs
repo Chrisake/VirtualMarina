@@ -92,6 +92,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private Vector2 _marinaCenter;
     private float _waterSize;
     private float _requestedWaterSize;
+    private Vector3 _shadowSun = Vector3.UnitY;
     private string _marinaName = "Marina";
 
     /// <summary>Creates an empty marina with default water and lighting. Load one with <see cref="InitializeLayout"/>.</summary>
@@ -253,6 +254,14 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         // Water.Size can be set at any time; the grid is rebuilt when it actually changes, not when the grid has
         // merely been grown to cover the layout.
         if (MathF.Abs(Water.Size - _requestedWaterSize) > 0.5f) SetWaterGrid(_waterCenter, MathF.Max(50f, Water.Size));
+
+        // Shadows are worked out where the scene is built, so moving the sun has to rebuild it. Lighting otherwise
+        // only feeds uniforms, so this is the one thing about it the scene cares about.
+        if (_style.Shadows.IsEnabled && Vector3.DistanceSquared(Lighting.SunDirection, _shadowSun) > 1e-8f)
+        {
+            _shadowSun = Lighting.SunDirection;
+            _sceneDirty = true;
+        }
 
         if (Designer.OverlayNeedsRefresh()) _sceneDirty = true;
         if (_sceneDirty)

@@ -89,6 +89,33 @@ sun glints out over the outer third of the detailed grid. So the water runs to t
 the sky, while everything that costs anything to draw stays near the marina. Widen `Size` to push the detailed water
 further out; the skirt follows on its own.
 
+## Shadows
+
+The boats and the piers cast shadows on the ground. On by default:
+
+```csharp
+marina.Style.Shadows.IsEnabled = false;   // off
+marina.Style.Shadows.Strength = 0.35f;    // darker (0-1, default 0.25)
+```
+
+Each shadow is the object itself squashed onto the ground along the sun's rays, so it follows
+`Lighting.SunDirection` — move the sun and the shadows move with it. It lands on the ground the object stands over:
+a boat afloat shades the water, a boat ashore shades the yard it is cradled in.
+
+That costs one extra instance per object that casts, which is why the toggle is there: on a marina of several hundred
+berths it roughly doubles the scene. It needs no depth pass and no shadow map, so it behaves the same in the OpenGL
+and WebGL views.
+
+What it does not do, by construction:
+
+- **One plane per object.** A boat's shadow falls on the water, not up the side of the pier beside it.
+- **No self-shadowing.** A cabin does not shade its own deck.
+- **No shadows from the land.** Trees and hinterland buildings are baked into the land mesh, which is the ground the
+  shadows fall on, so they cast none.
+- **Overlap darkens.** A flattened hull covers itself, so a shadow is darker than `Strength` alone and can look
+  blotchy past about 0.4.
+- **Nothing below about 4° of elevation**, where a shadow would stretch to the horizon.
+
 ## Passing traffic
 
 Vessels crossing the bay beyond the marina, so the sea is not empty. It is off until it is asked for:
