@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Domain;
@@ -190,5 +190,36 @@ public class BerthLabelTests
         Assert.True(GlyphFont.TryGetMeshId('?', out var question));
         Assert.Equal(question, unknown);
         Assert.False(GlyphFont.TryGetMeshId(' ', out _));
+    }
+
+    [Fact]
+    public void ABerthAshore_GetsItsLabel_StandingClearOfTheGround()
+    {
+        const float landHeight = 2.5f;
+        var marina = new MarinaVisualizer();
+        marina.AddLandArea(new LandArea(
+            "yard",
+            new[] { new Vector2(-30, -30), new Vector2(30, -30), new Vector2(30, 30), new Vector2(-30, 30) },
+            landHeight,
+            LandKind.Quay));
+        marina.AddBerth(Berth.OnLand("Y-01", "yard", new Vector2(0, 0), 0f, 12f, 5f));
+        marina.BerthLabelMode = BerthLabelMode.All;
+
+        var glyphs = marina.BuildRenderFrame().Objects
+            .Where(o => o.MeshId >= MeshIds.GlyphBase && o.MeshId < MeshIds.Shoreline)
+            .ToList();
+
+        Assert.NotEmpty(glyphs);
+
+        // Every letter floats above the yard, not lying on it where a low camera would never see it.
+        foreach (var glyph in glyphs)
+        {
+            var y = glyph.World.Translation.Y;
+            Assert.True(y > landHeight + 0.2f, $"a letter sits {y - landHeight:0.00} m above the ground");
+            Assert.True(y < landHeight + 2f, $"a letter floats {y - landHeight:0.00} m above the ground");
+        }
+
+        // It is pinned to the ground rather than riding the waves, which only water berths do.
+        Assert.All(glyphs, glyph => Assert.Equal(RenderAnimation.None, glyph.Animation));
     }
 }

@@ -249,9 +249,8 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
         program.Set("uSkyReflection", Math.Clamp(water.SkyReflection, 0f, 1f));
         program.Set("uRipples", Math.Clamp(water.Ripples, 0f, 2f));
         program.Set("uSunGlints", Math.Clamp(water.SunGlints, 0f, 2f));
-        program.Set("uWhitecaps", Math.Clamp(water.Whitecaps, 0f, 1f));
-        program.Set("uWhitecapDistance", Math.Clamp(water.WhitecapDistance, 20f, 5000f));
-        program.Set("uMarinaCenter", frame.MarinaCenter);
+        program.Set("uWaterCenter", frame.WaterCenter);
+        program.Set("uDetailRadius", MathF.Max(1f, frame.WaterDetailRadius));
         program.Set("uFloatMotion", Math.Clamp(water.BoatMotion, 0f, 3f));
     }
 

@@ -88,19 +88,19 @@
     <value>&amp;File</value>
   </data>
   <data name="MenuNew">
-    <value>&amp;New marina</value>
+    <value>&amp;New</value>
   </data>
   <data name="MenuOpen">
-    <value>&amp;Open design…</value>
+    <value>&amp;Open…</value>
   </data>
   <data name="MenuSave">
     <value>&amp;Save</value>
   </data>
   <data name="MenuSaveAs">
-    <value>Save &amp;as…</value>
+    <value>Save &amp;As…</value>
   </data>
   <data name="MenuLoadImage">
-    <value>&amp;Load reference image…</value>
+    <value>Reference &amp;Image…</value>
   </data>
   <data name="MenuExit">
     <value>E&amp;xit</value>
@@ -113,42 +113,42 @@
     <value>&amp;Undo</value>
   </data>
   <data name="MenuCancelDraft">
-    <value>&amp;Cancel what I am drawing</value>
+    <value>&amp;Cancel Drawing</value>
   </data>
   <data name="MenuMarinaProperties">
-    <value>Marina &amp;name and description…</value>
+    <value>&amp;Properties…</value>
   </data>
   <!-- Menu: View -->
   <data name="MenuView">
     <value>&amp;View</value>
   </data>
   <data name="MenuTopView">
-    <value>&amp;Top view, north up</value>
+    <value>&amp;Top View</value>
   </data>
   <data name="MenuFitMarina">
-    <value>&amp;Fit the whole marina</value>
+    <value>&amp;Fit Marina</value>
   </data>
   <data name="MenuFitImage">
-    <value>Fit the reference &amp;image</value>
+    <value>Fit &amp;Image</value>
   </data>
   <data name="MenuShowLog">
-    <value>Show &amp;activity log</value>
+    <value>Activity &amp;Log</value>
   </data>
   <!-- Menu: Marina and Help -->
   <data name="MenuMarina">
     <value>&amp;Marina</value>
   </data>
   <data name="MenuAppearance">
-    <value>&amp;Water, light and motion…</value>
+    <value>&amp;Appearance…</value>
   </data>
   <data name="MenuBerthLabels">
-    <value>Berth &amp;labels</value>
+    <value>Berth &amp;Labels</value>
   </data>
   <data name="MenuHelp">
     <value>&amp;Help</value>
   </data>
   <data name="MenuShortcuts">
-    <value>&amp;Keyboard and mouse…</value>
+    <value>&amp;Shortcuts…</value>
   </data>
   <data name="MenuAbout">
     <value>&amp;About</value>
@@ -164,13 +164,13 @@
     <value>Land</value>
   </data>
   <data name="ToolLandTip">
-    <value>Draw a quay, a lawn or a breakwater as a polygon</value>
+    <value>Draw a quay, a lawn or a breakwater</value>
   </data>
   <data name="ToolPier">
-    <value>Pier</value>
+    <value>Piers</value>
   </data>
   <data name="ToolPierTip">
-    <value>Draw a pier from the shore out</value>
+    <value>Draw a pier out from the shore</value>
   </data>
   <data name="ToolBerths">
     <value>Berths</value>
@@ -182,7 +182,7 @@
     <value>Ashore</value>
   </data>
   <data name="ToolAshoreTip">
-    <value>Put a boat's storage spot on land</value>
+    <value>Place berths ashore, for boats kept out of the water</value>
   </data>
   <data name="ToolTrees">
     <value>Trees</value>
@@ -210,19 +210,19 @@
     <value>Nothing to undo</value>
   </data>
   <data name="CommandTopView">
-    <value>Top view</value>
+    <value>Top View</value>
   </data>
   <data name="CommandTopViewTip">
     <value>Look straight down with north up (Ctrl+T)</value>
   </data>
   <data name="CommandFitMarina">
-    <value>Fit marina</value>
+    <value>Fit Marina</value>
   </data>
   <data name="CommandFitMarinaTip">
     <value>Frame the whole marina (Ctrl+F)</value>
   </data>
   <data name="CommandReferenceImage">
-    <value>Reference image…</value>
+    <value>Reference Image…</value>
   </data>
   <data name="CommandReferenceImageTip">
     <value>Trace a map or aerial photo to get the real shape and scale (Ctrl+I)</value>
@@ -378,14 +378,15 @@ Keys
     <value>About</value>
   </data>
   <data name="AboutBody">
-    <value>{0} {1}
+    <value>{0}
+Version {1}
 
-Draw a marina to scale and save it as a .marina.json design.
-The host application loads that file with MarinaDocument.Load(path).ApplyTo(marina),
-which brings the layout, the water and light settings, the berth labels and the camera with it.
+Library      VirtualMarina {2}
+Renderer     {3}
+Runtime      {4}
 
-Renderer: {2}</value>
-    <comment>{0} = application name, {1} = version, {2} = the graphics backend.</comment>
+© {5} {6}</value>
+    <comment>{0} = application name, {1} = its version, {2} = the library version, {3} = the graphics backend, {4} = the .NET runtime, {5} = year, {6} = author.</comment>
   </data>
   <!-- Look panel -->
   <data name="ToolLook">
@@ -803,10 +804,10 @@ Renderer: {2}</value>
     <value>Drag a box over the water to select the berths inside it</value>
   </data>
   <data name="ToolRenameTip">
-    <value>Click a berth or a pier to give it another name</value>
+    <value>Rename a berth or a pier</value>
   </data>
   <data name="MenuRename">
-    <value>&amp;Rename a berth or pier</value>
+    <value>&amp;Rename</value>
   </data>
   <data name="LogRenamed">
     <value>Renamed {0} to {1}</value>
@@ -852,7 +853,7 @@ Renderer: {2}</value>
     <comment>{0} = how many points the coast has, {1} = the cover, e.g. "Countryside".</comment>
   </data>
   <data name="MenuCoast">
-    <value>Draw the &amp;coast</value>
+    <value>Draw the &amp;Coast</value>
   </data>
   <data name="LogCoastDrawn">
     <value>Drew the mainland along {0} points</value>
@@ -1000,18 +1001,6 @@ Renderer: {2}</value>
   </data>
   <data name="SunGlints">
     <value>Sun glints</value>
-  </data>
-  <data name="Whitecaps">
-    <value>White crests</value>
-  </data>
-  <data name="WhitecapsTip">
-    <value>How strongly the waves break into white out at sea. They never reach the piers.</value>
-  </data>
-  <data name="WhitecapDistance">
-    <value>Crests start at</value>
-  </data>
-  <data name="WhitecapDistanceTip">
-    <value>How far from the middle of the marina the white crests begin.</value>
   </data>
   <data name="ValueMetersWhole">
     <value>{0} m</value>

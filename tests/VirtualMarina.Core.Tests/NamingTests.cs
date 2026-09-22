@@ -354,19 +354,42 @@ public class NamingTests
         Assert.Equal("Pier A", moved.Name); // the display name is untouched
         Assert.Null(marina.GetPier("A"));
         Assert.Equal(berths.Count, marina.GetBerthsByPier("WEST").Count);
-        Assert.Equal("WEST", marina.GetBerth(berths[0].Id)!.PierId);
         Assert.Equal("WEST", marina.GetDivider("A-D1")!.PierId);
 
-        // Berth names keep the old letter on purpose: they may already be printed on the pier.
+        // The berths are named after the pier, so they come with it: A-L01 becomes WEST-L01.
         Assert.StartsWith("A-", berths[0].Id);
+        var moved0 = "WEST" + berths[0].Id["A".Length..];
+        Assert.Null(marina.GetBerth(berths[0].Id));
+        Assert.Equal("WEST", marina.GetBerth(moved0)!.PierId);
+        Assert.All(marina.GetBerthsByPier("WEST"), berth => Assert.StartsWith("WEST-", berth.Id));
 
-        var change = Assert.Single(changes);
-        Assert.Equal(LayoutChangeKind.PierRenamed, change.Kind);
-        Assert.Equal("WEST", change.PierId);
+        // The pier and every berth that moved are reported, so a host can follow the ids.
+        Assert.Contains(changes, change => change.Kind == LayoutChangeKind.PierRenamed && change.PierId == "WEST");
+        Assert.Equal(berths.Count, changes.Count(change => change.Kind == LayoutChangeKind.BerthRenamed));
 
+        // One step of undo puts the pier and all its berths back.
         Assert.True(designer.Undo());
         Assert.NotNull(marina.GetPier("A"));
+        Assert.Null(marina.GetBerth(moved0));
         Assert.Equal("A", marina.GetBerth(berths[0].Id)!.PierId);
+        Assert.All(marina.GetBerthsByPier("A"), berth => Assert.StartsWith("A-", berth.Id));
+    }
+
+    [Fact]
+    public void ChangePierId_LeavesAloneABerthThatWasNamedByHand()
+    {
+        var marina = WithPier(out var designer);
+        var berths = designer.CreateBerths("A", PierSide.Left, 0f, 10f);
+        Assert.True(berths.Count >= 2);
+
+        // One berth is given a name of its own, which has nothing to do with the pier.
+        designer.RenameBerth(berths[0].Id, "Harbourmaster");
+
+        designer.ChangePierId("A", "WEST");
+
+        Assert.NotNull(marina.GetBerth("Harbourmaster"));
+        Assert.Equal("WEST", marina.GetBerth("Harbourmaster")!.PierId);
+        Assert.NotNull(marina.GetBerth("WEST" + berths[1].Id["A".Length..]));
     }
 
     [Fact]

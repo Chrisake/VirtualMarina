@@ -1331,7 +1331,8 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `Vector2 ReferenceImageSize { get; }` | Ground size of the reference image in meters (X = east–west, Y = north–south), or zero without an image. |
 | `ValueTuple<Vector2, Vector2>? ScaleLine { get; }` | The last line drawn with `DesignTool.MeasureScale`, or null. |
 | `ValueTuple<Vector2, Vector2>? ReferenceImageBounds { get; }` | Plan-view bounds of the reference image (north-west and south-east corners), or null without an image. |
-| `ValueTuple<Vector2, Vector2>? SelectionBox { get; }` | The box being dragged with `DesignTool.SelectArea`, in plan coordinates, or null. |
+| `ValueTuple<Vector2, Vector2>? SelectionBox { get; }` | The smallest north-up box around what is being dragged with `DesignTool.SelectArea`, or null. |
+| `IReadOnlyList<Vector2>? SelectionQuad { get; }` | The four corners of the box being dragged with `DesignTool.SelectArea`, in plan coordinates, or null when nothing is being dragged. |
 | `event EventHandler? ActiveChanged` | `MarinaDesigner.IsActive` changed. |
 | `event EventHandler<DesignToolChangedEventArgs>? ToolChanged` | `MarinaDesigner.Tool` changed. |
 | `event EventHandler<DesignDraftChangedEventArgs>? DraftChanged` | The user placed or removed a point, or finished or abandoned a drawing. |
@@ -1367,7 +1368,8 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `LandArea? RemoveTrees(string landAreaId)` | Removes every tree from a land area (of any kind) and raises `MarinaDesigner.TreesPlanted` with an empty `LandArea.Trees`. Returns the updated land area, or null when it doesn't exist or has no trees. |
 | `Berth RenameBerth(string berthId, string newBerthId)` | Gives one berth another name, keeping everything else about it, and records the change for `MarinaDesigner.Undo`. Returns the renamed berth. |
 | `Pier RenamePier(string pierId, string name)` | Gives a pier a display name (`Pier.Name`), the one shown in tooltips and the camera preset, and records the change for `MarinaDesigner.Undo`. The pier's id, and the berth names built from it, stay as they are. Returns the renamed pier. |
-| `IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)` | Selects every berth whose middle lies inside a box in plan coordinates. This is what `DesignTool.SelectArea` does when the drag ends. |
+| `IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)` | Selects every berth whose middle lies inside a north-up box in plan coordinates. Kept for code that wants a box in compass terms; the tool itself uses the overload that takes a heading. |
+| `IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, float headingDegrees, bool add = false)` | Selects every berth whose middle lies inside a box whose sides run along `headingDegrees`. This is what `DesignTool.SelectArea` does when the drag ends, using the camera heading. |
 | `IReadOnlyList<Berth> SetBerthServices(string berthId, bool wholeSide = false)` | Gives berths the pedestals in `MarinaDesigner.BerthServices`, and records one step for `MarinaDesigner.Undo`. This is what `DesignTool.EditServices` does when a berth is clicked. |
 | `void SetReferenceImage(ReferenceImage image, float? metersPerPixel = null, Vector2? center = null)` | Shows an image to trace (north at the top). Without `metersPerPixel` it is sized to cover the current layout (at least 300 m wide) until calibrated; without `center` it is centered on the camera target. |
 | `bool Undo()` | Reverts the last change the designer made: a drawn land area, pier, berth row or land berth is removed again, erased elements come back with their dividers, and trees are restored. Raises `MarinaDesigner.ActionUndone` (and the usual `LayoutChanged` notifications). Returns false when there is nothing to undo. |
@@ -2147,13 +2149,14 @@ Procedural meshes for marina infrastructure, markers and the water surface.
 
 | Member | Description |
 |---|---|
+| `const float SeaReach = 30000f` | How far the flat skirt of open sea reaches past the middle of the water, in meters. |
 | `static MeshData CreateBerthPad(int id)` | Flat 1×1 m quad on Y = 0, facing up, with white vertices (tinted by berth status). |
 | `static MeshData CreateBuoy(int id)` | Low-poly sphere, radius 0.5 m, white (status buoy). |
 | `static MeshData CreateCylinder(int id)` | 12-sided cylinder, 1 m diameter, from Y = 0 to Y = 1, white (tinted per instance: steel piles, bollards). |
 | `static MeshData CreatePiling(int id)` | Octagonal piling, 1 m diameter, from Y = 0 to Y = 1, with a lighter top. |
 | `static MeshData CreateSelectionMarker(int id)` | Inverted pyramid "you are here" marker, tip at Y = 0, about 1.6 m tall. |
 | `static MeshData CreateUnitBox(int id)` | 1 m cube centered at the origin with white vertices, tinted per instance. |
-| `static MeshData CreateWaterGrid(int id, float size, int resolution, Vector2 center)` | Square, finely tessellated grid on Y = 0 centered at `center`. Vertex positions are displaced in the water vertex shader to animate waves. |
+| `static MeshData CreateWaterGrid(int id, float size, int resolution, Vector2 center)` | Square, finely tessellated grid on Y = 0 centered at `center`, ringed by a flat skirt that runs out to `MarinaMeshFactory.SeaReach` so the water never visibly ends. Vertex positions are displaced in the water vertex shader to animate waves. |
 
 <a id="marinetrafficplanner"></a>
 ### MarineTrafficPlanner
@@ -2619,6 +2622,8 @@ Everything a backend needs to draw one frame. Matrices use the System.Numerics r
 | `IReadOnlyList<RenderObject> Objects { get; init; }` | Scene objects. Draw the opaque ones, then the water, then the transparent ones (see `RenderObject.IsTransparent`). |
 | `int SceneVersion { get; init; }` | Incremented whenever `RenderFrame.Objects` changes; lets backends skip re-uploading instance data. |
 | `Vector2 MarinaCenter { get; init; }` | Middle of the marina in plan coordinates, which the water shader uses to tell the open sea from the water among the piers: white crests break offshore and run in toward this point. |
+| `Vector2 WaterCenter { get; init; }` | Middle of the water grid in plan coordinates, which the waves and the detail fade are centered on. |
+| `float WaterDetailRadius { get; init; }` | How far from `RenderFrame.WaterCenter` the water is drawn in detail, in meters. Past it the sea flattens into a plain skirt with no waves, reflections or glints, which is what lets the water run to the horizon cheaply. |
 | `MeshLibrary Meshes { get; init; }` | Meshes referenced by `RenderFrame.Objects`. |
 | `int MeshLibraryVersion { get; }` | `MeshLibrary.Version`; re-upload meshes when it changes. |
 | `ReferenceImageLayer? ReferenceImage { get; init; }` | The designer's reference image, or null when none is shown. Draw it after the water and before the transparent objects (so drawing previews stay on top), with the `ShaderSources.ImageVertex` / `ShaderSources.ImageFragment` program. |
@@ -2761,8 +2766,6 @@ Water surface look and wave animation (`MarinaStyle.Water`). Applied every frame
 | `float SkyReflection { get; set; }` | Strength of the sky reflected on the water, 0–1 (default 1). These reflections form the bright, cloud-like patches that appear on the water toward the horizon and when seen from high above; lower it for a calmer, darker surface. |
 | `float Ripples { get; set; }` | Strength of the small ripples that break up the reflections, 0–2 (default 1; 0 gives a smooth, glassy surface). |
 | `float SunGlints { get; set; }` | Strength of the sparkling sun glints on the water, 0–2 (default 1). |
-| `float Whitecaps { get; set; }` | How strongly white crests break on the open water, 0–1 (default 0.55; 0 turns them off). They appear only beyond `WaterSettings.WhitecapDistance` from the middle of the marina and run inward, so the sea offshore is alive while the water among the piers stays calm. They fade out as the waves flatten. |
-| `float WhitecapDistance { get; set; }` | How far from the middle of the marina the white crests start, in meters (default 220). Nothing breaks nearer than this, so the marina itself never fills with foam. |
 | `float BoatMotion { get; set; }` | How much boats, buoys and boom floats rise, fall and roll with the waves, 0–3 (default 1; 0 keeps them still while the water moves). |
 
 ## VirtualMarina.Core.Serialization

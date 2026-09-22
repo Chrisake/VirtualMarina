@@ -103,6 +103,7 @@ public sealed class MarinaDesigner
     private Vector2? _selectFrom;
     private Vector2? _selectTo;
     private InputModifiers _selectModifiers;
+    private float _selectHeading;
     private float _overlayDistance = -1f;
     private float _overlayYaw;
 
@@ -880,21 +881,60 @@ public sealed class MarinaDesigner
     /// <param name="newPierId">Its new id. Leading and trailing spaces are dropped.</param>
     /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
     /// <exception cref="InvalidOperationException">Another pier already has the new id.</exception>
-    /// <remarks>Berth names are left as they are; see <see cref="IMarinaVisualizer.ChangePierId"/>.</remarks>
+    /// <remarks>
+    /// The berths named after the pier come too: a berth called <c>A-L01</c> on pier <c>A</c> becomes <c>B-L01</c>
+    /// when the pier becomes <c>B</c>, which is what the names are for. A berth whose name was typed by hand, and so
+    /// does not start with the pier id, is left alone, as is one whose new name is already taken. The whole move is
+    /// one step for <see cref="Undo"/>.
+    /// </remarks>
     public Pier ChangePierId(string pierId, string newPierId)
     {
         ArgumentNullException.ThrowIfNull(pierId);
         var before = _marina.GetPier(pierId)?.Id ?? throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
+
+        // Not batched: a host tracking berths by id needs to hear about every one that moved, and there is one
+        // notification per rename either way. Undo still puts the whole move back in a single step.
         var moved = _marina.ChangePierId(before, newPierId);
-        if (!string.Equals(before, moved.Id, StringComparison.Ordinal))
+        if (string.Equals(before, moved.Id, StringComparison.Ordinal)) return moved;
+
+        var action = new DesignAction(Strings.Format(Strings.UndoChangePierId, before, moved.Id));
+        action.RenamedPiers.Add((before, moved.Id));
+        foreach (var (from, to) in RenameBerthsAfterPier(moved.Id, before, moved.Id)) action.RenamedBerths.Add((from, to));
+
+        Record(action);
+        RaiseStateChanged();
+        return moved;
+    }
+
+    /// <summary>
+    /// Re-points the berths of a pier at its new id, for the ones whose name starts with the old one.
+    /// </summary>
+    /// <param name="pierId">The pier whose berths are being renamed (already under its new id).</param>
+    /// <param name="oldPrefix">The pier id the names were built from.</param>
+    /// <param name="newPrefix">What to put in its place.</param>
+    /// <returns>Each rename that happened, as (old name, new name).</returns>
+    private List<(string From, string To)> RenameBerthsAfterPier(string pierId, string oldPrefix, string newPrefix)
+    {
+        var renamed = new List<(string From, string To)>();
+        foreach (var berth in _marina.GetBerthsByPier(pierId))
         {
-            var action = new DesignAction(Strings.Format(Strings.UndoChangePierId, before, moved.Id));
-            action.RenamedPiers.Add((before, moved.Id));
-            Record(action);
-            RaiseStateChanged();
+            if (!berth.Id.StartsWith(oldPrefix, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var wanted = newPrefix + berth.Id[oldPrefix.Length..];
+            if (string.Equals(wanted, berth.Id, StringComparison.Ordinal)) continue;
+            if (_marina.GetBerth(wanted) is not null) continue;   // already taken; leave this one as it was
+
+            var moved = _marina.RenameBerth(berth.Id, wanted);
+            renamed.Add((berth.Id, moved.Id));
+
+            // A label that merely repeated the old name follows it; one the user wrote is left alone.
+            if (berth.Label is { } label && label.StartsWith(oldPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                _marina.UpdateBerth(moved with { Label = newPrefix + label[oldPrefix.Length..] });
+            }
         }
 
-        return moved;
+        return renamed;
     }
 
     /// <summary>
@@ -1405,32 +1445,90 @@ public sealed class MarinaDesigner
 
     // ---- Input (called by MarinaInputController) ------------------------------------------------
 
-    /// <summary>The box being dragged with <see cref="DesignTool.SelectArea"/>, in plan coordinates, or null.</summary>
+    /// <summary>
+    /// The smallest north-up box around what is being dragged with <see cref="DesignTool.SelectArea"/>, or null.
+    /// </summary>
+    /// <remarks>
+    /// The box the user drags follows the camera rather than the compass, so this is only its extent.
+    /// <see cref="SelectionQuad"/> has the corners to draw.
+    /// </remarks>
     public (Vector2 Min, Vector2 Max)? SelectionBox =>
-        _selectFrom is { } from && _selectTo is { } to
-            ? (Vector2.Min(from, to), Vector2.Max(from, to))
+        SelectionQuad is { } quad
+            ? (quad.Aggregate(Vector2.Min), quad.Aggregate(Vector2.Max))
             : null;
 
     /// <summary>
-    /// Selects every berth whose middle lies inside a box in plan coordinates. This is what
-    /// <see cref="DesignTool.SelectArea"/> does when the drag ends.
+    /// The four corners of the box being dragged with <see cref="DesignTool.SelectArea"/>, in plan coordinates, or
+    /// null when nothing is being dragged.
+    /// </summary>
+    /// <remarks>
+    /// Its sides run with the camera, so dragging across the screen selects what the box appeared to cover, whichever
+    /// way the view happens to be turned. The heading is taken when the drag starts, so turning the camera part way
+    /// through does not reshape what has already been swept.
+    /// </remarks>
+    public IReadOnlyList<Vector2>? SelectionQuad
+    {
+        get
+        {
+            if (_selectFrom is not { } from || _selectTo is not { } to) return null;
+            var (right, forward) = ViewAxes(_selectHeading);
+            var (minU, maxU) = Extent(Vector2.Dot(from, right), Vector2.Dot(to, right));
+            var (minV, maxV) = Extent(Vector2.Dot(from, forward), Vector2.Dot(to, forward));
+            return new[]
+            {
+                right * minU + forward * minV,
+                right * maxU + forward * minV,
+                right * maxU + forward * maxV,
+                right * minU + forward * maxV,
+            };
+        }
+    }
+
+    /// <summary>
+    /// Selects every berth whose middle lies inside a north-up box in plan coordinates. Kept for code that wants a
+    /// box in compass terms; the tool itself uses the overload that takes a heading.
     /// </summary>
     /// <param name="from">One corner of the box.</param>
     /// <param name="to">The opposite corner.</param>
     /// <param name="add">True to add to the selection already made, false to replace it.</param>
     /// <returns>The berths now selected.</returns>
-    public IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)
+    public IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false) =>
+        SelectBerthsInArea(from, to, 0f, add);
+
+    /// <summary>
+    /// Selects every berth whose middle lies inside a box whose sides run along <paramref name="headingDegrees"/>.
+    /// This is what <see cref="DesignTool.SelectArea"/> does when the drag ends, using the camera heading.
+    /// </summary>
+    /// <param name="from">One corner of the box.</param>
+    /// <param name="to">The opposite corner.</param>
+    /// <param name="headingDegrees">Which way the top of the box points; 0 is north.</param>
+    /// <param name="add">True to add to the selection already made, false to replace it.</param>
+    /// <returns>The berths now selected.</returns>
+    public IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, float headingDegrees, bool add = false)
     {
-        var min = Vector2.Min(from, to);
-        var max = Vector2.Max(from, to);
+        var (right, forward) = ViewAxes(headingDegrees);
+        var (minU, maxU) = Extent(Vector2.Dot(from, right), Vector2.Dot(to, right));
+        var (minV, maxV) = Extent(Vector2.Dot(from, forward), Vector2.Dot(to, forward));
+
         var inside = _marina.GetBerths()
             .Where(berth => berth.IsInteractive)
-            .Where(berth => berth.Center.X >= min.X && berth.Center.X <= max.X && berth.Center.Y >= min.Y && berth.Center.Y <= max.Y)
+            .Where(berth =>
+            {
+                var u = Vector2.Dot(berth.Center, right);
+                var v = Vector2.Dot(berth.Center, forward);
+                return u >= minU && u <= maxU && v >= minV && v <= maxV;
+            })
             .Select(berth => berth.Id);
 
         var ids = add ? _marina.SelectedBerths.Select(berth => berth.Id).Concat(inside).Distinct(StringComparer.OrdinalIgnoreCase) : inside;
         return _marina.SetSelection(ids.ToArray()).SelectedBerthIds;
     }
+
+    /// <summary>The plan directions the sides of a box run along, for a box turned to the given heading.</summary>
+    private static (Vector2 Right, Vector2 Forward) ViewAxes(float headingDegrees) =>
+        (MarinaMath.HeadingToRight(headingDegrees), MarinaMath.HeadingToDirection(headingDegrees));
+
+    private static (float Min, float Max) Extent(float a, float b) => a <= b ? (a, b) : (b, a);
 
     /// <summary>True when a left drag belongs to a tool — moving the picture or dragging a selection box — not the camera.</summary>
     internal bool CapturesDrag(PointerButton button) =>
@@ -1444,6 +1542,7 @@ public sealed class MarinaDesigner
             _selectFrom = GroundPoint(x, y);
             _selectTo = _selectFrom;
             _selectModifiers = _modifiers;
+            _selectHeading = _marina.Camera.Pose.YawDegrees;
             return;
         }
 
@@ -1470,7 +1569,7 @@ public sealed class MarinaDesigner
         if (_selectFrom is { } from && _selectTo is { } to)
         {
             var dragged = Vector2.Distance(from, to) > 0.5f;
-            if (dragged) SelectBerthsInArea(from, to, (_selectModifiers & (InputModifiers.Shift | InputModifiers.Control)) != 0);
+            if (dragged) SelectBerthsInArea(from, to, _selectHeading, (_selectModifiers & (InputModifiers.Shift | InputModifiers.Control)) != 0);
         }
 
         _selectFrom = null;
@@ -1679,9 +1778,8 @@ public sealed class MarinaDesigner
                 for (var i = 0; i < target.Points.Count; i++) overlay.Line(target.Points[i], target.Points[(i + 1) % target.Points.Count], outlineY, BerthPreviewColor with { W = 0.95f });
                 overlay.Text(Strings.Format(Strings.OverlayTreeCount, target.Trees.Count), _pointer ?? target.Points[0], outlineY, TextColor);
                 break;
-            case DesignTool.SelectArea when SelectionBox is { } box:
+            case DesignTool.SelectArea when SelectionQuad is { } corners:
                 var boxY = textFloor - 0.4f;
-                var corners = new[] { box.Min, new Vector2(box.Max.X, box.Min.Y), box.Max, new Vector2(box.Min.X, box.Max.Y) };
                 for (var i = 0; i < 4; i++) overlay.Line(corners[i], corners[(i + 1) % 4], boxY, SelectionBoxColor);
                 break;
             case DesignTool.DrawShoreline:

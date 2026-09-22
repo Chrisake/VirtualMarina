@@ -845,10 +845,12 @@ sealed class VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMari
 
 sealed class VirtualMarina.Core.Design.MarinaDesigner
     IReadOnlyList<Vector2> DraftPoints { get; }
+    IReadOnlyList<Vector2> SelectionQuad { get; }
     IReadOnlyList<Vector2> ShorelineAwaitingSide { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> CreateBerths(string pierId, VirtualMarina.Core.Domain.PierSide side, float fromAlong, float toAlong)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> SetBerthServices(string berthId, bool wholeSide = false)
     IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)
+    IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, float headingDegrees, bool add = false)
     ValueTuple<Vector2, Vector2>? ReferenceImageBounds { get; }
     ValueTuple<Vector2, Vector2>? ScaleLine { get; }
     ValueTuple<Vector2, Vector2>? SelectionBox { get; }
@@ -1420,6 +1422,7 @@ static class VirtualMarina.Core.Geometry.LandMeshFactory
     static VirtualMarina.Core.Geometry.MeshData CreateSlab(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
 
 static class VirtualMarina.Core.Geometry.MarinaMeshFactory
+    const float SeaReach = 30000
     static VirtualMarina.Core.Geometry.MeshData CreateBerthPad(int id)
     static VirtualMarina.Core.Geometry.MeshData CreateBuoy(int id)
     static VirtualMarina.Core.Geometry.MeshData CreateCylinder(int id)
@@ -1701,12 +1704,14 @@ sealed class VirtualMarina.Core.Rendering.RenderFrame
     Matrix4x4 Projection { get; init; }
     Matrix4x4 View { get; init; }
     Vector2 MarinaCenter { get; init; }
+    Vector2 WaterCenter { get; init; }
     Vector3 CameraPosition { get; init; }
     VirtualMarina.Core.Geometry.MeshLibrary Meshes { get; init; }
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; init; }
     VirtualMarina.Core.Rendering.ReferenceImageLayer ReferenceImage { get; init; }
     VirtualMarina.Core.Rendering.WaterSettings Water { get; init; }
     float Time { get; init; }
+    float WaterDetailRadius { get; init; }
     int MeshLibraryVersion { get; }
     int SceneVersion { get; init; }
 
@@ -1789,8 +1794,6 @@ sealed class VirtualMarina.Core.Rendering.WaterSettings
     float WaveAmplitude { get; set; }
     float WaveFrequency { get; set; }
     float WaveSpeed { get; set; }
-    float WhitecapDistance { get; set; }
-    float Whitecaps { get; set; }
     int GridResolution { get; init; }
 
 sealed class VirtualMarina.Core.Serialization.MarinaDocument

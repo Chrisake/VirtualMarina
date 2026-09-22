@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Design;
@@ -190,18 +191,21 @@ internal sealed class MainForm : Form
         _toolbar.ImageScalingSize = new Size(20, 20);
         _toolbar.Font = new Font("Segoe UI", 9.5f);
 
+        // Getting around, then what you place, then what you dress it with, then what you change.
         AddToolButton(DesignTool.Navigate, Strings.ToolNavigate, Strings.ToolNavigateTip);
+        AddToolButton(DesignTool.SelectArea, Strings.ToolSelect, Strings.ToolSelectTip);
         _toolbar.Items.Add(new ToolStripSeparator());
+        AddToolButton(DesignTool.DrawShoreline, Strings.ToolCoast, Strings.ToolCoastTip);
         AddToolButton(DesignTool.DrawLandArea, Strings.ToolLand, Strings.ToolLandTip);
         AddToolButton(DesignTool.DrawPier, Strings.ToolPier, Strings.ToolPierTip);
         AddToolButton(DesignTool.AddBerths, Strings.ToolBerths, Strings.ToolBerthsTip);
         AddToolButton(DesignTool.AddLandBerths, Strings.ToolAshore, Strings.ToolAshoreTip);
+        _toolbar.Items.Add(new ToolStripSeparator());
         AddToolButton(DesignTool.PlantTrees, Strings.ToolTrees, Strings.ToolTreesTip);
-        AddToolButton(DesignTool.Erase, Strings.ToolErase, Strings.ToolEraseTip);
-        AddToolButton(DesignTool.Rename, Strings.ToolRename, Strings.ToolRenameTip);
         AddToolButton(DesignTool.EditServices, Strings.ToolServices, Strings.ToolServicesTip);
-        AddToolButton(DesignTool.SelectArea, Strings.ToolSelect, Strings.ToolSelectTip);
-        AddToolButton(DesignTool.DrawShoreline, Strings.ToolCoast, Strings.ToolCoastTip);
+        _toolbar.Items.Add(new ToolStripSeparator());
+        AddToolButton(DesignTool.Rename, Strings.ToolRename, Strings.ToolRenameTip);
+        AddToolButton(DesignTool.Erase, Strings.ToolErase, Strings.ToolEraseTip);
         _toolbar.Items.Add(new ToolStripSeparator());
 
         // Not a drawing tool: it swaps the panel beside the view for the look settings.
@@ -619,10 +623,27 @@ internal sealed class MainForm : Form
 
     private void ShowAbout() => MessageBox.Show(
         this,
-        Strings.Format(Strings.AboutBody, AppName, Application.ProductVersion, _view.RendererDescription),
+        Strings.Format(
+            Strings.AboutBody,
+            AppName,
+            Version(typeof(MainForm)),
+            Version(typeof(MarinaVisualizer)),
+            _view.RendererDescription,
+            RuntimeInformation.FrameworkDescription,
+            DateTime.Now.Year,
+            Author),
         Strings.AboutTitle,
         MessageBoxButtons.OK,
         MessageBoxIcon.Information);
+
+    /// <summary>Who to credit in the About box.</summary>
+    private const string Author = "Christoforos Sakellaris";
+
+    /// <summary>The three-part version of the assembly a type lives in, e.g. "1.2.0".</summary>
+    private static string Version(Type type) =>
+        type.Assembly.GetName().Version is { } version
+            ? $"{version.Major}.{version.Minor}.{version.Build}"
+            : "1.0.0";
 
     private void Warn(string title, Exception ex)
     {

@@ -21,14 +21,27 @@ internal sealed class InspectorPanel : Panel
     /// column is given its width by the layout engine, so dragging the splitter resizes the cards and the text
     /// inside them without anything being measured here.
     /// </summary>
+    /// <summary>
+    /// The cards, stacked. It sizes to its content and sits inside <see cref="_scroller"/>: a TableLayoutPanel
+    /// scrolls its own content unreliably, so the scrolling is left to a plain panel around it.
+    /// </summary>
     private readonly TableLayoutPanel _stack = new()
     {
         ColumnCount = 1,
-        AutoScroll = true,
-        Dock = DockStyle.Fill,
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        Dock = DockStyle.Top,
         BackColor = Theme.Background,
         Padding = new Padding(12, 12, 12, 12),
         GrowStyle = TableLayoutPanelGrowStyle.AddRows,
+    };
+
+    /// <summary>Scrolls the cards when there are more of them than fit, which a tall tool easily manages.</summary>
+    private readonly Panel _scroller = new()
+    {
+        AutoScroll = true,
+        Dock = DockStyle.Fill,
+        BackColor = Theme.Background,
     };
 
     // Land area
@@ -161,10 +174,8 @@ internal sealed class InspectorPanel : Panel
         }
 
         // A last row that soaks up the space left over, so the cards stay at the top instead of spreading out.
-        _stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-        _stack.RowCount++;
-
-        Controls.Add(_stack);
+        _scroller.Controls.Add(_stack);
+        Controls.Add(_scroller);
         Controls.Add(header);
 
         Wire();

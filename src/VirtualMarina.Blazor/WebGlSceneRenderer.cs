@@ -194,10 +194,13 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
         f[i++] = Math.Clamp(w.Ripples, 0f, 2f);
         f[i++] = Math.Clamp(w.SunGlints, 0f, 2f);
         f[i++] = Math.Clamp(w.BoatMotion, 0f, 3f);
-        f[i++] = Math.Clamp(w.Whitecaps, 0f, 1f);
-        f[i++] = Math.Clamp(w.WhitecapDistance, 20f, 5000f);
-        f[i++] = frame.MarinaCenter.X;
-        f[i++] = frame.MarinaCenter.Y;
+        f[i++] = frame.WaterCenter.X;
+        f[i++] = frame.WaterCenter.Y;
+        f[i++] = MathF.Max(1f, frame.WaterDetailRadius);
+
+        // The buffer is exactly FrameLength long, so packing one float too few leaves stale data in the tail and one
+        // too many throws. Neither shows up as anything obvious on screen, hence the check.
+        if (i != FrameLength) throw new InvalidOperationException($"The frame packs {i} floats but FrameLength is {FrameLength}.");
     }
 
     private static void WriteMatrix(float[] f, ref int i, System.Numerics.Matrix4x4 m)

@@ -22,14 +22,27 @@ internal sealed class AppearancePanel : UserControl
 
     private readonly MarinaVisualizer _marina;
     private readonly Action<string> _log;
+    /// <summary>
+    /// The cards, stacked. It sizes to its content and sits inside <see cref="_scroller"/>: a TableLayoutPanel
+    /// scrolls its own content unreliably, so the scrolling is left to a plain panel around it.
+    /// </summary>
     private readonly TableLayoutPanel _stack = new()
     {
         ColumnCount = 1,
-        AutoScroll = true,
-        Dock = DockStyle.Fill,
+        AutoSize = true,
+        AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        Dock = DockStyle.Top,
         BackColor = Theme.Background,
         Padding = new Padding(12, 12, 12, 12),
         GrowStyle = TableLayoutPanelGrowStyle.AddRows,
+    };
+
+    /// <summary>Scrolls the cards when there are more of them than fit, which a tall tool easily manages.</summary>
+    private readonly Panel _scroller = new()
+    {
+        AutoScroll = true,
+        Dock = DockStyle.Fill,
+        BackColor = Theme.Background,
     };
 
     private readonly TrackBar _fill = new() { Minimum = 0, Maximum = 100, Value = 60 };
@@ -68,10 +81,8 @@ internal sealed class AppearancePanel : UserControl
             _stack.Controls.Add(card, 0, _stack.RowCount++);
         }
 
-        _stack.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
-        _stack.RowCount++;
-
-        Controls.Add(_stack);
+        _scroller.Controls.Add(_stack);
+        Controls.Add(_scroller);
         Controls.Add(header);
     }
 
@@ -94,8 +105,6 @@ internal sealed class AppearancePanel : UserControl
         Percent(table, Strings.Reflections, 0, 100, () => Water.SkyReflection * 100f, v => Water.SkyReflection = v / 100f, Defaults.Water.SkyReflection * 100f, Percentage);
         Percent(table, Strings.Ripples, 0, 200, () => Water.Ripples * 100f, v => Water.Ripples = v / 100f, Defaults.Water.Ripples * 100f, Percentage);
         Percent(table, Strings.SunGlints, 0, 200, () => Water.SunGlints * 100f, v => Water.SunGlints = v / 100f, Defaults.Water.SunGlints * 100f, Percentage);
-        Percent(table, Strings.Whitecaps, 0, 100, () => Water.Whitecaps * 100f, v => Water.Whitecaps = v / 100f, Defaults.Water.Whitecaps * 100f, v => v == 0 ? Strings.ValueStill : Percentage(v), Strings.WhitecapsTip);
-        Percent(table, Strings.WhitecapDistance, 40, 1200, () => Water.WhitecapDistance, v => Water.WhitecapDistance = v, Defaults.Water.WhitecapDistance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.WhitecapDistanceTip);
         Color(table, Strings.DeepWater, () => Vector(Water.DeepColor), c => Water.DeepColor = Value(c), Vector(Defaults.Water.DeepColor));
         Color(table, Strings.ShallowWater, () => Vector(Water.ShallowColor), c => Water.ShallowColor = Value(c), Vector(Defaults.Water.ShallowColor));
         return card;

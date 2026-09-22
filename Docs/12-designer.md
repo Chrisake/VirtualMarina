@@ -48,6 +48,7 @@ While `IsActive` is true, clicks go to the designer instead of selecting berths.
 | `PlantTrees` | Click a lawn to scatter trees on it, replacing the ones it has. Ctrl+click or right-click removes them | |
 | `Erase` | Click a berth, pier or land area to remove it (piers and land areas take their berths with them, berths take their own dividers) | Delete removes the element under the pointer |
 | `Rename` | Click a berth or a pier to give it another name; the designer asks the host for it through `ElementRenaming` | |
+| `SelectArea` | Drag a box over the water to select the berths inside it; Shift or Ctrl adds to the selection. The box follows the camera, so it selects what it looked like it covered | |
 | `DrawShoreline` | Click along the coast of the mainland (two points make a straight one), then click the side that is land | Enter settles the line, Backspace takes it back to the points, Esc cancels |
 | `MoveReferenceImage` | Drag the image with the left button | |
 | `MeasureScale` | Click both ends of the image's scale bar | |
@@ -106,6 +107,16 @@ Berths are perpendicular to the pier, bows toward it, on the side you click. A r
 ### Trees
 
 `PlantTrees` works on lawns (`LandKind.Grass`) only; clicking a quay or breakwater does nothing. Every click **replaces** the lawn's trees with a new random scattering at `TreeDensity` (the "Tree coverage" slider in the panels), kept clear of the land berths on it. Ctrl+click or a right-click removes them. From code: `PlantTrees(landAreaId, density)` and `RemoveTrees(landAreaId)` (which works on any land area). A new lawn is planted at `TreeDensity` as it is drawn. Positions are stored in `LandArea.Trees`, so trees never move between sessions.
+
+### Renaming
+
+`Rename` asks the host for the new name through `ElementRenaming`, so the application decides how to ask. A berth's
+name is also its id, so each one has to be free.
+
+Giving a **pier** another id takes its berths with it: on pier `A`, berth `A-L01` becomes `B-L01` when the pier
+becomes `B`. A berth someone renamed by hand, so that its name no longer starts with the pier id, keeps the name it
+was given, as does one whose new name is already taken. Every id that moved is reported through `LayoutChanged`, so a
+host tracking berths by id can follow them, and one Ctrl+Z puts the whole move back.
 
 ### The mainland
 

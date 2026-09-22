@@ -14,7 +14,9 @@ marina.BerthLabelMode = BerthLabelMode.NonOccupied;
 | `All` | Every berth |
 
 - **Text:** each labeled berth shows its `DisplayName` (its `Label`, or else its `Id`).
-- **Placement:** flat on the water just past the berth's open (seaward) end.
+- **Placement:** flat on the water just past the berth's open (seaward) end. A berth ashore gets its label the same
+  way, floating 0.45 m above the ground it stands on so it is still readable from a low camera instead of
+  disappearing into the surface.
 - **Size:** at most 65% of the berth width and between 0.3 m and 1 m tall, so labels of neighboring berths stay apart.
 - **Orientation:** the top of the text points away from the pier, so it reads upright to someone on the pier looking at the berth.
 - **Colors:** white; yellow while the berth is hovered or selected; gray for disabled berths.
@@ -79,6 +81,12 @@ marina.Water.WaveSpeed = 0;   // calm, static water
 ```
 
 The water grid is re-centered on the layout by `InitializeLayout`.
+
+**The sea does not end.** `Size` is only the part drawn in detail. Around it the grid carries a flat skirt of eight
+triangles reaching `MarinaMeshFactory.SeaReach` (30 km), and the shader fades the waves, the sky reflection and the
+sun glints out over the outer third of the detailed grid. So the water runs to the horizon and the fog takes it into
+the sky, while everything that costs anything to draw stays near the marina. Widen `Size` to push the detailed water
+further out; the skirt follows on its own.
 
 ## Passing traffic
 

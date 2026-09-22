@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace VirtualMarina.Core.Geometry;
 
@@ -65,16 +65,31 @@ public static class MarinaMeshFactory
         return b.Build(id, "Buoy");
     }
 
+    /// <summary>How far the flat skirt of open sea reaches past the middle of the water, in meters.</summary>
+    /// <remarks>
+    /// Past the horizon in any usable view, and far enough to sit outside the mainland a
+    /// <see cref="Domain.Shoreline"/> builds, so the two never leave a gap between them.
+    /// </remarks>
+    public const float SeaReach = 30_000f;
+
     /// <summary>
-    /// Square, finely tessellated grid on Y = 0 centered at <paramref name="center"/>.
+    /// Square, finely tessellated grid on Y = 0 centered at <paramref name="center"/>, ringed by a flat skirt that
+    /// runs out to <see cref="SeaReach"/> so the water never visibly ends.
     /// Vertex positions are displaced in the water vertex shader to animate waves.
     /// </summary>
+    /// <remarks>
+    /// The skirt is eight triangles. The water shader fades the waves, the sky reflection and the glints out over the
+    /// outer part of the grid, so the skirt is plain body colour that the fog carries into the horizon — the open sea
+    /// costs almost nothing however far it reaches.
+    /// </remarks>
     public static MeshData CreateWaterGrid(int id, float size, int resolution, Vector2 center)
     {
         resolution = Math.Clamp(resolution, 2, 1024);
         var verticesPerSide = resolution + 1;
-        var vertices = new float[verticesPerSide * verticesPerSide * MeshData.VertexStride];
-        var indices = new uint[resolution * resolution * 6];
+        const int skirtVertices = 8;         // four corners of the grid, four of the far square
+        const int skirtIndices = 8 * 3;      // two triangles per side
+        var vertices = new float[(verticesPerSide * verticesPerSide + skirtVertices) * MeshData.VertexStride];
+        var indices = new uint[resolution * resolution * 6 + skirtIndices];
         var half = size * 0.5f;
         var step = size / resolution;
 
@@ -112,6 +127,55 @@ public static class MarinaMeshFactory
                 indices[k++] = i2;
                 indices[k++] = i3;
             }
+        }
+
+        // The skirt: a ring between the edge of the grid and a far square, so the sea runs to the horizon.
+        var first = (uint)(verticesPerSide * verticesPerSide);
+        var inner = new[]
+        {
+            new Vector2(center.X - half, center.Y - half),
+            new Vector2(center.X + half, center.Y - half),
+            new Vector2(center.X + half, center.Y + half),
+            new Vector2(center.X - half, center.Y + half),
+        };
+
+        var reach = MathF.Max(SeaReach, half * 2f);
+        var outer = new[]
+        {
+            new Vector2(center.X - reach, center.Y - reach),
+            new Vector2(center.X + reach, center.Y - reach),
+            new Vector2(center.X + reach, center.Y + reach),
+            new Vector2(center.X - reach, center.Y + reach),
+        };
+
+        foreach (var corner in inner.Concat(outer))
+        {
+            vertices[v++] = corner.X;
+            vertices[v++] = 0f;
+            vertices[v++] = corner.Y;
+            vertices[v++] = 0f;
+            vertices[v++] = 1f;
+            vertices[v++] = 0f;
+            vertices[v++] = 0f;
+            vertices[v++] = 0f;
+            vertices[v++] = 0f;
+        }
+
+        for (var side = 0; side < 4; side++)
+        {
+            var nextSide = (side + 1) % 4;
+            var i0 = first + (uint)side;              // this corner of the grid
+            var i1 = first + (uint)nextSide;          // the next one round
+            var o0 = first + 4u + (uint)side;         // the matching corners of the far square
+            var o1 = first + 4u + (uint)nextSide;
+
+            // Counter-clockwise from above, the same way round as the grid itself.
+            indices[k++] = i0;
+            indices[k++] = o0;
+            indices[k++] = o1;
+            indices[k++] = i0;
+            indices[k++] = o1;
+            indices[k++] = i1;
         }
 
         return new MeshData(id, "Water", vertices, indices, isWater: true);

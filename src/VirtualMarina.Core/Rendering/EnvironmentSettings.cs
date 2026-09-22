@@ -84,19 +84,6 @@ public sealed class WaterSettings
     public float SunGlints { get; set; } = 1f;
 
     /// <summary>
-    /// How strongly white crests break on the open water, 0–1 (default 0.55; 0 turns them off). They appear only
-    /// beyond <see cref="WhitecapDistance"/> from the middle of the marina and run inward, so the sea offshore is
-    /// alive while the water among the piers stays calm. They fade out as the waves flatten.
-    /// </summary>
-    public float Whitecaps { get; set; } = 0.55f;
-
-    /// <summary>
-    /// How far from the middle of the marina the white crests start, in meters (default 220). Nothing breaks nearer
-    /// than this, so the marina itself never fills with foam.
-    /// </summary>
-    public float WhitecapDistance { get; set; } = 220f;
-
-    /// <summary>
     /// How much boats, buoys and boom floats rise, fall and roll with the waves, 0–3 (default 1; 0 keeps them still while the water moves).
     /// </summary>
     public float BoatMotion { get; set; } = 1f;

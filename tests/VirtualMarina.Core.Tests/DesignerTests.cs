@@ -99,6 +99,72 @@ public class DesignerTests
     }
 
     [Fact]
+    public void SelectArea_TheBoxFollowsTheCamera_NotTheCompass()
+    {
+        var marina = CreateDesigner(DesignTool.SelectArea);
+        var designer = marina.Designer;
+
+        // A row running north-east, the way a real marina rarely lines up with the compass.
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, 0), 45f, 70f));
+        var rowA = designer.CreateBerths("A", PierSide.Left, 0f, 60f);
+        Assert.True(rowA.Count >= 3);
+
+        var first = marina.GetBerth(rowA[0].Id)!.Center;
+        var last = marina.GetBerth(rowA[^1].Id)!.Center;
+        var direction = Vector2.Normalize(last - first);
+        var across = new Vector2(-direction.Y, direction.X);
+        var along = MarinaMath.DirectionToHeading(direction);
+
+        // A second row alongside the first: clear of it, but well inside the north-up square around it.
+        marina.AddPier(new Pier("B", "Pier B", first + across * 24f, 45f, 70f));
+        var rowB = designer.CreateBerths("B", PierSide.Left, 0f, 60f);
+        Assert.True(rowB.Count >= 3);
+
+        // A box drawn snugly around row A, the way it looks on screen when the view runs along the row.
+        var from = first - direction * 4f - across * 4f;
+        var to = last + direction * 4f + across * 4f;
+
+        var turned = designer.SelectBerthsInArea(from, to, along);
+        Assert.Equal(rowA.Count, turned.Count);
+        Assert.All(turned, id => Assert.StartsWith("A-", id));
+
+        // Read as a north-up box, those same corners sweep a square that reaches across to the other pier.
+        var northUp = designer.SelectBerthsInArea(from, to, 0f);
+        Assert.Contains(northUp, id => id.StartsWith("B-", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SelectArea_TheDraggedBoxIsDrawnTurnedToTheView()
+    {
+        var marina = CreateDesigner(DesignTool.SelectArea);
+        marina.Camera.SetPose(new CameraPose(Vector3.Zero, 30f, 89f, 150f), immediate: true);
+        var designer = marina.Designer;
+
+        Assert.Null(designer.SelectionQuad);
+
+        var from = Screen(marina, new Vector2(-30, -20));
+        var to = Screen(marina, new Vector2(30, 20));
+        marina.Input.PointerMove(from.X, from.Y, InputModifiers.None);
+        marina.Input.PointerDown(from.X, from.Y, PointerButton.Left, InputModifiers.None);
+        marina.Input.PointerMove(to.X, to.Y, InputModifiers.None);
+
+        var quad = designer.SelectionQuad;
+        Assert.NotNull(quad);
+        Assert.Equal(4, quad!.Count);
+
+        // Its sides run with the camera, so none of them is aligned to north while the view is turned.
+        var side = Vector2.Normalize(quad[1] - quad[0]);
+        Assert.True(MathF.Abs(side.X) > 0.05f && MathF.Abs(side.Y) > 0.05f, $"the box is still axis-aligned: {side}");
+
+        // A turned box is still a rectangle: its two pairs of opposite sides match.
+        Assert.Equal(Vector2.Distance(quad[0], quad[1]), Vector2.Distance(quad[3], quad[2]), 2);
+        Assert.Equal(Vector2.Distance(quad[1], quad[2]), Vector2.Distance(quad[0], quad[3]), 2);
+
+        marina.Input.PointerUp(to.X, to.Y, PointerButton.Left, InputModifiers.None);
+        Assert.Null(designer.SelectionQuad);
+    }
+
+    [Fact]
     public void DrawShoreline_DrawThenEnterThenClickTheLandSide_MakesTheMainland()
     {
         var marina = CreateDesigner(DesignTool.DrawShoreline);

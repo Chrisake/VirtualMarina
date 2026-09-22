@@ -97,6 +97,12 @@ internal static class SceneBuilder
     /// <summary>Clearance above the highest possible wave; the shader adds the wave bound (AboveWaves).</summary>
     public const float LabelHeightAboveWater = 0.04f;
 
+    /// <summary>
+    /// How far a land berth's label floats above the ground it stands on, in meters. A label lying on the surface is
+    /// all but invisible from a low camera, so it is lifted clear of the land and its status pad.
+    /// </summary>
+    public const float LabelHeightAboveLand = 0.45f;
+
     private const float FingerWidth = 0.7f;
     private const float FingerThickness = 0.25f;
     private const float PilingDepth = 2.5f;
@@ -242,7 +248,7 @@ internal static class SceneBuilder
             var position = start + reading * (i * GlyphFont.AdvanceOf(font) * height);
             output.Add(new RenderObject(
                 meshId,
-                MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, ground is { } g ? g + BerthPlacement.LandPadLift + 0.02f : LabelHeightAboveWater)),
+                MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, ground is { } g ? g + LabelHeightAboveLand : LabelHeightAboveWater)),
                 tint, highlighted ? 0.35f : 0.15f, ground.HasValue ? RenderAnimation.None : RenderAnimation.AboveWaves, phase));
         }
     }

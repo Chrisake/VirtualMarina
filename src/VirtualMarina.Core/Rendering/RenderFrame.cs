@@ -40,6 +40,15 @@ public sealed class RenderFrame
     /// </summary>
     public Vector2 MarinaCenter { get; init; }
 
+    /// <summary>Middle of the water grid in plan coordinates, which the waves and the detail fade are centered on.</summary>
+    public Vector2 WaterCenter { get; init; }
+
+    /// <summary>
+    /// How far from <see cref="WaterCenter"/> the water is drawn in detail, in meters. Past it the sea flattens into
+    /// a plain skirt with no waves, reflections or glints, which is what lets the water run to the horizon cheaply.
+    /// </summary>
+    public float WaterDetailRadius { get; init; } = 700f;
+
     /// <summary>Meshes referenced by <see cref="Objects"/>.</summary>
     public required MeshLibrary Meshes { get; init; }
 

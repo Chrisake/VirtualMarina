@@ -290,6 +290,8 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             Objects = objects,
             SceneVersion = _sceneVersion,
             MarinaCenter = _marinaCenter,
+            WaterCenter = _waterCenter,
+            WaterDetailRadius = _waterSize * 0.5f,
             Meshes = Meshes,
             ReferenceImage = Designer.BuildImageLayer(),
         };

@@ -886,9 +886,9 @@ internal sealed class WaterDto : ExtensibleDto
 
     public float SunGlints { get; set; } = 1f;
 
-    public float Whitecaps { get; set; } = 0.55f;
 
-    public float WhitecapDistance { get; set; } = 220f;
+
+
 
     public float BoatMotion { get; set; } = 1f;
 
@@ -904,8 +904,6 @@ internal sealed class WaterDto : ExtensibleDto
         SkyReflection = water.SkyReflection,
         Ripples = water.Ripples,
         SunGlints = water.SunGlints,
-        Whitecaps = water.Whitecaps,
-        WhitecapDistance = water.WhitecapDistance,
         BoatMotion = water.BoatMotion,
     };
 
@@ -924,8 +922,6 @@ internal sealed class WaterDto : ExtensibleDto
             SkyReflection = SkyReflection,
             Ripples = Ripples,
             SunGlints = SunGlints,
-            Whitecaps = Whitecaps,
-            WhitecapDistance = WhitecapDistance > 0f ? WhitecapDistance : defaults.WhitecapDistance,
             BoatMotion = BoatMotion,
         };
     }

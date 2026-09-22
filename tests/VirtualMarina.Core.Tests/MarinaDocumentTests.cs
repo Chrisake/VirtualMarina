@@ -519,21 +519,23 @@ public class MarinaDocumentTests
     }
 
     [Fact]
-    public void Whitecaps_SurviveASaveAndLoad_AndTheFrameCarriesTheMarinaCentre()
+    public void WaterSettings_SurviveASaveAndLoad_AndTheFrameCarriesWhereTheWaterIs()
     {
         var marina = new MarinaVisualizer();
         marina.AddPier(new Pier("A", "Pier A", new Vector2(140, 60), 0f, 40f));
-        marina.Style.Water.Whitecaps = 0.8f;
-        marina.Style.Water.WhitecapDistance = 340f;
+        marina.Style.Water.Ripples = 0.8f;
+        marina.Style.Water.SunGlints = 1.4f;
 
-        // The water shader needs to know where the marina is, to tell offshore from among the piers.
+        // The water shader needs to know where the detailed grid is, so it can flatten the sea beyond it.
         var frame = marina.BuildRenderFrame();
         Assert.NotEqual(Vector2.Zero, frame.MarinaCenter);
+        Assert.True(frame.WaterDetailRadius > 0f, "the water has no detail radius to fade over");
+        Assert.Equal(marina.Water.Size * 0.5f, frame.WaterDetailRadius, 1);
 
         var copy = new MarinaVisualizer();
         MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson()).ApplyTo(copy);
 
-        Assert.Equal(0.8f, copy.Style.Water.Whitecaps, 3);
-        Assert.Equal(340f, copy.Style.Water.WhitecapDistance, 2);
+        Assert.Equal(0.8f, copy.Style.Water.Ripples, 3);
+        Assert.Equal(1.4f, copy.Style.Water.SunGlints, 3);
     }
 }

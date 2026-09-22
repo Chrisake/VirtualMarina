@@ -56,19 +56,19 @@ internal static class Strings
     /// <summary>"&amp;File"</summary>
     internal static string MenuFile => Get("MenuFile");
 
-    /// <summary>"&amp;New marina"</summary>
+    /// <summary>"&amp;New"</summary>
     internal static string MenuNew => Get("MenuNew");
 
-    /// <summary>"&amp;Open design…"</summary>
+    /// <summary>"&amp;Open…"</summary>
     internal static string MenuOpen => Get("MenuOpen");
 
     /// <summary>"&amp;Save"</summary>
     internal static string MenuSave => Get("MenuSave");
 
-    /// <summary>"Save &amp;as…"</summary>
+    /// <summary>"Save &amp;As…"</summary>
     internal static string MenuSaveAs => Get("MenuSaveAs");
 
-    /// <summary>"&amp;Load reference image…"</summary>
+    /// <summary>"Reference &amp;Image…"</summary>
     internal static string MenuLoadImage => Get("MenuLoadImage");
 
     /// <summary>"E&amp;xit"</summary>
@@ -82,10 +82,10 @@ internal static class Strings
     /// <summary>"&amp;Undo"</summary>
     internal static string MenuUndo => Get("MenuUndo");
 
-    /// <summary>"&amp;Cancel what I am drawing"</summary>
+    /// <summary>"&amp;Cancel Drawing"</summary>
     internal static string MenuCancelDraft => Get("MenuCancelDraft");
 
-    /// <summary>"Marina &amp;name and description…"</summary>
+    /// <summary>"&amp;Properties…"</summary>
     internal static string MenuMarinaProperties => Get("MenuMarinaProperties");
 
     // ---- Menu: View ----------------------------------------------------------------------------------
@@ -93,16 +93,16 @@ internal static class Strings
     /// <summary>"&amp;View"</summary>
     internal static string MenuView => Get("MenuView");
 
-    /// <summary>"&amp;Top view, north up"</summary>
+    /// <summary>"&amp;Top View"</summary>
     internal static string MenuTopView => Get("MenuTopView");
 
-    /// <summary>"&amp;Fit the whole marina"</summary>
+    /// <summary>"&amp;Fit Marina"</summary>
     internal static string MenuFitMarina => Get("MenuFitMarina");
 
-    /// <summary>"Fit the reference &amp;image"</summary>
+    /// <summary>"Fit &amp;Image"</summary>
     internal static string MenuFitImage => Get("MenuFitImage");
 
-    /// <summary>"Show &amp;activity log"</summary>
+    /// <summary>"Activity &amp;Log"</summary>
     internal static string MenuShowLog => Get("MenuShowLog");
 
     // ---- Menu: Marina and Help -----------------------------------------------------------------------
@@ -110,16 +110,16 @@ internal static class Strings
     /// <summary>"&amp;Marina"</summary>
     internal static string MenuMarina => Get("MenuMarina");
 
-    /// <summary>"&amp;Water, light and motion…"</summary>
+    /// <summary>"&amp;Appearance…"</summary>
     internal static string MenuAppearance => Get("MenuAppearance");
 
-    /// <summary>"Berth &amp;labels"</summary>
+    /// <summary>"Berth &amp;Labels"</summary>
     internal static string MenuBerthLabels => Get("MenuBerthLabels");
 
     /// <summary>"&amp;Help"</summary>
     internal static string MenuHelp => Get("MenuHelp");
 
-    /// <summary>"&amp;Keyboard and mouse…"</summary>
+    /// <summary>"&amp;Shortcuts…"</summary>
     internal static string MenuShortcuts => Get("MenuShortcuts");
 
     /// <summary>"&amp;About"</summary>
@@ -136,13 +136,13 @@ internal static class Strings
     /// <summary>"Land"</summary>
     internal static string ToolLand => Get("ToolLand");
 
-    /// <summary>"Draw a quay, a lawn or a breakwater as a polygon"</summary>
+    /// <summary>"Draw a quay, a lawn or a breakwater"</summary>
     internal static string ToolLandTip => Get("ToolLandTip");
 
-    /// <summary>"Pier"</summary>
+    /// <summary>"Piers"</summary>
     internal static string ToolPier => Get("ToolPier");
 
-    /// <summary>"Draw a pier from the shore out"</summary>
+    /// <summary>"Draw a pier out from the shore"</summary>
     internal static string ToolPierTip => Get("ToolPierTip");
 
     /// <summary>"Berths"</summary>
@@ -154,7 +154,7 @@ internal static class Strings
     /// <summary>"Ashore"</summary>
     internal static string ToolAshore => Get("ToolAshore");
 
-    /// <summary>"Put a boat's storage spot on land"</summary>
+    /// <summary>"Place berths ashore, for boats kept out of the water"</summary>
     internal static string ToolAshoreTip => Get("ToolAshoreTip");
 
     /// <summary>"Trees"</summary>
@@ -181,19 +181,19 @@ internal static class Strings
     /// <summary>"Nothing to undo"</summary>
     internal static string NothingToUndo => Get("NothingToUndo");
 
-    /// <summary>"Top view"</summary>
+    /// <summary>"Top View"</summary>
     internal static string CommandTopView => Get("CommandTopView");
 
     /// <summary>"Look straight down with north up (Ctrl+T)"</summary>
     internal static string CommandTopViewTip => Get("CommandTopViewTip");
 
-    /// <summary>"Fit marina"</summary>
+    /// <summary>"Fit Marina"</summary>
     internal static string CommandFitMarina => Get("CommandFitMarina");
 
     /// <summary>"Frame the whole marina (Ctrl+F)"</summary>
     internal static string CommandFitMarinaTip => Get("CommandFitMarinaTip");
 
-    /// <summary>"Reference image…"</summary>
+    /// <summary>"Reference Image…"</summary>
     internal static string CommandReferenceImage => Get("CommandReferenceImage");
 
     /// <summary>"Trace a map or aerial photo to get the real shape and scale (Ctrl+I)"</summary>
@@ -316,7 +316,7 @@ internal static class Strings
     /// <summary>"About"</summary>
     internal static string AboutTitle => Get("AboutTitle");
 
-    /// <summary>"{0} {1}  Draw a marina to scale and save it as a .marina.json design. The host application lo..."</summary>
+    /// <summary>"{0} Version {1}  Library      VirtualMarina {2} Renderer     {3} Runtime      {4}  © {5} {6}"</summary>
     internal static string AboutBody => Get("AboutBody");
 
     // ---- Look panel ----------------------------------------------------------------------------------
@@ -734,10 +734,10 @@ internal static class Strings
     /// <summary>"Drag a box over the water to select the berths inside it"</summary>
     internal static string ToolSelectTip => Get("ToolSelectTip");
 
-    /// <summary>"Click a berth or a pier to give it another name"</summary>
+    /// <summary>"Rename a berth or a pier"</summary>
     internal static string ToolRenameTip => Get("ToolRenameTip");
 
-    /// <summary>"&amp;Rename a berth or pier"</summary>
+    /// <summary>"&amp;Rename"</summary>
     internal static string MenuRename => Get("MenuRename");
 
     /// <summary>"Renamed {0} to {1}"</summary>
@@ -781,7 +781,7 @@ internal static class Strings
     /// <summary>"Mainland from {0} points, {1}."</summary>
     internal static string CoastPresent => Get("CoastPresent");
 
-    /// <summary>"Draw the &amp;coast"</summary>
+    /// <summary>"Draw the &amp;Coast"</summary>
     internal static string MenuCoast => Get("MenuCoast");
 
     /// <summary>"Drew the mainland along {0} points"</summary>
@@ -928,18 +928,6 @@ internal static class Strings
 
     /// <summary>"Sun glints"</summary>
     internal static string SunGlints => Get("SunGlints");
-
-    /// <summary>"White crests"</summary>
-    internal static string Whitecaps => Get("Whitecaps");
-
-    /// <summary>"How strongly the waves break into white out at sea. They never reach the piers."</summary>
-    internal static string WhitecapsTip => Get("WhitecapsTip");
-
-    /// <summary>"Crests start at"</summary>
-    internal static string WhitecapDistance => Get("WhitecapDistance");
-
-    /// <summary>"How far from the middle of the marina the white crests begin."</summary>
-    internal static string WhitecapDistanceTip => Get("WhitecapDistanceTip");
 
     /// <summary>"{0} m"</summary>
     internal static string ValueMetersWhole => Get("ValueMetersWhole");
