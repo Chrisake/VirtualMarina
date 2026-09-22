@@ -254,11 +254,13 @@ public class GeometryAndCameraTests
 
         Assert.Equal(4, compass.Select(name => marina.CameraPresets.Single(p => p.Name == name).Pose.YawDegrees).Distinct().Count());
 
-        // And every one of them actually holds the marina, in a tall window and a wide one alike. The marina is the
-        // berths and the piers, not the box around everything: this layout has breakwaters running well past the
-        // last berth, and framing those leaves the berths small and off to one side.
+        // And every one of them holds the *whole* marina, in a tall window and a wide one alike: the berths, the
+        // piers, and every corner of every quay and breakwater. Framing a box around all of that is not the same
+        // thing — a marina that bends leaves the box corners out in open water, and centring those pushes the
+        // marina itself off to one side.
         var marinaPoints = marina.GetBerths().Select(berth => MarinaMath.ToWorld(berth.Center))
             .Concat(marina.GetPiers().SelectMany(pier => new[] { MarinaMath.ToWorld(pier.Start), MarinaMath.ToWorld(pier.End) }))
+            .Concat(marina.GetLandAreas().SelectMany(land => land.Points).Select(point => MarinaMath.ToWorld(point)))
             .ToArray();
 
         var views = compass.Concat(new[] { MarinaVisualizer.OverviewPresetName, MarinaVisualizer.TopDownPresetName }).ToArray();
@@ -276,9 +278,11 @@ public class GeometryAndCameraTests
                 Assert.InRange(seen.Max.X, 0f, width);
                 Assert.InRange(seen.Max.Y, 0f, height);
 
-                // Worth looking at: the marina fills the view rather than sitting small in the middle of it.
+                // Worth looking at: the marina fills the view rather than sitting small in the middle of it. A view
+                // across the long side of a marina in a narrow window cannot fill both directions, so this is the better
+                // of the two. Framing the box instead of the outline drops this to under 60% on a diagonal marina.
                 var fill = MathF.Max((seen.Max.X - seen.Min.X) / width, (seen.Max.Y - seen.Min.Y) / height);
-                Assert.True(fill > 0.6f, $"{name} fills only {fill:P0} of a {width}x{height} view");
+                Assert.True(fill > 0.75f, $"{name} fills only {fill:P0} of a {width}x{height} view");
 
                 // And it is roughly in the middle, not pushed into a corner.
                 var offset = ((seen.Min + seen.Max) * 0.5f) - new Vector2(width * 0.5f, height * 0.5f);

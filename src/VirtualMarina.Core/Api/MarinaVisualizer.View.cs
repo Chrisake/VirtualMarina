@@ -389,13 +389,15 @@ public sealed partial class MarinaVisualizer
         MathF.Max(40f, extent * 0.5f / MathF.Tan(Camera.FieldOfViewDegrees * MarinaMath.DegToRad * 0.5f) * 1.15f);
 
     /// <summary>
-    /// How far back a view has to stand for the whole of <paramref name="plan"/> to be in frame from a given angle.
+    /// How far back a view has to stand, and where it has to aim, for all of <paramref name="corners"/> to be in
+    /// frame from a given angle.
     /// </summary>
     /// <remarks>
-    /// Worked out from the projection rather than from the plan extent: which way round the marina sits depends on
-    /// the yaw, how much of its depth survives on the pitch, and how much room there is sideways on the shape of the
-    /// window. Foreshortening cannot be approximated either — at a low angle the near edge is much closer than the
-    /// middle and projects far larger — so the answer is found by halving the range until the corners fit.
+    /// Worked out from the projection rather than from the extent on the plan: which way round the marina sits
+    /// depends on the yaw, how much of its depth survives on the pitch, and how much room there is sideways on the
+    /// shape of the window. Foreshortening cannot be approximated either — at a low angle the near edge is much
+    /// closer than the middle and projects far larger — so the answer is found by halving the range until the
+    /// corners fit.
     /// </remarks>
     /// <param name="corners">World points the view has to hold, usually the outline of the marina.</param>
     /// <param name="center">The middle of the marina, where the search starts from.</param>
@@ -509,30 +511,27 @@ public sealed partial class MarinaVisualizer
             .Concat(OrderedDividers().Select(d => d.Bounds))
             .ToArray();
 
-        // Everything there is, for panning, the water grid and the far plane.
         var (min, max) = MarinaLayout.ComputeBounds(structures, OrderedLandAreas());
 
-        // What the automatic views actually frame: the piers, berths and separators, without the land. A
-        // breakwater or the quay behind the marina can run hundreds of meters past the last berth, and framing
-        // those leaves the marina itself small and off to one side of the picture. A layout that is nothing but
-        // land has to fall back to it, or there would be nothing to look at.
-        var (frameMin, frameMax) = structures.Length > 0
-            ? MarinaLayout.ComputeBounds(structures)
-            : (min, max);
+        // What the automatic views frame: the whole marina, quays and breakwaters included, as its actual outline
+        // rather than the box around it. A box drawn round a marina that bends has corners standing in open water,
+        // and centring those leaves everything pushed off to one side of the picture.
+        var shape = structures.SelectMany(rect => rect.GetCorners())
+            .Concat(OrderedLandAreas().SelectMany(land => land.Points));
 
-        // The outline of the marina rather than the box around it. A box drawn round an L-shaped marina has two
-        // corners standing in open water, and centring those leaves the berths off to one side of the picture.
-        var frame = structures.Length > 0
-            ? Outline(structures.SelectMany(rect => rect.GetCorners()))
-            : new[]
+        var frame = Outline(shape);
+        if (frame.Count < 3)
+        {
+            frame = new[]
             {
-                MarinaMath.ToWorld(frameMin),
-                MarinaMath.ToWorld(new Vector2(frameMax.X, frameMin.Y)),
-                MarinaMath.ToWorld(frameMax),
-                MarinaMath.ToWorld(new Vector2(frameMin.X, frameMax.Y)),
+                MarinaMath.ToWorld(min),
+                MarinaMath.ToWorld(new Vector2(max.X, min.Y)),
+                MarinaMath.ToWorld(max),
+                MarinaMath.ToWorld(new Vector2(min.X, max.Y)),
             };
+        }
 
-        var center = MarinaMath.ToWorld((frameMin + frameMax) * 0.5f);
+        var center = MarinaMath.ToWorld((min + max) * 0.5f);
         var extent = MathF.Max(max.X - min.X, max.Y - min.Y);
         var fit = FitDistance(extent);
 
