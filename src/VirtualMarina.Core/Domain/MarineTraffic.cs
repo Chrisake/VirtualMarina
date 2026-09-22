@@ -7,12 +7,12 @@ namespace VirtualMarina.Core.Domain;
 /// <param name="Type">What kind of vessel it is.</param>
 /// <param name="Position">Where it is, in plan coordinates.</param>
 /// <param name="HeadingDegrees">Which way its bow points, in the usual compass sense.</param>
-/// <param name="Opacity">0–1. Vessels fade in at the start of their lane and out at the end.</param>
+/// <param name="Opacity">0–1. Vessels fade in at the start of the path and out at the end.</param>
 public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, float HeadingDegrees, float Opacity);
 
 /// <summary>
-/// Passing traffic out at sea: vessels running along straight lanes across the map, well clear of the marina and the
-/// land, fading in at one end of their lane and out at the other.
+/// Passing traffic out at sea: vessels running along one line that follows the coast past the marina, fading in far
+/// out at one end of it and away again at the other.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -20,10 +20,14 @@ public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, flo
 /// <see cref="Seed"/> rather than stored, so turning it up costs nothing in the file.
 /// </para>
 /// <para>
-/// <b>Where the lanes go.</b> A lane is a straight line across the map. It is only kept when every part of it stays
-/// <see cref="Clearance"/> meters away from the marina, from every land area, and from the mainland behind the shore,
-/// so nothing ever appears to sail over a quay or through the piers. Raising <see cref="Clearance"/> pushes the
-/// traffic further out; raising it past what the map allows simply leaves fewer lanes.
+/// <b>Where the path goes.</b> It is the shoreline pushed out to sea: each end runs alongside one of the shoreline's
+/// endless segments and the middle curves between them, so the shipping reads as following the coast rather than
+/// cutting across it. With no shoreline behind the marina the path is a straight line instead.
+/// </para>
+/// <para>
+/// <b>How near it comes.</b> <see cref="Clearance"/> is the closest the path gets to the middle of the marina, in
+/// meters, so the setting means the same thing whatever size the marina is. A path that would cross a land area is
+/// pushed further out until it does not, which is the only case where it ends up further away than asked.
 /// </para>
 /// </remarks>
 /// <example>
@@ -67,8 +71,9 @@ public sealed record MarineTraffic
     public int MaximumVessels { get; init; } = 24;
 
     /// <summary>
-    /// How far a lane must stay from the marina and from any land, in meters (default 300). Nothing is drawn closer
-    /// than this, so the traffic never crosses a quay, a breakwater or the piers.
+    /// How near the middle of the marina the traffic passes, in meters (default 300): the closest approach of the
+    /// path, not a margin added to the size of the marina. Lower it to bring the shipping into view, raise it to put
+    /// it out towards the horizon.
     /// </summary>
     public float Clearance { get; init; } = 300f;
 
@@ -76,13 +81,13 @@ public sealed record MarineTraffic
     public float SpeedKnots { get; init; } = 8f;
 
     /// <summary>
-    /// Half the length of a lane, in meters (default 6000): how far out a vessel starts and where it finally fades
-    /// away. It is deliberately far beyond the detailed water, so vessels appear and disappear out of sight rather
-    /// than popping into view at the edge of the waves.
+    /// How far the two ends of the path run on past the coast, in meters (default 6000): where a vessel starts and
+    /// where it finally fades away. It is deliberately far beyond the detailed water, so vessels appear and disappear
+    /// out of sight rather than popping into view at the edge of the waves.
     /// </summary>
     public float Reach { get; init; } = 6000f;
 
-    /// <summary>Keeps the lanes and the vessels on them the same between sessions. Any number will do.</summary>
+    /// <summary>Keeps the vessels on the path the same between sessions. Any number will do.</summary>
     public int Seed { get; init; } = 1;
 
     /// <summary>
@@ -122,7 +127,7 @@ public sealed record MarineTraffic
         if (!float.IsFinite(Reach) || Reach <= 0f) yield return "Marine traffic reach must be a positive distance.";
         if (float.IsFinite(Reach) && float.IsFinite(Clearance) && Reach <= Clearance)
         {
-            yield return "Marine traffic reach must be further out than its clearance, or no lane fits.";
+            yield return "Marine traffic reach must be further out than its clearance, or no path fits.";
         }
 
         foreach (var vessel in Vessels.Where(vessel => !Enum.IsDefined(vessel)).Distinct())

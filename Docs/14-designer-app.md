@@ -37,9 +37,11 @@ Two of its cards are about what surrounds the marina rather than the marina itse
 
 - **The mainland**, drawn with the **Coast** tool, takes its colours from the land card, including the walls and roofs
   of a town behind the shore.
-- **Passing traffic** puts vessels out in the bay: tick *Vessels out at sea*, then set how busy it is, how far the
-  lanes keep clear of the marina and the land, and how fast they go. The card says how many lanes found room out
-  there, and tells you when the clearance leaves none.
+- **Passing traffic** puts vessels out in the bay, on one path that follows the coast past the marina: tick *Vessels
+  out at sea*, then set how busy it is, how near the marina it passes and how fast they go. *Keep clear by* is the
+  distance from the middle of the marina, and the card says where the path actually ended up — a little further out
+  when a quay is in the way. Tick *Show the path* to draw the line on the water while setting it; that is a working
+  aid and is not saved with the design.
 
 **Add preview boats** fills empty berths with a random mix so the colours and the water can be judged against a full
 marina. Those boats are not saved with the design.

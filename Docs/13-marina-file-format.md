@@ -107,16 +107,19 @@ stays small however much of it there is.
 `marineTraffic` is the shipping out at sea, and it is optional in the same way: a file without it is an empty sea, and
 it is only written once the traffic has been switched on.
 
-Only the settings are stored. The lanes, the vessels on them and where each one started are worked out from `seed`
-when the file is loaded, so a busy sea costs no more to store than an empty one and looks the same every time it is
-opened.
+Only the settings are stored. The path, the vessels on it and where each one started are worked out from `seed` and
+from the shoreline when the file is loaded, so a busy sea costs no more to store than an empty one and looks the same
+every time it is opened. Nothing about the path itself is written, so moving the coast moves the shipping with it.
 
-`clearance` is the distance in meters a lane has to keep from the marina, from every land area and from the mainland.
-It is the setting that guarantees nothing ever appears to sail over a quay. Asking for more clearance than the open
-water allows leaves fewer lanes, or none — never a lane that cuts a corner.
+`clearance` is how near the middle of the marina the path comes, in meters. A path that would cross a land area is
+pushed further out until it does not, so nothing ever appears to sail over a quay — that is the only thing that puts
+the traffic further out than `clearance` asks.
 
-`reach` is how far out a lane runs before its vessels fade away. It is capped on load by however much water the grid
-actually covers, since a vessel past the edge of the water would be sailing on nothing.
+`reach` is how far each end of the path runs on past the coast before its vessels fade away. It is capped on load by
+however much water the grid actually covers, since a vessel past the edge of the water would be sailing on nothing.
+
+Whether the path is *drawn* is not stored: it is a working aid for setting the clearance, and a reloaded design always
+has it off.
 
 The vessels are decoration: they are not berths, they cannot be clicked, and they never appear in `berths`.
 

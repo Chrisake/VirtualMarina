@@ -873,7 +873,7 @@ Runtime      {4}
     <value>Keep clear by</value>
   </data>
   <data name="TrafficClearanceTip">
-    <value>How far the lanes must stay from the marina and from any land. Raise it to push the traffic out to the horizon.</value>
+    <value>How near the middle of the marina the shipping passes. Turn the path on below to see where it runs.</value>
   </data>
   <data name="TrafficSpeed">
     <value>Speed</value>
@@ -881,15 +881,21 @@ Runtime      {4}
   <data name="TrafficSpeedTip">
     <value>How fast the vessels cross, in knots.</value>
   </data>
-  <data name="TrafficLanes">
-    <value>{0} lane(s) found room out there.</value>
-    <comment>{0} = how many shipping lanes fit.</comment>
+  <data name="TrafficPasses">
+    <value>The path passes {0} m from the middle of the marina.</value>
+    <comment>{0} = closest approach in whole meters.</comment>
   </data>
   <data name="TrafficNoRoom">
-    <value>No room for a lane: lower the clearance, or widen the water.</value>
+    <value>No path could be found: lower the clearance, or widen the water.</value>
   </data>
   <data name="TrafficHint">
-    <value>Lanes never cross the marina or the land, and vessels fade away at the edge of the map.</value>
+    <value>One path follows the coast past the marina. Vessels fade in and away far out to sea.</value>
+  </data>
+  <data name="TrafficShowPath">
+    <value>Show the path</value>
+  </data>
+  <data name="TrafficShowPathTip">
+    <value>Draws the line the shipping follows, so the clearance can be set by eye. It is not saved with the design.</value>
   </data>
   <data name="ValueKnots">
     <value>{0} kn</value>

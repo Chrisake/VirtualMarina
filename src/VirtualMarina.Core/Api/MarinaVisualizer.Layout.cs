@@ -492,10 +492,22 @@ public sealed partial class MarinaVisualizer
 
     /// <inheritdoc/>
     public IReadOnlyList<TrafficVessel> GetTrafficVessels() =>
-        MarineTrafficPlanner.Place(_trafficLanes, _traffic, _time).ToArray();
+        MarineTrafficPlanner.Place(_trafficPath, _traffic, _time).ToArray();
 
     /// <inheritdoc/>
-    public int TrafficLaneCount => _trafficLanes.Count;
+    public TrafficPath? TrafficPath => _trafficPath;
+
+    /// <inheritdoc/>
+    public bool ShowTrafficPath
+    {
+        get => _showTrafficPath;
+        set
+        {
+            if (_showTrafficPath == value) return;
+            _showTrafficPath = value;
+            MarkSceneDirty();
+        }
+    }
 
     /// <inheritdoc/>
     public object[] ExportObjects() => GetLayout().ToObjects();
@@ -721,7 +733,7 @@ public sealed partial class MarinaVisualizer
         _landOrder.Clear();
         _shoreline = null;
         _traffic = MarineTraffic.None;
-        _trafficLanes = Array.Empty<TrafficLane>();
+        _trafficPath = null;
         _selection.Clear();
         _hoveredBerthId = null;
         _popupRefreshPending = false;

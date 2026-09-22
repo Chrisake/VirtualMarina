@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.Numerics;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
@@ -48,7 +49,7 @@ internal sealed class AppearancePanel : UserControl
     private readonly TrackBar _fill = new() { Minimum = 0, Maximum = 100, Value = 60 };
     private readonly Label _fillValue = new();
     private readonly Random _random = new();
-    private Label? _trafficLanes;
+    private Label? _trafficPath;
 
     /// <summary>One per control: puts the value the marina holds back into it. Run by <see cref="Sync"/>.</summary>
     private readonly List<Action> _refresh = new();
@@ -293,7 +294,7 @@ internal sealed class AppearancePanel : UserControl
     private Panel BuildTrafficCard()
     {
         var card = Theme.Card(Strings.CardTraffic, out var table);
-        var lanes = Theme.Hint(string.Empty);
+        var where = Theme.Hint(string.Empty);
 
         Check(table, Strings.TrafficShow, () => Traffic.IsEnabled, v => SetTraffic(t => t with { IsEnabled = v }), Strings.TrafficShowTip);
 
@@ -306,12 +307,14 @@ internal sealed class AppearancePanel : UserControl
         Percent(table, Strings.TrafficSpeed, 1, 30, () => Traffic.SpeedKnots,
             v => SetTraffic(t => t with { SpeedKnots = v }), MarineTraffic.None.SpeedKnots, v => Strings.Format(Strings.ValueKnots, v), Strings.TrafficSpeedTip);
 
-        Theme.FullRow(table, Theme.Hint(Strings.TrafficHint));
-        Theme.FullRow(table, lanes);
+        Check(table, Strings.TrafficShowPath, () => _marina.ShowTrafficPath, v => Changed(() => _marina.ShowTrafficPath = v), Strings.TrafficShowPathTip);
 
-        // The lane count only settles once the lanes have been planned, so it is refreshed after every change.
-        _trafficLanes = lanes;
-        UpdateTrafficLanes();
+        Theme.FullRow(table, Theme.Hint(Strings.TrafficHint));
+        Theme.FullRow(table, where);
+
+        // Where the path ended up is only known once it has been planned, so it is refreshed after every change.
+        _trafficPath = where;
+        UpdateTrafficPath();
         return card;
     }
 
@@ -319,15 +322,25 @@ internal sealed class AppearancePanel : UserControl
     private void SetTraffic(Func<MarineTraffic, MarineTraffic> change)
     {
         Changed(() => _marina.SetMarineTraffic(change(_marina.MarineTraffic)));
-        UpdateTrafficLanes();
+        UpdateTrafficPath();
     }
 
-    private void UpdateTrafficLanes()
+    /// <summary>Says how near the planned path actually comes, which is what the clearance slider is really setting.</summary>
+    private void UpdateTrafficPath()
     {
-        if (_trafficLanes is null) return;
-        _trafficLanes.Text = !Traffic.IsEnabled ? string.Empty
-            : _marina.TrafficLaneCount == 0 ? Strings.TrafficNoRoom
-            : Strings.Format(Strings.TrafficLanes, _marina.TrafficLaneCount);
+        if (_trafficPath is null) return;
+
+        var center = Center();
+        _trafficPath.Text = !Traffic.IsEnabled ? string.Empty
+            : _marina.TrafficPath is not { } path ? Strings.TrafficNoRoom
+            : Strings.Format(Strings.TrafficPasses, (int)MathF.Round(path.DistanceTo(center)));
+    }
+
+    /// <summary>The middle of the marina in plan coordinates, which the traffic's clearance is measured from.</summary>
+    private Vector2 Center()
+    {
+        var (min, max) = _marina.GetLayout().ComputeBounds();
+        return (min + max) * 0.5f;
     }
 
     private Panel BuildLabelCard()
@@ -500,7 +513,7 @@ internal sealed class AppearancePanel : UserControl
         try
         {
             foreach (var refresh in _refresh) refresh();
-            UpdateTrafficLanes();
+            UpdateTrafficPath();
         }
         finally
         {

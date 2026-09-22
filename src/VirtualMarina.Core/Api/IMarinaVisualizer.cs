@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Domain;
+using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Picking;
 using VirtualMarina.Core.Rendering;
 
@@ -367,10 +368,16 @@ public interface IMarinaVisualizer
     IReadOnlyList<TrafficVessel> GetTrafficVessels();
 
     /// <summary>
-    /// How many lanes the traffic actually found room for. Fewer than asked for means the clearance left little open
-    /// water; zero means the traffic cannot be drawn at all.
+    /// The line the traffic runs along, or null when there is none — the traffic is off, or its settings are unsound.
+    /// Useful for showing where the shipping will pass while the settings are being adjusted.
     /// </summary>
-    int TrafficLaneCount { get; }
+    TrafficPath? TrafficPath { get; }
+
+    /// <summary>
+    /// Draws the traffic's path on the water, so it can be seen where the shipping will pass while the clearance is
+    /// being set. Default false. It is a working aid and is not saved with the design.
+    /// </summary>
+    bool ShowTrafficPath { get; set; }
 
     /// <summary>Berths with a given status.</summary>
     IReadOnlyList<Berth> GetBerthsByStatus(BerthStatus status);

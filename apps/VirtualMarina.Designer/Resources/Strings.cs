@@ -811,7 +811,11 @@ internal static class Strings
     internal static string TrafficSpeedTip => Get("TrafficSpeedTip");
 
     /// <summary>"{0} lane(s) found room out there."</summary>
-    internal static string TrafficLanes => Get("TrafficLanes");
+    internal static string TrafficPasses => Get("TrafficPasses");
+
+    internal static string TrafficShowPath => Get("TrafficShowPath");
+
+    internal static string TrafficShowPathTip => Get("TrafficShowPathTip");
 
     /// <summary>"No room for a lane: lower the clearance, or widen the water."</summary>
     internal static string TrafficNoRoom => Get("TrafficNoRoom");

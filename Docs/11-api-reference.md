@@ -9,7 +9,7 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
 - **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MarineTraffic](#marinetraffic), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TrafficVessel](#trafficvessel), [TreeShape](#treeshape)
-- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [ShadowProjection](#shadowprojection), [TrafficLane](#trafficlane)
+- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [ShadowProjection](#shadowprojection), [TrafficPath](#trafficpath)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [BerthHit](#berthhit), [Ray](#ray)
@@ -446,7 +446,8 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `MarinaDesigner Designer { get; }` | The layout designer: draw land areas, piers and berths in the view and trace a calibrated reference image (see `MarinaDesigner`). Off until `MarinaDesigner.IsActive` is set. |
 | `Shoreline? Shoreline { get; }` | The mainland behind the marina, or null when the marina stands in open water. Set it with `IMarinaVisualizer.SetShoreline`. |
 | `MarineTraffic MarineTraffic { get; }` | The passing traffic out at sea. `MarineTraffic.None` until it is switched on with `IMarinaVisualizer.SetMarineTraffic`. |
-| `int TrafficLaneCount { get; }` | How many lanes the traffic actually found room for. Fewer than asked for means the clearance left little open water; zero means the traffic cannot be drawn at all. |
+| `TrafficPath? TrafficPath { get; }` | The line the traffic runs along, or null when there is none — the traffic is off, or its settings are unsound. Useful for showing where the shipping will pass while the settings are being adjusted. |
+| `bool ShowTrafficPath { get; set; }` | Draws the traffic's path on the water, so it can be seen where the shipping will pass while the clearance is being set. Default false. It is a working aid and is not saved with the design. |
 | `Berth? SelectedBerth { get; }` | The primary (most recently clicked or last listed) selected berth, or null. |
 | `IReadOnlyList<Berth> SelectedBerths { get; }` | All selected berths in selection order; the last one is `IMarinaVisualizer.SelectedBerth`. |
 | `Berth? HoveredBerth { get; }` | The berth under the pointer, or null. |
@@ -674,7 +675,8 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `Vector2 ViewportSize { get; }` | View size in pointer units (usually pixels), as last set with `MarinaVisualizer.SetViewportSize`. Defaults to 1280 × 720. |
 | `Shoreline? Shoreline { get; }` | *(See the interface member.)* |
 | `MarineTraffic MarineTraffic { get; }` | *(See the interface member.)* |
-| `int TrafficLaneCount { get; }` | *(See the interface member.)* |
+| `TrafficPath? TrafficPath { get; }` | *(See the interface member.)* |
+| `bool ShowTrafficPath { get; set; }` | *(See the interface member.)* |
 | `bool TooltipsEnabled { get; set; }` | Show a tooltip above the selection on left-click (default true). |
 | `bool ActionsEnabled { get; set; }` | Show the actions window on right-click (default true). |
 | `bool MultiSelectEnabled { get; set; }` | Allow Ctrl+click or Shift+click to build a multi-selection (default true). |
@@ -708,6 +710,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `void AddLandArea(LandArea landArea)` | *(See the interface member.)* |
 | `void AddPier(Pier pier)` | *(See the interface member.)* |
 | `bool AddToSelection(string berthId)` | Adds a berth to the selection (making it primary). Returns false when it can't be selected. |
+| `bool ApplyBuiltInCameraPreset(string presetName, bool immediate = false)` | Moves the camera to one of the views worked out from the layout, by name, ignoring any saved view that happens to share the name. Returns false when there is no automatic view called this. |
 | `bool ApplyCameraPreset(string presetName, bool immediate = false)` | *(See the interface member.)* |
 | `void ApplyCameraPreset(CameraPreset preset, bool immediate = false)` | *(See the interface member.)* |
 | `Berth AssignBoat(string berthId, Boat boat)` | *(See the interface member.)* |
@@ -1832,9 +1835,9 @@ Thrown when a layout, pier or berth definition is invalid.
 
 `sealed record MarineTraffic`
 
-Passing traffic out at sea: vessels running along straight lanes across the map, well clear of the marina and the land, fading in at one end of their lane and out at the other.
+Passing traffic out at sea: vessels running along one line that follows the coast past the marina, fading in far out at one end of it and away again at the other.
 
-It is decoration, not layout: the vessels are not berths, cannot be clicked, and are worked out from `MarineTraffic.Seed` rather than stored, so turning it up costs nothing in the file. Where the lanes go. A lane is a straight line across the map. It is only kept when every part of it stays `MarineTraffic.Clearance` meters away from the marina, from every land area, and from the mainland behind the shore, so nothing ever appears to sail over a quay or through the piers. Raising `MarineTraffic.Clearance` pushes the traffic further out; raising it past what the map allows simply leaves fewer lanes.
+It is decoration, not layout: the vessels are not berths, cannot be clicked, and are worked out from `MarineTraffic.Seed` rather than stored, so turning it up costs nothing in the file. Where the path goes. It is the shoreline pushed out to sea: each end runs alongside one of the shoreline's endless segments and the middle curves between them, so the shipping reads as following the coast rather than cutting across it. With no shoreline behind the marina the path is a straight line instead. How near it comes. `MarineTraffic.Clearance` is the closest the path gets to the middle of the marina, in meters, so the setting means the same thing whatever size the marina is. A path that would cross a land area is pushed further out until it does not, which is the only case where it ends up further away than asked.
 
 | Member | Description |
 |---|---|
@@ -1845,10 +1848,10 @@ It is decoration, not layout: the vessels are not berths, cannot be clicked, and
 | `bool IsEnabled { get; init; }` | Draw the traffic. Default false, so a marina is in empty sea until it is asked for. |
 | `float Intensity { get; init; }` | How busy the sea is, 0–1 (default 0.5). Scales the number of vessels up to `MarineTraffic.MaximumVessels`. |
 | `int MaximumVessels { get; init; }` | The most vessels on the water at once, 1–`MarineTraffic.VesselLimit` (default 24). `MarineTraffic.Intensity` is a fraction of this, so raising it makes a busy sea busier without touching the setting that says how busy. |
-| `float Clearance { get; init; }` | How far a lane must stay from the marina and from any land, in meters (default 300). Nothing is drawn closer than this, so the traffic never crosses a quay, a breakwater or the piers. |
+| `float Clearance { get; init; }` | How near the middle of the marina the traffic passes, in meters (default 300): the closest approach of the path, not a margin added to the size of the marina. Lower it to bring the shipping into view, raise it to put it out towards the horizon. |
 | `float SpeedKnots { get; init; }` | How fast the vessels go, in knots (default 8). They are meant to drift slowly across the view. |
-| `float Reach { get; init; }` | Half the length of a lane, in meters (default 6000): how far out a vessel starts and where it finally fades away. It is deliberately far beyond the detailed water, so vessels appear and disappear out of sight rather than popping into view at the edge of the waves. |
-| `int Seed { get; init; }` | Keeps the lanes and the vessels on them the same between sessions. Any number will do. |
+| `float Reach { get; init; }` | How far the two ends of the path run on past the coast, in meters (default 6000): where a vessel starts and where it finally fades away. It is deliberately far beyond the detailed water, so vessels appear and disappear out of sight rather than popping into view at the edge of the waves. |
+| `int Seed { get; init; }` | Keeps the vessels on the path the same between sessions. Any number will do. |
 | `IReadOnlyList<BoatType> Vessels { get; init; }` | The kinds of vessel out there, drawn from at random. Repeat a type to make it more common. Empty means `MarineTraffic.DefaultVessels`. |
 | `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes the host application attaches to the traffic. Saved with the design. |
 | `int VesselCount { get; }` | How many vessels this asks for; 0 when it is switched off. |
@@ -2051,7 +2054,7 @@ One vessel of the passing traffic, where it is at a moment in time.
 | `BoatType Type { get; init; }` | What kind of vessel it is. |
 | `Vector2 Position { get; init; }` | Where it is, in plan coordinates. |
 | `float HeadingDegrees { get; init; }` | Which way its bow points, in the usual compass sense. |
-| `float Opacity { get; init; }` | 0–1. Vessels fade in at the start of their lane and out at the end. |
+| `float Opacity { get; init; }` | 0–1. Vessels fade in at the start of the path and out at the end. |
 
 <a id="treeshape"></a>
 ### TreeShape
@@ -2179,15 +2182,14 @@ Procedural meshes for marina infrastructure, markers and the water surface.
 
 `static class MarineTrafficPlanner`
 
-Lays out the lanes the passing traffic runs along, and says where each vessel is at a given moment.
+Works out the one path the passing traffic follows, and says where each vessel on it is at a given moment.
 
-A lane is a straight line across the map. Lanes are tried at random from the traffic's seed and kept only when the whole line stays `MarineTraffic.Clearance` away from the marina, from every land area, and from the mainland behind the shore — so a vessel can never appear to sail over a quay or through the piers. Planning is done once, when the traffic or the layout changes; `MarineTrafficPlanner.Place` is then called on every frame and only walks the vessels along lanes that are already known to be clear.
+The path follows the coast rather than cutting across the map at some angle of its own: it is the shoreline pushed out to sea, so each end runs alongside one of the shoreline's endless segments and the middle curves between them. A marina with no shoreline behind it has nothing to be parallel to, and gets a straight path instead. How far out it is pushed is set by `MarineTraffic.Clearance`, which is the path's closest approach to the middle of the marina. That is what makes the setting mean something on its own: 300 meters puts the shipping 300 meters off, whatever size the marina is. Planning is done once, when the traffic or the layout changes; `MarineTrafficPlanner.Place` is then called on every frame and only walks the vessels along a path that is already known.
 
 | Member | Description |
 |---|---|
-| `static IEnumerable<TrafficVessel> Place(IReadOnlyList<TrafficLane> lanes, MarineTraffic traffic, double seconds)` | Where every vessel is at a moment in time. Cheap enough to call on every frame: it is a walk along lines that were already checked when they were planned. |
-| `static IReadOnlyList<TrafficLane> Plan(MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<LandArea> land, Shoreline? shoreline)` | Works out the lanes and the vessels on them. The result is fixed for a given traffic setting and layout, so it is planned once and then only walked forward in time. |
-| `static IReadOnlyList<TrafficLane> Plan(MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<LandArea> land, Shoreline? shoreline, float passWithin)` | Works out the lanes and the vessels on them, keeping every lane within sight of the marina. |
+| `static IEnumerable<TrafficVessel> Place(TrafficPath? path, MarineTraffic traffic, double seconds)` | Where every vessel is at a moment in time. Cheap enough to call on every frame: it is a walk along a line that was worked out once. |
+| `static TrafficPath? Plan(MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<LandArea> land, Shoreline? shoreline)` | Works out the path and the vessels on it. The result is fixed for a given traffic setting and layout, so it is planned once and then only walked forward in time. |
 
 <a id="meshbuilder"></a>
 ### MeshBuilder
@@ -2296,22 +2298,21 @@ A marina is almost all flat ground: water at nought, quays and yards a meter or 
 | `static bool CanCast(Vector3 sunDirection)` | True when the sun is high enough for a shadow to be worth drawing. |
 | `static Matrix4x4 OntoPlane(Vector3 sunDirection, float planeHeight)` | The transform that drops a point straight down the sun's rays onto a horizontal plane. |
 
-<a id="trafficlane"></a>
-### TrafficLane
+<a id="trafficpath"></a>
+### TrafficPath
 
-`sealed class TrafficLane`
+`sealed class TrafficPath`
 
-One straight lane of passing traffic, and the vessels running along it.
+The one line the passing traffic follows, and the vessels running along it.
 
 | Member | Description |
 |---|---|
-| `TrafficLane(Vector2 start, Vector2 end)` | Creates a lane between two points in plan coordinates. |
-| `Vector2 Start { get; }` | Where the lane begins, in plan coordinates. |
-| `Vector2 End { get; }` | Where the lane ends. |
-| `Vector2 Direction { get; }` | Unit direction from `TrafficLane.Start` to `TrafficLane.End`. |
-| `float Length { get; }` | How long the lane is, in meters. |
-| `int VesselCount { get; }` | How many vessels run along this lane. |
-| `float DistanceTo(Vector2 point)` | Signed distance from a point to the infinite line the lane lies on, in meters. |
+| `TrafficPath(IEnumerable<Vector2> points)` | Creates a path through a line of points in plan coordinates. |
+| `IReadOnlyList<Vector2> Points { get; }` | The points the path runs through, in order, in plan coordinates. |
+| `float Length { get; }` | How long the path is, in meters. |
+| `int VesselCount { get; }` | How many vessels run along it. |
+| `ValueTuple<Vector2, Vector2> At(float along)` | Where the path is a fraction of the way along it, and which way it is heading there. |
+| `float DistanceTo(Vector2 point)` | How near the path comes to a point, in meters. |
 
 ## VirtualMarina.Core.Input
 

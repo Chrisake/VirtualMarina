@@ -173,7 +173,7 @@ internal sealed class MainForm : Form
         edit.DropDownItems.Add(Menu(Strings.MenuMarinaProperties, Keys.None, EditMarinaProperties));
 
         var view = new ToolStripMenuItem(Strings.MenuView);
-        view.DropDownItems.Add(Menu(Strings.MenuTopView, Keys.Control | Keys.T, () => Designer.ViewTopDown()));
+        view.DropDownItems.Add(Menu(Strings.MenuTopView, Keys.Control | Keys.T, ViewTopDown));
         view.DropDownItems.Add(Menu(Strings.MenuFitMarina, Keys.Control | Keys.F, () => Marina.ResetCamera()));
         view.DropDownItems.Add(Menu(Strings.MenuFitImage, Keys.None, () => Designer.FocusReferenceImage()));
         view.DropDownItems.Add(new ToolStripSeparator());
@@ -256,7 +256,7 @@ internal sealed class MainForm : Form
 
         // Undo is not here on purpose: Ctrl+Z and Edit ▸ Undo are where people look for it.
         _toolbar.Items.Add(new ToolStripSeparator());
-        _toolbar.Items.Add(Command(Strings.CommandTopView, Strings.CommandTopViewTip, () => Designer.ViewTopDown()));
+        _toolbar.Items.Add(Command(Strings.CommandTopView, Strings.CommandTopViewTip, ViewTopDown));
         _toolbar.Items.Add(Command(Strings.CommandFitMarina, Strings.CommandFitMarinaTip, () => Marina.ResetCamera()));
     }
 
@@ -594,6 +594,15 @@ internal sealed class MainForm : Form
     }
 
     private bool _updatingSidePanel;
+
+    /// <summary>
+    /// Straight down on the whole marina. The automatic view knows how far back that has to be; the designer's own
+    /// top-down only turns the camera and leaves it wherever it was.
+    /// </summary>
+    private void ViewTopDown()
+    {
+        if (!Marina.ApplyBuiltInCameraPreset(MarinaVisualizer.TopDownPresetName)) Designer.ViewTopDown();
+    }
 
     private void ToggleLabels()
     {

@@ -3,6 +3,7 @@ using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
+using VirtualMarina.Core.Mathematics;
 using VirtualMarina.Core.Rendering;
 using VirtualMarina.Core.Serialization;
 using VirtualMarina.SampleData;
@@ -153,20 +154,37 @@ public class GeometryAndCameraTests
         // One per pier, on top of those.
         foreach (var pier in marina.GetPiers()) Assert.Contains($"Pier: {pier.Name}", builtIn);
 
-        // Every compass view looks at the middle of the marina from far enough back to hold it.
+        // They really do come from four different sides, all looking at the middle of the marina.
         var overview = marina.CameraPresets.Single(preset => preset.Name == MarinaVisualizer.OverviewPresetName);
-        foreach (var name in new[] { "North", "East", "South", "West" })
-        {
-            var preset = marina.CameraPresets.Single(p => p.Name == name);
-            Assert.Equal(overview.Pose.Target, preset.Pose.Target);
-            Assert.Equal(overview.Pose.Distance, preset.Pose.Distance, 1);
-        }
+        var compass = new[] { "North", "East", "South", "West" };
+        Assert.All(compass, name => Assert.Equal(overview.Pose.Target, marina.CameraPresets.Single(p => p.Name == name).Pose.Target));
+        Assert.Equal(4, compass.Select(name => marina.CameraPresets.Single(p => p.Name == name).Pose.YawDegrees).Distinct().Count());
 
-        // They really do come from four different sides.
-        var yaws = new[] { "North", "East", "South", "West" }
-            .Select(name => marina.CameraPresets.Single(p => p.Name == name).Pose.YawDegrees)
-            .ToList();
-        Assert.Equal(4, yaws.Distinct().Count());
+        // And every one of them actually holds the marina, in a tall window and a wide one alike. Each works out its
+        // own distance: a view along the marina needs less room than one across it.
+        var (min, max) = marina.GetLayout().ComputeBounds();
+        var corners = new[]
+        {
+            MarinaMath.ToWorld(min),
+            MarinaMath.ToWorld(new Vector2(max.X, min.Y)),
+            MarinaMath.ToWorld(max),
+            MarinaMath.ToWorld(new Vector2(min.X, max.Y)),
+        };
+
+        foreach (var (width, height) in new[] { (1080f, 800f), (700f, 900f), (1900f, 600f) })
+        {
+            marina.SetViewportSize(width, height);
+            foreach (var name in compass.Concat(new[] { MarinaVisualizer.OverviewPresetName, MarinaVisualizer.TopDownPresetName }))
+            {
+                Assert.True(marina.ApplyBuiltInCameraPreset(name, immediate: true), $"no automatic view called {name}");
+                foreach (var corner in corners)
+                {
+                    Assert.True(marina.TryProjectToScreen(corner, out var screen), $"{name} puts a corner behind the camera at {width}x{height}");
+                    Assert.InRange(screen.X, 0f, width);
+                    Assert.InRange(screen.Y, 0f, height);
+                }
+            }
+        }
     }
 
     [Fact]

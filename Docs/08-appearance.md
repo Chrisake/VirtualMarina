@@ -1,4 +1,4 @@
-# Appearance
+﻿# Appearance
 
 ## Berth labels on the water
 
@@ -129,7 +129,7 @@ marina.SetMarineTraffic(MarineTraffic.None with
 {
     IsEnabled = true,
     Intensity = 0.45f,   // 0-1, as a share of MaximumVessels
-    Clearance = 300f,    // meters a lane must keep from the marina and any land
+    Clearance = 300f,    // meters: how near the middle of the marina the shipping passes
     SpeedKnots = 8f,
     Seed = 12,           // the same seed always puts the same traffic in the same place
 });
@@ -140,23 +140,44 @@ marina.SetMarineTraffic(MarineTraffic.None with
 | `IsEnabled` | false | Off until asked for |
 | `Intensity` | 0.5 | How busy, as a share of `MaximumVessels` |
 | `MaximumVessels` | 24 | The most on the water at once, up to `MarineTraffic.VesselLimit` (60) |
-| `Clearance` | 300 m | How far lanes stay from the marina, the land areas and the mainland |
+| `Clearance` | 300 m | The path's closest approach to the middle of the marina |
 | `SpeedKnots` | 8 | How fast they cross |
-| `Reach` | 6000 m | Half a lane's length: where a vessel appears and where it finally fades |
-| `Seed` | 1 | Fixes the lanes and the vessels on them |
+| `Reach` | 6000 m | How far each end runs on past the coast: where a vessel appears and where it fades |
+| `Seed` | 1 | Fixes the vessels on the path |
 | `Vessels` | empty | The mix to draw from; empty means `MarineTraffic.DefaultVessels` |
 
-Lanes are straight lines planned once, and a lane is only kept when **every** point along it stays `Clearance` away
-from the marina, from every land area and from the mainland behind the shore — so nothing ever appears to sail over a
-quay or through the piers. Asking for more clearance than the open water allows leaves fewer lanes; `TrafficLaneCount`
-says how many were found room for, and 0 means the traffic cannot be drawn at all.
+### Where the path goes
 
-A lane runs right across the map. Both ends sit out in the flat sea beyond the detailed water — further out still
-when `Size` is widened, since the lane grows with it — so a vessel appears and disappears where nobody is looking,
-crosses within view of the marina, and carries on out the other side. The fade at each end is deliberately short: a
-vessel is at full strength a twentieth of the way along its lane, so it is never caught materialising. They are decoration: they are
-not berths, they cannot be clicked or hit-tested, and they take no part in selection. `GetTrafficVessels()` returns
-where they are right now, for a host that wants to draw its own marker.
+There is **one** path, and it follows the coast. It is the [shoreline](07-land-and-shoreline.md) pushed out to sea:
+each end runs alongside one of the shoreline's endless segments and the middle curves between them, so the shipping
+reads as passing along the coast rather than cutting across it at an angle of its own. A marina with no shoreline
+behind it has nothing to be parallel to and gets a straight path instead.
+
+`Clearance` is how far out it is pushed, measured as the **closest approach to the middle of the marina** — not a
+margin added to the marina's own size. That is what makes the setting mean something on its own: 300 m puts the
+shipping 300 m off whether the marina is 100 m across or 2 km. The one exception is land: a path that would cross a
+land area is pushed out until it does not, and then brought back in as near as the land allows, so it can end up a
+little further out than asked but never over a quay or through the piers.
+
+`TrafficPath` gives the planned line back — its `Points`, its `Length`, `DistanceTo(point)` for the closest approach,
+and `At(along)` for a position and heading a fraction of the way along it. It is null when the traffic is off or its
+settings are unsound.
+
+```csharp
+marina.ShowTrafficPath = true;   // draws the line on the water while the clearance is being set
+```
+
+`ShowTrafficPath` is a working aid, not a style: it draws the path so the clearance can be judged by eye, and it is
+not saved with the design. The Designer offers it as **Show the path** in the traffic card of the Look panel.
+
+### The vessels on it
+
+Both ends of the path sit far out in the flat sea beyond the detailed water, so a vessel appears and disappears where
+nobody is looking, crosses within view of the marina, and carries on out the other side; about half run each way. The
+fade at each end is deliberately short — a vessel is at full strength a twentieth of the way along — so it is never
+caught materialising. They are decoration: they are not berths, they cannot be clicked or hit-tested, and they take no
+part in selection. `GetTrafficVessels()` returns where they are right now, for a host that wants to draw its own
+marker.
 
 Because the vessels move, the scene's instance data is rebuilt on every frame while traffic is on. Switching it off
 hands the renderer the still scene again, which it can leave uploaded.

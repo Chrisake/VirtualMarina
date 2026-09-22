@@ -83,6 +83,7 @@ public sealed class MarinaDesigner
     private static readonly Vector4 ScaleLineColor = new(1f, 0.35f, 0.85f, 0.95f);
     private static readonly Vector4 ServicePreviewColor = new(0.99f, 0.78f, 0.15f, 0.6f);
     private static readonly Vector4 SelectionBoxColor = new(0.35f, 0.78f, 1f, 0.95f);
+    private static readonly Vector4 TrafficPathColor = new(1f, 0.85f, 0.25f, 0.85f);
     private static readonly Vector4 TextColor = new(1f, 1f, 1f, 0.97f);
 
     private readonly MarinaVisualizer _marina;
@@ -1814,7 +1815,7 @@ public sealed class MarinaDesigner
     /// <summary>True when the camera moved enough that line widths and text orientation of the overlay should be rebuilt.</summary>
     internal bool OverlayNeedsRefresh()
     {
-        if (!_active) return false;
+        if (!_active && !_marina.ShowTrafficPath) return false;
         var pose = _marina.Camera.Pose;
         return _overlayDistance < 0f
             || MathF.Abs(pose.Distance - _overlayDistance) > _overlayDistance * 0.08f
@@ -1826,7 +1827,7 @@ public sealed class MarinaDesigner
         var pose = _marina.Camera.Pose;
         _overlayDistance = pose.Distance;
         _overlayYaw = pose.YawDegrees;
-        if (!_active && _scaleLine is null) return;
+        if (!_active && _scaleLine is null && !_marina.ShowTrafficPath) return;
 
         var line = Math.Clamp(pose.Distance * 0.0035f, 0.08f, 4f);
         var textUp = MarinaMath.DirectionToHeading(new Vector2(-MathF.Sin(pose.YawDegrees * MarinaMath.DegToRad), -MathF.Cos(pose.YawDegrees * MarinaMath.DegToRad)));
@@ -1842,6 +1843,17 @@ public sealed class MarinaDesigner
             overlay.Line(scale.Start, scale.End, y, color);
             overlay.Dot(scale.Start, y, color);
             overlay.Dot(scale.End, y, color);
+        }
+
+        // Where the passing traffic will run. Shown on demand while the traffic settings are being adjusted, and
+        // not tied to a tool, so the clearance can be set from any view.
+        if (_marina.ShowTrafficPath && _marina.TrafficPath is { } traffic)
+        {
+            var y = TrafficPathHeight();
+            for (var i = 0; i < traffic.Points.Count - 1; i++)
+            {
+                overlay.Line(traffic.Points[i], traffic.Points[i + 1], y, TrafficPathColor);
+            }
         }
 
         if (!_active) return;
@@ -1889,6 +1901,10 @@ public sealed class MarinaDesigner
                 break;
         }
     }
+
+    /// <summary>Just clear of the wave crests, so the traffic line is not swallowed by the water it lies on.</summary>
+    private float TrafficPathHeight() =>
+        ShaderSources.MaxWaveHeightFactor * MathF.Abs(_marina.Water.WaveAmplitude) + 0.2f;
 
     private void AppendLandDraft(Overlay overlay)
     {

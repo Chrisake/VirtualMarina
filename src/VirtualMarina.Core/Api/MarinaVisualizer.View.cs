@@ -79,10 +79,28 @@ public sealed partial class MarinaVisualizer
     /// <inheritdoc/>
     public void ResetCamera(bool immediate = false)
     {
-        if (!ApplyCameraPreset(OverviewPresetName, immediate))
+        // The automatic Overview, even when a saved view has been given the same name.
+        var overview = _presets.FirstOrDefault(p => p.IsBuiltIn && string.Equals(p.Name, OverviewPresetName, StringComparison.OrdinalIgnoreCase));
+        if (overview is not null) Camera.SetPose(overview.Pose, immediate);
+        else if (!ApplyCameraPreset(OverviewPresetName, immediate))
         {
             Camera.SetPose(new CameraPose(Vector3.Zero, 25f, 45f, 150f), immediate);
         }
+    }
+
+    /// <summary>
+    /// Moves the camera to one of the views worked out from the layout, by name, ignoring any saved view that
+    /// happens to share the name. Returns false when there is no automatic view called this.
+    /// </summary>
+    /// <param name="presetName">Name of an automatic view (case-insensitive).</param>
+    /// <param name="immediate">Jump instead of animating.</param>
+    public bool ApplyBuiltInCameraPreset(string presetName, bool immediate = false)
+    {
+        ArgumentNullException.ThrowIfNull(presetName);
+        var preset = _presets.FirstOrDefault(p => p.IsBuiltIn && string.Equals(p.Name, presetName, StringComparison.OrdinalIgnoreCase));
+        if (preset is null) return false;
+        Camera.SetPose(preset.Pose, immediate);
+        return true;
     }
 
     /// <inheritdoc/>
@@ -370,6 +388,57 @@ public sealed partial class MarinaVisualizer
     private float FitDistance(float extent) =>
         MathF.Max(40f, extent * 0.5f / MathF.Tan(Camera.FieldOfViewDegrees * MarinaMath.DegToRad * 0.5f) * 1.15f);
 
+    /// <summary>
+    /// How far back a view has to stand for the whole of <paramref name="plan"/> to be in frame from a given angle.
+    /// </summary>
+    /// <remarks>
+    /// Worked out from the projection rather than from the plan extent: which way round the marina sits depends on
+    /// the yaw, how much of its depth survives on the pitch, and how much room there is sideways on the shape of the
+    /// window. Foreshortening cannot be approximated either — at a low angle the near edge is much closer than the
+    /// middle and projects far larger — so the answer is found by halving the range until the corners fit.
+    /// </remarks>
+    /// <param name="plan">Plan-view bounds to frame.</param>
+    /// <param name="target">What the view looks at.</param>
+    /// <param name="yawDegrees">Which way it faces.</param>
+    /// <param name="pitchDegrees">How far down it looks.</param>
+    private float FitDistance((Vector2 Min, Vector2 Max) plan, Vector3 target, float yawDegrees, float pitchDegrees)
+    {
+        var corners = new[]
+        {
+            MarinaMath.ToWorld(plan.Min),
+            MarinaMath.ToWorld(new Vector2(plan.Max.X, plan.Min.Y)),
+            MarinaMath.ToWorld(plan.Max),
+            MarinaMath.ToWorld(new Vector2(plan.Min.X, plan.Max.Y)),
+        };
+
+        // Room left around the marina, as the share of the view it may fill.
+        const float limit = 1f / FitMargin;
+
+        bool Fits(float distance)
+        {
+            var pose = Camera.Constrain(new CameraPose(target, yawDegrees, pitchDegrees, distance));
+            return TryProjectedBounds(pose, corners, out var min, out var max)
+                && min.X >= -limit && max.X <= limit && min.Y >= -limit && max.Y <= limit;
+        }
+
+        // Further away is always smaller on screen, so the smallest distance that fits can be halved in to.
+        var far = MathF.Max(80f, Camera.Constraints.MaxDistance);
+        if (!Fits(far)) return far;
+
+        var near = 20f;
+        for (var step = 0; step < 24 && far - near > 0.5f; step++)
+        {
+            var middle = (near + far) * 0.5f;
+            if (Fits(middle)) far = middle;
+            else near = middle;
+        }
+
+        return far;
+    }
+
+    /// <summary>Room left around the marina in an automatic view, so it does not sit against the edges.</summary>
+    private const float FitMargin = 1.25f;
+
     /// <summary>Widens the camera limits to the layout and the designer's reference image (called when the image moves or scales).</summary>
     internal void RefreshCameraBounds() => RebuildBuiltInPresets();
 
@@ -400,14 +469,19 @@ public sealed partial class MarinaVisualizer
 
         // The whole marina, straight down on it, and one from each compass point — all centred on the marina and
         // pulled back far enough to hold it — then one per pier.
+        // Each one is pulled back far enough for the marina to fit from its own angle, rather than all sharing a
+        // distance worked out without reference to where they stand.
+        CameraPreset Fitted(string name, float yaw, float pitch, string description) =>
+            new(name, new CameraPose(center, yaw, pitch, FitDistance((min, max), center, yaw, pitch)), description) { IsBuiltIn = true };
+
         var builtIn = new List<CameraPreset>
         {
-            new(OverviewPresetName, new CameraPose(center, 200f, 42f, fit), "The whole marina") { IsBuiltIn = true },
-            new(TopDownPresetName, new CameraPose(center, 180f, 89f, fit * 1.05f), "Straight down, north up") { IsBuiltIn = true },
-            new("North", new CameraPose(center, 0f, 35f, fit), "From the north") { IsBuiltIn = true },
-            new("East", new CameraPose(center, 90f, 35f, fit), "From the east") { IsBuiltIn = true },
-            new("South", new CameraPose(center, 180f, 35f, fit), "From the south") { IsBuiltIn = true },
-            new("West", new CameraPose(center, 270f, 35f, fit), "From the west") { IsBuiltIn = true },
+            Fitted(OverviewPresetName, 200f, 42f, "The whole marina"),
+            Fitted(TopDownPresetName, 180f, 89f, "Straight down, north up"),
+            Fitted("North", 0f, 35f, "From the north"),
+            Fitted("East", 90f, 35f, "From the east"),
+            Fitted("South", 180f, 35f, "From the south"),
+            Fitted("West", 270f, 35f, "From the west"),
         };
 
         foreach (var pier in OrderedPiers())
