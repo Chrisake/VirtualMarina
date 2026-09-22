@@ -10,11 +10,28 @@ It is built on the same pieces as any other host: a `MarinaViewControl` and `mar
 
 ## The window
 
-- **A fixed toolbar** across the top: Navigate, Land, Pier, Berths, Ashore, Trees, Erase, Rename, then Undo and the view commands. The tool in hand is highlighted, and the toolbar never scrolls away.
+- **A fixed toolbar** across the top: Navigate, Land, Pier, Berths, Ashore, Trees, Erase, Rename, Pedestals, Select and Coast, then Look, Undo and the view commands. The tool in hand is highlighted, and the toolbar never scrolls away.
 - **The marina fills the window.** Left-drag pans, right-drag orbits, the wheel zooms, exactly as in the viewer.
 - **One panel beside it** showing the name of the current tool, a line telling you what to do with it, and only that tool's settings. Picking "Berths" shows berth sizes, separators, the gap, the pedestals and how the berths are named; picking "Land" shows the surface and height. Nothing else is on screen to scroll past.
 - **A status bar** with the same instruction, the position of the pointer in meters and the camera's height and tilt — so you can see where you are while tracing a map.
 - **The activity log is hidden** (View ▸ Show activity log), because it is only useful when something looks wrong.
+
+## The Look tab
+
+**Look** swaps the tool panel for the appearance settings, so the marina stays visible while they are changed. Water
+and waves, light and air, berth colours, the land and its trees, berth labels — each setting has a small ↺ beside it
+that puts only that one back to its default, and a full reset sits at the bottom.
+
+Two of its cards are about what surrounds the marina rather than the marina itself:
+
+- **The mainland**, drawn with the **Coast** tool, takes its colours from the land card, including the walls and roofs
+  of a town behind the shore.
+- **Passing traffic** puts vessels out in the bay: tick *Vessels out at sea*, then set how busy it is, how far the
+  lanes keep clear of the marina and the land, and how fast they go. The card says how many lanes found room out
+  there, and tells you when the clearance leaves none.
+
+**Add preview boats** fills empty berths with a random mix so the colours and the water can be judged against a full
+marina. Those boats are not saved with the design.
 
 ## Drawing to scale
 

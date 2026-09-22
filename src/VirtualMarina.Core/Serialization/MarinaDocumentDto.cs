@@ -175,6 +175,8 @@ internal sealed class LayoutDto : ExtensibleDto
 {
     public ShorelineDto? Shoreline { get; set; }
 
+    public MarineTrafficDto? MarineTraffic { get; set; }
+
     public List<LandAreaDto>? LandAreas { get; set; }
 
     public List<PierDto>? Piers { get; set; }
@@ -211,6 +213,55 @@ internal sealed class LayoutDto : ExtensibleDto
             return null;
         }
     }
+}
+
+/// <summary>
+/// Passing traffic out at sea. Only the settings are written: the lanes and the vessels on them are worked out from
+/// the seed when the file is loaded, so a busy sea costs no more to store than an empty one.
+/// </summary>
+internal sealed class MarineTrafficDto : ExtensibleDto
+{
+    public bool Enabled { get; set; }
+
+    public float Intensity { get; set; } = 0.5f;
+
+    public float Clearance { get; set; } = 300f;
+
+    public float SpeedKnots { get; set; } = 8f;
+
+    public float Reach { get; set; } = 600f;
+
+    public int Seed { get; set; } = 1;
+
+    /// <summary>The vessel mix; written only when it is not the default one.</summary>
+    public List<BoatType>? Vessels { get; set; }
+
+    /// <summary>Host-owned string attributes; written only when there are any.</summary>
+    public Dictionary<string, string>? Metadata { get; set; }
+
+    public static MarineTrafficDto From(MarineTraffic traffic) => new()
+    {
+        Enabled = traffic.IsEnabled,
+        Intensity = traffic.Intensity,
+        Clearance = traffic.Clearance,
+        SpeedKnots = traffic.SpeedKnots,
+        Reach = traffic.Reach,
+        Seed = traffic.Seed,
+        Vessels = traffic.Vessels.Count == 0 ? null : traffic.Vessels.ToList(),
+        Metadata = Copy(traffic.Metadata),
+    };
+
+    public MarineTraffic ToDomain() => new()
+    {
+        IsEnabled = Enabled,
+        Intensity = Intensity,
+        Clearance = Clearance,
+        SpeedKnots = SpeedKnots,
+        Reach = Reach,
+        Seed = Seed,
+        Vessels = Vessels?.ToArray() ?? Array.Empty<BoatType>(),
+        Metadata = Read(Metadata),
+    };
 }
 
 /// <summary>

@@ -35,6 +35,7 @@ internal sealed class AppearancePanel : UserControl
     private readonly TrackBar _fill = new() { Minimum = 0, Maximum = 100, Value = 60 };
     private readonly Label _fillValue = new();
     private readonly Random _random = new();
+    private Label? _trafficLanes;
 
     /// <summary>Creates the panel over a visualizer.</summary>
     /// <param name="marina">The marina whose look is being changed.</param>
@@ -60,7 +61,7 @@ internal sealed class AppearancePanel : UserControl
         header.Controls.Add(new Label { Text = Strings.LookHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
 
         _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        foreach (var card in new[] { BuildWaterCard(), BuildBoatsCard(), BuildLightCard(), BuildStatusCard(), BuildLandCard(), BuildLabelCard(), BuildPreviewCard(), BuildResetCard() })
+        foreach (var card in new[] { BuildWaterCard(), BuildBoatsCard(), BuildLightCard(), BuildStatusCard(), BuildLandCard(), BuildTrafficCard(), BuildLabelCard(), BuildPreviewCard(), BuildResetCard() })
         {
             card.Dock = DockStyle.Top;
             _stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -79,6 +80,8 @@ internal sealed class AppearancePanel : UserControl
     private LightingSettings Lighting => _marina.Style.Lighting;
 
     private LandStyle Land => _marina.Style.Land;
+
+    private MarineTraffic Traffic => _marina.MarineTraffic;
 
     // ---- Cards --------------------------------------------------------------------------------
 
@@ -163,12 +166,59 @@ internal sealed class AppearancePanel : UserControl
         Color(table, Strings.LandPalm, () => Land.PalmColor, c => Land.PalmColor = c, Defaults.Land.PalmColor);
         Color(table, Strings.LandBlossom, () => Land.BlossomColor, c => Land.BlossomColor = c, Defaults.Land.BlossomColor);
         Color(table, Strings.LandTrunk, () => Land.TrunkColor, c => Land.TrunkColor = c, Defaults.Land.TrunkColor);
+        Color(table, Strings.LandBuilding, () => Land.BuildingColor, c => Land.BuildingColor = c, Defaults.Land.BuildingColor);
+        Color(table, Strings.LandRoof, () => Land.RoofColor, c => Land.RoofColor = c, Defaults.Land.RoofColor);
 
         var trees = Theme.Check(Strings.LandShowTrees);
         trees.Checked = Land.ShowTrees;
         trees.CheckedChanged += (_, _) => Changed(() => Land.ShowTrees = trees.Checked);
         Theme.FullRow(table, trees);
         return card;
+    }
+
+    /// <summary>
+    /// The traffic out at sea. Unlike the rest of this panel these are not style settings but part of the marina, so
+    /// each one is written back through the visualizer rather than onto a style object.
+    /// </summary>
+    private Panel BuildTrafficCard()
+    {
+        var card = Theme.Card(Strings.CardTraffic, out var table);
+        var lanes = Theme.Hint(string.Empty);
+
+        var show = Theme.Check(Strings.TrafficShow);
+        show.Checked = Traffic.IsEnabled;
+        show.CheckedChanged += (_, _) => SetTraffic(t => t with { IsEnabled = show.Checked });
+        Theme.Tips.SetToolTip(Theme.FullRow(table, show), Strings.TrafficShowTip);
+
+        Percent(table, Strings.TrafficIntensity, 0, 100, () => Traffic.Intensity * 100f,
+            v => SetTraffic(t => t with { Intensity = v / 100f }), MarineTraffic.None.Intensity * 100f, Percentage, Strings.TrafficIntensityTip);
+        Percent(table, Strings.TrafficClearance, 50, 1200, () => Traffic.Clearance,
+            v => SetTraffic(t => t with { Clearance = v }), MarineTraffic.None.Clearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip);
+        Percent(table, Strings.TrafficSpeed, 1, 30, () => Traffic.SpeedKnots,
+            v => SetTraffic(t => t with { SpeedKnots = v }), MarineTraffic.None.SpeedKnots, v => Strings.Format(Strings.ValueKnots, v), Strings.TrafficSpeedTip);
+
+        Theme.FullRow(table, Theme.Hint(Strings.TrafficHint));
+        Theme.FullRow(table, lanes);
+
+        // The lane count only settles once the lanes have been planned, so it is refreshed after every change.
+        _trafficLanes = lanes;
+        UpdateTrafficLanes();
+        return card;
+    }
+
+    /// <summary>Applies a change to the traffic and refreshes what the card says about it.</summary>
+    private void SetTraffic(Func<MarineTraffic, MarineTraffic> change)
+    {
+        Changed(() => _marina.SetMarineTraffic(change(_marina.MarineTraffic)));
+        UpdateTrafficLanes();
+    }
+
+    private void UpdateTrafficLanes()
+    {
+        if (_trafficLanes is null) return;
+        _trafficLanes.Text = !Traffic.IsEnabled ? string.Empty
+            : _marina.TrafficLaneCount == 0 ? Strings.TrafficNoRoom
+            : Strings.Format(Strings.TrafficLanes, _marina.TrafficLaneCount);
     }
 
     private Panel BuildLabelCard()

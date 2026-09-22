@@ -790,6 +790,55 @@ internal static class Strings
     /// <summary>"Removed the mainland"</summary>
     internal static string LogCoastRemoved => Get("LogCoastRemoved");
 
+    // ---- Look: passing traffic -----------------------------------------------------------------------
+
+    /// <summary>"Passing traffic"</summary>
+    internal static string CardTraffic => Get("CardTraffic");
+
+    /// <summary>"Vessels out at sea"</summary>
+    internal static string TrafficShow => Get("TrafficShow");
+
+    /// <summary>"Boats, yachts and a ferry crossing the bay beyond the marina. They are decoration: they canno..."</summary>
+    internal static string TrafficShowTip => Get("TrafficShowTip");
+
+    /// <summary>"How busy"</summary>
+    internal static string TrafficIntensity => Get("TrafficIntensity");
+
+    /// <summary>"How many vessels are out there at once."</summary>
+    internal static string TrafficIntensityTip => Get("TrafficIntensityTip");
+
+    /// <summary>"Keep clear by"</summary>
+    internal static string TrafficClearance => Get("TrafficClearance");
+
+    /// <summary>"How far the lanes must stay from the marina and from any land. Raise it to push the traffic o..."</summary>
+    internal static string TrafficClearanceTip => Get("TrafficClearanceTip");
+
+    /// <summary>"Speed"</summary>
+    internal static string TrafficSpeed => Get("TrafficSpeed");
+
+    /// <summary>"How fast the vessels cross, in knots."</summary>
+    internal static string TrafficSpeedTip => Get("TrafficSpeedTip");
+
+    /// <summary>"{0} lane(s) found room out there."</summary>
+    internal static string TrafficLanes => Get("TrafficLanes");
+
+    /// <summary>"No room for a lane: lower the clearance, or widen the water."</summary>
+    internal static string TrafficNoRoom => Get("TrafficNoRoom");
+
+    /// <summary>"Lanes never cross the marina or the land, and vessels fade away at the edge of the map."</summary>
+    internal static string TrafficHint => Get("TrafficHint");
+
+    /// <summary>"{0} kn"</summary>
+    internal static string ValueKnots => Get("ValueKnots");
+
+    // ---- Look: the mainland --------------------------------------------------------------------------
+
+    /// <summary>"Town walls"</summary>
+    internal static string LandBuilding => Get("LandBuilding");
+
+    /// <summary>"Town roofs"</summary>
+    internal static string LandRoof => Get("LandRoof");
+
     // ---- Inspector: reference image ------------------------------------------------------------------
 
     /// <summary>"Load image…"</summary>

@@ -45,6 +45,7 @@ That is the whole integration: `ApplyTo` sets the style (so the water grid is bu
   "layout": {
     "shoreline": { "line": [[-400, -40], [-60, -52], [180, -44]], "landOnLeft": false,
       "height": 1.4, "kind": "Grass", "scenery": "Countryside", "scenerySeed": 41 },
+    "marineTraffic": { "enabled": true, "intensity": 0.45, "clearance": 260, "speedKnots": 7, "reach": 600, "seed": 12 },
     "landAreas": [
       { "id": "quay", "name": "Main quay", "kind": "Quay", "height": 1, "outline": [[-130, -32], [150, -32], [150, -6], [-130, -6]] },
       { "id": "lawn", "kind": "Grass", "height": 1.15, "outline": [[68, -30], [100, -31], [122, -26]],
@@ -100,6 +101,24 @@ The one rule is that those two endless stretches must not cross each other, or n
 `scenery` is what is scattered over the land — `None`, `Countryside`, `Fields` or `Town` — and `scenerySeed` keeps that
 scattering the same between sessions. The scenery itself is never written out: it is drawn from the seed, so the file
 stays small however much of it there is.
+
+### The passing traffic
+
+`marineTraffic` is the shipping out at sea, and it is optional in the same way: a file without it is an empty sea, and
+it is only written once the traffic has been switched on.
+
+Only the settings are stored. The lanes, the vessels on them and where each one started are worked out from `seed`
+when the file is loaded, so a busy sea costs no more to store than an empty one and looks the same every time it is
+opened.
+
+`clearance` is the distance in meters a lane has to keep from the marina, from every land area and from the mainland.
+It is the setting that guarantees nothing ever appears to sail over a quay. Asking for more clearance than the open
+water allows leaves fewer lanes, or none — never a lane that cuts a corner.
+
+`reach` is how far out a lane runs before its vessels fade away. It is capped on load by however much water the grid
+actually covers, since a vessel past the edge of the water would be sailing on nothing.
+
+The vessels are decoration: they are not berths, they cannot be clicked, and they never appear in `berths`.
 
 ## Staying compatible between versions
 

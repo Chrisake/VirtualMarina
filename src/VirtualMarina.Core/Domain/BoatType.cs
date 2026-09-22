@@ -25,6 +25,12 @@ public enum BoatType
 
     /// <summary>Personal watercraft. Nominal 3.2 × 1.2 m.</summary>
     JetSki = 6,
+
+    /// <summary>
+    /// Small coastal passenger ferry with a boxy superstructure and a funnel. Nominal 45 × 11 m — too big for most
+    /// berths, and mainly there to pass by offshore (see <see cref="MarineTraffic"/>).
+    /// </summary>
+    Ferry = 7,
 }
 
 /// <summary>Length overall and beam, in meters.</summary>
@@ -52,6 +58,7 @@ public static class BoatTypeCatalog
         BoatType.MotorYacht => new(20f, 5.5f),
         BoatType.FishingBoat => new(10f, 3.5f),
         BoatType.JetSki => new(3.2f, 1.2f),
+        BoatType.Ferry => new(45f, 11f),
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown boat type."),
     };
 
@@ -65,6 +72,7 @@ public static class BoatTypeCatalog
         BoatType.MotorYacht => Strings.BoatTypeMotorYacht,
         BoatType.FishingBoat => Strings.BoatTypeFishingBoat,
         BoatType.JetSki => Strings.BoatTypeJetSki,
+        BoatType.Ferry => Strings.BoatTypeFerry,
         _ => type.ToString(),
     };
 }

@@ -341,6 +341,37 @@ public interface IMarinaVisualizer
     /// <summary>Takes the mainland away, leaving open water. Returns false when there was none.</summary>
     bool RemoveShoreline();
 
+    /// <summary>
+    /// The passing traffic out at sea. <see cref="Domain.MarineTraffic.None"/> until it is switched on with
+    /// <see cref="SetMarineTraffic"/>.
+    /// </summary>
+    MarineTraffic MarineTraffic { get; }
+
+    /// <summary>
+    /// Sets the passing traffic and lays out the lanes it runs along. Lanes are kept clear of the marina, the land
+    /// areas and the mainland by <see cref="Domain.MarineTraffic.Clearance"/>, so nothing sails over a quay.
+    /// </summary>
+    /// <param name="traffic">The traffic settings, or null for empty sea.</param>
+    /// <exception cref="MarinaLayoutException">The settings are unsound (see <see cref="Domain.MarineTraffic.Validate"/>).</exception>
+    /// <example>
+    /// <code>
+    /// marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Intensity = 0.4f, Clearance = 400f });
+    /// </code>
+    /// </example>
+    void SetMarineTraffic(MarineTraffic? traffic);
+
+    /// <summary>
+    /// Where every passing vessel is right now, for a host that wants to draw its own marker or label. The list is a
+    /// snapshot: the vessels have moved on by the next frame.
+    /// </summary>
+    IReadOnlyList<TrafficVessel> GetTrafficVessels();
+
+    /// <summary>
+    /// How many lanes the traffic actually found room for. Fewer than asked for means the clearance left little open
+    /// water; zero means the traffic cannot be drawn at all.
+    /// </summary>
+    int TrafficLaneCount { get; }
+
     /// <summary>Berths with a given status.</summary>
     IReadOnlyList<Berth> GetBerthsByStatus(BerthStatus status);
 

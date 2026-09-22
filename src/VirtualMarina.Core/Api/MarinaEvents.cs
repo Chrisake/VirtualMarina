@@ -405,6 +405,9 @@ public enum LayoutChangeKind
 
     /// <summary>The mainland behind the marina was set, redrawn or taken away (<c>IMarinaVisualizer.SetShoreline</c>).</summary>
     ShorelineChanged = 19,
+
+    /// <summary>The passing traffic was switched on or off, or its settings changed (<c>IMarinaVisualizer.SetMarineTraffic</c>).</summary>
+    MarineTrafficChanged = 20,
 }
 
 /// <summary>Data for <see cref="IMarinaVisualizer.LayoutChanged"/>. The id properties that apply to <see cref="Kind"/> are set.</summary>

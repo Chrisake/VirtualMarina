@@ -25,6 +25,7 @@ public sealed class MarinaLayoutBuilder
     private readonly List<MultiBerth> _multiBerths = new();
     private readonly List<LandArea> _land = new();
     private Shoreline? _shoreline;
+    private MarineTraffic? _traffic;
 
     /// <summary>Starts an empty layout.</summary>
     /// <param name="name">Marina name.</param>
@@ -104,6 +105,13 @@ public sealed class MarinaLayoutBuilder
         return this;
     }
 
+    /// <summary>Sets the passing traffic out at sea. Replaces any set earlier.</summary>
+    public MarinaLayoutBuilder WithMarineTraffic(MarineTraffic? traffic)
+    {
+        _traffic = traffic;
+        return this;
+    }
+
     /// <summary>Creates the layout. It is not validated here; <c>InitializeLayout</c> (or <see cref="MarinaLayout.Validate"/>) does that.</summary>
     public MarinaLayout Build() => new()
     {
@@ -114,6 +122,7 @@ public sealed class MarinaLayoutBuilder
         MultiBerths = _multiBerths.ToArray(),
         LandAreas = _land.ToArray(),
         Shoreline = _shoreline,
+        MarineTraffic = _traffic,
     };
 }
 

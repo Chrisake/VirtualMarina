@@ -85,6 +85,9 @@ internal static class Strings
     /// <summary>"Jet Ski"</summary>
     internal static string BoatTypeJetSki => Get("BoatTypeJetSki");
 
+    /// <summary>"Ferry"</summary>
+    internal static string BoatTypeFerry => Get("BoatTypeFerry");
+
     // ---- Pier types ----------------------------------------------------------------------------------
 
     /// <summary>"Floating (wooden)"</summary>

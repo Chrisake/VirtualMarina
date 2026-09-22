@@ -8,8 +8,8 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Api**: [BatchUpdateError](#batchupdateerror), [BatchUpdateResult](#batchupdateresult), [BerthAction](#berthaction), [BerthActionCollection](#berthactioncollection), [BerthActionInvokedEventArgs](#berthactioninvokedeventargs), [BerthActionStyle](#berthactionstyle), [BerthEventArgs](#bertheventargs), [BerthHoverEventArgs](#berthhovereventargs), [BerthLabelMode](#berthlabelmode), [BerthLabelModeExtensions](#berthlabelmodeextensions), [BerthPopup](#berthpopup), [BerthPopupChangedEventArgs](#berthpopupchangedeventargs), [BerthPopupKind](#berthpopupkind), [BerthSelectedEventArgs](#berthselectedeventargs), [BerthSelectionRejection](#berthselectionrejection), [BerthStatusChangedEventArgs](#berthstatuschangedeventargs), [BerthTooltip](#berthtooltip), [BerthTooltipLine](#berthtooltipline), [BerthUpdate](#berthupdate), [DefaultPopupContent](#defaultpopupcontent), [DisplayNames](#displaynames), [IMarinaVisualizer](#imarinavisualizer), [LayoutChangeKind](#layoutchangekind), [LayoutChangedEventArgs](#layoutchangedeventargs), [MarinaLocalization](#marinalocalization), [MarinaStatistics](#marinastatistics), [MarinaVisualizer](#marinavisualizer), [MarinaVisualizerOptions](#marinavisualizeroptions), [MultiBerthSelectedEventArgs](#multiberthselectedeventargs), [PierUpdate](#pierupdate), [RejectedBerth](#rejectedberth), [SelectionChangedEventArgs](#selectionchangedeventargs), [SelectionReason](#selectionreason), [SelectionResult](#selectionresult), [StatusColorScheme](#statuscolorscheme)
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
-- **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TreeShape](#treeshape)
-- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary)
+- **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MarineTraffic](#marinetraffic), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TrafficVessel](#trafficvessel), [TreeShape](#treeshape)
+- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [TrafficLane](#trafficlane)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [BerthHit](#berthhit), [Ray](#ray)
@@ -445,6 +445,8 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `string MarinaName { get; set; }` | Name of the loaded layout (`MarinaLayout.Name`). Set it to rename the marina; it is stored with the layout. |
 | `MarinaDesigner Designer { get; }` | The layout designer: draw land areas, piers and berths in the view and trace a calibrated reference image (see `MarinaDesigner`). Off until `MarinaDesigner.IsActive` is set. |
 | `Shoreline? Shoreline { get; }` | The mainland behind the marina, or null when the marina stands in open water. Set it with `IMarinaVisualizer.SetShoreline`. |
+| `MarineTraffic MarineTraffic { get; }` | The passing traffic out at sea. `MarineTraffic.None` until it is switched on with `IMarinaVisualizer.SetMarineTraffic`. |
+| `int TrafficLaneCount { get; }` | How many lanes the traffic actually found room for. Fewer than asked for means the clearance left little open water; zero means the traffic cannot be drawn at all. |
 | `Berth? SelectedBerth { get; }` | The primary (most recently clicked or last listed) selected berth, or null. |
 | `IReadOnlyList<Berth> SelectedBerths { get; }` | All selected berths in selection order; the last one is `IMarinaVisualizer.SelectedBerth`. |
 | `Berth? HoveredBerth { get; }` | The berth under the pointer, or null. |
@@ -513,6 +515,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `IReadOnlyList<Pier> GetPiers()` | All piers, in the order they were added. |
 | `MarinaStatistics GetStatistics()` | Berth counts per status, for dashboards. |
 | `ColorRgba GetStatusColor(BerthStatus status)` | The current color of a status. |
+| `IReadOnlyList<TrafficVessel> GetTrafficVessels()` | Where every passing vessel is right now, for a host that wants to draw its own marker or label. The list is a snapshot: the vessels have moved on by the next frame. |
 | `BerthHit? HitTest(float x, float y)` | Hit-tests a point in view pixels (origin top-left) against visible, unfiltered berths and boats. Returns the nearest hit, or null. Disabled berths are hit (they block what's behind them) but input ignores them. |
 | `void InitializeLayout(MarinaLayout layout)` | Replaces the whole marina: piers, berths, dividers, multi-berths and land. Clears the selection and popup, re-centers the water, regenerates the built-in camera presets and resets the camera to the overview. |
 | `bool InvokeBerthAction(string actionId)` | Invokes an action of the open actions window: raises `IMarinaVisualizer.BerthActionInvoked` and closes the window unless kept open. Returns false when no actions window is open or the action doesn't exist, is disabled or hidden. |
@@ -541,6 +544,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `Berth SetBerthReadOnly(string berthId, bool readOnly)` | Makes a berth read-only: it can be selected and shows its tooltip, but its actions window never opens. |
 | `Berth SetBerthStatus(string berthId, BerthStatus status, Boat? boat = null)` | Sets a berth's status. Free always removes the boat; for other statuses a null `boat` keeps the current boat. |
 | `Berth SetBerthVisible(string berthId, bool visible)` | Shows or hides a berth. Hidden berths draw nothing (not even finger piers) and cannot be interacted with. |
+| `void SetMarineTraffic(MarineTraffic? traffic)` | Sets the passing traffic and lays out the lanes it runs along. Lanes are kept clear of the marina, the land areas and the mainland by `MarineTraffic.Clearance`, so nothing sails over a quay. |
 | `SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, CameraAngle? focusAngle = null)` | Replaces the selection with one or more berths. Disabled berths are discarded, as are hidden, filtered-out and unknown ids and duplicates; `SelectionResult.Rejected` lists them with the reason. The rest are selected in the given order (the last becomes primary) and `IMarinaVisualizer.BerthSelected` or `IMarinaVisualizer.MultiBerthSelected` is raised. When nothing remains the selection is cleared. |
 | `SelectionResult SetSelection(params string[] berthIds)` | Replaces the selection with the given berths (disabled ones are discarded), without moving the camera. |
 | `void SetShoreline(Shoreline? shoreline)` | Sets (or replaces) the mainland behind the marina and builds its mesh. It is drawn beneath the land areas, so a quay traced along the shore sits on top of it and the two read as one piece of ground. |
@@ -589,6 +593,7 @@ What changed in a `IMarinaVisualizer.LayoutChanged` notification.
 | `LandAreaUpdated` = 17 | A land area was updated (outline, height, kind or name). |
 | `LandAreaRemoved` = 18 | A land area was removed. |
 | `ShorelineChanged` = 19 | The mainland behind the marina was set, redrawn or taken away (`IMarinaVisualizer.SetShoreline`). |
+| `MarineTrafficChanged` = 20 | The passing traffic was switched on or off, or its settings changed (`IMarinaVisualizer.SetMarineTraffic`). |
 
 <a id="layoutchangedeventargs"></a>
 ### LayoutChangedEventArgs
@@ -665,6 +670,8 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `double Time { get; }` | Seconds of animation time accumulated through `MarinaVisualizer.Update`. |
 | `Vector2 ViewportSize { get; }` | View size in pointer units (usually pixels), as last set with `MarinaVisualizer.SetViewportSize`. Defaults to 1280 × 720. |
 | `Shoreline? Shoreline { get; }` | *(See the interface member.)* |
+| `MarineTraffic MarineTraffic { get; }` | *(See the interface member.)* |
+| `int TrafficLaneCount { get; }` | *(See the interface member.)* |
 | `bool TooltipsEnabled { get; set; }` | Show a tooltip above the selection on left-click (default true). |
 | `bool ActionsEnabled { get; set; }` | Show the actions window on right-click (default true). |
 | `bool MultiSelectEnabled { get; set; }` | Allow Ctrl+click or Shift+click to build a multi-selection (default true). |
@@ -734,6 +741,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `IReadOnlyList<Pier> GetPiers()` | *(See the interface member.)* |
 | `MarinaStatistics GetStatistics()` | *(See the interface member.)* |
 | `ColorRgba GetStatusColor(BerthStatus status)` | *(See the interface member.)* |
+| `IReadOnlyList<TrafficVessel> GetTrafficVessels()` | *(See the interface member.)* |
 | `Vector3? GetWaterPoint(float x, float y)` | Point on the water plane under a view pixel, if the ray hits it. |
 | `BerthHit? HitTest(float x, float y)` | Hit-tests a point in view pixels (origin top-left) against visible, unfiltered berths and boats. Disabled berths are hit (so they block what's behind them), but input ignores them. |
 | `void InitializeLayout(MarinaLayout layout)` | *(See the interface member.)* |
@@ -766,6 +774,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `Berth SetBerthStatus(string berthId, BerthStatus status, Boat? boat = null)` | *(See the interface member.)* |
 | `Berth SetBerthVisible(string berthId, bool visible)` | Hidden berths are not drawn at all and cannot be interacted with. |
 | `void SetDisabledColor(ColorRgba color)` | Changes the pad and buoy color used for disabled berths (boats of disabled berths are always desaturated). |
+| `void SetMarineTraffic(MarineTraffic? traffic)` | *(See the interface member.)* |
 | `void SetOverlayOpacity(float padOpacity, float ghostBoatOpacity)` | Sets the opacity of status pads and of reserved/temporarily free "ghost" boats. Values are clamped to 0.05–1. |
 | `SelectionResult SetSelection(params string[] berthIds)` | Replaces the selection. See `MarinaVisualizer.SetSelection`. |
 | `SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, CameraAngle? focusAngle = null)` | Replaces the selection with one or more berths. Disabled berths are discarded, as are hidden, filtered-out and unknown ids and duplicates; the result lists what was skipped and why. The remaining berths are selected in the given order (the last becomes primary) and `MarinaVisualizer.BerthSelected` or `MarinaVisualizer.MultiBerthSelected` is raised as for a click. When nothing remains the selection is cleared. |
@@ -1583,6 +1592,7 @@ Boat categories the visualizer can render. Each has its own procedural model (se
 | `MotorYacht` = 4 | Multi-deck motor yacht. Nominal 20 × 5.5 m. |
 | `FishingBoat` = 5 | Fishing boat with wheelhouse. Nominal 10 × 3.5 m. |
 | `JetSki` = 6 | Personal watercraft. Nominal 3.2 × 1.2 m. |
+| `Ferry` = 7 | Small coastal passenger ferry with a boxy superstructure and a funnel. Nominal 45 × 11 m — too big for most berths, and mainly there to pass by offshore (see `MarineTraffic`). |
 
 <a id="boattypecatalog"></a>
 ### BoatTypeCatalog
@@ -1765,6 +1775,7 @@ Complete description of a marina: piers, berths (flat list, linked by `Berth.Pie
 | `IReadOnlyList<MultiBerth> MultiBerths { get; init; }` | Boats spanning several berths. Member berths take the berth's status and boat when the layout is loaded. |
 | `IReadOnlyList<LandArea> LandAreas { get; init; }` | Quays, breakwaters and lawns drawn around the water. Ids must be unique. |
 | `Shoreline? Shoreline { get; init; }` | The mainland behind the marina, drawn beneath the `MarinaLayout.LandAreas`. Null for a marina standing in open water, which is how every layout written before this existed reads back. |
+| `MarineTraffic? MarineTraffic { get; init; }` | Passing traffic out at sea, or null for empty water. It is decoration rather than layout: the vessels are not berths and cannot be clicked. |
 | `static MarinaLayout Empty { get; }` | A layout with nothing in it. |
 | `ValueTuple<Vector2, Vector2> ComputeBounds()` | Plan-view bounds of all piers, berths, dividers and land. Returns a default 100 m square when empty. |
 | `static MarinaLayout FromObjects(IEnumerable<object> elements, string name = "Marina")` | Builds a layout from elements in any order (the inverse of `MarinaLayout.ToObjects`). The result is not validated. |
@@ -1789,6 +1800,7 @@ Fluent helper for composing a `MarinaLayout` with berths auto-positioned along p
 | `MarinaLayoutBuilder AddPier(Pier pier, Action<PierBuilder>? configure = null)` | Adds a pier and, optionally, lays out its berths and dividers. |
 | `MarinaLayoutBuilder AddPier(string id, string name, Vector2 start, float headingDegrees, float length, Action<PierBuilder>? configure = null, float width = 2.5f, PierType type = PierType.FloatingWooden)` | Adds a pier from its shore-end point, heading and size, and optionally lays out its berths and dividers. |
 | `MarinaLayout Build()` | Creates the layout. It is not validated here; `InitializeLayout` (or `MarinaLayout.Validate`) does that. |
+| `MarinaLayoutBuilder WithMarineTraffic(MarineTraffic? traffic)` | Sets the passing traffic out at sea. Replaces any set earlier. |
 | `MarinaLayoutBuilder WithShoreline(Shoreline? shoreline)` | Sets the mainland behind the marina, drawn beneath the land areas. Replaces any set earlier. |
 
 <a id="marinalayoutexception"></a>
@@ -1802,6 +1814,34 @@ Thrown when a layout, pier or berth definition is invalid.
 |---|---|
 | `MarinaLayoutException(IReadOnlyList<string> errors)` | Creates the exception from a list of validation problems. |
 | `IReadOnlyList<string> Errors { get; }` | Every problem found (the message joins them). |
+
+<a id="marinetraffic"></a>
+### MarineTraffic
+
+`sealed record MarineTraffic`
+
+Passing traffic out at sea: vessels running along straight lanes across the map, well clear of the marina and the land, fading in at one end of their lane and out at the other.
+
+It is decoration, not layout: the vessels are not berths, cannot be clicked, and are worked out from `MarineTraffic.Seed` rather than stored, so turning it up costs nothing in the file. Where the lanes go. A lane is a straight line across the map. It is only kept when every part of it stays `MarineTraffic.Clearance` meters away from the marina, from every land area, and from the mainland behind the shore, so nothing ever appears to sail over a quay or through the piers. Raising `MarineTraffic.Clearance` pushes the traffic further out; raising it past what the map allows simply leaves fewer lanes.
+
+| Member | Description |
+|---|---|
+| `MarineTraffic()` | Creates an instance with default values. |
+| `const int MaximumVessels = 24` | The most vessels drawn at once, at `MarineTraffic.Intensity` 1. |
+| `static MarineTraffic None { get; }` | Empty sea. This is what a marina has until traffic is switched on. |
+| `static IReadOnlyList<BoatType> DefaultVessels { get; }` | The mix used when `MarineTraffic.Vessels` is left empty: what is plausibly passing a marina offshore. |
+| `bool IsEnabled { get; init; }` | Draw the traffic. Default false, so a marina is in empty sea until it is asked for. |
+| `float Intensity { get; init; }` | How busy the sea is, 0–1 (default 0.5). Scales the number of vessels up to `MarineTraffic.MaximumVessels`. |
+| `float Clearance { get; init; }` | How far a lane must stay from the marina and from any land, in meters (default 300). Nothing is drawn closer than this, so the traffic never crosses a quay, a breakwater or the piers. |
+| `float SpeedKnots { get; init; }` | How fast the vessels go, in knots (default 8). They are meant to drift slowly across the view. |
+| `float Reach { get; init; }` | Half the length of a lane, in meters (default 600): how far out the traffic runs before it fades away. This is the edge of the map as far as the traffic is concerned. |
+| `int Seed { get; init; }` | Keeps the lanes and the vessels on them the same between sessions. Any number will do. |
+| `IReadOnlyList<BoatType> Vessels { get; init; }` | The kinds of vessel out there, drawn from at random. Repeat a type to make it more common. Empty means `MarineTraffic.DefaultVessels`. |
+| `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes the host application attaches to the traffic. Saved with the design. |
+| `int VesselCount { get; }` | How many vessels this asks for; 0 when it is switched off. |
+| `float SpeedMetersPerSecond { get; }` | `MarineTraffic.SpeedKnots` in meters per second. |
+| `IReadOnlyList<BoatType> EffectiveVessels { get; }` | The mix actually used: `MarineTraffic.Vessels`, or `MarineTraffic.DefaultVessels` when that is empty. |
+| `IEnumerable<string> Validate()` | Problems that would stop the traffic being drawn, empty when it is sound. |
 
 <a id="mooringstyle"></a>
 ### MooringStyle
@@ -1985,6 +2025,21 @@ Two points are enough — that is simply a straight coast. More points bend it i
 | `float DistanceToShore(Vector2 point)` | Distance from a point to the line itself (not to the far edge of the built shape), in meters. |
 | `IEnumerable<string> Validate()` | Problems that would stop the shoreline being drawn, empty when it is sound. |
 
+<a id="trafficvessel"></a>
+### TrafficVessel
+
+`readonly record struct TrafficVessel`
+
+One vessel of the passing traffic, where it is at a moment in time.
+
+| Member | Description |
+|---|---|
+| `TrafficVessel(BoatType Type, Vector2 Position, float HeadingDegrees, float Opacity)` | One vessel of the passing traffic, where it is at a moment in time. |
+| `BoatType Type { get; init; }` | What kind of vessel it is. |
+| `Vector2 Position { get; init; }` | Where it is, in plan coordinates. |
+| `float HeadingDegrees { get; init; }` | Which way its bow points, in the usual compass sense. |
+| `float Opacity { get; init; }` | 0–1. Vessels fade in at the start of their lane and out at the end. |
+
 <a id="treeshape"></a>
 ### TreeShape
 
@@ -2100,6 +2155,20 @@ Procedural meshes for marina infrastructure, markers and the water surface.
 | `static MeshData CreateUnitBox(int id)` | 1 m cube centered at the origin with white vertices, tinted per instance. |
 | `static MeshData CreateWaterGrid(int id, float size, int resolution, Vector2 center)` | Square, finely tessellated grid on Y = 0 centered at `center`. Vertex positions are displaced in the water vertex shader to animate waves. |
 
+<a id="marinetrafficplanner"></a>
+### MarineTrafficPlanner
+
+`static class MarineTrafficPlanner`
+
+Lays out the lanes the passing traffic runs along, and says where each vessel is at a given moment.
+
+A lane is a straight line across the map. Lanes are tried at random from the traffic's seed and kept only when the whole line stays `MarineTraffic.Clearance` away from the marina, from every land area, and from the mainland behind the shore — so a vessel can never appear to sail over a quay or through the piers. Planning is done once, when the traffic or the layout changes; `MarineTrafficPlanner.Place` is then called on every frame and only walks the vessels along lanes that are already known to be clear.
+
+| Member | Description |
+|---|---|
+| `static IEnumerable<TrafficVessel> Place(IReadOnlyList<TrafficLane> lanes, MarineTraffic traffic, double seconds)` | Where every vessel is at a moment in time. Cheap enough to call on every frame: it is a walk along lines that were already checked when they were planned. |
+| `static IReadOnlyList<TrafficLane> Plan(MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, IEnumerable<LandArea> land, Shoreline? shoreline)` | Works out the lanes and the vessels on them. The result is fixed for a given traffic setting and layout, so it is planned once and then only walked forward in time. |
+
 <a id="meshbuilder"></a>
 ### MeshBuilder
 
@@ -2188,6 +2257,23 @@ The set of meshes a scene can reference. Renderers upload each mesh once, keyed 
 | `void Register(MeshData mesh)` | Adds or replaces a mesh (e.g. swap a procedural boat for one loaded from GLTF). |
 | `bool TryGet(int id, out MeshData mesh)` | Looks up a mesh by id. |
 | `bool Unregister(int id)` | Removes a mesh. Returns false when no mesh has this id. |
+
+<a id="trafficlane"></a>
+### TrafficLane
+
+`sealed class TrafficLane`
+
+One straight lane of passing traffic, and the vessels running along it.
+
+| Member | Description |
+|---|---|
+| `TrafficLane(Vector2 start, Vector2 end)` | Creates a lane between two points in plan coordinates. |
+| `Vector2 Start { get; }` | Where the lane begins, in plan coordinates. |
+| `Vector2 End { get; }` | Where the lane ends. |
+| `Vector2 Direction { get; }` | Unit direction from `TrafficLane.Start` to `TrafficLane.End`. |
+| `float Length { get; }` | How long the lane is, in meters. |
+| `int VesselCount { get; }` | How many vessels run along this lane. |
+| `float DistanceTo(Vector2 point)` | Signed distance from a point to the infinite line the lane lies on, in meters. |
 
 ## VirtualMarina.Core.Input
 

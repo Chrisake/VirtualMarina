@@ -80,6 +80,43 @@ marina.Water.WaveSpeed = 0;   // calm, static water
 
 The water grid is re-centered on the layout by `InitializeLayout`.
 
+## Passing traffic
+
+Vessels crossing the bay beyond the marina, so the sea is not empty. It is off until it is asked for:
+
+```csharp
+marina.SetMarineTraffic(MarineTraffic.None with
+{
+    IsEnabled = true,
+    Intensity = 0.45f,   // 0-1, up to MarineTraffic.MaximumVessels
+    Clearance = 300f,    // meters a lane must keep from the marina and any land
+    SpeedKnots = 8f,
+    Seed = 12,           // the same seed always puts the same traffic in the same place
+});
+```
+
+| Property | Default | Notes |
+|---|---|---|
+| `IsEnabled` | false | Off until asked for |
+| `Intensity` | 0.5 | Scales the vessel count up to `MaximumVessels` (24) |
+| `Clearance` | 300 m | How far lanes stay from the marina, the land areas and the mainland |
+| `SpeedKnots` | 8 | How fast they cross |
+| `Reach` | 600 m | Half a lane's length; capped by what the water grid covers |
+| `Seed` | 1 | Fixes the lanes and the vessels on them |
+| `Vessels` | empty | The mix to draw from; empty means `MarineTraffic.DefaultVessels` |
+
+Lanes are straight lines planned once, and a lane is only kept when **every** point along it stays `Clearance` away
+from the marina, from every land area and from the mainland behind the shore — so nothing ever appears to sail over a
+quay or through the piers. Asking for more clearance than the open water allows leaves fewer lanes; `TrafficLaneCount`
+says how many were found room for, and 0 means the traffic cannot be drawn at all.
+
+Vessels fade in at one end of their lane and out at the other, so nothing pops into view. They are decoration: they are
+not berths, they cannot be clicked or hit-tested, and they take no part in selection. `GetTrafficVessels()` returns
+where they are right now, for a host that wants to draw its own marker.
+
+Because the vessels move, the scene's instance data is rebuilt on every frame while traffic is on. Switching it off
+hands the renderer the still scene again, which it can leave uploaded.
+
 ## Replacing boat models
 
 Boats are procedural low-poly placeholders (`BoatMeshFactory`). To use your own models:

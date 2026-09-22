@@ -44,6 +44,7 @@ public static class BoatMeshFactory
             case BoatType.MotorYacht: BuildMotorYacht(b); break;
             case BoatType.FishingBoat: BuildFishingBoat(b); break;
             case BoatType.JetSki: BuildJetSki(b); break;
+            case BoatType.Ferry: BuildFerry(b); break;
             default: throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
 
@@ -155,6 +156,32 @@ public static class BoatMeshFactory
     /// A tapered hull: a narrow keel loop lofted to a wider deck outline with a pointed bow.
     /// The lower band uses the stripe (antifouling/boot-top) color.
     /// </summary>
+    /// <summary>A small coastal ferry: a long hull, two decks of superstructure with a window band, and a funnel.</summary>
+    private static void BuildFerry(MeshBuilder b)
+    {
+        const float length = 45f;
+        const float beam = 11f;
+        AddHull(b, 0f, length, beam, freeboard: 3.4f, draft: 2.2f, White, LightGrey, Navy);
+
+        // Two decks, the upper one set in, so it reads as a ferry rather than a barge at any distance.
+        b.AddBox(new(0f, 5.2f, -2f), new(beam * 0.86f, 3.2f, length * 0.66f), OffWhite);
+        b.AddBox(new(0f, 5.4f, -2f), new(beam * 0.88f, 1.1f, length * 0.67f), Glass);
+        b.AddBox(new(0f, 8.2f, -4f), new(beam * 0.62f, 2.6f, length * 0.42f), White);
+        b.AddBox(new(0f, 8.5f, -4f), new(beam * 0.64f, 0.9f, length * 0.43f), Glass);
+
+        // Wheelhouse forward on the top deck, looking over the bow.
+        b.AddBox(new(0f, 10.6f, 2.5f), new(beam * 0.5f, 2f, 5f), White);
+        b.AddBox(new(0f, 10.9f, 2.5f), new(beam * 0.52f, 0.9f, 5.1f), Glass);
+
+        // Funnel and mast.
+        b.AddCylinder(new(0f, 9.5f, -9f), new(0f, 13.5f, -9f), 1.5f, 1.3f, 8, Red);
+        b.AddCylinder(new(0f, 13.5f, -9f), new(0f, 13.9f, -9f), 1.35f, 1.35f, 8, Dark);
+        b.AddCylinder(new(0f, 12.6f, 2.5f), new(0f, 17f, 2.5f), 0.14f, 0.09f, 5, Metal);
+
+        // A boot-topping stripe along the hull and the open car deck aft.
+        b.AddBox(new(0f, 3.5f, -length * 0.36f), new(beam * 0.9f, 0.25f, length * 0.2f), Charcoal);
+    }
+
     private static void AddHull(
         MeshBuilder b, float centerX, float length, float beam, float freeboard, float draft,
         Vector3 hullColor, Vector3 deckColor, Vector3 stripeColor)

@@ -861,6 +861,55 @@ Renderer: {2}</value>
   <data name="LogCoastRemoved">
     <value>Removed the mainland</value>
   </data>
+  <!-- Look: passing traffic -->
+  <data name="CardTraffic">
+    <value>Passing traffic</value>
+  </data>
+  <data name="TrafficShow">
+    <value>Vessels out at sea</value>
+  </data>
+  <data name="TrafficShowTip">
+    <value>Boats, yachts and a ferry crossing the bay beyond the marina. They are decoration: they cannot be clicked and take no berth.</value>
+  </data>
+  <data name="TrafficIntensity">
+    <value>How busy</value>
+  </data>
+  <data name="TrafficIntensityTip">
+    <value>How many vessels are out there at once.</value>
+  </data>
+  <data name="TrafficClearance">
+    <value>Keep clear by</value>
+  </data>
+  <data name="TrafficClearanceTip">
+    <value>How far the lanes must stay from the marina and from any land. Raise it to push the traffic out to the horizon.</value>
+  </data>
+  <data name="TrafficSpeed">
+    <value>Speed</value>
+  </data>
+  <data name="TrafficSpeedTip">
+    <value>How fast the vessels cross, in knots.</value>
+  </data>
+  <data name="TrafficLanes">
+    <value>{0} lane(s) found room out there.</value>
+    <comment>{0} = how many shipping lanes fit.</comment>
+  </data>
+  <data name="TrafficNoRoom">
+    <value>No room for a lane: lower the clearance, or widen the water.</value>
+  </data>
+  <data name="TrafficHint">
+    <value>Lanes never cross the marina or the land, and vessels fade away at the edge of the map.</value>
+  </data>
+  <data name="ValueKnots">
+    <value>{0} kn</value>
+    <comment>{0} = speed in knots.</comment>
+  </data>
+  <!-- Look: the mainland -->
+  <data name="LandBuilding">
+    <value>Town walls</value>
+  </data>
+  <data name="LandRoof">
+    <value>Town roofs</value>
+  </data>
   <!-- Inspector: reference image -->
   <data name="ImageLoad">
     <value>Load image…</value>

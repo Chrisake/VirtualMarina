@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Domain;
@@ -216,7 +216,13 @@ public class MarinaVisualizerTests
         var layout = MockMarinaFactory.CreateSampleMarina();
 
         Assert.Empty(layout.Validate());
-        var types = layout.Berths.Where(s => s.Boat is not null).Select(s => s.Boat!.Type).Distinct().ToList();
-        Assert.Equal(BoatTypeCatalog.All.Count, types.Count);
+
+        // Every boat model is exercised somewhere, but not all of them in a berth: a 45 m ferry does not moor in a
+        // marina, so it earns its place out in the passing traffic instead.
+        var berthed = layout.Berths.Where(s => s.Boat is not null).Select(s => s.Boat!.Type).Distinct().ToList();
+        var passing = layout.MarineTraffic?.EffectiveVessels ?? Array.Empty<BoatType>();
+        Assert.Equal(BoatTypeCatalog.All, berthed.Concat(passing).Distinct().OrderBy(type => (int)type).ToList());
+        Assert.DoesNotContain(BoatType.Ferry, berthed);
+        Assert.Contains(BoatType.Ferry, passing);
     }
 }

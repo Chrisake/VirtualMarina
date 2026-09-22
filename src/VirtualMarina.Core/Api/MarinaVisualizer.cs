@@ -68,6 +68,11 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private readonly Dictionary<string, LandArea> _landAreas = new(IdComparer);
     private readonly List<string> _landOrder = new();
     private Shoreline? _shoreline;
+    private MarineTraffic _traffic = MarineTraffic.None;
+    private IReadOnlyList<TrafficLane> _trafficLanes = Array.Empty<TrafficLane>();
+    private bool _trafficDirty = true;
+    private readonly List<RenderObject> _frameObjects = new();
+    private int _staticObjectCount = -1;
     private readonly Dictionary<string, int> _landMeshSlots = new(IdComparer);
     private int _nextLandMeshSlot;
     private readonly List<CameraPreset> _presets = new();
@@ -269,7 +274,10 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             });
             _sceneVersion++;
             _sceneDirty = false;
+            _staticObjectCount = -1;   // the scene changed under the traffic, so the whole list is rebuilt below
         }
+
+        var objects = AppendTraffic();
 
         return new RenderFrame
         {
@@ -279,7 +287,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             Time = (float)(_time % 3600d),
             Lighting = Designer.IsActive && Designer.FogFactor < 1f ? DesignLighting() : Lighting,
             Water = Water,
-            Objects = _renderObjects,
+            Objects = objects,
             SceneVersion = _sceneVersion,
             MarinaCenter = _marinaCenter,
             Meshes = Meshes,
@@ -289,6 +297,49 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
 
     /// <summary>Forces the render object list to be rebuilt on the next frame.</summary>
     public void InvalidateScene() => _sceneDirty = true;
+
+    /// <summary>
+    /// The scene with the passing traffic put back on top of it. The still part is copied only when the scene itself
+    /// changed; the traffic is a short tail that is rewritten every frame.
+    /// </summary>
+    private IReadOnlyList<RenderObject> AppendTraffic()
+    {
+        if (_trafficDirty && (_traffic.IsEnabled || _trafficLanes.Count > 0)) ReplanTraffic();
+        if (_trafficLanes.Count == 0)
+        {
+            // Nothing moving: the renderer can have the scene list itself and keep its uploaded instance data.
+            _staticObjectCount = -1;
+            return _renderObjects;
+        }
+
+        if (_staticObjectCount < 0)
+        {
+            _frameObjects.Clear();
+            _frameObjects.AddRange(_renderObjects);
+            _staticObjectCount = _renderObjects.Count;
+        }
+        else
+        {
+            _frameObjects.RemoveRange(_staticObjectCount, _frameObjects.Count - _staticObjectCount);
+        }
+
+        foreach (var vessel in MarineTrafficPlanner.Place(_trafficLanes, _traffic, _time))
+        {
+            if (vessel.Opacity <= 0.004f) continue;
+            var world = MarinaMath.CreatePlacement(Vector3.One, vessel.HeadingDegrees, MarinaMath.ToWorld(vessel.Position));
+            _frameObjects.Add(new RenderObject(
+                MeshIds.ForBoat(vessel.Type),
+                world,
+                new Vector4(1f, 1f, 1f, vessel.Opacity),
+                0f,
+                RenderAnimation.FloatOnWater,
+                vessel.Position.X * 0.11f + vessel.Position.Y * 0.07f));
+        }
+
+        // The instance data moved, so the backend has to re-upload it.
+        _sceneVersion++;
+        return _frameObjects;
+    }
 
     /// <summary>
     /// Hit-tests a point in view pixels (origin top-left) against visible, unfiltered berths and boats.
@@ -448,6 +499,28 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         else Meshes.Register(LandMeshFactory.CreateShoreline(MeshIds.Shoreline, _shoreline, _style.Land));
     }
 
+    /// <summary>
+    /// Lays out the traffic lanes again. Called whenever the traffic settings or anything a lane has to keep clear of
+    /// — the piers, the land, the mainland — changes.
+    /// </summary>
+    private void ReplanTraffic()
+    {
+        var bounds = MarinaLayout.ComputeBounds(
+            OrderedPiers().Select(pier => pier.Bounds)
+                .Concat(OrderedBerths().Select(berth => berth.Bounds))
+                .Concat(OrderedDividers().Select(divider => divider.Bounds)),
+            OrderedLandAreas());
+
+        // A lane past the edge of the water would put vessels on nothing, so it is kept inside the grid. Only the
+        // reach is capped; the speed the vessels run at is the one that was asked for.
+        var afloat = MathF.Max(1f, _waterSize * 0.5f - 40f);
+        var fitted = _traffic.Reach > afloat ? _traffic with { Reach = afloat } : _traffic;
+
+        _trafficLanes = MarineTrafficPlanner.Plan(fitted, bounds, OrderedLandAreas(), _shoreline);
+        _trafficDirty = false;
+        _staticObjectCount = -1;
+    }
+
     /// <summary>Builds (or rebuilds) the mesh of one land area, keeping its slot so other land meshes are untouched.</summary>
     private void RegisterLandMesh(LandArea land)
     {
@@ -483,6 +556,8 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
 
     private void RaiseLayoutChanged(LayoutChangeKind kind, string? pierId = null, string? berthId = null, string? dividerId = null, string? multiBerthId = null, string? landAreaId = null)
     {
+        // Anything that moves a pier, a land area or the shore can change where a lane is allowed to run.
+        _trafficDirty = true;
         if (_updateDepth > 0)
         {
             _layoutChangePending = true;

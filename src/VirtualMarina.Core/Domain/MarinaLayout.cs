@@ -34,6 +34,12 @@ public sealed record MarinaLayout
     /// </summary>
     public Shoreline? Shoreline { get; init; }
 
+    /// <summary>
+    /// Passing traffic out at sea, or null for empty water. It is decoration rather than layout: the vessels are not
+    /// berths and cannot be clicked.
+    /// </summary>
+    public MarineTraffic? MarineTraffic { get; init; }
+
     /// <summary>A layout with nothing in it.</summary>
     public static MarinaLayout Empty { get; } = new();
 
@@ -125,6 +131,7 @@ public sealed record MarinaLayout
         }
 
         if (Shoreline is not null) errors.AddRange(Shoreline.Validate());
+        if (MarineTraffic is not null) errors.AddRange(MarineTraffic.Validate());
 
         var landIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var land in LandAreas)

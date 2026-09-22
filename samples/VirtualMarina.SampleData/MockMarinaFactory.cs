@@ -152,6 +152,15 @@ public static class MockMarinaFactory
                 Scenery = HinterlandScenery.Countryside,
                 ScenerySeed = 41,
             })
+            // Passing traffic well out in the bay, so the sea beyond the breakwaters is not empty either.
+            .WithMarineTraffic(MarineTraffic.None with
+            {
+                IsEnabled = true,
+                Intensity = 0.45f,
+                Clearance = 260f,
+                SpeedKnots = 7f,
+                Seed = 12,
+            })
             .Build();
 
         // A few interaction flags to demonstrate: under maintenance, contract locked, not rentable.

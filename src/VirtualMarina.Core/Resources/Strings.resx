@@ -110,6 +110,9 @@
   <data name="BoatTypeJetSki">
     <value>Jet Ski</value>
   </data>
+  <data name="BoatTypeFerry">
+    <value>Ferry</value>
+  </data>
   <!-- Pier types -->
   <data name="PierTypeFloatingWooden">
     <value>Floating (wooden)</value>

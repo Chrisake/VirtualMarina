@@ -18,6 +18,7 @@ public sealed partial class MarinaVisualizer
 
         MarinaName = layout.Name;
         _shoreline = layout.Shoreline;
+        _traffic = layout.MarineTraffic ?? MarineTraffic.None;
         foreach (var land in layout.LandAreas)
         {
             _landAreas[land.Id] = land;
@@ -80,6 +81,7 @@ public sealed partial class MarinaVisualizer
         MultiBerths = OrderedMultiBerths().ToArray(),
         LandAreas = OrderedLandAreas().ToArray(),
         Shoreline = _shoreline,
+        MarineTraffic = _traffic,
     };
 
     /// <inheritdoc/>
@@ -471,6 +473,30 @@ public sealed partial class MarinaVisualizer
         return true;
     }
 
+    // ---- Passing traffic ------------------------------------------------------------------------
+
+    /// <inheritdoc/>
+    public MarineTraffic MarineTraffic => _traffic;
+
+    /// <inheritdoc/>
+    public void SetMarineTraffic(MarineTraffic? traffic)
+    {
+        var wanted = traffic ?? MarineTraffic.None;
+        ThrowIfInvalid(wanted.Validate());
+
+        _traffic = wanted;
+        ReplanTraffic();
+        MarkSceneDirty();
+        RaiseLayoutChanged(LayoutChangeKind.MarineTrafficChanged);
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<TrafficVessel> GetTrafficVessels() =>
+        MarineTrafficPlanner.Place(_trafficLanes, _traffic, _time).ToArray();
+
+    /// <inheritdoc/>
+    public int TrafficLaneCount => _trafficLanes.Count;
+
     /// <inheritdoc/>
     public object[] ExportObjects() => GetLayout().ToObjects();
 
@@ -694,6 +720,8 @@ public sealed partial class MarinaVisualizer
         _landAreas.Clear();
         _landOrder.Clear();
         _shoreline = null;
+        _traffic = MarineTraffic.None;
+        _trafficLanes = Array.Empty<TrafficLane>();
         _selection.Clear();
         _hoveredBerthId = null;
         _popupRefreshPending = false;
