@@ -298,6 +298,9 @@ public static class ShaderSources
         uniform float uSkyReflection;
         uniform float uRipples;
         uniform float uSunGlints;
+        uniform float uWhitecaps;
+        uniform float uWhitecapDistance;
+        uniform vec2 uMarinaCenter;
 
         out vec4 fragColor;
 
@@ -326,6 +329,27 @@ public static class ShaderSources
             vec3 color = mix(body, uSkyColor, clamp(fresnel, 0.0, 0.85) * uSkyReflection);
             float sparkle = pow(max(dot(reflect(-L, N), V), 0.0), 90.0) * (0.35 + 0.65 * clamp(detail, 0.0, 1.0)) * uSunGlints;
             color += uSunColor * sparkle;
+
+            // White crests, out at sea only. They run in toward the marina, leaning into the prevailing swell, and
+            // fade in over a band so there is no line on the water where they suddenly begin.
+            if (uWhitecaps > 0.001)
+            {
+                vec2 toMarina = uMarinaCenter - p;
+                float offshore = length(toMarina);
+                float far = smoothstep(uWhitecapDistance, uWhitecapDistance * 1.9, offshore);
+                if (far > 0.001)
+                {
+                    vec2 inward = offshore > 0.001 ? toMarina / offshore : vec2(0.0, 1.0);
+                    vec2 drift = normalize(mix(inward, vec2(0.98, 0.20), 0.45));
+                    float along = dot(p, drift) * 0.055 * uWaveFrequency - t * 1.15;
+                    // Two frequencies, so the crests are broken lines rather than a corduroy pattern.
+                    float band = sin(along) * 0.65 + sin(along * 2.37 + dot(p, vec2(-drift.y, drift.x)) * 0.021) * 0.35;
+                    float crest = smoothstep(0.55, 0.92, band);
+                    // Thin them out where the water is flat: no swell, no breaking.
+                    crest *= clamp(abs(uWaveAmplitude) * 12.0, 0.0, 1.0);
+                    color = mix(color, vec3(0.92, 0.95, 0.97), crest * far * uWhitecaps * 0.85);
+                }
+            }
 
             fragColor = vec4(vmApplyFog(color, vWorldPos), 1.0);
         }

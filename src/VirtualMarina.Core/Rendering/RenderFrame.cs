@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Geometry;
 
@@ -33,6 +33,12 @@ public sealed class RenderFrame
 
     /// <summary>Incremented whenever <see cref="Objects"/> changes; lets backends skip re-uploading instance data.</summary>
     public required int SceneVersion { get; init; }
+
+    /// <summary>
+    /// Middle of the marina in plan coordinates, which the water shader uses to tell the open sea from the water
+    /// among the piers: white crests break offshore and run in toward this point.
+    /// </summary>
+    public Vector2 MarinaCenter { get; init; }
 
     /// <summary>Meshes referenced by <see cref="Objects"/>.</summary>
     public required MeshLibrary Meshes { get; init; }

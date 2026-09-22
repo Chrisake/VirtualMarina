@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using Microsoft.JSInterop;
 using VirtualMarina.Core.Rendering;
 
@@ -16,10 +16,10 @@ namespace VirtualMarina.Blazor;
 public sealed class WebGlSceneRenderer : ISceneRenderer
 {
     /// <summary>Floats per render object: world matrix (16), tint (4), emissive, animation, phase, mesh id, desaturation.</summary>
-    public const int ObjectStride = 25;
+    private const int ObjectStride = 25;
 
     /// <summary>Length of the per-frame uniform array (layout mirrored in marinaWebGL.js).</summary>
-    public const int FrameLength = 67;
+    private const int FrameLength = 70;
 
     private readonly IJSInProcessObjectReference _module;
     private readonly int _viewId;
@@ -194,6 +194,10 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
         f[i++] = Math.Clamp(w.Ripples, 0f, 2f);
         f[i++] = Math.Clamp(w.SunGlints, 0f, 2f);
         f[i++] = Math.Clamp(w.BoatMotion, 0f, 3f);
+        f[i++] = Math.Clamp(w.Whitecaps, 0f, 1f);
+        f[i++] = Math.Clamp(w.WhitecapDistance, 20f, 5000f);
+        f[i++] = frame.MarinaCenter.X;
+        f[i++] = frame.MarinaCenter.Y;
     }
 
     private static void WriteMatrix(float[] f, ref int i, System.Numerics.Matrix4x4 m)

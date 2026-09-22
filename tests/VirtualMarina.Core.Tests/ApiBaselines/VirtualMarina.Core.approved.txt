@@ -1588,6 +1588,7 @@ sealed class VirtualMarina.Core.Rendering.RenderFrame
     IReadOnlyList<VirtualMarina.Core.Rendering.RenderObject> Objects { get; init; }
     Matrix4x4 Projection { get; init; }
     Matrix4x4 View { get; init; }
+    Vector2 MarinaCenter { get; init; }
     Vector3 CameraPosition { get; init; }
     VirtualMarina.Core.Geometry.MeshLibrary Meshes { get; init; }
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; init; }
@@ -1676,6 +1677,8 @@ sealed class VirtualMarina.Core.Rendering.WaterSettings
     float WaveAmplitude { get; set; }
     float WaveFrequency { get; set; }
     float WaveSpeed { get; set; }
+    float WhitecapDistance { get; set; }
+    float Whitecaps { get; set; }
     int GridResolution { get; init; }
 
 sealed class VirtualMarina.Core.Serialization.MarinaDocument

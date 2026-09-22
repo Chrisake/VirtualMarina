@@ -836,6 +836,21 @@ internal static class Strings
     /// <summary>"Sun glints"</summary>
     internal static string SunGlints => Get("SunGlints");
 
+    /// <summary>"White crests"</summary>
+    internal static string Whitecaps => Get("Whitecaps");
+
+    /// <summary>"How strongly the waves break into white out at sea. They never reach the piers."</summary>
+    internal static string WhitecapsTip => Get("WhitecapsTip");
+
+    /// <summary>"Crests start at"</summary>
+    internal static string WhitecapDistance => Get("WhitecapDistance");
+
+    /// <summary>"How far from the middle of the marina the white crests begin."</summary>
+    internal static string WhitecapDistanceTip => Get("WhitecapDistanceTip");
+
+    /// <summary>"{0} m"</summary>
+    internal static string ValueMetersWhole => Get("ValueMetersWhole");
+
     /// <summary>"Deep water"</summary>
     internal static string DeepWater => Get("DeepWater");
 

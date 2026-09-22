@@ -76,8 +76,6 @@ Binary data goes to JavaScript as base64 little-endian float/uint32 buffers: mes
 
 | Member | Description |
 |---|---|
-| `const int ObjectStride = 25` | Floats per render object: world matrix (16), tint (4), emissive, animation, phase, mesh id, desaturation. |
-| `const int FrameLength = 67` | Length of the per-frame uniform array (layout mirrored in marinaWebGL.js). |
 | `string BackendName { get; }` | *(See the interface member.)* |
 | `string? DeviceDescription { get; }` | GPU renderer and WebGL version reported by the browser, available after `WebGlSceneRenderer.Initialize`. |
 | `void Dispose()` | Stops rendering. GPU resources are released when the view is destroyed on the JS side. |
@@ -2473,6 +2471,7 @@ Everything a backend needs to draw one frame. Matrices use the System.Numerics r
 | `WaterSettings Water { get; init; }` | Water color and wave uniforms. |
 | `IReadOnlyList<RenderObject> Objects { get; init; }` | Scene objects. Draw the opaque ones, then the water, then the transparent ones (see `RenderObject.IsTransparent`). |
 | `int SceneVersion { get; init; }` | Incremented whenever `RenderFrame.Objects` changes; lets backends skip re-uploading instance data. |
+| `Vector2 MarinaCenter { get; init; }` | Middle of the marina in plan coordinates, which the water shader uses to tell the open sea from the water among the piers: white crests break offshore and run in toward this point. |
 | `MeshLibrary Meshes { get; init; }` | Meshes referenced by `RenderFrame.Objects`. |
 | `int MeshLibraryVersion { get; }` | `MeshLibrary.Version`; re-upload meshes when it changes. |
 | `ReferenceImageLayer? ReferenceImage { get; init; }` | The designer's reference image, or null when none is shown. Draw it after the water and before the transparent objects (so drawing previews stay on top), with the `ShaderSources.ImageVertex` / `ShaderSources.ImageFragment` program. |
@@ -2615,6 +2614,8 @@ Water surface look and wave animation (`MarinaStyle.Water`). Applied every frame
 | `float SkyReflection { get; set; }` | Strength of the sky reflected on the water, 0–1 (default 1). These reflections form the bright, cloud-like patches that appear on the water toward the horizon and when seen from high above; lower it for a calmer, darker surface. |
 | `float Ripples { get; set; }` | Strength of the small ripples that break up the reflections, 0–2 (default 1; 0 gives a smooth, glassy surface). |
 | `float SunGlints { get; set; }` | Strength of the sparkling sun glints on the water, 0–2 (default 1). |
+| `float Whitecaps { get; set; }` | How strongly white crests break on the open water, 0–1 (default 0.55; 0 turns them off). They appear only beyond `WaterSettings.WhitecapDistance` from the middle of the marina and run inward, so the sea offshore is alive while the water among the piers stays calm. They fade out as the waves flatten. |
+| `float WhitecapDistance { get; set; }` | How far from the middle of the marina the white crests start, in meters (default 220). Nothing breaks nearer than this, so the marina itself never fills with foam. |
 | `float BoatMotion { get; set; }` | How much boats, buoys and boom floats rise, fall and roll with the waves, 0–3 (default 1; 0 keeps them still while the water moves). |
 
 ## VirtualMarina.Core.Serialization

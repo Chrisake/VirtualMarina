@@ -517,4 +517,23 @@ public class MarinaDocumentTests
         Assert.Equal(LabelFont.Condensed, copy.Style.Labels.FontFamily);
         Assert.Equal("#E68099", copy.Style.Land.BlossomColor.ToHex());
     }
+
+    [Fact]
+    public void Whitecaps_SurviveASaveAndLoad_AndTheFrameCarriesTheMarinaCentre()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(140, 60), 0f, 40f));
+        marina.Style.Water.Whitecaps = 0.8f;
+        marina.Style.Water.WhitecapDistance = 340f;
+
+        // The water shader needs to know where the marina is, to tell offshore from among the piers.
+        var frame = marina.BuildRenderFrame();
+        Assert.NotEqual(Vector2.Zero, frame.MarinaCenter);
+
+        var copy = new MarinaVisualizer();
+        MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson()).ApplyTo(copy);
+
+        Assert.Equal(0.8f, copy.Style.Water.Whitecaps, 3);
+        Assert.Equal(340f, copy.Style.Water.WhitecapDistance, 2);
+    }
 }

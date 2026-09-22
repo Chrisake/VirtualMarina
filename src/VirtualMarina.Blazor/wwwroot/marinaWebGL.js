@@ -9,6 +9,7 @@ const FRAME = {
     SKY: 47, FOG: 50, FOG_DENSITY: 53,
     DEEP: 54, SHALLOW: 57, WAVE_AMP: 60, WAVE_FREQ: 61, WAVE_SPEED: 62,
     SKY_REFLECTION: 63, RIPPLES: 64, SUN_GLINTS: 65, FLOAT_MOTION: 66,
+    WHITECAPS: 67, WHITECAP_DISTANCE: 68, MARINA_CENTER: 69,
 };
 const OBJECT_STRIDE = 25;
 const VERTEX_STRIDE_BYTES = 9 * 4;
@@ -357,6 +358,14 @@ function applyFrameUniforms(gl, program, f) {
     setFloat(gl, program, 'uRipples', f[FRAME.RIPPLES]);
     setFloat(gl, program, 'uSunGlints', f[FRAME.SUN_GLINTS]);
     setFloat(gl, program, 'uFloatMotion', f[FRAME.FLOAT_MOTION]);
+    setFloat(gl, program, 'uWhitecaps', f[FRAME.WHITECAPS]);
+    setFloat(gl, program, 'uWhitecapDistance', f[FRAME.WHITECAP_DISTANCE]);
+    setVec2(gl, program, 'uMarinaCenter', f, FRAME.MARINA_CENTER);
+}
+
+function setVec2(gl, program, name, array, offset) {
+    const location = program.uniforms[name];
+    if (location) gl.uniform2f(location, array[offset], array[offset + 1]);
 }
 
 function setFloat(gl, program, name, value) {

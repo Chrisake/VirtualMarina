@@ -32,8 +32,6 @@ class VirtualMarina.Blazor.MarinaView : ComponentBase, IAsyncDisposable, ICompon
     void OnWheel(double notches, double x, double y)
 
 sealed class VirtualMarina.Blazor.WebGlSceneRenderer : IDisposable, VirtualMarina.Core.Rendering.ISceneRenderer
-    const int FrameLength = 67
-    const int ObjectStride = 25
     string BackendName { get; }
     string DeviceDescription { get; }
     void Dispose()

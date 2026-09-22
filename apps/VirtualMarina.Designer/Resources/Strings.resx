@@ -907,6 +907,22 @@ Renderer: {2}</value>
   <data name="SunGlints">
     <value>Sun glints</value>
   </data>
+  <data name="Whitecaps">
+    <value>White crests</value>
+  </data>
+  <data name="WhitecapsTip">
+    <value>How strongly the waves break into white out at sea. They never reach the piers.</value>
+  </data>
+  <data name="WhitecapDistance">
+    <value>Crests start at</value>
+  </data>
+  <data name="WhitecapDistanceTip">
+    <value>How far from the middle of the marina the white crests begin.</value>
+  </data>
+  <data name="ValueMetersWhole">
+    <value>{0} m</value>
+    <comment>{0} = a whole number of meters.</comment>
+  </data>
   <data name="DeepWater">
     <value>Deep water</value>
   </data>

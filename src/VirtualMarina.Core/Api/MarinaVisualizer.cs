@@ -83,6 +83,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private double _time;
     private Vector2 _viewportSize = new(1280f, 720f);
     private Vector2 _waterCenter;
+    private Vector2 _marinaCenter;
     private float _waterSize;
     private string _marinaName = "Marina";
 
@@ -278,6 +279,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             Water = Water,
             Objects = _renderObjects,
             SceneVersion = _sceneVersion,
+            MarinaCenter = _marinaCenter,
             Meshes = Meshes,
             ReferenceImage = Designer.BuildImageLayer(),
         };
@@ -387,6 +389,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private void EnsureWaterCovers(Vector2 min, Vector2 max)
     {
         const float margin = 150f;
+        _marinaCenter = (min + max) * 0.5f;
         var half = _waterSize * 0.5f;
         if (min.X - margin >= _waterCenter.X - half && min.Y - margin >= _waterCenter.Y - half &&
             max.X + margin <= _waterCenter.X + half && max.Y + margin <= _waterCenter.Y + half)

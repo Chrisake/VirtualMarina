@@ -91,6 +91,8 @@ internal sealed class AppearancePanel : UserControl
         Percent(table, Strings.Reflections, 0, 100, () => Water.SkyReflection * 100f, v => Water.SkyReflection = v / 100f, Defaults.Water.SkyReflection * 100f, Percentage);
         Percent(table, Strings.Ripples, 0, 200, () => Water.Ripples * 100f, v => Water.Ripples = v / 100f, Defaults.Water.Ripples * 100f, Percentage);
         Percent(table, Strings.SunGlints, 0, 200, () => Water.SunGlints * 100f, v => Water.SunGlints = v / 100f, Defaults.Water.SunGlints * 100f, Percentage);
+        Percent(table, Strings.Whitecaps, 0, 100, () => Water.Whitecaps * 100f, v => Water.Whitecaps = v / 100f, Defaults.Water.Whitecaps * 100f, v => v == 0 ? Strings.ValueStill : Percentage(v), Strings.WhitecapsTip);
+        Percent(table, Strings.WhitecapDistance, 40, 1200, () => Water.WhitecapDistance, v => Water.WhitecapDistance = v, Defaults.Water.WhitecapDistance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.WhitecapDistanceTip);
         Color(table, Strings.DeepWater, () => Vector(Water.DeepColor), c => Water.DeepColor = Value(c), Vector(Defaults.Water.DeepColor));
         Color(table, Strings.ShallowWater, () => Vector(Water.ShallowColor), c => Water.ShallowColor = Value(c), Vector(Defaults.Water.ShallowColor));
         return card;
