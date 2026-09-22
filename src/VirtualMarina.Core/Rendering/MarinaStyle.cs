@@ -197,6 +197,7 @@ public sealed class LabelStyle : StyleSection
     private ColorRgba _disabled = new(0.62f, 0.64f, 0.66f);
     private Geometry.LabelFont _font = Geometry.LabelFont.Regular;
     private Geometry.LabelTypeface _typeface = Geometry.LabelTypeface.Sans;
+    private Geometry.LabelFontDefinition? _fontDefinition;
 
     /// <summary>
     /// The face berth labels are set in. These are built-in stroke faces rather than system typefaces, so the
@@ -213,6 +214,17 @@ public sealed class LabelStyle : StyleSection
     /// and the library carries no font files. See <see cref="Geometry.LabelTypeface"/>.
     /// </remarks>
     public Geometry.LabelTypeface Typeface { get => _typeface; set => SetField(ref _typeface, Enum.IsDefined(value) ? value : Geometry.LabelTypeface.Sans); }
+
+    /// <summary>
+    /// A real font captured into the design, used in place of the built-in lettering. Null (the default) draws the
+    /// labels with <see cref="Typeface"/> and <see cref="FontFamily"/> instead.
+    /// </summary>
+    /// <remarks>
+    /// The outlines travel with the design, so the marina looks the same on a machine that does not have the font
+    /// installed. A character the captured font does not carry falls back to the built-in lettering, so a name with
+    /// something unusual in it still reads. See <see cref="Geometry.LabelFontDefinition"/>.
+    /// </remarks>
+    public Geometry.LabelFontDefinition? Font { get => _fontDefinition; set => SetField(ref _fontDefinition, value); }
 
     /// <summary>Normal label color.</summary>
     public ColorRgba Color { get => _color; set => SetField(ref _color, value); }

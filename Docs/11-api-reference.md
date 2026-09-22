@@ -9,7 +9,7 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamePlan](#berthnameplan), [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignRenameScope](#designrenamescope), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
 - **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MarineTraffic](#marinetraffic), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TrafficVessel](#trafficvessel), [TreeShape](#treeshape)
-- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LabelTypeface](#labeltypeface), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficField](#marinetrafficfield), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [ShadowProjection](#shadowprojection), [TrafficLane](#trafficlane)
+- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LabelFontDefinition](#labelfontdefinition), [LabelGlyph](#labelglyph), [LabelTypeface](#labeltypeface), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficField](#marinetrafficfield), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [ShadowProjection](#shadowprojection), [TrafficLane](#trafficlane)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [BerthHit](#berthhit), [Ray](#ray)
@@ -2184,6 +2184,45 @@ The faces berth labels can be set in. They are stroke fonts baked into meshes, n
 | `Condensed` = 2 | Narrower glyphs, so longer names fit across a berth. |
 | `Wide` = 3 | Wider glyphs, easier to read on big berths. |
 
+<a id="labelfontdefinition"></a>
+### LabelFontDefinition
+
+`sealed class LabelFontDefinition`
+
+The outlines of a real font, captured so a design carries its own lettering.
+
+Berth labels are meshes lying flat on the water rather than text drawn by the system, so a font has to arrive as shapes. Capturing the outlines once, into the design, means the marina looks the same on a machine that has never heard of the font — which matters, because the machine that draws a marina and the machine that shows it to customers are rarely the same one. It also means the web view gets the same lettering as the desktop one. Only the characters that were captured can be drawn. `LabelFontDefinition.TryGetGlyph` says whether one was, and a caller that needs a character the font does not carry should fall back to `GlyphFont`.
+
+| Member | Description |
+|---|---|
+| `LabelFontDefinition(string name, IEnumerable<LabelGlyph> glyphs, bool isBold = false)` | Creates a font from its glyphs. |
+| `const int GlyphLimit = 512` | The most characters a captured font may carry. |
+| `string Name { get; }` | What the font is called, as it was on the machine it was captured from. |
+| `bool IsBold { get; }` | True when the captured face was the bold one. |
+| `IReadOnlyList<LabelGlyph> Glyphs { get; }` | The characters it carries, in order. |
+| `float AdvanceOf(char character)` | How far the pen moves for a character, with the cap height as 1. Falls back to a sensible width for a character the font does not carry, so a name with an odd character in it still lays out. |
+| `IEnumerable<MeshData> CreateMeshes()` | The meshes for every glyph, in the same model space as `GlyphFont`: one unit tall, centred on the origin, reading along −X. Register them with a `MeshLibrary` to draw labels in this font. |
+| `static LabelFontDefinition? Decode(string? name, IEnumerable<string>? lines, bool isBold = false)` | Reads back what `LabelFontDefinition.Encode` wrote. Returns null when there is nothing usable in it. |
+| `IReadOnlyList<string> Encode()` | The glyphs as lines of text, for writing into a design file. One line per character: the character, its advance, then its outlines as `x,y` points, spaces between points and `\|` between outlines. |
+| `float MeasureWidth(string text)` | How wide a line of text is, in multiples of the cap height. |
+| `bool TryGetGlyph(char character, out LabelGlyph glyph)` | The glyph for a character, when the font carries one. |
+| `bool TryGetMeshId(char character, out int meshId)` | The mesh drawing a character, when the font carries one. |
+| `IEnumerable<string> Validate()` | Problems that would stop the font being drawn, empty when it is sound. |
+
+<a id="labelglyph"></a>
+### LabelGlyph
+
+`sealed record LabelGlyph`
+
+One character of a captured font: how far the pen moves for it, and the outlines that draw it.
+
+| Member | Description |
+|---|---|
+| `LabelGlyph(char Character, float Advance, IReadOnlyList<IReadOnlyList<Vector2>> Contours)` | One character of a captured font: how far the pen moves for it, and the outlines that draw it. |
+| `char Character { get; init; }` | The character. |
+| `float Advance { get; init; }` | How far along the line the next character starts, with the cap height as 1. A space has this and no outlines. |
+| `IReadOnlyList<IReadOnlyList<Vector2>> Contours { get; init; }` | Closed outlines in a space where the baseline is y = 0, the cap height is y = 1 and the pen starts at x = 0. Counters — the hole in an O, the two in an 8 — are outlines of their own; which are holes is worked out from which lie inside which, so the winding does not have to mean anything. |
+
 <a id="labeltypeface"></a>
 ### LabelTypeface
 
@@ -2288,6 +2327,7 @@ Every face gets its own vertices so normals stay faceted. Triangle winding is co
 | `void AddSphere(Vector3 center, float radius, int segments, int rings, Vector3 color)` | Low-poly UV sphere. |
 | `void AddTriangle(Vector3 a, Vector3 b, Vector3 c, Vector3 color)` | Adds a flat-shaded triangle (normal from the winding a → b → c). Degenerate triangles are skipped. |
 | `void AddTriangleFacingAway(Vector3 a, Vector3 b, Vector3 c, Vector3 color, Vector3 interior)` | Adds a triangle wound so its normal points away from `interior`. |
+| `void AddTriangleUp(Vector3 a, Vector3 b, Vector3 c, Vector3 color)` | Flat horizontal triangle facing +Y (for glyph outlines laid on the water). |
 | `void AddTriangularPlate(Vector3 a, Vector3 b, Vector3 c, float thickness, Vector3 color)` | A thin triangular panel (e.g. a sail) with the given thickness. |
 | `MeshData Build(int id, string name, bool isWater = false)` | Creates the mesh from everything added so far. |
 
@@ -2333,6 +2373,7 @@ Well-known mesh ids referenced by render objects.
 | `const int Buoy = 6` | White sphere, 0.5 m radius (status buoys, boom floats). |
 | `const int Cylinder = 7` | White cylinder, 1 m diameter, Y 0–1 (steel piles, bollards). |
 | `const int GlyphBase = 300` | First id of the text glyph meshes (see `GlyphFont`). |
+| `const int FontGlyphBase = 2000` | Ids of the glyphs of a font captured into the design start here, one per character. Clear of the built-in stroke faces below and of the world meshes above. |
 | `const int Shoreline = 9000` | The mainland behind the shore (see `Shoreline`), drawn beneath the land areas. |
 | `const int ShorelineScenery = 9001` | What stands on the mainland — trees, crops, a town — kept apart from the ground so it can cast a shadow. |
 | `const int LandBase = 10000` | First id of the per-land-area meshes (see `MeshIds.ForLand`). |
@@ -2530,6 +2571,7 @@ Plan-view polygon helpers (point lists in plan coordinates, X = world X, Y = wor
 | `static bool IsSimple(IReadOnlyList<Vector2> points)` | True when no two non-adjacent edges cross and no edge has zero length. |
 | `static float SignedArea(IReadOnlyList<Vector2> points)` | Signed area (shoelace formula on plan X and Y). Positive when the points run counter-clockwise in the X/Y plane (−X to +X, then toward +Y); negative for the opposite direction. |
 | `static IReadOnlyList<ValueTuple<int, int, int>> Triangulate(IReadOnlyList<Vector2> points)` | Splits a simple polygon (convex or concave, either winding) into triangles by ear clipping. Returns index triples into `points`, each wound counter-clockwise in the X/Y plane. |
+| `static ValueTuple<IReadOnlyList<Vector2>, IReadOnlyList<ValueTuple<int, int, int>>> TriangulateWithHoles(IReadOnlyList<Vector2> outer, IReadOnlyList<IReadOnlyList<Vector2>> holes)` | Splits a polygon with holes into triangles: letters with counters (O, A, 8), a quay with a pond in it. Returns the points it actually triangulated and index triples into them. |
 
 ## VirtualMarina.Core.Picking
 
@@ -2616,6 +2658,7 @@ Colors of berth names written on the water (`MarinaStyle.Labels`; see `BerthLabe
 | `LabelStyle()` | Creates an instance with default values. |
 | `LabelFont FontFamily { get; set; }` | The face berth labels are set in. These are built-in stroke faces rather than system typefaces, so the choice is between a few weights and widths (see `LabelFont`). |
 | `LabelTypeface Typeface { get; set; }` | The shape of the letters, as against `LabelStyle.FontFamily`, which is their weight and width. Default `LabelTypeface.Sans`. |
+| `LabelFontDefinition? Font { get; set; }` | A real font captured into the design, used in place of the built-in lettering. Null (the default) draws the labels with `LabelStyle.Typeface` and `LabelStyle.FontFamily` instead. |
 | `ColorRgba Color { get; set; }` | Normal label color. |
 | `ColorRgba HighlightColor { get; set; }` | Label of a hovered or selected berth. |
 | `ColorRgba DisabledColor { get; set; }` | Label of a disabled berth. |

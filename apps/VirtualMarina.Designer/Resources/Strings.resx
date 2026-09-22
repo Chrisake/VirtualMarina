@@ -438,12 +438,6 @@ Runtime      {4}
   <data name="CardLabels">
     <value>Berth labels</value>
   </data>
-  <data name="LabelFace">
-    <value>Face</value>
-  </data>
-  <data name="LabelFaceTip">
-    <value>Weight and width of the lettering painted on the water.</value>
-  </data>
   <data name="LabelColorNormal">
     <value>Normal</value>
   </data>
@@ -453,32 +447,20 @@ Runtime      {4}
   <data name="LabelColorDisabled">
     <value>Disabled</value>
   </data>
-  <data name="LabelTypeface">
-    <value>Letters</value>
+  <data name="LabelFont">
+    <value>Font</value>
   </data>
-  <data name="LabelTypefaceTip">
-    <value>The shape of the letters. They are drawn as strokes rather than set in an installed font, so they look the same everywhere and stay crisp at any zoom.</value>
+  <data name="LabelFontTip">
+    <value>The font the berth names are drawn in. Its letter shapes are stored inside the design, so the marina reads the same on a machine that does not have the font installed.</value>
   </data>
-  <data name="TypefaceSans">
-    <value>Sans</value>
-  </data>
-  <data name="TypefaceSerif">
-    <value>Serif</value>
-  </data>
-  <data name="TypefaceSlab">
-    <value>Slab</value>
-  </data>
-  <data name="FaceRegular">
-    <value>Regular</value>
-  </data>
-  <data name="FaceBold">
+  <data name="LabelBold">
     <value>Bold</value>
   </data>
-  <data name="FaceCondensed">
-    <value>Condensed</value>
+  <data name="LabelBoldTip">
+    <value>Use the bold face of the chosen font.</value>
   </data>
-  <data name="FaceWide">
-    <value>Wide</value>
+  <data name="FontBuiltIn">
+    <value>Built-in lettering</value>
   </data>
   <data name="CardPreview">
     <value>Preview boats</value>

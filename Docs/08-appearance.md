@@ -33,30 +33,55 @@ marina.BerthLabelMode = BerthLabelMode.NonOccupied;
 
 `BerthLabelModeExtensions.Includes(mode, status)` and `GetDisplayName(mode)` help build a mode picker.
 
-### How the letters look
+### The font the labels are set in
 
-Two settings, chosen separately, so any typeface can be had in any weight:
+By default labels use a built-in stroke font that ships with the library. A design can instead carry **a real font**,
+captured into it:
+
+```csharp
+marina.Style.Labels.Font = capturedFont;   // a LabelFontDefinition
+marina.Style.Labels.Font = null;           // back to the built-in lettering
+```
+
+A `LabelFontDefinition` is a set of glyph outlines — for each character, how far the pen moves and the closed
+contours that draw it, with the baseline at y = 0 and the cap height at y = 1. The **outlines travel with the
+design**, so the marina reads the same on a machine that has never had the font installed, and the web view gets the
+same lettering as the desktop one. Counters (the hole in an O, the two in an 8) are contours of their own; which are
+holes is worked out from which lie inside which, so the winding need not mean anything.
+
+| Member | |
+|---|---|
+| `Name`, `IsBold` | What the font is called and which face was captured |
+| `TryGetGlyph(c, out glyph)` | Whether the font carries a character |
+| `AdvanceOf(c)`, `MeasureWidth(text)` | Layout, in multiples of the cap height |
+| `CreateMeshes()` | One mesh per glyph, in the same model space as the built-in lettering |
+| `Encode()` / `Decode(name, lines, bold)` | The form stored in a design file |
+
+Setting `Labels.Font` registers the glyph meshes with `marina.Meshes` and setting it back to null removes them
+again, so the renderers re-upload on their own. A character the captured font does not carry falls back to the
+built-in lettering, so a name with something unusual in it still reads rather than vanishing.
+
+Capturing a font is the one part that needs the machine it is installed on: the
+[designer application](14-designer-app.md) offers every family it finds and writes the outlines into the design.
+
+#### The built-in lettering
+
+Used when no font is captured, and as the fallback for missing characters. Two settings, chosen separately:
 
 ```csharp
 marina.Style.Labels.Typeface = LabelTypeface.Serif;    // the shape of the letters
 marina.Style.Labels.FontFamily = LabelFont.Bold;       // their weight and width
 ```
 
-| `Typeface` | |
-|---|---|
-| `Sans` | Plain strokes with open ends. The default, and the one to read at a glance |
-| `Serif` | Finer strokes finished with small feet, in the manner of a book face |
-| `Slab` | Heavier strokes with square feet, which hold up at a distance and on a busy background |
+| `Typeface` | | | `FontFamily` | |
+|---|---|---|---|---|
+| `Sans` | Plain strokes, the default | | `Regular`, `Bold` | Even or heavy strokes |
+| `Serif` | Small feet on the stems | | `Condensed`, `Wide` | Narrower or wider |
+| `Slab` | Heavier square feet | | | |
 
-| `FontFamily` | |
-|---|---|
-| `Regular`, `Bold` | Even or heavy strokes at normal width |
-| `Condensed`, `Wide` | Narrower for long names, wider for big berths |
-
-The letters are **drawn as strokes**, not set in an installed font: they are meshes lying flat on the water, so
-OpenGL and WebGL render exactly the same thing, the library carries no font files, and the text stays crisp at any
-zoom. Real font names such as Arial or Times are therefore not among the choices, and there is no monospaced one:
-every glyph already sits on the same grid and advances by the same step, so it would be `Sans` under another name.
+These are strokes on a fixed grid rather than real glyph shapes, so they stay legible at any size and cost nothing to
+carry, but they are plain. A captured font looks considerably better and is worth preferring where the design can be
+made on a machine that has one.
 
 ## Status colors and overlays
 

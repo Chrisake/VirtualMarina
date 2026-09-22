@@ -370,11 +370,7 @@ internal static class Strings
     internal static string CardLabels => Get("CardLabels");
 
     /// <summary>"Face"</summary>
-    internal static string LabelFace => Get("LabelFace");
-
     /// <summary>"Weight and width of the lettering painted on the water."</summary>
-    internal static string LabelFaceTip => Get("LabelFaceTip");
-
     /// <summary>"Normal"</summary>
     internal static string LabelColorNormal => Get("LabelColorNormal");
 
@@ -385,27 +381,19 @@ internal static class Strings
     internal static string LabelColorDisabled => Get("LabelColorDisabled");
 
     /// <summary>"Regular"</summary>
-    internal static string LabelTypeface => Get("LabelTypeface");
+    internal static string LabelFont => Get("LabelFont");
 
-    internal static string LabelTypefaceTip => Get("LabelTypefaceTip");
+    internal static string LabelFontTip => Get("LabelFontTip");
 
-    internal static string TypefaceSans => Get("TypefaceSans");
+    internal static string LabelBold => Get("LabelBold");
 
-    internal static string TypefaceSerif => Get("TypefaceSerif");
+    internal static string LabelBoldTip => Get("LabelBoldTip");
 
-    internal static string TypefaceSlab => Get("TypefaceSlab");
-
-    internal static string FaceRegular => Get("FaceRegular");
+    internal static string FontBuiltIn => Get("FontBuiltIn");
 
     /// <summary>"Bold"</summary>
-    internal static string FaceBold => Get("FaceBold");
-
     /// <summary>"Condensed"</summary>
-    internal static string FaceCondensed => Get("FaceCondensed");
-
     /// <summary>"Wide"</summary>
-    internal static string FaceWide => Get("FaceWide");
-
     /// <summary>"Preview boats"</summary>
     internal static string CardPreview => Get("CardPreview");
 

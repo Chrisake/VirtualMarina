@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace VirtualMarina.Core.Mathematics;
 
@@ -131,6 +131,91 @@ public static class PolygonMath
         return result;
     }
 
+    /// <summary>
+    /// Splits a polygon with holes into triangles: letters with counters (O, A, 8), a quay with a pond in it.
+    /// Returns the points it actually triangulated and index triples into them.
+    /// </summary>
+    /// <param name="outer">The outline, in either winding.</param>
+    /// <param name="holes">Outlines of the holes inside it, in either winding. Empty is the same as no holes.</param>
+    /// <remarks>
+    /// Each hole is joined to the outline by a bridge — a pair of coincident edges running out to it and back —
+    /// which turns the whole thing into one simple polygon that ordinary ear clipping can handle. The bridge is the
+    /// shortest one that crosses nothing, found by trying the outline's vertices nearest the hole first, which is
+    /// slow in principle and instant on the few dozen points a glyph or a quay actually has.
+    /// </remarks>
+    public static (IReadOnlyList<Vector2> Points, IReadOnlyList<(int A, int B, int C)> Triangles) TriangulateWithHoles(
+        IReadOnlyList<Vector2> outer,
+        IReadOnlyList<IReadOnlyList<Vector2>> holes)
+    {
+        ArgumentNullException.ThrowIfNull(outer);
+        ArgumentNullException.ThrowIfNull(holes);
+        if (outer.Count < 3) return (Array.Empty<Vector2>(), Array.Empty<(int, int, int)>());
+
+        // The outline anticlockwise and every hole clockwise, so a hole walked in its own order runs against the
+        // outline and leaves the ring simple once it is spliced in.
+        var merged = new List<Vector2>(outer);
+        if (SignedArea(merged) < 0f) merged.Reverse();
+
+        // Rightmost first: a hole further out can only bridge across ones already merged, never the other way.
+        var pending = holes
+            .Where(hole => hole is { Count: >= 3 })
+            .Select(hole =>
+            {
+                var ring = new List<Vector2>(hole);
+                if (SignedArea(ring) > 0f) ring.Reverse();
+                return ring;
+            })
+            .OrderByDescending(ring => ring.Max(point => point.X))
+            .ToList();
+
+        foreach (var hole in pending)
+        {
+            var from = 0;
+            for (var i = 1; i < hole.Count; i++)
+            {
+                if (hole[i].X > hole[from].X) from = i;
+            }
+
+            var to = NearestVisible(merged, hole, from);
+            if (to < 0) continue;   // nothing can see it; leave the hole unfilled rather than tearing the outline
+
+            var spliced = new List<Vector2>(merged.Count + hole.Count + 2);
+            spliced.AddRange(merged.Take(to + 1));
+            for (var i = 0; i <= hole.Count; i++) spliced.Add(hole[(from + i) % hole.Count]);
+            spliced.AddRange(merged.Skip(to));
+            merged = spliced;
+        }
+
+        return (merged, Triangulate(merged));
+    }
+
+    /// <summary>
+    /// The vertex of <paramref name="ring"/> nearest the hole's bridging point that can be joined to it without the
+    /// bridge crossing anything. -1 when there is none.
+    /// </summary>
+    private static int NearestVisible(List<Vector2> ring, List<Vector2> hole, int from)
+    {
+        var target = hole[from];
+        foreach (var candidate in Enumerable.Range(0, ring.Count).OrderBy(i => Vector2.DistanceSquared(ring[i], target)))
+        {
+            if (Crosses(ring, ring[candidate], target) || Crosses(hole, ring[candidate], target)) continue;
+            return candidate;
+        }
+
+        return -1;
+    }
+
+    /// <summary>True when a segment properly crosses any edge of a ring, ignoring edges it merely touches.</summary>
+    private static bool Crosses(List<Vector2> ring, Vector2 a, Vector2 b)
+    {
+        for (var i = 0; i < ring.Count; i++)
+        {
+            if (SegmentsIntersect(a, b, ring[i], ring[(i + 1) % ring.Count])) return true;
+        }
+
+        return false;
+    }
+
     private static bool IsEar(IReadOnlyList<Vector2> points, List<int> remaining, int prev, int curr, int next)
     {
         var a = points[prev];
@@ -141,11 +226,19 @@ public static class PolygonMath
         foreach (var index in remaining)
         {
             if (index == prev || index == curr || index == next) continue;
-            if (InTriangle(points[index], a, b, c)) return false;
+
+            // A vertex sitting exactly on a corner of the ear is not inside it. Bridging a hole into an outline
+            // leaves two vertices duplicated on purpose, and counting those as blockers stops every ear near the
+            // bridge from being clipped, which loses whole wedges of the polygon.
+            var point = points[index];
+            if (Same(point, a) || Same(point, b) || Same(point, c)) continue;
+            if (InTriangle(point, a, b, c)) return false;
         }
 
         return true;
     }
+
+    private static bool Same(Vector2 a, Vector2 b) => Vector2.DistanceSquared(a, b) < 1e-12f;
 
     private static bool InTriangle(Vector2 p, Vector2 a, Vector2 b, Vector2 c) =>
         Cross(b - a, p - a) >= 0f && Cross(c - b, p - b) >= 0f && Cross(a - c, p - c) >= 0f;

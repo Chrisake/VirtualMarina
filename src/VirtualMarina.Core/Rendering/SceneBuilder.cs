@@ -319,19 +319,41 @@ internal static class SceneBuilder
 
         var font = t_palette?.LabelFontFamily ?? LabelFont.Regular;
         var typeface = t_palette?.LabelTypeface ?? LabelTypeface.Sans;
-        var (center, height, upHeading, reading) = BerthPlacement.LabelPlacement(berth, text.Length, font);
-        var start = center - reading * (GlyphFont.MeasureWidth(text.Length, font) * height * 0.5f - GlyphFont.GlyphWidthOf(font) * height * 0.5f);
+        var captured = t_palette?.LabelFont;
+
+        // How far the pen moves for each character. The built-in lettering is the same width throughout; a captured
+        // font is not, so the line is laid out character by character either way.
+        var advances = new float[text.Length];
+        var total = 0f;
+        for (var i = 0; i < text.Length; i++)
+        {
+            advances[i] = captured is not null && captured.TryGetGlyph(text[i], out _)
+                ? captured.AdvanceOf(text[i])
+                : GlyphFont.AdvanceOf(font);
+            total += advances[i];
+        }
+
+        var (center, height, upHeading, reading) = BerthPlacement.LabelPlacementForWidth(berth, total);
         var tint = berth.IsDisabled ? Colors.LabelDisabled : highlighted ? Colors.LabelHighlight : Colors.Label;
         var scale = new Vector3(height, 1f, height);
+        var pen = total * -0.5f;
 
         for (var i = 0; i < text.Length; i++)
         {
-            if (!GlyphFont.TryGetMeshId(text[i], font, typeface, out var meshId)) continue;
-            var position = start + reading * (i * GlyphFont.AdvanceOf(font) * height);
-            output.Add(new RenderObject(
-                meshId,
-                MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, ground is { } g ? g + LabelHeightAboveLand : LabelHeightAboveWater)),
-                tint, highlighted ? 0.35f : 0.15f, ground.HasValue ? RenderAnimation.None : RenderAnimation.AboveWaves, phase));
+            var advance = advances[i];
+            var drawn = captured is not null && captured.TryGetMeshId(text[i], out var meshId)
+                || GlyphFont.TryGetMeshId(text[i], font, typeface, out meshId);
+
+            if (drawn)
+            {
+                var position = center + reading * ((pen + (advance * 0.5f)) * height);
+                output.Add(new RenderObject(
+                    meshId,
+                    MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, ground is { } g ? g + LabelHeightAboveLand : LabelHeightAboveWater)),
+                    tint, highlighted ? 0.35f : 0.15f, ground.HasValue ? RenderAnimation.None : RenderAnimation.AboveWaves, phase));
+            }
+
+            pen += advance;
         }
     }
 
@@ -733,6 +755,7 @@ internal static class SceneBuilder
             LabelDisabled = Opaque(style.Labels.DisabledColor.ToVector3());
             LabelFontFamily = style.Labels.FontFamily;
             LabelTypeface = style.Labels.Typeface;
+            LabelFont = style.Labels.Font;
         }
 
         public Vector4 WoodDeck { get; }
@@ -762,6 +785,8 @@ internal static class SceneBuilder
         public LabelFont LabelFontFamily { get; }
 
         public LabelTypeface LabelTypeface { get; }
+
+        public LabelFontDefinition? LabelFont { get; }
 
         private static Vector4 Opaque(Vector3 color) => new(Vector3.Clamp(color, Vector3.Zero, Vector3.One), 1f);
     }

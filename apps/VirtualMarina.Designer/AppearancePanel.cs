@@ -353,32 +353,48 @@ internal sealed class AppearancePanel : UserControl
     {
         var card = Theme.Card(Strings.CardLabels, out var table);
 
-        // The letters themselves, chosen separately from their weight, so any typeface can be had bold or condensed.
-        var typeface = Theme.Choice();
-        typeface.Items.AddRange(new object[] { Strings.TypefaceSans, Strings.TypefaceSerif, Strings.TypefaceSlab });
-        typeface.SelectedIndex = (int)Labels.Typeface;
-        typeface.SelectedIndexChanged += (_, _) => Changed(() => Labels.Typeface = (LabelTypeface)typeface.SelectedIndex);
-        _refresh.Add(() => typeface.SelectedIndex = (int)Labels.Typeface);
-        Theme.Row(table, Strings.LabelTypeface, typeface, (_, _) =>
-        {
-            typeface.SelectedIndex = (int)Defaults.Labels.Typeface;
-        }, Strings.LabelTypefaceTip);
+        // Every font on this machine, plus the built-in lettering for a design that would rather not carry one.
+        var font = Theme.Choice();
+        font.Items.Add(Strings.FontBuiltIn);
+        foreach (var family in FontCapture.InstalledFamilies()) font.Items.Add(family);
 
-        var face = Theme.Choice();
-        face.Items.AddRange(new object[] { Strings.FaceRegular, Strings.FaceBold, Strings.FaceCondensed, Strings.FaceWide });
-        face.SelectedIndex = (int)Labels.FontFamily;
-        face.SelectedIndexChanged += (_, _) => Changed(() => Labels.FontFamily = (LabelFont)face.SelectedIndex);
-        _refresh.Add(() => face.SelectedIndex = (int)Labels.FontFamily);
-        Theme.Row(table, Strings.LabelFace, face, (_, _) =>
+        var bold = Theme.Check(Strings.LabelBold);
+        void UseFont()
         {
-            face.SelectedIndex = (int)Defaults.Labels.FontFamily;
-        }, Strings.LabelFaceTip);
+            var family = font.SelectedIndex <= 0 ? null : font.Items[font.SelectedIndex] as string;
+            Changed(() =>
+            {
+                Labels.Font = family is null ? null : FontCapture.Capture(family, bold.Checked);
+                Labels.FontFamily = bold.Checked ? LabelFont.Bold : LabelFont.Regular;
+                if (family is not null && Labels.Font is null) font.SelectedIndex = 0;
+            });
+        }
+
+        void ShowFont()
+        {
+            var chosen = Labels.Font is null ? 0 : Math.Max(0, font.Items.IndexOf(FamilyOf(Labels.Font.Name)));
+            font.SelectedIndex = chosen;
+            bold.Checked = Labels.Font?.IsBold ?? Labels.FontFamily == LabelFont.Bold;
+        }
+
+        ShowFont();
+        font.SelectedIndexChanged += (_, _) => UseFont();
+        bold.CheckedChanged += (_, _) => UseFont();
+        _refresh.Add(ShowFont);
+
+        Theme.Row(table, Strings.LabelFont, font, (_, _) => font.SelectedIndex = 0, Strings.LabelFontTip);
+        Theme.FullRow(table, bold);
+        Theme.Tips.SetToolTip(bold, Strings.LabelBoldTip);
 
         Color(table, Strings.LabelColorNormal, () => Labels.Color, c => Labels.Color = c, Defaults.Labels.Color);
         Color(table, Strings.LabelColorHighlight, () => Labels.HighlightColor, c => Labels.HighlightColor = c, Defaults.Labels.HighlightColor);
         Color(table, Strings.LabelColorDisabled, () => Labels.DisabledColor, c => Labels.DisabledColor = c, Defaults.Labels.DisabledColor);
         return card;
     }
+
+    /// <summary>The family a captured font came from, without the "Bold" the capture adds to its name.</summary>
+    private static string FamilyOf(string fontName) =>
+        fontName.EndsWith(" Bold", StringComparison.Ordinal) ? fontName[..^5] : fontName;
 
     private Panel BuildPreviewCard()
     {

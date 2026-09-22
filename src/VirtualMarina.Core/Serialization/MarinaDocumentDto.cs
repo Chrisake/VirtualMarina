@@ -1185,6 +1185,18 @@ internal sealed class LabelDto : ExtensibleDto
 
     public LabelTypeface Typeface { get; set; }
 
+    /// <summary>Name of the captured font, when the design carries one.</summary>
+    public string? FontName { get; set; }
+
+    /// <summary>True when the captured face was the bold one.</summary>
+    public bool FontBold { get; set; }
+
+    /// <summary>
+    /// The captured font's glyphs, one line per character. The outlines travel with the design so the lettering
+    /// survives on a machine that does not have the font installed.
+    /// </summary>
+    public List<string>? FontGlyphs { get; set; }
+
     public static LabelDto From(LabelStyle labels) => new()
     {
         Color = labels.Color,
@@ -1192,6 +1204,9 @@ internal sealed class LabelDto : ExtensibleDto
         Disabled = labels.DisabledColor,
         FontFamily = labels.FontFamily,
         Typeface = labels.Typeface,
+        FontName = labels.Font?.Name,
+        FontBold = labels.Font?.IsBold ?? false,
+        FontGlyphs = labels.Font?.Encode().ToList(),
     };
 
     public void ApplyTo(LabelStyle labels)
@@ -1201,6 +1216,7 @@ internal sealed class LabelDto : ExtensibleDto
         labels.DisabledColor = Disabled;
         labels.FontFamily = FontFamily;
         labels.Typeface = Typeface;
+        labels.Font = LabelFontDefinition.Decode(FontName, FontGlyphs, FontBold);
     }
 }
 

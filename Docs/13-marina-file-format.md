@@ -85,6 +85,16 @@ Every element — land area, pier, divider, berth and multi-berth — can carry 
 
 Conventions: points are `[x, y]` in plan coordinates (meters, north is −y), colors are `#RRGGBB` (or `#RRGGBBAA`), light colors are `[r, g, b]` in 0–1, enums are written by name, and lengths are meters and angles degrees throughout — the same units as the API ([coordinates and conventions](02-coordinates-and-conventions.md)).
 
+### The berth label font
+
+When a design was given a real font for its labels, the file carries the **outlines**, not just the name: `fontName`,
+`fontBold` and `fontGlyphs`, one line per character holding its advance and its closed contours. That is what lets
+the marina read the same on a machine where the font was never installed.
+
+It is the one part of a design that is measurably large — around 40 to 55 KB for the printable ASCII of a typical
+font, against a few hundred KB for a marina of several hundred berths. A design with no captured font carries none
+of it and falls back to the built-in lettering.
+
 ### The shoreline and the passing traffic
 
 Both are optional, and a file without them is a marina in open water — which is how every file written before they

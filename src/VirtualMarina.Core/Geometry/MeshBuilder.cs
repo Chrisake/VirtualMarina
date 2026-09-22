@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace VirtualMarina.Core.Geometry;
 
@@ -159,6 +159,10 @@ public sealed class MeshBuilder
         var offset = Vector3.Normalize(normal) * (thickness * 0.5f);
         AddLoft(new[] { a - offset, b - offset, c - offset }, new[] { a + offset, b + offset, c + offset }, color, color, color);
     }
+
+    /// <summary>Flat horizontal triangle facing +Y (for glyph outlines laid on the water).</summary>
+    public void AddTriangleUp(Vector3 a, Vector3 b, Vector3 c, Vector3 color) =>
+        AddTriangleFacingAway(a, b, c, color, ((a + b + c) / 3f) - Vector3.UnitY);
 
     /// <summary>Flat horizontal quad facing +Y (for markers laid on the water).</summary>
     public void AddQuadUp(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 color)

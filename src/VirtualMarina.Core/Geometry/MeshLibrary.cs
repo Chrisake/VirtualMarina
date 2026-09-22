@@ -30,6 +30,13 @@ public static class MeshIds
     /// <summary>First id of the text glyph meshes (see <see cref="GlyphFont"/>).</summary>
     public const int GlyphBase = 300;
 
+    /// <summary>
+    /// Ids of the glyphs of a font captured into the design start here, one per character. Clear of the built-in
+    /// stroke faces below and of the world meshes above.
+    /// </summary>
+    /// <seealso cref="LabelFontDefinition"/>
+    public const int FontGlyphBase = 2_000;
+
     /// <summary>The mainland behind the shore (see <see cref="Domain.Shoreline"/>), drawn beneath the land areas.</summary>
     public const int Shoreline = 9_000;
 

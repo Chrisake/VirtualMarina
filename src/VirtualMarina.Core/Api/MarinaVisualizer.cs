@@ -72,6 +72,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private MarineTrafficField? _trafficField;
     private double _trafficTime;
     private bool _showTrafficLanes;
+    private LabelFontDefinition? _registeredLabelFont;
     private bool _trafficDirty = true;
     private readonly List<RenderObject> _frameObjects = new();
     private int _staticObjectCount = -1;
@@ -422,8 +423,10 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         foreach (var section in style.SceneSections) section.Changed += OnSceneStyleChanged;
         style.Status.Changed += OnStatusStyleChanged;
         style.Land.Changed += OnLandStyleChanged;
+        style.Labels.Changed += OnLabelStyleChanged;
         style.View.Changed += OnViewStyleChanged;
         ApplyViewStyle(style.View);
+        RegisterLabelFont(style.Labels.Font);
     }
 
     private void DetachStyle(MarinaStyle style)
@@ -431,6 +434,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         foreach (var section in style.SceneSections) section.Changed -= OnSceneStyleChanged;
         style.Status.Changed -= OnStatusStyleChanged;
         style.Land.Changed -= OnLandStyleChanged;
+        style.Labels.Changed -= OnLabelStyleChanged;
         style.View.Changed -= OnViewStyleChanged;
     }
 
@@ -443,6 +447,31 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     {
         foreach (var land in OrderedLandAreas()) RegisterLandMesh(land);
         RegisterShorelineMesh();
+        MarkSceneDirty();
+    }
+
+    private void OnLabelStyleChanged(object? sender, EventArgs e) => RegisterLabelFont(_style.Labels.Font);
+
+    /// <summary>
+    /// Puts the glyphs of a captured font into the mesh library, and takes the previous font's out again. Called
+    /// whenever the label style changes, and cheap when the font is the one already registered.
+    /// </summary>
+    /// <param name="font">The font now in use, or null for the built-in lettering.</param>
+    private void RegisterLabelFont(LabelFontDefinition? font)
+    {
+        if (ReferenceEquals(font, _registeredLabelFont)) return;
+
+        if (_registeredLabelFont is not null)
+        {
+            foreach (var mesh in _registeredLabelFont.CreateMeshes()) Meshes.Unregister(mesh.Id);
+        }
+
+        if (font is not null)
+        {
+            foreach (var mesh in font.CreateMeshes()) Meshes.Register(mesh);
+        }
+
+        _registeredLabelFont = font;
         MarkSceneDirty();
     }
 

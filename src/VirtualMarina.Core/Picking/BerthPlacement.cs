@@ -169,11 +169,21 @@ internal static class BerthPlacement
     /// <param name="characterCount">How many characters the label has.</param>
     /// <param name="font">The face the label is set in, which decides how wide it runs.</param>
     /// <returns>Center of the text, glyph height, heading of the text's "up" direction and the reading direction.</returns>
-    public static (Vector2 Center, float Height, float UpHeadingDegrees, Vector2 ReadingDirection) LabelPlacement(Berth berth, int characterCount, LabelFont font)
+    public static (Vector2 Center, float Height, float UpHeadingDegrees, Vector2 ReadingDirection) LabelPlacement(Berth berth, int characterCount, LabelFont font) =>
+        LabelPlacementForWidth(berth, GlyphFont.MeasureWidth(characterCount, font));
+
+    /// <summary>Where a berth's label sits, for text of a width that has already been measured.</summary>
+    /// <param name="berth">The berth.</param>
+    /// <param name="textWidth">
+    /// How wide the text runs, in multiples of the glyph height — from <see cref="GlyphFont.MeasureWidth(int)"/>
+    /// for the built-in lettering, or <see cref="LabelFontDefinition.MeasureWidth"/> for a captured font.
+    /// </param>
+    /// <returns>Center of the text, glyph height, heading of the text's "up" direction and the reading direction.</returns>
+    public static (Vector2 Center, float Height, float UpHeadingDegrees, Vector2 ReadingDirection) LabelPlacementForWidth(Berth berth, float textWidth)
     {
         ArgumentNullException.ThrowIfNull(berth);
         var available = MathF.Max(0.5f, berth.Width * LabelWidthFraction);
-        var height = Math.Clamp(available / MathF.Max(GlyphFont.MeasureWidth(characterCount, font), 0.01f), MinLabelHeight, MaxLabelHeight);
+        var height = Math.Clamp(available / MathF.Max(textWidth, 0.01f), MinLabelHeight, MaxLabelHeight);
         const float gap = 0.35f;
         var center = berth.Center - berth.Forward * (berth.Length * 0.5f + gap + height * 0.5f);
         var upHeading = berth.HeadingDegrees + 180f;

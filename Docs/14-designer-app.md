@@ -1,4 +1,4 @@
-# The designer application
+﻿# The designer application
 
 `apps/VirtualMarina.Designer` is a stand-alone Windows application for drawing a marina to scale and saving it as a
 [`.marina.json` design](13-marina-file-format.md). It is meant for the people who set a marina up rather than for
@@ -94,9 +94,11 @@ has a small ↺ beside it that puts only that one back to its default, and a ful
 **Add preview boats** fills empty berths with a random mix so colours and water can be judged against a full marina;
 those boats are not saved with the design.
 
-The **labels** card sets how berth names are drawn: *Letters* picks the shape (Sans, Serif or Slab) and the face
-below it the weight and width. They are drawn as strokes rather than set in an installed font, so they look the same
-everywhere and stay sharp at any zoom — which is why the list names shapes rather than Arial or Times.
+The **labels** card sets the **Font** berth names are drawn in, listing every font installed on this machine.
+Choosing one captures its letter shapes into the design, so the marina reads the same wherever it is opened — the
+machine showing it to customers does not need the font, and neither does the web view. *Bold* takes the bold face.
+*Built-in lettering* falls back to the plain strokes the library carries, which is what a design gets when no font
+was chosen.
 
 Two cards are about what surrounds the marina rather than the marina itself, both covered in full in
 [The sea and the shore](17-sea-and-shore.md):
