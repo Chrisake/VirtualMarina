@@ -38,7 +38,7 @@ public class BerthEventArgs : EventArgs
     public Boat? Boat => Berth.Boat;
 
     /// <summary>Host-owned data bag of the berth; values written here persist with the berth (see <see cref="Berth.ExternalData"/>).</summary>
-    public BerthDataBag ExternalData => Berth.ExternalData;
+    public MarinaDataBag ExternalData => Berth.ExternalData;
 
     /// <summary>The pier the berth belongs to; null for a land berth.</summary>
     public Pier? Pier { get; }
@@ -60,16 +60,16 @@ public class BerthEventArgs : EventArgs
 public enum SelectionReason
 {
     /// <summary>The user clicked a berth (left or right button, possibly with Ctrl).</summary>
-    Pointer,
+    Pointer = 0,
 
     /// <summary>Host code called a selection or popup method (e.g. <c>SetSelection</c>, <c>ShowActions</c>).</summary>
-    Api,
+    Api = 1,
 
     /// <summary>
     /// The selection did not change, but a selected berth's data did (or <see cref="IMarinaVisualizer.RefreshPopup"/>
     /// was called) while the popup was open, so the tooltip and actions are being rebuilt.
     /// </summary>
-    Refresh,
+    Refresh = 2,
 }
 
 /// <summary>
@@ -344,61 +344,61 @@ public sealed class BerthStatusChangedEventArgs : EventArgs
 public enum LayoutChangeKind
 {
     /// <summary><see cref="IMarinaVisualizer.InitializeLayout"/> loaded a new marina.</summary>
-    Initialized,
+    Initialized = 0,
 
     /// <summary><see cref="IMarinaVisualizer.ClearLayout"/> removed everything.</summary>
-    Cleared,
+    Cleared = 1,
 
     /// <summary>A pier was added (<see cref="LayoutChangedEventArgs.PierId"/>).</summary>
-    PierAdded,
+    PierAdded = 2,
 
     /// <summary>A pier was updated.</summary>
-    PierUpdated,
+    PierUpdated = 3,
 
     /// <summary>A pier was removed.</summary>
-    PierRemoved,
+    PierRemoved = 4,
 
     /// <summary>A berth was added (<see cref="LayoutChangedEventArgs.BerthId"/>).</summary>
-    BerthAdded,
+    BerthAdded = 5,
 
     /// <summary>A berth was updated (geometry, status, boat, flags, ...).</summary>
-    BerthUpdated,
+    BerthUpdated = 6,
 
     /// <summary>A berth was removed.</summary>
-    BerthRemoved,
+    BerthRemoved = 7,
 
     /// <summary>A berth was given another name (<see cref="LayoutChangedEventArgs.BerthId"/> is the new one).</summary>
-    BerthRenamed,
+    BerthRenamed = 8,
 
     /// <summary>Several changes made inside <see cref="IMarinaVisualizer.BeginUpdate"/> or a batch, coalesced into one notification.</summary>
-    BatchUpdated,
+    BatchUpdated = 9,
 
     /// <summary>A divider was added (<see cref="LayoutChangedEventArgs.DividerId"/>).</summary>
-    DividerAdded,
+    DividerAdded = 10,
 
     /// <summary>A divider was updated.</summary>
-    DividerUpdated,
+    DividerUpdated = 11,
 
     /// <summary>A divider was removed.</summary>
-    DividerRemoved,
+    DividerRemoved = 12,
 
     /// <summary>A multi-berth was created (<see cref="LayoutChangedEventArgs.MultiBerthId"/>).</summary>
-    MultiBerthAdded,
+    MultiBerthAdded = 13,
 
     /// <summary>A multi-berth changed boat, status, style or member berths.</summary>
-    MultiBerthUpdated,
+    MultiBerthUpdated = 14,
 
     /// <summary>A multi-berth was released or dissolved.</summary>
-    MultiBerthRemoved,
+    MultiBerthRemoved = 15,
 
     /// <summary>A land area was added (<see cref="LayoutChangedEventArgs.LandAreaId"/>).</summary>
-    LandAreaAdded,
+    LandAreaAdded = 16,
 
     /// <summary>A land area was updated (outline, height, kind or name).</summary>
-    LandAreaUpdated,
+    LandAreaUpdated = 17,
 
     /// <summary>A land area was removed.</summary>
-    LandAreaRemoved,
+    LandAreaRemoved = 18,
 }
 
 /// <summary>Data for <see cref="IMarinaVisualizer.LayoutChanged"/>. The id properties that apply to <see cref="Kind"/> are set.</summary>

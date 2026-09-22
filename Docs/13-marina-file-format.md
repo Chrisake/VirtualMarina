@@ -50,7 +50,8 @@ That is the whole integration: `ApplyTo` sets the style (so the water grid is bu
     ],
     "piers": [
       { "id": "E", "name": "Pier E", "start": [110.75, -6], "headingDegrees": 0, "length": 50, "width": 2.5,
-        "type": "FloatingConcrete", "deckHeight": 0.55, "pilingSpacing": 6, "berthingSides": "Right", "services": "PowerAndWater" }
+        "type": "FloatingConcrete", "deckHeight": 0.55, "pilingSpacing": 6, "berthingSides": "Right", "services": "PowerAndWater",
+        "metadata": { "erpId": "PONT-07" } }
     ],
     "dividers": [ { "id": "E-R-D01", "pierId": "E", "start": [109.5, -6], "headingDegrees": -90, "length": 10, "width": 0.4, "type": "SinglePile", "spacing": 1.6 } ],
     "berths": [
@@ -76,6 +77,8 @@ That is the whole integration: `ApplyTo` sets the style (so the water grid is bu
   }
 }
 ```
+
+Every element — land area, pier, divider, berth and multi-berth — can carry a `"metadata"` object of host-owned strings (`Berth.Metadata` and friends). The library never reads it; it is there so an integration can keep its own keys, contract numbers or asset references inside the design instead of in a parallel table. An empty one is left out of the file.
 
 Conventions: points are `[x, y]` in plan coordinates (meters, north is −y), colors are `#RRGGBB` (or `#RRGGBBAA`), light colors are `[r, g, b]` in 0–1, enums are written by name, and lengths are meters and angles degrees throughout — the same units as the API ([coordinates and conventions](02-coordinates-and-conventions.md)).
 

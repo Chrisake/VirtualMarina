@@ -14,10 +14,23 @@ namespace VirtualMarina.Core.Rendering;
 /// </list>
 /// All calls happen on the thread that owns the graphics context.
 /// </remarks>
+/// <remarks>
+/// This interface is meant to be implemented outside the library, so anything added to it in a later version
+/// comes with a default implementation that keeps existing backends compiling and working unchanged
+/// (see <c>Docs/16-compatibility.md</c>).
+/// </remarks>
 public interface ISceneRenderer : IDisposable
 {
     /// <summary>Human-readable backend name, e.g. "OpenGL 3.3 Core (OpenTK)".</summary>
     string BackendName { get; }
+
+    /// <summary>
+    /// The graphics device actually in use once <see cref="Initialize"/> has run, e.g.
+    /// "NVIDIA GeForce RTX 3060 — OpenGL 4.6.0", or null when the backend cannot report one.
+    /// Hosts show it in a status bar or an About box.
+    /// </summary>
+    /// <remarks>Defaults to null, so a backend written before this member existed still compiles.</remarks>
+    string? DeviceDescription => null;
 
     /// <summary>Compiles shaders and sets up global state. The graphics context must be current.</summary>
     void Initialize();

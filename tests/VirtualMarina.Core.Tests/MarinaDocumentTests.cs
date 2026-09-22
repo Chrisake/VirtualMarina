@@ -306,4 +306,46 @@ public class MarinaDocumentTests
         Assert.Equal(0f, marina.Designer.TreeDensity);
         Assert.Equal(0f, marina.Designer.LandBerthHeading);
     }
+
+    [Fact]
+    public void HostMetadata_OnEveryElement_SurvivesASaveAndLoad()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddLandArea(new LandArea("quay", new[] { new Vector2(0, 0), new Vector2(40, 0), new Vector2(40, 20), new Vector2(0, 20) }, 1.5f, LandKind.Quay)
+        {
+            Metadata = new Dictionary<string, string> { ["zone"] = "winter storage" },
+        });
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(10, 20), 0f, 40f)
+        {
+            Metadata = new Dictionary<string, string> { ["erpId"] = "PONT-07" },
+        });
+        marina.AddDivider(new Divider("A-D1", new Vector2(8, 22), 90f, 9f, DividerType.Piles)
+        {
+            PierId = "A",
+            Metadata = new Dictionary<string, string> { ["asset"] = "PILE-3" },
+        });
+        marina.AddBerth(new Berth("A-L01", "A", new Vector2(6, 26), -90f, 12f, 5f)
+        {
+            Metadata = new Dictionary<string, string> { ["contract"] = "2026-114" },
+        });
+        marina.AddBerth(new Berth("A-L02", "A", new Vector2(6, 32), -90f, 12f, 5f));
+        marina.MoorAlongside(new[] { "A-L01", "A-L02" }, new Boat("B-1", "Meltemi", BoatType.MotorYacht));
+        marina.UpdateMultiBerth(marina.GetMultiBerths()[0] with
+        {
+            Metadata = new Dictionary<string, string> { ["invoice"] = "INV-9" },
+        });
+
+        var reloaded = new MarinaVisualizer();
+        MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson()).ApplyTo(reloaded);
+
+        Assert.Equal("winter storage", reloaded.GetLandArea("quay")!.Metadata["zone"]);
+        Assert.Equal("PONT-07", reloaded.GetPier("A")!.Metadata["erpId"]);
+        Assert.Equal("PILE-3", reloaded.GetDivider("A-D1")!.Metadata["asset"]);
+        Assert.Equal("2026-114", reloaded.GetBerth("A-L01")!.Metadata["contract"]);
+        Assert.Equal("INV-9", reloaded.GetMultiBerths()[0].Metadata["invoice"]);
+
+        // An element without metadata keeps an empty dictionary rather than null, and writes nothing to the file.
+        Assert.Empty(reloaded.GetBerth("A-L02")!.Metadata);
+        Assert.DoesNotContain("\"metadata\": {}", MarinaDocument.FromVisualizer(reloaded).ToJson());
+    }
 }

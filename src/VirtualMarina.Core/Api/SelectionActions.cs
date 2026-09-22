@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using VirtualMarina.Core.Rendering;
 
 namespace VirtualMarina.Core.Api;
@@ -99,13 +99,13 @@ public sealed record BerthTooltipLine(string Label, string? Value)
 public enum BerthActionStyle
 {
     /// <summary>Regular entry.</summary>
-    Normal,
+    Normal = 0,
 
     /// <summary>The main action (drawn highlighted).</summary>
-    Primary,
+    Primary = 1,
 
     /// <summary>A destructive action (drawn in red).</summary>
-    Danger,
+    Danger = 2,
 }
 
 /// <summary>An entry in the actions window that opens on right-click.</summary>

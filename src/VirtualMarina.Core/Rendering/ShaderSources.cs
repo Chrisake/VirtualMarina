@@ -1,13 +1,13 @@
-namespace VirtualMarina.Core.Rendering;
+﻿namespace VirtualMarina.Core.Rendering;
 
 /// <summary>GLSL flavor to generate.</summary>
 public enum ShaderDialect
 {
     /// <summary>Desktop OpenGL 3.3 core profile (GLSL 330).</summary>
-    DesktopGL33,
+    DesktopGL33 = 0,
 
     /// <summary>WebGL 2 / OpenGL ES 3.0 (GLSL ES 300).</summary>
-    WebGL2,
+    WebGL2 = 1,
 }
 
 /// <summary>

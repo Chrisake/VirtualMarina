@@ -1,0 +1,32 @@
+sealed class VirtualMarina.WinForms.MarinaDesignerPanel : UserControl, IBindableComponent, IComponent, IContainerControl, IDisposable, IDropTarget, ISynchronizeInvoke, IWin32Window
+    .ctor()
+    VirtualMarina.Core.Api.MarinaVisualizer Marina { get; set; }
+    event EventHandler<ThreadExceptionEventArgs> ImageLoadFailed
+
+sealed class VirtualMarina.WinForms.MarinaViewControl : UserControl, IBindableComponent, IComponent, IContainerControl, IDisposable, IDropTarget, ISynchronizeInvoke, IWin32Window
+    .ctor()
+    .ctor(VirtualMarina.Core.Api.MarinaVisualizer marina)
+    VirtualMarina.Core.Api.MarinaVisualizer Marina { get; set; }
+    VirtualMarina.Core.Design.ReferenceImage LoadReferenceImage(string path, float? metersPerPixel = null)
+    VirtualMarina.Core.Rendering.MarinaStyle Style { get; set; }
+    bool Animate { get; set; }
+    event EventHandler SelectionCleared
+    event EventHandler<ThreadExceptionEventArgs> RenderError
+    event EventHandler<VirtualMarina.Core.Api.BerthActionInvokedEventArgs> BerthActionInvoked
+    event EventHandler<VirtualMarina.Core.Api.BerthEventArgs> BerthClicked
+    event EventHandler<VirtualMarina.Core.Api.BerthHoverEventArgs> BerthHoverChanged
+    event EventHandler<VirtualMarina.Core.Api.BerthPopupChangedEventArgs> PopupChanged
+    event EventHandler<VirtualMarina.Core.Api.BerthSelectedEventArgs> BerthSelected
+    event EventHandler<VirtualMarina.Core.Api.BerthStatusChangedEventArgs> BerthStatusChanged
+    event EventHandler<VirtualMarina.Core.Api.LayoutChangedEventArgs> LayoutChanged
+    event EventHandler<VirtualMarina.Core.Api.MultiBerthSelectedEventArgs> MultiBerthSelected
+    event EventHandler<VirtualMarina.Core.Api.SelectionChangedEventArgs> SelectionChanged
+    int FrameIntervalMilliseconds { get; set; }
+    string RendererDescription { get; }
+
+static class VirtualMarina.WinForms.ReferenceImageLoader
+    const int MaxDimension = 8192
+    static VirtualMarina.Core.Design.ReferenceImage FromFile(string path)
+    static VirtualMarina.Core.Design.ReferenceImage FromImage(Image image)
+    static VirtualMarina.Core.Design.ReferenceImage FromStream(Stream stream)
+    static string FileDialogFilter { get; }

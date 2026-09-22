@@ -26,6 +26,13 @@ namespace VirtualMarina.Core.Api;
 /// this API. The exception is <see cref="Berth.ExternalData"/>, a mutable bag for host data shared by all snapshots of a berth.
 /// </para>
 /// <para><b>Ids</b> of piers, berths, dividers and berths are compared case-insensitively.</para>
+/// <para>
+/// <b>Implementing this interface</b> is not supported: it describes what <see cref="MarinaVisualizer"/> offers, and
+/// members are added to it in feature releases, which would break an outside implementation. Depend on it to keep host
+/// code testable — a mocking library fills in new members by itself — but let <see cref="MarinaVisualizer"/> be the only
+/// real implementation. <see cref="Rendering.ISceneRenderer"/> is the interface meant to be implemented outside the
+/// library; anything added to that one comes with a default implementation. See <c>Docs/16-compatibility.md</c>.
+/// </para>
 /// </remarks>
 /// <example>
 /// <code>

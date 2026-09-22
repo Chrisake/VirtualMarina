@@ -1,18 +1,19 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>
-/// Mutable key/value store (string → object) for host application data attached to a berth,
-/// e.g. contract ids, invoice objects, UI state or cached ERP records. Available as <see cref="Berth.ExternalData"/>
-/// and on every event that references a berth.
+/// Mutable key/value store (string → object) for host application data attached to an element of the marina,
+/// e.g. contract ids, invoice objects, UI state or cached ERP records. Today it is <see cref="Berth.ExternalData"/>;
+/// the name is deliberately not berth-specific so other elements can carry one without a second type.
 /// </summary>
 /// <remarks>
 /// One bag exists per berth and is shared by every <see cref="Berth"/> snapshot of that berth, so a value
 /// saved from an event handler can be read back later from <c>GetBerth</c>, from other events, or after status
-/// and geometry updates. The visualizer never reads, renders or serializes these values. Keys are case-sensitive.
-/// Like the rest of the visualizer API it is not thread-safe.
+/// and geometry updates. The visualizer never reads, renders or serializes these values — use
+/// <see cref="Berth.Metadata"/> for strings that must survive being saved to a marina file. Keys are
+/// case-sensitive. Like the rest of the visualizer API it is not thread-safe.
 /// </remarks>
 /// <example>
 /// <code>
@@ -25,17 +26,17 @@ namespace VirtualMarina.Core.Domain;
 /// var cached = marina.GetBerth("A-L03")!.ExternalData.Get&lt;Contract&gt;("Contract");
 /// </code>
 /// </example>
-public sealed class BerthDataBag : IDictionary<string, object?>, IReadOnlyDictionary<string, object?>
+public sealed class MarinaDataBag : IDictionary<string, object?>, IReadOnlyDictionary<string, object?>
 {
     private readonly Dictionary<string, object?> _items = new(StringComparer.Ordinal);
 
     /// <summary>Creates an empty bag. New berths get one automatically.</summary>
-    public BerthDataBag()
+    public MarinaDataBag()
     {
     }
 
     /// <summary>Creates a bag pre-filled with <paramref name="items"/> (later duplicates overwrite earlier ones).</summary>
-    public BerthDataBag(IEnumerable<KeyValuePair<string, object?>> items)
+    public MarinaDataBag(IEnumerable<KeyValuePair<string, object?>> items)
     {
         ArgumentNullException.ThrowIfNull(items);
         foreach (var (key, value) in items) this[key] = value;
@@ -132,7 +133,7 @@ public sealed class BerthDataBag : IDictionary<string, object?>, IReadOnlyDictio
         ((ICollection<KeyValuePair<string, object?>>)_items).Remove(item);
 
     /// <summary>Copies entries from another bag, overwriting existing keys.</summary>
-    internal void MergeFrom(BerthDataBag other)
+    internal void MergeFrom(MarinaDataBag other)
     {
         foreach (var (key, value) in other._items) _items[key] = value;
     }

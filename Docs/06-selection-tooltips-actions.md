@@ -1,4 +1,4 @@
-# Selection, tooltips and actions
+﻿# Selection, tooltips and actions
 
 ## How the user selects
 
@@ -163,7 +163,7 @@ The WinForms control and the Blazor component render the popup. Custom views see
 
 ## External data on berths
 
-Every berth has an `ExternalData` bag (`BerthDataBag`, string → object) for your own objects. The bag is shared by every snapshot of the berth, so values written from any event are visible later everywhere:
+Every berth has an `ExternalData` bag (`MarinaDataBag`, string → object) for your own objects. The bag is shared by every snapshot of the berth, so values written from any event are visible later everywhere:
 
 ```csharp
 marina.BerthSelected += (s, e) =>

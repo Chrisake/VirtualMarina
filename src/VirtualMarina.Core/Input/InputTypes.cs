@@ -37,57 +37,57 @@ public enum InputModifiers
 public enum MarinaKey
 {
     /// <summary>Pan left (orbit with Shift). WinForms/Blazor map Left arrow and A.</summary>
-    Left,
+    Left = 0,
 
     /// <summary>Pan right (orbit with Shift). Mapped from Right arrow and D.</summary>
-    Right,
+    Right = 1,
 
     /// <summary>Pan forward (tilt with Shift). Mapped from Up arrow and W.</summary>
-    Up,
+    Up = 2,
 
     /// <summary>Pan back (tilt with Shift). Mapped from Down arrow and S.</summary>
-    Down,
+    Down = 3,
 
     /// <summary>Tilt the camera up.</summary>
-    PageUp,
+    PageUp = 4,
 
     /// <summary>Tilt the camera down.</summary>
-    PageDown,
+    PageDown = 5,
 
     /// <summary>Zoom in. Mapped from + and =.</summary>
-    ZoomIn,
+    ZoomIn = 6,
 
     /// <summary>Zoom out. Mapped from - and _.</summary>
-    ZoomOut,
+    ZoomOut = 7,
 
     /// <summary>Reset the camera to the overview.</summary>
-    Home,
+    Home = 8,
 
     /// <summary>Close the popup; pressed again, clear the selection. In the designer: cancel the drawing, then return to navigation.</summary>
-    Escape,
+    Escape = 9,
 
     /// <summary>Designer: finish the drawing in progress.</summary>
-    Enter,
+    Enter = 10,
 
     /// <summary>Designer: remove the last placed point.</summary>
-    Backspace,
+    Backspace = 11,
 
     /// <summary>Designer: with the erase tool, remove the element under the pointer.</summary>
-    Delete,
+    Delete = 12,
 
     /// <summary>Designer: undo the last change (<c>MarinaDesigner.Undo</c>). Hosts map Ctrl+Z.</summary>
-    Undo,
+    Undo = 13,
 }
 
 /// <summary>What dragging with a mouse button does. Configure with <see cref="MarinaInputController.LeftDragAction"/> and related properties.</summary>
 public enum CameraDragAction
 {
     /// <summary>Dragging does nothing.</summary>
-    None,
+    None = 0,
 
     /// <summary>Map-style pan: the ground under the pointer follows it.</summary>
-    Pan,
+    Pan = 1,
 
     /// <summary>Rotate the camera around its target.</summary>
-    Orbit,
+    Orbit = 2,
 }

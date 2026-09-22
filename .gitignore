@@ -4,3 +4,6 @@ obj/
 *.user
 *.suo
 TestResults/
+
+# API baselines: the .approved.txt files are committed, the .received.txt a failing test writes is not.
+*.received.txt

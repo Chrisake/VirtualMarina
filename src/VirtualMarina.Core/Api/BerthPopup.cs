@@ -1,4 +1,4 @@
-using VirtualMarina.Core.Domain;
+﻿using VirtualMarina.Core.Domain;
 
 namespace VirtualMarina.Core.Api;
 
@@ -6,10 +6,10 @@ namespace VirtualMarina.Core.Api;
 public enum BerthPopupKind
 {
     /// <summary>Information about the selection (left-click).</summary>
-    Tooltip,
+    Tooltip = 0,
 
     /// <summary>Tooltip header plus clickable actions (right-click).</summary>
-    Actions,
+    Actions = 1,
 }
 
 /// <summary>

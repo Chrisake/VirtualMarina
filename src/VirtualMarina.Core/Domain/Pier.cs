@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Collections.ObjectModel;
+using System.Numerics;
 using VirtualMarina.Core.Mathematics;
 using VirtualMarina.Core.Resources;
 
@@ -108,6 +109,13 @@ public sealed record Pier
     /// <example><code>new Pier("A", "Pier A", start, 0f, 60f) { Services = PierServices.PowerAndWater }</code></example>
     public PierServices Services { get; init; } = PierServices.None;
 
+    /// <summary>
+    /// Read-only string attributes the host application attaches to this pier, e.g. its own key or a contract
+    /// reference. Saved to and loaded from a marina file, and never read by the visualizer.
+    /// </summary>
+    /// <example><code>pier with { Metadata = new Dictionary&lt;string, string&gt; { ["erpId"] = "PONT-07" } }</code></example>
+    public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
+
     /// <summary>True when boats can berth on <paramref name="side"/> (see <see cref="BerthingSides"/>).</summary>
     public bool HasBerthsOn(PierSide side) => (BerthingSides & (side == PierSide.Left ? PierSides.Left : PierSides.Right)) != 0;
 
@@ -174,10 +182,10 @@ public sealed record Pier
 public enum PierSide
 {
     /// <summary>The left-hand side looking from start to end (+X for a pier with heading 0°). Generated ids use "L": <c>{PierId}-L01</c>.</summary>
-    Left,
+    Left = 0,
 
     /// <summary>The right-hand side looking from start to end, where <see cref="Pier.Right"/> points (−X for a pier with heading 0°). Generated ids use "R": <c>{PierId}-R01</c>.</summary>
-    Right,
+    Right = 1,
 }
 
 /// <summary>Supplies offered at a pier's berths, drawn as pedestals beside the berths (<see cref="Pier.Services"/>).</summary>

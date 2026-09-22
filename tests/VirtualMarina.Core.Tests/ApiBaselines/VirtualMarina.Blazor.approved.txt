@@ -1,0 +1,46 @@
+class VirtualMarina.Blazor.MarinaDesignerPanel : ComponentBase, IComponent, IDisposable, IHandleAfterRender, IHandleEvent
+    .ctor()
+    VirtualMarina.Blazor.MarinaView View { get; set; }
+    VirtualMarina.Core.Api.MarinaVisualizer Marina { get; set; }
+    long MaxImageFileSize { get; set; }
+    string CssClass { get; set; }
+    virtual void BuildRenderTree(RenderTreeBuilder __builder)
+    virtual void OnParametersSet()
+    void Dispose()
+
+class VirtualMarina.Blazor.MarinaView : ComponentBase, IAsyncDisposable, IComponent, IHandleAfterRender, IHandleEvent
+    .ctor()
+    EventCallback<string> OnRendererError { get; set; }
+    EventCallback<string> OnRendererReady { get; set; }
+    Task<VirtualMarina.Core.Design.ReferenceImage> LoadReferenceImageAsync(byte[] data, string contentType, float? metersPerPixel = null)
+    ValueTask DisposeAsync()
+    VirtualMarina.Core.Api.MarinaVisualizer Marina { get; set; }
+    VirtualMarina.Core.Rendering.MarinaStyle MarinaStyle { get; set; }
+    bool OnKeyDown(string key, int modifiers)
+    double[] OnAnimationFrame(double timestampMs, double cssWidth, double cssHeight)
+    string CssClass { get; set; }
+    string OnPointerMove(double x, double y, int modifiers)
+    string RendererDescription { get; }
+    string Style { get; set; }
+    virtual Task OnAfterRenderAsync(bool firstRender)
+    virtual void BuildRenderTree(RenderTreeBuilder __builder)
+    virtual void OnParametersSet()
+    void OnDoubleClick(double x, double y, int button, int modifiers)
+    void OnPointerDown(double x, double y, int button, int modifiers)
+    void OnPointerLeave()
+    void OnPointerUp(double x, double y, int button, int modifiers)
+    void OnWheel(double notches, double x, double y)
+
+sealed class VirtualMarina.Blazor.WebGlSceneRenderer : IDisposable, VirtualMarina.Core.Rendering.ISceneRenderer
+    const int FrameLength = 67
+    const int ObjectStride = 25
+    string BackendName { get; }
+    string DeviceDescription { get; }
+    void Dispose()
+    void Initialize()
+    void Render(VirtualMarina.Core.Rendering.RenderFrame frame)
+    void Resize(int pixelWidth, int pixelHeight)
+
+class VirtualMarina.Blazor._Imports
+    .ctor()
+    void Execute()

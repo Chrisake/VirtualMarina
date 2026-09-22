@@ -8,7 +8,7 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Api**: [BatchUpdateError](#batchupdateerror), [BatchUpdateResult](#batchupdateresult), [BerthAction](#berthaction), [BerthActionCollection](#berthactioncollection), [BerthActionInvokedEventArgs](#berthactioninvokedeventargs), [BerthActionStyle](#berthactionstyle), [BerthEventArgs](#bertheventargs), [BerthHoverEventArgs](#berthhovereventargs), [BerthLabelMode](#berthlabelmode), [BerthLabelModeExtensions](#berthlabelmodeextensions), [BerthPopup](#berthpopup), [BerthPopupChangedEventArgs](#berthpopupchangedeventargs), [BerthPopupKind](#berthpopupkind), [BerthSelectedEventArgs](#berthselectedeventargs), [BerthSelectionRejection](#berthselectionrejection), [BerthStatusChangedEventArgs](#berthstatuschangedeventargs), [BerthTooltip](#berthtooltip), [BerthTooltipLine](#berthtooltipline), [BerthUpdate](#berthupdate), [DefaultPopupContent](#defaultpopupcontent), [DisplayNames](#displaynames), [IMarinaVisualizer](#imarinavisualizer), [LayoutChangeKind](#layoutchangekind), [LayoutChangedEventArgs](#layoutchangedeventargs), [MarinaLocalization](#marinalocalization), [MarinaStatistics](#marinastatistics), [MarinaVisualizer](#marinavisualizer), [MarinaVisualizerOptions](#marinavisualizeroptions), [MultiBerthSelectedEventArgs](#multiberthselectedeventargs), [PierUpdate](#pierupdate), [RejectedBerth](#rejectedberth), [SelectionChangedEventArgs](#selectionchangedeventargs), [SelectionReason](#selectionreason), [SelectionResult](#selectionresult), [StatusColorScheme](#statuscolorscheme)
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
-- **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthDataBag](#berthdatabag), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [TreeShape](#treeshape)
+- **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [TreeShape](#treeshape)
 - **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
@@ -198,7 +198,7 @@ Data for `IMarinaVisualizer.BerthClicked` and the base of `BerthSelectedEventArg
 | `string BerthId { get; }` | The berth's id (`Berth.Id`). |
 | `BerthStatus Status { get; }` | The berth's status (`Berth.Status`). |
 | `Boat? Boat { get; }` | Boat assigned to the berth (moored, expected or temporarily away), if known. |
-| `BerthDataBag ExternalData { get; }` | Host-owned data bag of the berth; values written here persist with the berth (see `Berth.ExternalData`). |
+| `MarinaDataBag ExternalData { get; }` | Host-owned data bag of the berth; values written here persist with the berth (see `Berth.ExternalData`). |
 | `Pier? Pier { get; }` | The pier the berth belongs to; null for a land berth. |
 | `LandArea? LandArea { get; init; }` | The land area a land berth is on (`Berth.LandAreaId`); null for a water berth. |
 | `PointerButton Button { get; }` | Button that triggered the event; `PointerButton.None` for programmatic selection. |
@@ -439,7 +439,7 @@ The text comes from the core library's resources and follows `MarinaLocalization
 
 The API the host application (typically an ERP) uses to drive the 3D marina: layout, berth status, selection, tooltips and actions, camera and appearance. It is UI-framework and graphics-API agnostic: the same instance drives the WinForms/OpenGL view (`MarinaViewControl`) and the Blazor/WebGL view (`<MarinaView>`).
 
-Threading. Not thread-safe. Call it from the UI thread that owns the view (marshal with `Control.BeginInvoke` in WinForms or `InvokeAsync` in Blazor when data arrives on a background thread). Events. Raised synchronously on the calling thread, after the state change has been applied, so handlers can read the new state and call back into the API. Snapshots. `Berth`, `Pier`, `Boat`, `Divider` and `MultiBerth` are immutable records. Getters and events return snapshots; change state only through this API. The exception is `Berth.ExternalData`, a mutable bag for host data shared by all snapshots of a berth. Ids of piers, berths, dividers and berths are compared case-insensitively.
+Threading. Not thread-safe. Call it from the UI thread that owns the view (marshal with `Control.BeginInvoke` in WinForms or `InvokeAsync` in Blazor when data arrives on a background thread). Events. Raised synchronously on the calling thread, after the state change has been applied, so handlers can read the new state and call back into the API. Snapshots. `Berth`, `Pier`, `Boat`, `Divider` and `MultiBerth` are immutable records. Getters and events return snapshots; change state only through this API. The exception is `Berth.ExternalData`, a mutable bag for host data shared by all snapshots of a berth. Ids of piers, berths, dividers and berths are compared case-insensitively. Implementing this interface is not supported: it describes what `MarinaVisualizer` offers, and members are added to it in feature releases, which would break an outside implementation. Depend on it to keep host code testable — a mocking library fills in new members by itself — but let `MarinaVisualizer` be the only real implementation. `ISceneRenderer` is the interface meant to be implemented outside the library; anything added to that one comes with a default implementation. See `Docs/16-compatibility.md`.
 
 | Member | Description |
 |---|---|
@@ -1427,7 +1427,7 @@ The one deliberate exception is `Berth.ExternalData`, a mutable bag shared by ev
 | `bool IsReadOnly { get; init; }` | When true the berth looks normal and can be selected and show its tooltip, but its actions window does not open. |
 | `string? MultiBerthId { get; }` | Id of the `MultiBerth` this berth belongs to, if any. Managed by the visualizer. |
 | `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes supplied with the berth definition (e.g. power, water). For mutable host objects use `Berth.ExternalData`. |
-| `BerthDataBag ExternalData { get; init; }` | Host-owned objects attached to this berth (contract ids, cached ERP records, ...). The same instance is shared by every snapshot of the berth, so values written from an event handler are visible in later events and in `GetBerth`. The visualizer never reads it. |
+| `MarinaDataBag ExternalData { get; init; }` | Host-owned objects attached to this berth (contract ids, cached ERP records, ...). The same instance is shared by every snapshot of the berth, so values written from an event handler are visible in later events and in `GetBerth`. The visualizer never reads it. |
 | `string DisplayName { get; }` | `Berth.Label` when set, otherwise `Berth.Id`. Used for tooltips and water labels. |
 | `bool IsInteractive { get; }` | Visible and not disabled: can be hovered, selected and show a tooltip. |
 | `bool AllowsActions { get; }` | Interactive and not read-only: its actions window can open. |
@@ -1437,34 +1437,6 @@ The one deliberate exception is `Berth.ExternalData`, a mutable bag shared by ev
 | `Vector2 Forward { get; }` | Unit plan-view vector a moored boat's bow points along (toward the pier end of the berth). |
 | `Vector2 Right { get; }` | Unit plan-view vector across the berth: the heading's local +X axis, `(cos h, −sin h)`. For heading 0° it is +X. |
 | `static Berth OnLand(string id, string landAreaId, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f)` | Creates a Free land berth: a spot on a `LandArea` where a boat is stored or maintained ashore (boatyard, hard standing, dry stack). It is drawn on the land's surface, its boat rests on cradle stands, and it is selected, colored and updated like any other berth. |
-
-<a id="berthdatabag"></a>
-### BerthDataBag
-
-`sealed class BerthDataBag : IDictionary<string, object>, IReadOnlyDictionary<string, object>`
-
-Mutable key/value store (string → object) for host application data attached to a berth, e.g. contract ids, invoice objects, UI state or cached ERP records. Available as `Berth.ExternalData` and on every event that references a berth.
-
-One bag exists per berth and is shared by every `Berth` snapshot of that berth, so a value saved from an event handler can be read back later from `GetBerth`, from other events, or after status and geometry updates. The visualizer never reads, renders or serializes these values. Keys are case-sensitive. Like the rest of the visualizer API it is not thread-safe.
-
-| Member | Description |
-|---|---|
-| `BerthDataBag()` | Creates an empty bag. New berths get one automatically. |
-| `BerthDataBag(IEnumerable<KeyValuePair<string, object?>> items)` | Creates a bag pre-filled with `items` (later duplicates overwrite earlier ones). |
-| `object? this[string key] { get; set; }` | Gets or sets a value. Getting a missing key throws; use `BerthDataBag.Get` or `BerthDataBag.TryGetValue` to avoid that. |
-| `int Count { get; }` | Number of entries. |
-| `ICollection<string> Keys { get; }` | All keys. |
-| `ICollection<object?> Values { get; }` | All values. |
-| `void Add(string key, object? value)` | Adds a value. |
-| `void Clear()` | Removes every entry. |
-| `bool ContainsKey(string key)` | True when the key is present. |
-| `T? Get<T>(string key)` | Returns the value if present and of type `T`; otherwise default. |
-| `IEnumerator<KeyValuePair<string, object?>> GetEnumerator()` | Enumerates the entries. |
-| `T? GetOrAdd<T>(string key, Func<T?> factory)` | Returns the existing `T` value, or creates it with `factory` and stores it. |
-| `bool Remove(string key)` | Removes a key. Returns false when it wasn't present. |
-| `void Set(string key, object? value)` | Stores a value, replacing any existing one. |
-| `bool TryGet<T>(string key, out T? value)` | Gets the value when it is present and of type `T`. |
-| `bool TryGetValue(string key, out object? value)` | Gets a value of any type. |
 
 <a id="berthgenerator"></a>
 ### BerthGenerator
@@ -1610,6 +1582,7 @@ Dividers are independent of `Berth.HasFingerPiers`, which draws simple finger pi
 | `float Width { get; init; }` | Width of a finger pier or boom, or pile diameter. |
 | `DividerType Type { get; init; }` | Finger pier, row of piles, floating boom or a single pile at the outer end. |
 | `float Spacing { get; init; }` | Distance between piles (`DividerType.Piles`) or floats (`DividerType.Boom`). |
+| `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes the host application attaches to this divider, e.g. its own key or a contract reference. Saved to and loaded from a marina file, and never read by the visualizer. |
 | `Vector2 Direction { get; }` | Unit plan-view vector from start to end. |
 | `Vector2 Right { get; }` | Unit plan-view vector across the divider: the heading's local +X axis, `(cos h, −sin h)`. |
 | `Vector2 End { get; }` | End point (the pile of a finger pier or a `DividerType.SinglePile` divider stands here). |
@@ -1650,6 +1623,7 @@ The outline may be convex or concave, in either winding order, but its edges mus
 | `float Height { get; init; }` | Height of the top surface above the water, in meters, over the whole area. |
 | `LandKind Kind { get; init; }` | Surface type. |
 | `IReadOnlyList<LandTree> Trees { get; init; }` | Trees standing on the area (usually lawns). Their positions are part of the layout, so they never move between sessions; generate them once with `LandArea.GenerateTrees` or the designer. |
+| `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes the host application attaches to this land area, e.g. its own key or a contract reference. Saved to and loaded from a marina file, and never read by the visualizer. |
 | `string DisplayName { get; }` | `LandArea.Name` when set, otherwise `LandArea.Id`. |
 | `float Area { get; }` | Plan-view area in square meters. |
 | `bool Contains(Vector2 point)` | True when the plan-view point lies inside the outline. |
@@ -1696,6 +1670,34 @@ A tree standing on a `LandArea`. Positions and sizes are stored, so trees look t
 | `float Height { get; init; }` | Total height above the land surface, 1–40 m. |
 | `float CrownRadius { get; init; }` | Radius of the crown, 0.3–15 m. |
 | `TreeShape Shape { get; init; }` | Crown shape. |
+
+<a id="marinadatabag"></a>
+### MarinaDataBag
+
+`sealed class MarinaDataBag : IDictionary<string, object>, IReadOnlyDictionary<string, object>`
+
+Mutable key/value store (string → object) for host application data attached to an element of the marina, e.g. contract ids, invoice objects, UI state or cached ERP records. Today it is `Berth.ExternalData`; the name is deliberately not berth-specific so other elements can carry one without a second type.
+
+One bag exists per berth and is shared by every `Berth` snapshot of that berth, so a value saved from an event handler can be read back later from `GetBerth`, from other events, or after status and geometry updates. The visualizer never reads, renders or serializes these values — use `Berth.Metadata` for strings that must survive being saved to a marina file. Keys are case-sensitive. Like the rest of the visualizer API it is not thread-safe.
+
+| Member | Description |
+|---|---|
+| `MarinaDataBag()` | Creates an empty bag. New berths get one automatically. |
+| `MarinaDataBag(IEnumerable<KeyValuePair<string, object?>> items)` | Creates a bag pre-filled with `items` (later duplicates overwrite earlier ones). |
+| `object? this[string key] { get; set; }` | Gets or sets a value. Getting a missing key throws; use `MarinaDataBag.Get` or `MarinaDataBag.TryGetValue` to avoid that. |
+| `int Count { get; }` | Number of entries. |
+| `ICollection<string> Keys { get; }` | All keys. |
+| `ICollection<object?> Values { get; }` | All values. |
+| `void Add(string key, object? value)` | Adds a value. |
+| `void Clear()` | Removes every entry. |
+| `bool ContainsKey(string key)` | True when the key is present. |
+| `T? Get<T>(string key)` | Returns the value if present and of type `T`; otherwise default. |
+| `IEnumerator<KeyValuePair<string, object?>> GetEnumerator()` | Enumerates the entries. |
+| `T? GetOrAdd<T>(string key, Func<T?> factory)` | Returns the existing `T` value, or creates it with `factory` and stores it. |
+| `bool Remove(string key)` | Removes a key. Returns false when it wasn't present. |
+| `void Set(string key, object? value)` | Stores a value, replacing any existing one. |
+| `bool TryGet<T>(string key, out T? value)` | Gets the value when it is present and of type `T`. |
+| `bool TryGetValue(string key, out object? value)` | Gets a value of any type. |
 
 <a id="marinalayout"></a>
 ### MarinaLayout
@@ -1779,6 +1781,7 @@ The visualizer keeps member berths consistent: each carries the berth's `MultiBe
 | `Boat Boat { get; init; }` | The boat; every member berth carries it in `Berth.Boat`. |
 | `BerthStatus Status { get; init; }` | Occupied, Reserved or TemporarilyFree. A berth is never Free (release it instead). |
 | `MooringStyle Style { get; init; }` | How the boat lies across the berths. |
+| `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes the host application attaches to this multi-berth, e.g. its own key or a contract reference. Saved to and loaded from a marina file, and never read by the visualizer. |
 | `string PrimaryBerthId { get; }` | The first member berth; its orientation places the boat. |
 | `bool Contains(string berthId)` | True when `berthId` is a member (case-insensitive). |
 
@@ -1826,6 +1829,7 @@ Use the constructor when you know the shore end, or `Pier.FromCenter` when you s
 | `float PilingSpacing { get; init; }` | Distance between columns (`PierType.Concrete`) or cleats (`PierType.FloatingConcrete`) along the pier. |
 | `PierSides BerthingSides { get; init; }` | Sides where boats berth. Default `PierSides.Both`. A single-sided pier (e.g. one running along the edge of a `LandArea`) only takes berths on its open side, and its mooring points (bollards, cleats and fenders) are drawn on that side only. |
 | `PierServices Services { get; init; }` | Power and water pedestals drawn along the pier. Default `PierServices.None`. They are placed on the berthing sides only, and only next to the berths that exist, so a pier without berths shows none. |
+| `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes the host application attaches to this pier, e.g. its own key or a contract reference. Saved to and loaded from a marina file, and never read by the visualizer. |
 | `Vector2 Direction { get; }` | Unit plan-view vector along the pier (from start to end). |
 | `Vector2 Right { get; }` | Unit plan-view vector across the pier toward `PierSide.Right`: the right-hand side of someone standing at `Pier.Start` and looking toward `Pier.End`, `(−cos h, sin h)`. For a pier with heading 0° (running along +Z) it points to −X; for heading 180° (running north, toward −Z) it points to +X (east). |
 | `Vector2 End { get; }` | Seaward-end center point. |
@@ -2292,6 +2296,7 @@ Backend responsibilities: Upload every mesh in `RenderFrame.Meshes` (by id) and 
 | Member | Description |
 |---|---|
 | `string BackendName { get; }` | Human-readable backend name, e.g. "OpenGL 3.3 Core (OpenTK)". |
+| `string? DeviceDescription { get; }` | The graphics device actually in use once `ISceneRenderer.Initialize` has run, e.g. "NVIDIA GeForce RTX 3060 — OpenGL 4.6.0", or null when the backend cannot report one. Hosts show it in a status bar or an About box. |
 | `void Initialize()` | Compiles shaders and sets up global state. The graphics context must be current. |
 | `void Render(RenderFrame frame)` | Draws one frame produced by `MarinaVisualizer.BuildRenderFrame()`. |
 | `void Resize(int pixelWidth, int pixelHeight)` | Framebuffer size in device pixels. |

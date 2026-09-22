@@ -1,3 +1,5 @@
+﻿using System.Collections.ObjectModel;
+
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>How a boat that spans several berths lies in them.</summary>
@@ -57,6 +59,13 @@ public sealed record MultiBerth
 
     /// <summary>How the boat lies across the berths.</summary>
     public MooringStyle Style { get; init; }
+
+    /// <summary>
+    /// Read-only string attributes the host application attaches to this multi-berth, e.g. its own key or a contract
+    /// reference. Saved to and loaded from a marina file, and never read by the visualizer.
+    /// </summary>
+    /// <example><code>group with { Metadata = new Dictionary&lt;string, string&gt; { ["contract"] = "2026-114" } }</code></example>
+    public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>The first member berth; its orientation places the boat.</summary>
     public string PrimaryBerthId => BerthIds[0];

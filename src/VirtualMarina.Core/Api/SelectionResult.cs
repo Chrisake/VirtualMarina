@@ -1,19 +1,19 @@
-namespace VirtualMarina.Core.Api;
+﻿namespace VirtualMarina.Core.Api;
 
 /// <summary>Why a berth id passed to <see cref="MarinaVisualizer.SetSelection(IEnumerable{string}, bool, VirtualMarina.Core.Camera.CameraAngle?)"/> was not selected.</summary>
 public enum BerthSelectionRejection
 {
     /// <summary>No berth has this id.</summary>
-    NotFound,
+    NotFound = 0,
 
     /// <summary>The berth is disabled (<c>IsDisabled</c>).</summary>
-    Disabled,
+    Disabled = 1,
 
     /// <summary>The berth is hidden (<c>IsVisible = false</c>).</summary>
-    Hidden,
+    Hidden = 2,
 
     /// <summary>The berth's status is excluded by the status filter.</summary>
-    FilteredOut,
+    FilteredOut = 3,
 }
 
 /// <summary>A berth id that <c>SetSelection</c> skipped.</summary>

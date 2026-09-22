@@ -1,3 +1,4 @@
+﻿using System.Collections.ObjectModel;
 using System.Numerics;
 using VirtualMarina.Core.Mathematics;
 
@@ -7,23 +8,23 @@ namespace VirtualMarina.Core.Domain;
 public enum LandKind
 {
     /// <summary>Paved quay or pier head: a solid light concrete block.</summary>
-    Quay,
+    Quay = 0,
 
     /// <summary>Rubble-mound breakwater: the area is filled with a pile of rocks sloping down to the water.</summary>
-    Breakwater,
+    Breakwater = 1,
 
     /// <summary>Lawn or park: a solid green block.</summary>
-    Grass,
+    Grass = 2,
 }
 
 /// <summary>Shape of a <see cref="LandTree"/>.</summary>
 public enum TreeShape
 {
     /// <summary>Round crown (plane tree, olive, oak).</summary>
-    Broadleaf,
+    Broadleaf = 0,
 
     /// <summary>Tall, pointed crown (pine, cypress).</summary>
-    Conifer,
+    Conifer = 1,
 }
 
 /// <summary>A tree standing on a <see cref="LandArea"/>. Positions and sizes are stored, so trees look the same in every session.</summary>
@@ -95,6 +96,13 @@ public sealed record LandArea
     /// them once with <see cref="GenerateTrees"/> or the designer.
     /// </summary>
     public IReadOnlyList<LandTree> Trees { get; init; } = Array.Empty<LandTree>();
+
+    /// <summary>
+    /// Read-only string attributes the host application attaches to this land area, e.g. its own key or a contract
+    /// reference. Saved to and loaded from a marina file, and never read by the visualizer.
+    /// </summary>
+    /// <example><code>land with { Metadata = new Dictionary&lt;string, string&gt; { ["zone"] = "winter storage" } }</code></example>
+    public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>
     /// Scatters trees randomly inside an outline, at about <paramref name="treesPer1000SquareMeters"/>, keeping them apart, away from the

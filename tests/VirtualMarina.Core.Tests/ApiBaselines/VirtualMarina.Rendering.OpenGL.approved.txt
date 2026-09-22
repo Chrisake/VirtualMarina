@@ -1,0 +1,9 @@
+sealed class VirtualMarina.Rendering.OpenGL.OpenGlSceneRenderer : IDisposable, VirtualMarina.Core.Rendering.ISceneRenderer
+    .ctor()
+    bool IsInitialized { get; }
+    string BackendName { get; }
+    string DeviceDescription { get; }
+    void Dispose()
+    void Initialize()
+    void Render(VirtualMarina.Core.Rendering.RenderFrame frame)
+    void Resize(int pixelWidth, int pixelHeight)

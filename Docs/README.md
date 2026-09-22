@@ -18,6 +18,7 @@ VirtualMarina is a .NET 8 library that renders an interactive 3D marina (piers, 
 | [Marina files](13-marina-file-format.md) | The `.marina.json` design file: what it holds, what it looks like, and how it stays compatible between versions |
 | [Designer application](14-designer-app.md) | The stand-alone tool for drawing a marina to scale and saving it for the host application |
 | [Localization](15-localization.md) | Resource files per assembly, choosing the language, adding a translation |
+| [Compatibility and versioning](16-compatibility.md) | What the API promises between versions, what may change, and how to extend it safely |
 | [API reference](11-api-reference.md) | Every public type and member, grouped by namespace |
 
 The same descriptions are in the XML documentation comments. Visual Studio shows them in IntelliSense and Quick Info (the `VirtualMarina.*.xml` files are generated next to each DLL).

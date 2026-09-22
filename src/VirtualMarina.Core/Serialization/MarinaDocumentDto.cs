@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Collections.ObjectModel;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using VirtualMarina.Core.Api;
@@ -35,6 +36,14 @@ internal abstract class ExtensibleDto
     protected T? OldChoice<T>(string name)
         where T : struct, Enum =>
         OldText(name) is { } text && Enum.TryParse<T>(text, ignoreCase: true, out var parsed) ? parsed : null;
+
+    /// <summary>Host metadata on its way out; an empty bag is left out of the file entirely.</summary>
+    protected static Dictionary<string, string>? Copy(IReadOnlyDictionary<string, string> metadata) =>
+        metadata.Count == 0 ? null : metadata.ToDictionary(entry => entry.Key, entry => entry.Value);
+
+    /// <summary>Host metadata on its way in; a missing one reads as empty rather than null.</summary>
+    protected static IReadOnlyDictionary<string, string> Read(Dictionary<string, string>? metadata) =>
+        metadata is null or { Count: 0 } ? ReadOnlyDictionary<string, string>.Empty : metadata;
 }
 
 internal sealed class DocumentDto : ExtensibleDto
@@ -119,6 +128,9 @@ internal sealed class LandAreaDto : ExtensibleDto
 
     public List<TreeDto>? Trees { get; set; }
 
+    /// <summary>Host-owned string attributes; written only when there are any.</summary>
+    public Dictionary<string, string>? Metadata { get; set; }
+
     public static LandAreaDto From(LandArea land) => new()
     {
         Id = land.Id,
@@ -127,12 +139,14 @@ internal sealed class LandAreaDto : ExtensibleDto
         Height = land.Height,
         Outline = land.Points.ToList(),
         Trees = land.Trees.Count == 0 ? null : land.Trees.Select(TreeDto.From).ToList(),
+        Metadata = Copy(land.Metadata),
     };
 
     public LandArea ToDomain() => new(Id, Outline ?? new List<Vector2>(), Height, Kind)
     {
         Name = Name,
         Trees = Trees?.Select(t => t.ToDomain()).ToArray() ?? Array.Empty<LandTree>(),
+        Metadata = Read(Metadata),
     };
 }
 
@@ -181,6 +195,9 @@ internal sealed class PierDto : ExtensibleDto
 
     public PierServices Services { get; set; }
 
+    /// <summary>Host-owned string attributes; written only when there are any.</summary>
+    public Dictionary<string, string>? Metadata { get; set; }
+
     public static PierDto From(Pier pier) => new()
     {
         Id = pier.Id,
@@ -194,6 +211,7 @@ internal sealed class PierDto : ExtensibleDto
         PilingSpacing = pier.PilingSpacing,
         BerthingSides = pier.BerthingSides,
         Services = pier.Services,
+        Metadata = Copy(pier.Metadata),
     };
 
     public Pier ToDomain()
@@ -203,6 +221,7 @@ internal sealed class PierDto : ExtensibleDto
             PilingSpacing = PilingSpacing,
             BerthingSides = BerthingSides == 0 ? PierSides.Both : BerthingSides,
             Services = Services,
+            Metadata = Read(Metadata),
         };
 
         return DeckHeight is { } height ? pier with { DeckHeight = height } : pier;
@@ -227,6 +246,9 @@ internal sealed class DividerDto : ExtensibleDto
 
     public float Spacing { get; set; } = 4f;
 
+    /// <summary>Host-owned string attributes; written only when there are any.</summary>
+    public Dictionary<string, string>? Metadata { get; set; }
+
     public static DividerDto From(Divider divider) => new()
     {
         Id = divider.Id,
@@ -237,6 +259,7 @@ internal sealed class DividerDto : ExtensibleDto
         Width = divider.Width,
         Type = divider.Type,
         Spacing = divider.Spacing,
+        Metadata = Copy(divider.Metadata),
     };
 
     public Divider ToDomain() => new(Id, Start, HeadingDegrees, Length, Type)
@@ -244,6 +267,7 @@ internal sealed class DividerDto : ExtensibleDto
         PierId = PierId ?? OldText("dockId"),
         Width = Width <= 0f ? 0.8f : Width,
         Spacing = Spacing < 0.5f ? 4f : Spacing,
+        Metadata = Read(Metadata),
     };
 }
 
@@ -394,6 +418,9 @@ internal sealed class MultiBerthDto : ExtensibleDto
 
     public MooringStyle Style { get; set; }
 
+    /// <summary>Host-owned string attributes; written only when there are any.</summary>
+    public Dictionary<string, string>? Metadata { get; set; }
+
     public static MultiBerthDto From(MultiBerth berth) => new()
     {
         Id = berth.Id,
@@ -401,12 +428,14 @@ internal sealed class MultiBerthDto : ExtensibleDto
         Boat = BoatDto.From(berth.Boat),
         Status = berth.Status,
         Style = berth.Style,
+        Metadata = Copy(berth.Metadata),
     };
 
     public MultiBerth? ToDomain()
     {
         var members = BerthIds ?? ReadOldBerthIds();
-        return members is { Count: > 0 } && Boat is not null ? new MultiBerth(Id, members, Boat.ToDomain(), Status, Style) : null;
+        if (members is not { Count: > 0 } || Boat is null) return null;
+        return new MultiBerth(Id, members, Boat.ToDomain(), Status, Style) { Metadata = Read(Metadata) };
     }
 
     /// <summary>A group from a file up to format 1.x, where the groups were the list called "berths" and their members "slipIds".</summary>

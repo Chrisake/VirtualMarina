@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- Tests for the WinForms host control. Windows-only, so kept apart from the cross-platform Core tests. -->
   <PropertyGroup>
@@ -19,6 +19,11 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The API surface writer is shared with the core tests rather than copied. -->
+    <Compile Include="..\VirtualMarina.Core.Tests\ApiSurface.cs" Link="ApiSurface.cs" />
   </ItemGroup>
 
   <ItemGroup>

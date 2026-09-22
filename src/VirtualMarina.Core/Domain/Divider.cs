@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Collections.ObjectModel;
+using System.Numerics;
 using VirtualMarina.Core.Mathematics;
 
 namespace VirtualMarina.Core.Domain;
@@ -76,6 +77,13 @@ public sealed record Divider
 
     /// <summary>Distance between piles (<see cref="DividerType.Piles"/>) or floats (<see cref="DividerType.Boom"/>).</summary>
     public float Spacing { get; init; } = 4f;
+
+    /// <summary>
+    /// Read-only string attributes the host application attaches to this divider, e.g. its own key or a contract
+    /// reference. Saved to and loaded from a marina file, and never read by the visualizer.
+    /// </summary>
+    /// <example><code>divider with { Metadata = new Dictionary&lt;string, string&gt; { ["asset"] = "BOOM-114" } }</code></example>
+    public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>Unit plan-view vector from start to end.</summary>
     public Vector2 Direction => MarinaMath.HeadingToDirection(HeadingDegrees);

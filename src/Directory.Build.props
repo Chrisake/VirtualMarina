@@ -9,5 +9,24 @@
       Missing XML comments on public members (CS1591) are reported as warnings to keep the docs complete.
     -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!--
+      Binary compatibility across a major version. AssemblyVersion is the identity a host application is
+      compiled against, so it stays at <major>.0.0.0 for the whole 1.x line: dropping in a newer 1.x build
+      satisfies references without rebuilding or binding redirects. FileVersion and InformationalVersion
+      carry the real version for support and the file properties dialog.
+
+      Bump AssemblyVersion only together with the major version, i.e. only for a release that is allowed to
+      break the API. See Docs/16-compatibility.md.
+    -->
+    <AssemblyVersion>$(Version.Split('.')[0]).0.0.0</AssemblyVersion>
+    <FileVersion>$(Version).0</FileVersion>
+    <InformationalVersion>$(Version)</InformationalVersion>
+
+    <!--
+      A public type or member that is not documented is a promise made by accident: CS1591 (missing XML
+      comment) and CS1573/CS1571 (wrong or duplicated param tags) are errors in the shipped libraries.
+    -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1573;CS1571;CS1572</WarningsAsErrors>
   </PropertyGroup>
 </Project>

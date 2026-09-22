@@ -124,35 +124,35 @@ public sealed class DesignElementRenamingEventArgs : EventArgs
 public enum DesignDraftChange
 {
     /// <summary>A point was added (a land outline point, a pier's start, the first end of a berth row or scale line).</summary>
-    PointAdded,
+    PointAdded = 0,
 
     /// <summary>The last point was removed (Backspace).</summary>
-    PointRemoved,
+    PointRemoved = 1,
 
     /// <summary>The drawing was abandoned (Escape, tool change, designer turned off).</summary>
-    Canceled,
+    Canceled = 2,
 
     /// <summary>The drawing was finished and turned into an element (or a scale line).</summary>
-    Completed,
+    Completed = 3,
 }
 
 /// <summary>What changed about the reference image (<see cref="MarinaDesigner.ReferenceImageChanged"/>).</summary>
 public enum ReferenceImageChange
 {
     /// <summary>A new image was set.</summary>
-    Set,
+    Set = 0,
 
     /// <summary>The image was removed.</summary>
-    Cleared,
+    Cleared = 1,
 
     /// <summary>The image was moved (<see cref="MarinaDesigner.ReferenceImageCenter"/>).</summary>
-    Moved,
+    Moved = 2,
 
     /// <summary>The image scale changed (<see cref="MarinaDesigner.ReferenceImageMetersPerPixel"/>), e.g. by calibration.</summary>
-    Scaled,
+    Scaled = 3,
 
     /// <summary>Opacity, visibility or layering changed.</summary>
-    AppearanceChanged,
+    AppearanceChanged = 4,
 }
 
 /// <summary>Data for <see cref="MarinaDesigner.ToolChanged"/>.</summary>

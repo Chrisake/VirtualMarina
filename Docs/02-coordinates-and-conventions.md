@@ -1,4 +1,4 @@
-# Coordinates and conventions
+﻿# Coordinates and conventions
 
 ## World and plan coordinates
 
@@ -50,7 +50,7 @@ Pier, berth, divider and berth ids are **case-insensitive** (`"a-l01"` finds `"A
 
 - **Immutable records:** `Pier`, `Berth`, `Boat`, `Divider`, `MultiBerth`, `MarinaLayout`, `LandArea`, `BerthUpdate` and `PierUpdate`. Use `with` expressions to derive changed copies.
 - **Snapshots:** getters (`GetBerth`, `GetBerths`, `SelectedBerths`, ...) and event arguments return snapshots from the moment of the call. Changing marina state always goes through the API (`UpdateBerth`, `AssignBoat`, ...).
-- **The one mutable exception** is `Berth.ExternalData` (a `BerthDataBag`). Every snapshot of a berth shares the same bag, so host data written there persists. See [Selection, tooltips and actions](06-selection-tooltips-actions.md#external-data-on-berths).
+- **The one mutable exception** is `Berth.ExternalData` (a `MarinaDataBag`). Every snapshot of a berth shares the same bag, so host data written there persists. See [Selection, tooltips and actions](06-selection-tooltips-actions.md#external-data-on-berths).
 
 ```csharp
 var berth = marina.GetBerth("A-L03")!;

@@ -6,7 +6,7 @@ A modular 3D marina visualization library for .NET 8. The same core DLL drives a
 
 **[Docs/](Docs/README.md)** has the full documentation:
 - [getting started](Docs/01-getting-started.md) and [conventions](Docs/02-coordinates-and-conventions.md)
-- guides for [layout](Docs/03-layout.md), [the designer](Docs/12-designer.md), [the designer application](Docs/14-designer-app.md), [marina files](Docs/13-marina-file-format.md), [status and flags](Docs/04-status-and-flags.md), [multi-berths](Docs/05-multi-berths.md), [selection, tooltips and actions](Docs/06-selection-tooltips-actions.md), [camera and focus](Docs/07-camera-and-focus.md), [appearance](Docs/08-appearance.md), [events](Docs/09-events-reference.md), [hosting](Docs/10-hosting-and-custom-views.md) and [localization](Docs/15-localization.md)
+- guides for [layout](Docs/03-layout.md), [the designer](Docs/12-designer.md), [the designer application](Docs/14-designer-app.md), [marina files](Docs/13-marina-file-format.md), [status and flags](Docs/04-status-and-flags.md), [multi-berths](Docs/05-multi-berths.md), [selection, tooltips and actions](Docs/06-selection-tooltips-actions.md), [camera and focus](Docs/07-camera-and-focus.md), [appearance](Docs/08-appearance.md), [events](Docs/09-events-reference.md), [hosting](Docs/10-hosting-and-custom-views.md), [localization](Docs/15-localization.md) and [compatibility](Docs/16-compatibility.md)
 - a generated [API reference](Docs/11-api-reference.md)
 
 Every public type and member also has XML documentation comments, so Visual Studio shows them in IntelliSense. The libraries emit `VirtualMarina.*.xml` next to their DLLs (`src/Directory.Build.props`), and a missing comment on a public member is a build warning. After changing the public API, regenerate the reference with `dotnet run --project Docs/tools/ApiDocGen -- Docs/11-api-reference.md`.
@@ -228,7 +228,7 @@ CameraPose preview = marina.ComputeFocusPose(berths, CameraAngle.TopDown);   // 
 - **Zoom limits:** `MinFocusDistance` (25 m) leaves some context around a single berth, and the camera's `MaxDistance` constraint caps how far out it goes.
 - **Resizing:** if the view size changes while the camera is still where a focus put it (for example, focus was called before the view had its size), the focus is re-fitted. If the user has moved the camera since, a resize leaves it alone.
 
-`Berth.ExternalData` is a `BerthDataBag` (string → object). All snapshots of a berth share the same instance, so values written in an event handler survive later updates. `BerthUpdate.ExternalData` merges entries from a batch. The visualizer never reads it.
+`Berth.ExternalData` is a `MarinaDataBag` (string → object). All snapshots of a berth share the same instance, so values written in an event handler survive later updates. `BerthUpdate.ExternalData` merges entries from a batch. The visualizer never reads it.
 
 **Custom views.** `MarinaViewControl` and `<MarinaView>` render the popup for you. Another host can subscribe to `PopupChanged`, render `ActivePopup`, and call `TryGetPopupAnchor(out screenPoint)` every frame to position it.
 

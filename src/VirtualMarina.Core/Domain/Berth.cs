@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Numerics;
 using VirtualMarina.Core.Mathematics;
 
@@ -137,7 +137,7 @@ public sealed record Berth
     /// The same instance is shared by every snapshot of the berth, so values written from an event handler
     /// are visible in later events and in <c>GetBerth</c>. The visualizer never reads it.
     /// </summary>
-    public BerthDataBag ExternalData { get; init; } = new();
+    public MarinaDataBag ExternalData { get; init; } = new();
 
     /// <summary><see cref="Label"/> when set, otherwise <see cref="Id"/>. Used for tooltips and water labels.</summary>
     public string DisplayName => string.IsNullOrWhiteSpace(Label) ? Id : Label!;
