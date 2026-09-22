@@ -24,6 +24,9 @@ internal sealed class SceneState
 
     public required Func<LandArea, int> LandMeshId { get; init; }
 
+    /// <summary>True when there is a mainland to draw, beneath every land area.</summary>
+    public required bool HasShoreline { get; init; }
+
     public required Func<string, LandArea?> LandLookup { get; init; }
 
     public required Func<string, Berth?> BerthLookup { get; init; }
@@ -123,6 +126,8 @@ internal static class SceneBuilder
 
         var berths = state.Berths as IReadOnlyCollection<Berth> ?? state.Berths.ToList();
 
+        // The mainland goes down first, so the land areas traced along the shore sit on top of it.
+        if (state.HasShoreline) output.Add(new RenderObject(MeshIds.Shoreline, Matrix4x4.Identity, White));
         foreach (var land in state.Land) output.Add(new RenderObject(state.LandMeshId(land), Matrix4x4.Identity, White));
         foreach (var pier in state.Piers)
         {

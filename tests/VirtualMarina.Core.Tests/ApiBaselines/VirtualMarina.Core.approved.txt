@@ -196,6 +196,7 @@ static class VirtualMarina.Core.Api.DisplayNames
     static string GetDisplayName(VirtualMarina.Core.Design.BerthSeparator separator)
     static string GetDisplayName(VirtualMarina.Core.Design.DesignTool tool)
     static string GetDisplayName(VirtualMarina.Core.Domain.DividerType type)
+    static string GetDisplayName(VirtualMarina.Core.Domain.HinterlandScenery scenery)
     static string GetDisplayName(VirtualMarina.Core.Domain.LandKind kind)
     static string GetDisplayName(VirtualMarina.Core.Domain.MooringStyle style)
     static string GetDisplayName(VirtualMarina.Core.Domain.PierServices services)
@@ -212,6 +213,7 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     VirtualMarina.Core.Domain.Berth HoveredBerth { get; }
     VirtualMarina.Core.Domain.Berth SelectedBerth { get; }
     VirtualMarina.Core.Domain.BerthStatusFilter StatusFilter { get; }
+    VirtualMarina.Core.Domain.Shoreline Shoreline { get; }
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; }
     VirtualMarina.Core.Rendering.MarinaStyle Style { get; set; }
     VirtualMarina.Core.Rendering.WaterSettings Water { get; }
@@ -274,6 +276,7 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     abstract bool RemoveFromSelection(string berthId)
     abstract bool RemoveLandArea(string landAreaId, bool removeBerths = true)
     abstract bool RemovePier(string pierId, bool removeBerths = true)
+    abstract bool RemoveShoreline()
     abstract bool SelectBerth(string berthId, bool focusCamera = false)
     abstract bool ShowActions()
     abstract bool ShowTooltip()
@@ -294,6 +297,7 @@ interface VirtualMarina.Core.Api.IMarinaVisualizer
     abstract void RefreshPopup()
     abstract void ResetCamera(bool immediate = false)
     abstract void ResetStatusColors()
+    abstract void SetShoreline(VirtualMarina.Core.Domain.Shoreline shoreline)
     abstract void SetStatusColor(VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Rendering.ColorRgba color)
     abstract void SetStatusFilter(VirtualMarina.Core.Domain.BerthStatusFilter filter)
     abstract void ShowAllStatuses()
@@ -337,6 +341,7 @@ enum VirtualMarina.Core.Api.LayoutChangeKind : IComparable, IConvertible, IForma
     PierRemoved = 4
     PierRenamed = 19
     PierUpdated = 3
+    ShorelineChanged = 19
 
 sealed class VirtualMarina.Core.Api.LayoutChangedEventArgs : EventArgs
     .ctor(VirtualMarina.Core.Api.LayoutChangeKind kind, string pierId = null, string berthId = null, string dividerId = null, string multiBerthId = null, string landAreaId = null)
@@ -424,6 +429,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     VirtualMarina.Core.Domain.Pier ChangePierId(string pierId, string newPierId)
     VirtualMarina.Core.Domain.Pier GetPier(string pierId)
     VirtualMarina.Core.Domain.Pier UpdatePier(VirtualMarina.Core.Api.PierUpdate update)
+    VirtualMarina.Core.Domain.Shoreline Shoreline { get; }
     VirtualMarina.Core.Geometry.MeshLibrary Meshes { get; }
     VirtualMarina.Core.Input.MarinaInputController Input { get; }
     VirtualMarina.Core.Picking.BerthHit? HitTest(float x, float y)
@@ -453,6 +459,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     bool RemoveFromSelection(string berthId)
     bool RemoveLandArea(string landAreaId, bool removeBerths = true)
     bool RemovePier(string pierId, bool removeBerths = true)
+    bool RemoveShoreline()
     bool SelectBerth(string berthId, bool focusCamera = false)
     bool ShowActions()
     bool ShowTooltip()
@@ -494,6 +501,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     void ResetStatusColors()
     void SetDisabledColor(VirtualMarina.Core.Rendering.ColorRgba color)
     void SetOverlayOpacity(float padOpacity, float ghostBoatOpacity)
+    void SetShoreline(VirtualMarina.Core.Domain.Shoreline shoreline)
     void SetStatusColor(VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Rendering.ColorRgba color)
     void SetStatusFilter(VirtualMarina.Core.Domain.BerthStatusFilter filter)
     void SetStatusFilter(VirtualMarina.Core.Domain.BerthStatus[] visibleStatuses)
@@ -746,6 +754,7 @@ sealed class VirtualMarina.Core.Design.DesignElementCreatedEventArgs : EventArgs
     VirtualMarina.Core.Design.DesignTool Tool { get; }
     VirtualMarina.Core.Domain.LandArea LandArea { get; }
     VirtualMarina.Core.Domain.Pier Pier { get; }
+    VirtualMarina.Core.Domain.Shoreline Shoreline { get; init; }
 
 sealed class VirtualMarina.Core.Design.DesignElementCreatingEventArgs : EventArgs
     .ctor(VirtualMarina.Core.Design.DesignTool tool, VirtualMarina.Core.Domain.LandArea landArea, VirtualMarina.Core.Domain.Pier pier, IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, IReadOnlyList<VirtualMarina.Core.Domain.Divider> dividers)
@@ -754,6 +763,7 @@ sealed class VirtualMarina.Core.Design.DesignElementCreatingEventArgs : EventArg
     VirtualMarina.Core.Design.DesignTool Tool { get; }
     VirtualMarina.Core.Domain.LandArea LandArea { get; set; }
     VirtualMarina.Core.Domain.Pier Pier { get; set; }
+    VirtualMarina.Core.Domain.Shoreline Shoreline { get; set; }
     bool Cancel { get; set; }
 
 sealed class VirtualMarina.Core.Design.DesignElementErasedEventArgs : EventArgs
@@ -776,6 +786,7 @@ enum VirtualMarina.Core.Design.DesignTool : IComparable, IConvertible, IFormatta
     AddLandBerths = 8
     DrawLandArea = 1
     DrawPier = 2
+    DrawShoreline = 12
     EditServices = 10
     Erase = 4
     MeasureScale = 6
@@ -825,6 +836,7 @@ sealed class VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMari
 
 sealed class VirtualMarina.Core.Design.MarinaDesigner
     IReadOnlyList<Vector2> DraftPoints { get; }
+    IReadOnlyList<Vector2> ShorelineAwaitingSide { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> CreateBerths(string pierId, VirtualMarina.Core.Domain.PierSide side, float fromAlong, float toAlong)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> SetBerthServices(string berthId, bool wholeSide = false)
     IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)
@@ -840,6 +852,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     VirtualMarina.Core.Design.ReferenceImage ReferenceImage { get; }
     VirtualMarina.Core.Domain.Berth CreateLandBerth(string landAreaId, Vector2 position, float? headingDegrees = null)
     VirtualMarina.Core.Domain.Berth RenameBerth(string berthId, string newBerthId)
+    VirtualMarina.Core.Domain.HinterlandScenery Scenery { get; set; }
     VirtualMarina.Core.Domain.LandArea CreateLandArea(IReadOnlyList<Vector2> outline)
     VirtualMarina.Core.Domain.LandArea PlantTrees(string landAreaId, float? treesPer1000SquareMeters = null)
     VirtualMarina.Core.Domain.LandArea RemoveTrees(string landAreaId)
@@ -850,6 +863,8 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     VirtualMarina.Core.Domain.PierServices BerthServices { get; set; }
     VirtualMarina.Core.Domain.PierSides PierBerthingSides { get; set; }
     VirtualMarina.Core.Domain.PierType PierType { get; set; }
+    VirtualMarina.Core.Domain.Shoreline CreateShoreline(IReadOnlyList<Vector2> line, bool landOnLeft)
+    VirtualMarina.Core.Domain.Shoreline PickShorelineSide(Vector2 landSide)
     bool AlignBerthsToExisting { get; set; }
     bool CalibrateReferenceImage(Vector2 start, Vector2 end, float knownLengthMeters)
     bool CalibrateReferenceImage(float knownLengthMeters)
@@ -857,6 +872,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     bool CancelDraft()
     bool ClearScaleLine()
     bool CompleteDraft()
+    bool DeleteShoreline()
     bool Erase(object element)
     bool EraseBerthsOfPier(string pierId)
     bool FocusReferenceImage(bool immediate = false)
@@ -1074,6 +1090,12 @@ enum VirtualMarina.Core.Domain.DividerType : IComparable, IConvertible, IFormatt
     Piles = 1
     SinglePile = 3
 
+enum VirtualMarina.Core.Domain.HinterlandScenery : IComparable, IConvertible, IFormattable, ISpanFormattable
+    Countryside = 1
+    Fields = 2
+    None = 0
+    Town = 3
+
 sealed class VirtualMarina.Core.Domain.LandArea : IEquatable<VirtualMarina.Core.Domain.LandArea>
     .ctor(string id, IEnumerable<Vector2> points, float height, VirtualMarina.Core.Domain.LandKind kind = 0)
     .ctor(string id, VirtualMarina.Core.Domain.OrientedRect area, float height, VirtualMarina.Core.Domain.LandKind kind = 0)
@@ -1147,6 +1169,7 @@ sealed class VirtualMarina.Core.Domain.MarinaLayout : IEquatable<VirtualMarina.C
     IReadOnlyList<VirtualMarina.Core.Domain.Pier> Piers { get; init; }
     IReadOnlyList<string> Validate()
     ValueTuple<Vector2, Vector2> ComputeBounds()
+    VirtualMarina.Core.Domain.Shoreline Shoreline { get; init; }
     bool Equals(VirtualMarina.Core.Domain.MarinaLayout other)
     object[] ToObjects()
     static VirtualMarina.Core.Domain.MarinaLayout Empty { get; }
@@ -1168,6 +1191,7 @@ sealed class VirtualMarina.Core.Domain.MarinaLayoutBuilder
     VirtualMarina.Core.Domain.MarinaLayoutBuilder AddMultiBerth(VirtualMarina.Core.Domain.MultiBerth berth)
     VirtualMarina.Core.Domain.MarinaLayoutBuilder AddPier(VirtualMarina.Core.Domain.Pier pier, Action<VirtualMarina.Core.Domain.PierBuilder> configure = null)
     VirtualMarina.Core.Domain.MarinaLayoutBuilder AddPier(string id, string name, Vector2 start, float headingDegrees, float length, Action<VirtualMarina.Core.Domain.PierBuilder> configure = null, float width = 2.5, VirtualMarina.Core.Domain.PierType type = 0)
+    VirtualMarina.Core.Domain.MarinaLayoutBuilder WithShoreline(VirtualMarina.Core.Domain.Shoreline shoreline)
 
 sealed class VirtualMarina.Core.Domain.MarinaLayoutException : Exception, ISerializable
     .ctor(IReadOnlyList<string> errors)
@@ -1273,6 +1297,27 @@ enum VirtualMarina.Core.Domain.PierType : IComparable, IConvertible, IFormattabl
     FloatingConcrete = 1
     FloatingWooden = 0
 
+sealed class VirtualMarina.Core.Domain.Shoreline : IEquatable<VirtualMarina.Core.Domain.Shoreline>
+    .ctor(IEnumerable<Vector2> points, bool landOnLeft)
+    IEnumerable<string> Validate()
+    IReadOnlyDictionary<string, string> Metadata { get; init; }
+    IReadOnlyList<Vector2> BuildOutline()
+    IReadOnlyList<Vector2> Points { get; init; }
+    VirtualMarina.Core.Domain.HinterlandScenery Scenery { get; init; }
+    VirtualMarina.Core.Domain.LandKind Kind { get; init; }
+    bool Contains(Vector2 point)
+    bool Equals(VirtualMarina.Core.Domain.Shoreline other)
+    bool LandOnLeft { get; init; }
+    const float Reach = 12000
+    float DistanceToShore(Vector2 point)
+    float Height { get; init; }
+    int ScenerySeed { get; init; }
+    static bool op_Equality(VirtualMarina.Core.Domain.Shoreline left, VirtualMarina.Core.Domain.Shoreline right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.Shoreline left, VirtualMarina.Core.Domain.Shoreline right)
+    virtual bool Equals(object obj)
+    virtual int GetHashCode()
+    virtual string ToString()
+
 enum VirtualMarina.Core.Domain.TreeShape : IComparable, IConvertible, IFormattable, ISpanFormattable
     Broadleaf = 0
     Cherry = 4
@@ -1321,6 +1366,7 @@ static class VirtualMarina.Core.Geometry.LandMeshFactory
     const float WallDepth = 3
     static VirtualMarina.Core.Geometry.MeshData Create(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
     static VirtualMarina.Core.Geometry.MeshData CreateRockPile(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateShoreline(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle style = null)
     static VirtualMarina.Core.Geometry.MeshData CreateSlab(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
 
 static class VirtualMarina.Core.Geometry.MarinaMeshFactory
@@ -1369,6 +1415,7 @@ static class VirtualMarina.Core.Geometry.MeshIds
     const int LandBase = 10000
     const int Piling = 3
     const int SelectionMarker = 5
+    const int Shoreline = 9000
     const int UnitBox = 2
     const int Water = 1
     static int ForBoat(VirtualMarina.Core.Domain.BoatType type)
@@ -1524,6 +1571,7 @@ sealed class VirtualMarina.Core.Rendering.LabelStyle : VirtualMarina.Core.Render
 sealed class VirtualMarina.Core.Rendering.LandStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
     VirtualMarina.Core.Rendering.ColorRgba BlossomColor { get; set; }
+    VirtualMarina.Core.Rendering.ColorRgba BuildingColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba ConiferColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba FoliageColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba GrassBankColor { get; set; }
@@ -1532,6 +1580,7 @@ sealed class VirtualMarina.Core.Rendering.LandStyle : VirtualMarina.Core.Renderi
     VirtualMarina.Core.Rendering.ColorRgba QuayColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba QuayWallColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba RockColor { get; set; }
+    VirtualMarina.Core.Rendering.ColorRgba RoofColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba TrunkColor { get; set; }
     bool ShowTrees { get; set; }
     float RockColorVariation { get; set; }

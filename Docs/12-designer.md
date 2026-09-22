@@ -48,6 +48,7 @@ While `IsActive` is true, clicks go to the designer instead of selecting berths.
 | `PlantTrees` | Click a lawn to scatter trees on it, replacing the ones it has. Ctrl+click or right-click removes them | |
 | `Erase` | Click a berth, pier or land area to remove it (piers and land areas take their berths with them, berths take their own dividers) | Delete removes the element under the pointer |
 | `Rename` | Click a berth or a pier to give it another name; the designer asks the host for it through `ElementRenaming` | |
+| `DrawShoreline` | Click along the coast of the mainland (two points make a straight one), then click the side that is land | Enter settles the line, Backspace takes it back to the points, Esc cancels |
 | `MoveReferenceImage` | Drag the image with the left button | |
 | `MeasureScale` | Click both ends of the image's scale bar | |
 
@@ -105,6 +106,25 @@ Berths are perpendicular to the pier, bows toward it, on the side you click. A r
 ### Trees
 
 `PlantTrees` works on lawns (`LandKind.Grass`) only; clicking a quay or breakwater does nothing. Every click **replaces** the lawn's trees with a new random scattering at `TreeDensity` (the "Tree coverage" slider in the panels), kept clear of the land berths on it. Ctrl+click or a right-click removes them. From code: `PlantTrees(landAreaId, density)` and `RemoveTrees(landAreaId)` (which works on any land area). A new lawn is planted at `TreeDensity` as it is drawn. Positions are stored in `LandArea.Trees`, so trees never move between sessions.
+
+### The mainland
+
+`DrawShoreline` draws the coast behind the marina, so it stops looking like an island in an empty sea. Click along the
+coast — two points are enough for a straight one — and press Enter. That **settles** the line rather than finishing the
+drawing: the next click says which side of it is land, and the mainland appears on that side.
+
+The first and last stretches of the line run on without end, so the land never runs out however far the camera pulls
+back. The one rule is that those two stretches must not cross each other, since then neither side of the line is "the
+land"; the preview turns red and Enter refuses. Backspace while the line is settled puts it back on the drawing board.
+
+The mainland is drawn **beneath** the land areas placed by hand, so a quay traced along the shore sits on top of it and
+the two read as one piece of ground. There is only ever one: drawing another replaces it, and `DeleteShoreline()` (the
+"Remove the mainland" button) takes it away. Ctrl+Z undoes any of that.
+
+`Scenery` picks what covers the land — `Countryside`, `Fields`, `Town` or `None` — scattered in a band along the coast
+and thinning inland. It is generated from a seed rather than stored, so it costs nothing in the file and stays put
+between sessions. From code: `CreateShoreline(line, landOnLeft)`, or `marina.SetShoreline(...)` for full control of
+its height, surface and scenery.
 
 ### Names
 

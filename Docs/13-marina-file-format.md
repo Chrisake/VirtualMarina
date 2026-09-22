@@ -43,6 +43,8 @@ That is the whole integration: `ApplyTo` sets the style (so the water grid is bu
   "savedUtc": "2026-09-21T20:35:07+00:00",
   "marina": { "name": "VirtualMarina Test Harbor" },
   "layout": {
+    "shoreline": { "line": [[-400, -40], [-60, -52], [180, -44]], "landOnLeft": false,
+      "height": 1.4, "kind": "Grass", "scenery": "Countryside", "scenerySeed": 41 },
     "landAreas": [
       { "id": "quay", "name": "Main quay", "kind": "Quay", "height": 1, "outline": [[-130, -32], [150, -32], [150, -6], [-130, -6]] },
       { "id": "lawn", "kind": "Grass", "height": 1.15, "outline": [[68, -30], [100, -31], [122, -26]],
@@ -81,6 +83,23 @@ That is the whole integration: `ApplyTo` sets the style (so the water grid is bu
 Every element — land area, pier, divider, berth and multi-berth — can carry a `"metadata"` object of host-owned strings (`Berth.Metadata` and friends). The library never reads it; it is there so an integration can keep its own keys, contract numbers or asset references inside the design instead of in a parallel table. An empty one is left out of the file.
 
 Conventions: points are `[x, y]` in plan coordinates (meters, north is −y), colors are `#RRGGBB` (or `#RRGGBBAA`), light colors are `[r, g, b]` in 0–1, enums are written by name, and lengths are meters and angles degrees throughout — the same units as the API ([coordinates and conventions](02-coordinates-and-conventions.md)).
+
+### The shoreline
+
+`shoreline` is the mainland behind the marina, and it is optional: a file without it is a marina in open water, which
+is how every file written before it existed reads back.
+
+Only the drawn line is saved. `line` is the coast the designer clicked, and `landOnLeft` says which half of the plan is
+land — the left of the line walked from its first point to its last. The first and last stretches run on without end,
+so the shape covering that half is worked out on load and its far edge is never written down. Two points are enough:
+that is a straight coast.
+
+The one rule is that those two endless stretches must not cross each other, or neither side of the line is "the land".
+`Shoreline.Validate` reports that, and a file whose line breaks it fails `ApplyTo` like any other unsound layout.
+
+`scenery` is what is scattered over the land — `None`, `Countryside`, `Fields` or `Town` — and `scenerySeed` keeps that
+scattering the same between sessions. The scenery itself is never written out: it is drawn from the seed, so the file
+stays small however much of it there is.
 
 ## Staying compatible between versions
 

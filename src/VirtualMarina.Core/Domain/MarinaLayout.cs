@@ -28,16 +28,24 @@ public sealed record MarinaLayout
     /// <summary>Quays, breakwaters and lawns drawn around the water. Ids must be unique.</summary>
     public IReadOnlyList<LandArea> LandAreas { get; init; } = Array.Empty<LandArea>();
 
+    /// <summary>
+    /// The mainland behind the marina, drawn beneath the <see cref="LandAreas"/>. Null for a marina standing in open
+    /// water, which is how every layout written before this existed reads back.
+    /// </summary>
+    public Shoreline? Shoreline { get; init; }
+
     /// <summary>A layout with nothing in it.</summary>
     public static MarinaLayout Empty { get; } = new();
 
     /// <summary>
-    /// Every element as one flat array, in dependency order: land areas, piers, dividers, berths, then multi-berths.
-    /// Each entry is the immutable record itself (<see cref="LandArea"/>, <see cref="Pier"/>, <see cref="Divider"/>, <see cref="Berth"/>,
-    /// <see cref="MultiBerth"/>), so host code can pattern-match on it.
+    /// Every element as one flat array, in dependency order: the shoreline if there is one, then land areas, piers,
+    /// dividers, berths, then multi-berths. Each entry is the immutable record itself (<see cref="Domain.Shoreline"/>,
+    /// <see cref="LandArea"/>, <see cref="Pier"/>, <see cref="Divider"/>, <see cref="Berth"/>, <see cref="MultiBerth"/>),
+    /// so host code can pattern-match on it.
     /// </summary>
     public object[] ToObjects() =>
-        LandAreas.Cast<object>()
+        (Shoreline is null ? Array.Empty<object>() : new object[] { Shoreline })
+            .Concat(LandAreas)
             .Concat(Piers)
             .Concat(Dividers)
             .Concat(Berths)
@@ -45,12 +53,13 @@ public sealed record MarinaLayout
             .ToArray();
 
     /// <summary>Builds a layout from elements in any order (the inverse of <see cref="ToObjects"/>). The result is not validated.</summary>
-    /// <param name="elements">Land areas, piers, dividers, berths and multi-berths.</param>
+    /// <param name="elements">A shoreline, land areas, piers, dividers, berths and multi-berths.</param>
     /// <param name="name">Marina name.</param>
     /// <exception cref="ArgumentException">An element is null or of another type.</exception>
     public static MarinaLayout FromObjects(IEnumerable<object> elements, string name = "Marina")
     {
         ArgumentNullException.ThrowIfNull(elements);
+        Shoreline? shoreline = null;
         var land = new List<LandArea>();
         var piers = new List<Pier>();
         var dividers = new List<Divider>();
@@ -60,6 +69,7 @@ public sealed record MarinaLayout
         {
             switch (element)
             {
+                case Shoreline c: shoreline = c; break;
                 case LandArea l: land.Add(l); break;
                 case Pier d: piers.Add(d); break;
                 case Divider v: dividers.Add(v); break;
@@ -69,7 +79,7 @@ public sealed record MarinaLayout
             }
         }
 
-        return new MarinaLayout { Name = name, LandAreas = land, Piers = piers, Dividers = dividers, Berths = berths, MultiBerths = groups };
+        return new MarinaLayout { Name = name, Shoreline = shoreline, LandAreas = land, Piers = piers, Dividers = dividers, Berths = berths, MultiBerths = groups };
     }
 
     /// <summary>Plan-view bounds of all piers, berths, dividers and land. Returns a default 100 m square when empty.</summary>
@@ -113,6 +123,8 @@ public sealed record MarinaLayout
             errors.AddRange(pier.Validate());
             if (!pierIds.Add(pier.Id)) errors.Add($"Duplicate pier id '{pier.Id}'.");
         }
+
+        if (Shoreline is not null) errors.AddRange(Shoreline.Validate());
 
         var landIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var land in LandAreas)

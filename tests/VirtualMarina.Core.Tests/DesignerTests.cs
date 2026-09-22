@@ -99,6 +99,121 @@ public class DesignerTests
     }
 
     [Fact]
+    public void DrawShoreline_DrawThenEnterThenClickTheLandSide_MakesTheMainland()
+    {
+        var marina = CreateDesigner(DesignTool.DrawShoreline);
+        var designer = marina.Designer;
+        designer.Scenery = HinterlandScenery.Town;
+        var created = new List<DesignElementCreatedEventArgs>();
+        var layoutChanges = new List<LayoutChangeKind>();
+        designer.ElementCreated += (_, e) => created.Add(e);
+        marina.LayoutChanged += (_, e) => layoutChanges.Add(e.Kind);
+
+        Click(marina, new Vector2(-60, -20));
+        Click(marina, new Vector2(0, -30));
+        Click(marina, new Vector2(60, -20));
+
+        // Enter does not finish a coast; it settles the line and waits for the side.
+        Assert.False(marina.Input.KeyDown(MarinaKey.Enter));
+        Assert.Null(marina.Shoreline);
+        Assert.Equal(3, designer.ShorelineAwaitingSide?.Count);
+
+        // North of the line, which is to the right of it walking east.
+        Click(marina, new Vector2(0, -120));
+
+        var shoreline = marina.Shoreline;
+        Assert.NotNull(shoreline);
+        Assert.False(shoreline!.LandOnLeft);
+        Assert.True(shoreline.Contains(new Vector2(0, -400)));
+        Assert.False(shoreline.Contains(new Vector2(0, 400)));
+        Assert.Equal(HinterlandScenery.Town, shoreline.Scenery);
+        Assert.Null(designer.ShorelineAwaitingSide);
+        Assert.Same(shoreline, Assert.Single(created).Shoreline);
+        Assert.Contains(LayoutChangeKind.ShorelineChanged, layoutChanges);
+        Assert.True(marina.Meshes.TryGet(MeshIds.Shoreline, out _));
+
+        // Undo takes it away again, back to open water.
+        Assert.True(designer.Undo());
+        Assert.Null(marina.Shoreline);
+    }
+
+    [Fact]
+    public void DrawShoreline_ClickingTheOtherSide_PutsTheLandThere()
+    {
+        var marina = CreateDesigner(DesignTool.DrawShoreline);
+        Click(marina, new Vector2(-60, -20));
+        Click(marina, new Vector2(60, -20));
+        marina.Input.KeyDown(MarinaKey.Enter);
+        Click(marina, new Vector2(0, 120));
+
+        Assert.True(marina.Shoreline!.LandOnLeft);
+        Assert.True(marina.Shoreline.Contains(new Vector2(0, 400)));
+    }
+
+    [Fact]
+    public void DrawShoreline_ALineThatCannotDivideThePlan_IsRefused()
+    {
+        var marina = CreateDesigner(DesignTool.DrawShoreline);
+
+        // A C-shape whose endless ends lean into each other, so neither side of it is "the land".
+        foreach (var p in new[] { new Vector2(0, 0), new Vector2(-40, 80), new Vector2(120, 80), new Vector2(80, 0) }) Click(marina, p);
+
+        Assert.False(marina.Input.KeyDown(MarinaKey.Enter));
+        Assert.Null(marina.Designer.ShorelineAwaitingSide);
+        Assert.Null(marina.Shoreline);
+        Assert.Equal(4, marina.Designer.DraftPoints.Count);
+    }
+
+    [Fact]
+    public void DrawShoreline_BackspaceWhileChoosingTheSide_PutsTheLineBackOnTheBoard()
+    {
+        var marina = CreateDesigner(DesignTool.DrawShoreline);
+        var designer = marina.Designer;
+        Click(marina, new Vector2(-60, -20));
+        Click(marina, new Vector2(60, -20));
+        marina.Input.KeyDown(MarinaKey.Enter);
+
+        Assert.True(marina.Input.KeyDown(MarinaKey.Backspace));
+        Assert.Null(designer.ShorelineAwaitingSide);
+        Assert.Equal(2, designer.DraftPoints.Count);
+
+        // And Escape drops the whole thing.
+        Assert.True(marina.Input.KeyDown(MarinaKey.Escape));
+        Assert.False(designer.HasDraft);
+        Assert.Null(marina.Shoreline);
+    }
+
+    [Fact]
+    public void DrawShoreline_DrawingASecondOne_ReplacesTheFirst_AndDeleteRemovesIt()
+    {
+        var marina = CreateDesigner(DesignTool.DrawShoreline);
+        var designer = marina.Designer;
+
+        Click(marina, new Vector2(-60, -20));
+        Click(marina, new Vector2(60, -20));
+        marina.Input.KeyDown(MarinaKey.Enter);
+        Click(marina, new Vector2(0, 120));
+        var first = marina.Shoreline;
+
+        Click(marina, new Vector2(-60, 40));
+        Click(marina, new Vector2(60, 40));
+        marina.Input.KeyDown(MarinaKey.Enter);
+        Click(marina, new Vector2(0, 200));
+
+        Assert.NotSame(first, marina.Shoreline);
+        Assert.Equal(40f, marina.Shoreline!.Points[0].Y, 1);
+
+        Assert.True(designer.DeleteShoreline());
+        Assert.False(designer.DeleteShoreline());
+        Assert.Null(marina.Shoreline);
+        Assert.False(marina.Meshes.TryGet(MeshIds.Shoreline, out _));
+
+        // Undoing the deletion brings the same coast back.
+        Assert.True(designer.Undo());
+        Assert.Equal(40f, marina.Shoreline!.Points[0].Y, 1);
+    }
+
+    [Fact]
     public void DrawLandArea_SelfCrossingOutlineIsNotCreated()
     {
         var marina = CreateDesigner(DesignTool.DrawLandArea);
@@ -710,12 +825,17 @@ public class DesignerTests
 
         var objects = marina.ExportObjects();
         var layout = marina.GetLayout();
-        Assert.Equal(layout.LandAreas.Count + layout.Piers.Count + layout.Dividers.Count + layout.Berths.Count + layout.MultiBerths.Count, objects.Length);
-        Assert.IsType<LandArea>(objects[0]);
+        var shorelines = layout.Shoreline is null ? 0 : 1;
+        Assert.Equal(shorelines + layout.LandAreas.Count + layout.Piers.Count + layout.Dividers.Count + layout.Berths.Count + layout.MultiBerths.Count, objects.Length);
+
+        // The mainland goes first: everything else is drawn on top of it.
+        Assert.IsType<Shoreline>(objects[0]);
+        Assert.IsType<LandArea>(objects[1]);
         Assert.IsType<MultiBerth>(objects[^1]);
 
         var rebuilt = MarinaLayout.FromObjects(objects.Reverse(), layout.Name);
         Assert.Empty(rebuilt.Validate());
+        Assert.Equal(layout.Shoreline, rebuilt.Shoreline);
         Assert.Equal(layout.Berths.Select(s => s.Id).OrderBy(x => x), rebuilt.Berths.Select(s => s.Id).OrderBy(x => x));
         Assert.Throws<ArgumentException>(() => MarinaLayout.FromObjects(new object[] { "not an element" }));
     }

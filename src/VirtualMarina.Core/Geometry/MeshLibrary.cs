@@ -30,6 +30,9 @@ public static class MeshIds
     /// <summary>First id of the text glyph meshes (see <see cref="GlyphFont"/>).</summary>
     public const int GlyphBase = 300;
 
+    /// <summary>The mainland behind the shore (see <see cref="Domain.Shoreline"/>), drawn beneath the land areas.</summary>
+    public const int Shoreline = 9_000;
+
     /// <summary>First id of the per-land-area meshes (see <see cref="ForLand"/>).</summary>
     public const int LandBase = 10_000;
 

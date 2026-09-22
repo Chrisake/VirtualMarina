@@ -81,6 +81,12 @@ internal sealed class InspectorPanel : Panel
     private readonly Panel _servicesCard;
     private readonly ComboBox _servicesChoice = Theme.Choice();
 
+    // The mainland
+    private readonly Panel _coastCard;
+    private readonly ComboBox _coastScenery = Theme.Choice();
+    private readonly Button _coastRemove;
+    private readonly Label _coastState = Theme.Hint(string.Empty);
+
     // Trees
     private readonly Panel _treeCard;
     private readonly TrackBar _treeDensity = new() { Minimum = 0, Maximum = 60 };
@@ -135,6 +141,8 @@ internal sealed class InspectorPanel : Panel
         _pierCard = BuildPierCard();
         _berthCard = BuildBerthCard();
         _landBerthCard = BuildLandBerthCard();
+        _coastRemove = Theme.Action(Strings.CoastRemove, (_, _) => RemoveShoreline());
+        _coastCard = BuildCoastCard();
         _treeCard = BuildTreeCard();
         _eraseCard = BuildEraseCard();
         _renameCard = BuildRenameCard();
@@ -144,7 +152,7 @@ internal sealed class InspectorPanel : Panel
         _summaryCard = BuildSummaryCard();
 
         _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _treeCard, _eraseCard, _renameCard, _servicesCard, _selectCard, _imageCard, _summaryCard })
+        foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _coastCard, _treeCard, _eraseCard, _renameCard, _servicesCard, _selectCard, _imageCard, _summaryCard })
         {
             // Top, not Fill: the column still decides the width, but the height stays the card's own.
             card.Dock = DockStyle.Top;
@@ -186,6 +194,12 @@ internal sealed class InspectorPanel : Panel
             _renameCard.Visible = tool == DesignTool.Rename;
             _servicesCard.Visible = tool == DesignTool.EditServices;
             _selectCard.Visible = tool == DesignTool.SelectArea;
+            _coastCard.Visible = tool == DesignTool.DrawShoreline;
+            _coastScenery.SelectedItem = Choice.Of(_coastScenery, designer.Scenery);
+            _coastRemove.Enabled = _marina.Shoreline is not null;
+            _coastState.Text = _marina.Shoreline is { } shore
+                ? Strings.Format(Strings.CoastPresent, shore.Points.Count, shore.Scenery.GetDisplayName())
+                : Strings.CoastNone;
             _selectCount.Text = Strings.Format(Strings.SelectCount, _marina.SelectedBerths.Count);
             _imageCard.Visible = tool is DesignTool.Navigate or DesignTool.MoveReferenceImage or DesignTool.MeasureScale;
             _summaryCard.Visible = tool is DesignTool.Navigate or DesignTool.Erase;
@@ -280,6 +294,7 @@ internal sealed class InspectorPanel : Panel
         DesignTool.Rename => Strings.TitleRename,
         DesignTool.EditServices => Strings.TitleServices,
         DesignTool.SelectArea => Strings.TitleSelect,
+        DesignTool.DrawShoreline => Strings.TitleCoast,
         DesignTool.MoveReferenceImage => Strings.TitleMoveImage,
         DesignTool.MeasureScale => Strings.TitleMeasureScale,
         _ => Strings.TitleNavigate,
@@ -380,6 +395,18 @@ internal sealed class InspectorPanel : Panel
         return card;
     }
 
+    private Panel BuildCoastCard()
+    {
+        var card = Theme.Card(Strings.CardCoast, out var table);
+        Choice.Fill(_coastScenery, HinterlandScenery.Countryside, HinterlandScenery.Fields, HinterlandScenery.Town, HinterlandScenery.None);
+        Theme.Row(table, Strings.CoastScenery, _coastScenery, Strings.CoastSceneryTip);
+        Theme.FullRow(table, Theme.Hint(Strings.CoastHint));
+        Theme.FullRow(table, Theme.Hint(Strings.CoastEndlessHint));
+        Theme.FullRow(table, _coastState);
+        Theme.FullRow(table, _coastRemove);
+        return card;
+    }
+
     private Panel BuildTreeCard()
     {
         var card = Theme.Card(Strings.CardTrees, out var table);
@@ -468,6 +495,7 @@ internal sealed class InspectorPanel : Panel
     private void Wire()
     {
         _landKind.SelectedIndexChanged += (_, _) => Apply(d => d.LandKind = Choice.Value<LandKind>(_landKind));
+        _coastScenery.SelectedIndexChanged += (_, _) => Apply(d => d.Scenery = Choice.Value<HinterlandScenery>(_coastScenery));
         _landHeight.ValueChanged += (_, _) => Apply(d => d.LandHeight = (float)_landHeight.Value);
         _pierType.SelectedIndexChanged += (_, _) => Apply(d => d.PierType = Choice.Value<PierType>(_pierType));
         _pierWidth.ValueChanged += (_, _) => Apply(d => d.PierWidth = (float)_pierWidth.Value);
@@ -505,6 +533,14 @@ internal sealed class InspectorPanel : Panel
     }
 
     /// <summary>Runs a change on the designer, unless the controls are being filled in from it.</summary>
+    /// <summary>Takes the mainland away, leaving the marina in open water. Ctrl+Z brings it back.</summary>
+    private void RemoveShoreline()
+    {
+        if (_updating) return;
+        Designer.DeleteShoreline();
+        Sync(force: true);
+    }
+
     private void Apply(Action<MarinaDesigner> change)
     {
         if (_updating) return;

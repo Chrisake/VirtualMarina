@@ -8,7 +8,7 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Api**: [BatchUpdateError](#batchupdateerror), [BatchUpdateResult](#batchupdateresult), [BerthAction](#berthaction), [BerthActionCollection](#berthactioncollection), [BerthActionInvokedEventArgs](#berthactioninvokedeventargs), [BerthActionStyle](#berthactionstyle), [BerthEventArgs](#bertheventargs), [BerthHoverEventArgs](#berthhovereventargs), [BerthLabelMode](#berthlabelmode), [BerthLabelModeExtensions](#berthlabelmodeextensions), [BerthPopup](#berthpopup), [BerthPopupChangedEventArgs](#berthpopupchangedeventargs), [BerthPopupKind](#berthpopupkind), [BerthSelectedEventArgs](#berthselectedeventargs), [BerthSelectionRejection](#berthselectionrejection), [BerthStatusChangedEventArgs](#berthstatuschangedeventargs), [BerthTooltip](#berthtooltip), [BerthTooltipLine](#berthtooltipline), [BerthUpdate](#berthupdate), [DefaultPopupContent](#defaultpopupcontent), [DisplayNames](#displaynames), [IMarinaVisualizer](#imarinavisualizer), [LayoutChangeKind](#layoutchangekind), [LayoutChangedEventArgs](#layoutchangedeventargs), [MarinaLocalization](#marinalocalization), [MarinaStatistics](#marinastatistics), [MarinaVisualizer](#marinavisualizer), [MarinaVisualizerOptions](#marinavisualizeroptions), [MultiBerthSelectedEventArgs](#multiberthselectedeventargs), [PierUpdate](#pierupdate), [RejectedBerth](#rejectedberth), [SelectionChangedEventArgs](#selectionchangedeventargs), [SelectionReason](#selectionreason), [SelectionResult](#selectionresult), [StatusColorScheme](#statuscolorscheme)
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
-- **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [TreeShape](#treeshape)
+- **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TreeShape](#treeshape)
 - **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
@@ -427,6 +427,7 @@ The text comes from the core library's resources and follows `MarinaLocalization
 | `static string GetDisplayName(PierServices services)` | Name of a pier's services, e.g. "Power and water". |
 | `static string GetDisplayName(PierSides sides)` | Name of the berthing sides of a pier, e.g. "Boats on the left only". |
 | `static string GetDisplayName(LandKind kind)` | Name of a land surface, e.g. "Lawn or park". |
+| `static string GetDisplayName(HinterlandScenery scenery)` | Name of what covers the mainland behind the shore, e.g. "Countryside". |
 | `static string GetDisplayName(DividerType type)` | Name of a divider, e.g. "Mooring piles". |
 | `static string GetDisplayName(MooringStyle style)` | Name of a mooring style: "Alongside" or "Bow-in". |
 
@@ -443,6 +444,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 |---|---|
 | `string MarinaName { get; set; }` | Name of the loaded layout (`MarinaLayout.Name`). Set it to rename the marina; it is stored with the layout. |
 | `MarinaDesigner Designer { get; }` | The layout designer: draw land areas, piers and berths in the view and trace a calibrated reference image (see `MarinaDesigner`). Off until `MarinaDesigner.IsActive` is set. |
+| `Shoreline? Shoreline { get; }` | The mainland behind the marina, or null when the marina stands in open water. Set it with `IMarinaVisualizer.SetShoreline`. |
 | `Berth? SelectedBerth { get; }` | The primary (most recently clicked or last listed) selected berth, or null. |
 | `IReadOnlyList<Berth> SelectedBerths { get; }` | All selected berths in selection order; the last one is `IMarinaVisualizer.SelectedBerth`. |
 | `Berth? HoveredBerth { get; }` | The berth under the pointer, or null. |
@@ -526,6 +528,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `bool RemoveFromSelection(string berthId)` | Removes a berth from the selection. Returns false when it wasn't selected. |
 | `bool RemoveLandArea(string landAreaId, bool removeBerths = true)` | Removes a land area. Returns false when no land area has this id. |
 | `bool RemovePier(string pierId, bool removeBerths = true)` | Removes a pier and its dividers. |
+| `bool RemoveShoreline()` | Takes the mainland away, leaving open water. Returns false when there was none. |
 | `Berth RenameBerth(string berthId, string newBerthId)` | Gives a berth another name. The berth keeps everything else — its place in the marina, its boat, its `Berth.ExternalData` and its place in the selection — and its multi-berth follows it. Returns the renamed berth and raises `LayoutChangeKind.BerthRenamed`. |
 | `Berth ReserveBerth(string berthId, Boat? expectedBoat = null)` | Marks the berth Reserved (blue), optionally for a known incoming boat (drawn as a translucent ghost). |
 | `void ResetCamera(bool immediate = false)` | Moves the camera to the Overview preset. |
@@ -540,6 +543,7 @@ Threading. Not thread-safe. Call it from the UI thread that owns the view (marsh
 | `Berth SetBerthVisible(string berthId, bool visible)` | Shows or hides a berth. Hidden berths draw nothing (not even finger piers) and cannot be interacted with. |
 | `SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, CameraAngle? focusAngle = null)` | Replaces the selection with one or more berths. Disabled berths are discarded, as are hidden, filtered-out and unknown ids and duplicates; `SelectionResult.Rejected` lists them with the reason. The rest are selected in the given order (the last becomes primary) and `IMarinaVisualizer.BerthSelected` or `IMarinaVisualizer.MultiBerthSelected` is raised. When nothing remains the selection is cleared. |
 | `SelectionResult SetSelection(params string[] berthIds)` | Replaces the selection with the given berths (disabled ones are discarded), without moving the camera. |
+| `void SetShoreline(Shoreline? shoreline)` | Sets (or replaces) the mainland behind the marina and builds its mesh. It is drawn beneath the land areas, so a quay traced along the shore sits on top of it and the two read as one piece of ground. |
 | `void SetStatusColor(BerthStatus status, ColorRgba color)` | Changes the pad, buoy and ghost-boat color of a status. |
 | `void SetStatusFilter(BerthStatusFilter filter)` | Shows only berths whose status is in `filter`; filtered-out berths leave the selection. |
 | `bool ShowActions()` | Opens the actions window for the current selection (raising the selection event with a right-click button). Falls back to the tooltip when every selected berth is read-only or there are no visible actions. |
@@ -584,6 +588,7 @@ What changed in a `IMarinaVisualizer.LayoutChanged` notification.
 | `LandAreaAdded` = 16 | A land area was added (`LayoutChangedEventArgs.LandAreaId`). |
 | `LandAreaUpdated` = 17 | A land area was updated (outline, height, kind or name). |
 | `LandAreaRemoved` = 18 | A land area was removed. |
+| `ShorelineChanged` = 19 | The mainland behind the marina was set, redrawn or taken away (`IMarinaVisualizer.SetShoreline`). |
 
 <a id="layoutchangedeventargs"></a>
 ### LayoutChangedEventArgs
@@ -659,6 +664,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `BerthLabelMode BerthLabelMode { get; set; }` | Which berths have their name (`Berth.DisplayName`) written on the water next to their open end, sized to fit the berth's width. Hidden and filtered-out berths are never labeled. Default `BerthLabelMode.None`. |
 | `double Time { get; }` | Seconds of animation time accumulated through `MarinaVisualizer.Update`. |
 | `Vector2 ViewportSize { get; }` | View size in pointer units (usually pixels), as last set with `MarinaVisualizer.SetViewportSize`. Defaults to 1280 × 720. |
+| `Shoreline? Shoreline { get; }` | *(See the interface member.)* |
 | `bool TooltipsEnabled { get; set; }` | Show a tooltip above the selection on left-click (default true). |
 | `bool ActionsEnabled { get; set; }` | Show the actions window on right-click (default true). |
 | `bool MultiSelectEnabled { get; set; }` | Allow Ctrl+click or Shift+click to build a multi-selection (default true). |
@@ -746,6 +752,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `bool RemoveFromSelection(string berthId)` | *(See the interface member.)* |
 | `bool RemoveLandArea(string landAreaId, bool removeBerths = true)` | *(See the interface member.)* |
 | `bool RemovePier(string pierId, bool removeBerths = true)` | *(See the interface member.)* |
+| `bool RemoveShoreline()` | *(See the interface member.)* |
 | `Berth RenameBerth(string berthId, string newBerthId)` | *(See the interface member.)* |
 | `Berth ReserveBerth(string berthId, Boat? expectedBoat = null)` | *(See the interface member.)* |
 | `void ResetCamera(bool immediate = false)` | *(See the interface member.)* |
@@ -762,6 +769,7 @@ Most hosts don't create one directly: `MarinaViewControl.Marina` (WinForms) owns
 | `void SetOverlayOpacity(float padOpacity, float ghostBoatOpacity)` | Sets the opacity of status pads and of reserved/temporarily free "ghost" boats. Values are clamped to 0.05–1. |
 | `SelectionResult SetSelection(params string[] berthIds)` | Replaces the selection. See `MarinaVisualizer.SetSelection`. |
 | `SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, CameraAngle? focusAngle = null)` | Replaces the selection with one or more berths. Disabled berths are discarded, as are hidden, filtered-out and unknown ids and duplicates; the result lists what was skipped and why. The remaining berths are selected in the given order (the last becomes primary) and `MarinaVisualizer.BerthSelected` or `MarinaVisualizer.MultiBerthSelected` is raised as for a click. When nothing remains the selection is cleared. |
+| `void SetShoreline(Shoreline? shoreline)` | *(See the interface member.)* |
 | `void SetStatusColor(BerthStatus status, ColorRgba color)` | *(See the interface member.)* |
 | `void SetStatusFilter(BerthStatusFilter filter)` | Shows only berths whose status is in `filter`. Filtered-out berths cannot be clicked or selected. |
 | `void SetStatusFilter(params BerthStatus[] visibleStatuses)` | Shows only berths with one of the given statuses, e.g. `SetStatusFilter(BerthStatus.Free, BerthStatus.TemporarilyFree)`. |
@@ -1132,6 +1140,7 @@ Data for `MarinaDesigner.ElementCreated`: the element was added to the marina (a
 | `Pier? Pier { get; }` | The pier added, if any. |
 | `IReadOnlyList<Berth> Berths { get; }` | The berths added (empty unless berths were added). |
 | `IReadOnlyList<Divider> Dividers { get; }` | The dividers added with the berths. |
+| `Shoreline? Shoreline { get; init; }` | The mainland that was set (`DesignTool.DrawShoreline`), if any. |
 
 <a id="designelementcreatingeventargs"></a>
 ### DesignElementCreatingEventArgs
@@ -1148,6 +1157,7 @@ Data for `MarinaDesigner.ElementCreating`: the user finished drawing and the ele
 | `Pier? Pier { get; set; }` | The pier to add (`DesignTool.DrawPier`). If you change its id, berths created later reference the new id. |
 | `IReadOnlyList<Berth> Berths { get; set; }` | The berths to add (`DesignTool.AddBerths`, or the one land berth of `DesignTool.AddLandBerths`); empty for other tools. |
 | `IReadOnlyList<Divider> Dividers { get; set; }` | Dividers generated between the new berths, when `MarinaDesigner.BerthSeparators` asks for them. |
+| `Shoreline? Shoreline { get; set; }` | The mainland to set (`DesignTool.DrawShoreline`); null for other tools. Replace it to change its height, surface or scenery before it is drawn. |
 | `bool Cancel { get; set; }` | Set to true to discard the drawing. |
 
 <a id="designelementerasedeventargs"></a>
@@ -1202,6 +1212,7 @@ What clicks in the 3D view do while `MarinaDesigner.IsActive` is true.
 | `Rename` = 9 | Click a berth or a pier to give it another name. The designer asks the host for the new name through `MarinaDesigner.ElementRenaming`, so the application decides how to ask for it. |
 | `EditServices` = 10 | Click a berth to give it the pedestals in `MarinaDesigner.BerthServices`; hold Alt or Ctrl to change every berth down that side of the pier at once. The berths about to change are highlighted. |
 | `SelectArea` = 11 | Drag a box over the water to select every berth whose middle falls inside it. Hold Shift or Ctrl to add to the selection already made instead of replacing it. |
+| `DrawShoreline` = 12 | Draw the coast of the mainland behind the marina (`Shoreline`). Click to place points along it — two are enough for a straight coast — then press Enter, and click the side of the line that is land. Backspace removes the last point; Escape cancels. Drawing a new one replaces the one already there. |
 
 <a id="designtoolchangedeventargs"></a>
 ### DesignToolChangedEventArgs
@@ -1278,6 +1289,7 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `string ToolHint { get; }` | A one-line instruction for the current tool and drawing state, for a status bar or panel. |
 | `LandKind LandKind { get; set; }` | Kind of land area drawn by `DesignTool.DrawLandArea`. Default `LandKind.Quay`. |
 | `float LandHeight { get; set; }` | Top height of new land areas above the water, 0–50 m (default 1). |
+| `HinterlandScenery Scenery { get; set; }` | What is scattered across the mainland drawn by `DesignTool.DrawShoreline`. Default `HinterlandScenery.Countryside`. |
 | `float TreeDensity { get; set; }` | Trees per 1000 m² scattered on new lawns (`LandKind.Grass`) and by `DesignTool.PlantTrees`, 0–100 (default 8; 0 = no trees). Positions are random when drawn and then stored with the land area, so they stay put. |
 | `PierType PierType { get; set; }` | Construction of piers drawn by `DesignTool.DrawPier`. Default `PierType.FloatingWooden`. |
 | `float PierWidth { get; set; }` | Deck width of new piers, 0.5–30 m (default 2.5). |
@@ -1297,6 +1309,7 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `IReadOnlyList<Vector2> DraftPoints { get; }` | Points placed so far in the current drawing, in plan coordinates. |
 | `bool HasDraft { get; }` | True while a drawing is in progress (at least one point placed). |
 | `Vector2? PointerPosition { get; }` | Plan position under the pointer (after snapping), or null when the pointer isn't over the view. |
+| `IReadOnlyList<Vector2>? ShorelineAwaitingSide { get; }` | The coast that has been drawn and is waiting for a click to say which side of it is land, or null. Enter moves a `DesignTool.DrawShoreline` drawing into this state (see `MarinaDesigner.PickShorelineSide`). |
 | `bool CanUndo { get; }` | True when `MarinaDesigner.Undo` would revert something. |
 | `string? UndoDescription { get; }` | What the next `MarinaDesigner.Undo` would revert (e.g. "Add 4 berths"), or null when there is nothing to undo. |
 | `int UndoCount { get; }` | How many changes can still be undone (at most `MarinaDesigner.MaxUndoSteps`). |
@@ -1334,9 +1347,12 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `LandArea? CreateLandArea(IReadOnlyList<Vector2> outline)` | Adds a land area with the given outline and the current `MarinaDesigner.LandKind` and `MarinaDesigner.LandHeight`, raising `MarinaDesigner.ElementCreating` and `MarinaDesigner.ElementCreated`. Returns null when a handler cancels. |
 | `Berth? CreateLandBerth(string landAreaId, Vector2 position, float? headingDegrees = null)` | Adds a land berth (`Berth.OnLand`) of the current `MarinaDesigner.BerthWidth` and `MarinaDesigner.BerthLength` to a land area, where a boat is stored or worked on ashore. Raises `MarinaDesigner.ElementCreating` and `MarinaDesigner.ElementCreated`; returns null when a handler cancels. |
 | `Pier? CreatePier(Vector2 start, Vector2 end)` | Adds a pier from `start` (shore end) to `end` with the current `MarinaDesigner.PierType`, `MarinaDesigner.PierWidth` and `MarinaDesigner.PierBerthingSides`. Returns null when a handler cancels. |
+| `Shoreline? CreateShoreline(IReadOnlyList<Vector2> line, bool landOnLeft)` | Sets the mainland behind the marina from a drawn coast and the side of it that is land, using the current `MarinaDesigner.Scenery`. Whatever mainland was there is replaced. Returns null when a handler cancels. |
+| `bool DeleteShoreline()` | Takes the mainland away, leaving the marina in open water. Returns false when there was none. |
 | `bool Erase(object element)` | Removes a berth, or a pier or land area with its berths, and raises `MarinaDesigner.ElementErased`. Dividers left without a berth on either side go too (a pier takes all of its dividers). Returns false when the element doesn't exist. |
 | `bool EraseBerthsOfPier(string pierId)` | Removes every berth on a pier, and the separators that only served them, leaving the pier itself in place. This is what the eraser does when Alt is held over one of the pier's berths. Records one step for `MarinaDesigner.Undo` and raises `MarinaDesigner.ElementErased` with the pier as the element. |
 | `bool FocusReferenceImage(bool immediate = false)` | Looks straight down, north up, at the whole reference image. Returns false without an image. |
+| `Shoreline? PickShorelineSide(Vector2 landSide)` | Makes the mainland from the coast waiting for a side, putting the land on the side `landSide` falls on. Returns null when nothing is waiting, or when a handler cancels. |
 | `LandArea? PlantTrees(string landAreaId, float? treesPer1000SquareMeters = null)` | Replaces the trees of a lawn with new, randomly placed ones (kept clear of its land berths) and raises `MarinaDesigner.TreesPlanted`. Returns the updated land area, or null when it doesn't exist or is not a `LandKind.Grass` area. |
 | `bool RemoveLastPoint()` | Removes the last placed point. Returns false when there was none. |
 | `LandArea? RemoveTrees(string landAreaId)` | Removes every tree from a land area (of any kind) and raises `MarinaDesigner.TreesPlanted` with an empty `LandArea.Trees`. Returns the updated land area, or null when it doesn't exist or has no trees. |
@@ -1623,6 +1639,20 @@ How a divider between berths is built.
 | `Boom` = 2 | A floating boom: a line of floats on the water. |
 | `SinglePile` = 3 | A single mooring pile standing at the outer end of the boundary (Mediterranean mooring), with nothing in between. |
 
+<a id="hinterlandscenery"></a>
+### HinterlandScenery
+
+`enum HinterlandScenery`
+
+What is drawn on the mainland behind the shore, so the marina does not sit in an empty sea.
+
+| Value | Description |
+|---|---|
+| `None` = 0 | Bare ground. The cheapest, and right when a reference photo is showing through. |
+| `Countryside` = 1 | Scattered trees and hedges thinning out inland. |
+| `Fields` = 2 | Blocks of crops in different colours, as seen from the air. |
+| `Town` = 3 | Low blocks standing in rows, reading as a town along the coast. |
+
 <a id="landarea"></a>
 ### LandArea
 
@@ -1734,10 +1764,11 @@ Complete description of a marina: piers, berths (flat list, linked by `Berth.Pie
 | `IReadOnlyList<Divider> Dividers { get; init; }` | Finger piers, pile rows and booms between berths. |
 | `IReadOnlyList<MultiBerth> MultiBerths { get; init; }` | Boats spanning several berths. Member berths take the berth's status and boat when the layout is loaded. |
 | `IReadOnlyList<LandArea> LandAreas { get; init; }` | Quays, breakwaters and lawns drawn around the water. Ids must be unique. |
+| `Shoreline? Shoreline { get; init; }` | The mainland behind the marina, drawn beneath the `MarinaLayout.LandAreas`. Null for a marina standing in open water, which is how every layout written before this existed reads back. |
 | `static MarinaLayout Empty { get; }` | A layout with nothing in it. |
 | `ValueTuple<Vector2, Vector2> ComputeBounds()` | Plan-view bounds of all piers, berths, dividers and land. Returns a default 100 m square when empty. |
 | `static MarinaLayout FromObjects(IEnumerable<object> elements, string name = "Marina")` | Builds a layout from elements in any order (the inverse of `MarinaLayout.ToObjects`). The result is not validated. |
-| `object[] ToObjects()` | Every element as one flat array, in dependency order: land areas, piers, dividers, berths, then multi-berths. Each entry is the immutable record itself (`LandArea`, `Pier`, `Divider`, `Berth`, `MultiBerth`), so host code can pattern-match on it. |
+| `object[] ToObjects()` | Every element as one flat array, in dependency order: the shoreline if there is one, then land areas, piers, dividers, berths, then multi-berths. Each entry is the immutable record itself (`Shoreline`, `LandArea`, `Pier`, `Divider`, `Berth`, `MultiBerth`), so host code can pattern-match on it. |
 | `IReadOnlyList<string> Validate()` | Returns a list of problems; empty when the layout is valid. |
 
 <a id="marinalayoutbuilder"></a>
@@ -1758,6 +1789,7 @@ Fluent helper for composing a `MarinaLayout` with berths auto-positioned along p
 | `MarinaLayoutBuilder AddPier(Pier pier, Action<PierBuilder>? configure = null)` | Adds a pier and, optionally, lays out its berths and dividers. |
 | `MarinaLayoutBuilder AddPier(string id, string name, Vector2 start, float headingDegrees, float length, Action<PierBuilder>? configure = null, float width = 2.5f, PierType type = PierType.FloatingWooden)` | Adds a pier from its shore-end point, heading and size, and optionally lays out its berths and dividers. |
 | `MarinaLayout Build()` | Creates the layout. It is not validated here; `InitializeLayout` (or `MarinaLayout.Validate`) does that. |
+| `MarinaLayoutBuilder WithShoreline(Shoreline? shoreline)` | Sets the mainland behind the marina, drawn beneath the land areas. Replaces any set earlier. |
 
 <a id="marinalayoutexception"></a>
 ### MarinaLayoutException
@@ -1928,6 +1960,31 @@ Construction of a pier. Controls how it is drawn and its default deck height.
 | `FloatingConcrete` = 1 | Monolithic concrete pontoon with rubber fenders and cleats. Default deck height 0.55 m. |
 | `Concrete` = 2 | Fixed concrete pier on columns, with curbs and bollards. Default deck height 1.1 m. |
 
+<a id="shoreline"></a>
+### Shoreline
+
+`sealed record Shoreline`
+
+The mainland behind the marina: an open line of points whose first and last segments run on for ever, splitting the plan in two, with one side of it being land. It is what stops a marina looking like an island in an empty sea.
+
+Two points are enough — that is simply a straight coast. More points bend it into bays and headlands. The line is open, not a ring: the segment before the first point and the segment after the last one carry on outward without end, so the land behind them never runs out however far the camera pulls back. Which side. `Shoreline.LandOnLeft` picks the half: true for the left of the line walking from the first point to the last. A designer chooses it by clicking the side that should be land. The one rule. The two endless segments must not cross each other, or "the land side" means nothing — `Shoreline.Validate` reports that. Everything else, including a coast that doubles back on itself, is allowed. It is drawn beneath the land areas placed by hand, so a quay traced along the shore sits on top of it and the two read as one piece of ground.
+
+| Member | Description |
+|---|---|
+| `Shoreline(IEnumerable<Vector2> points, bool landOnLeft)` | Creates a shoreline from the points of its open line. |
+| `const float Reach = 12000f` | How far out the endless segments are taken when the shape is built, in meters — at the least. |
+| `IReadOnlyList<Vector2> Points { get; init; }` | The points of the open line, in order. |
+| `bool LandOnLeft { get; init; }` | True when the land is to the left of the line walked from the first point to the last. |
+| `float Height { get; init; }` | Height of the ground above the water, in meters. Default 1.4. |
+| `LandKind Kind { get; init; }` | Surface of the ground. Default `LandKind.Grass`, the usual thing behind a marina. |
+| `HinterlandScenery Scenery { get; init; }` | What is scattered across it. Default `HinterlandScenery.Countryside`. |
+| `int ScenerySeed { get; init; }` | Keeps the scenery the same between sessions. Any number will do. |
+| `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes the host application attaches to the shoreline. Saved with the design. |
+| `IReadOnlyList<Vector2> BuildOutline()` | The shoreline as a closed shape covering the land side, ready to be triangulated: the line itself, its two segments run out to `Shoreline.Reach`, and the way round the far edge that keeps the land inside. |
+| `bool Contains(Vector2 point)` | True when a point in plan coordinates lies on the land side of the shoreline. |
+| `float DistanceToShore(Vector2 point)` | Distance from a point to the line itself (not to the far edge of the built shape), in meters. |
+| `IEnumerable<string> Validate()` | Problems that would stop the shoreline being drawn, empty when it is sound. |
+
 <a id="treeshape"></a>
 ### TreeShape
 
@@ -2016,13 +2073,14 @@ The faces berth labels can be set in. They are stroke fonts baked into meshes, n
 
 `static class LandMeshFactory`
 
-World-space meshes for `LandArea` outlines: solid slabs for quays and lawns, rock piles for breakwaters.
+World-space meshes for the ground: solid slabs for quays and lawns, rock piles for breakwaters, and the mainland behind a `Shoreline`.
 
 | Member | Description |
 |---|---|
 | `const float WallDepth = 3f` | How far land walls reach below the water surface, in meters. |
 | `static MeshData Create(int id, LandArea area, LandStyle? style = null)` | The mesh for a land area: a rock pile for `LandKind.Breakwater`, otherwise a solid slab; plus its trees. |
 | `static MeshData CreateRockPile(int id, LandArea area, LandStyle? style = null)` | A rubble mound: the area filled with irregular rocks (low-poly squashed spheres), reaching the land height in the middle and sloping down to the water along the outline, over a dark core that hides the gaps between rocks. |
+| `static MeshData CreateShoreline(int id, Shoreline shoreline, LandStyle? style = null)` | The mainland behind the marina: the shoreline's shape as one slab, with whatever scenery it asks for scattered in a band along the coast. |
 | `static MeshData CreateSlab(int id, LandArea area, LandStyle? style = null)` | The outline extruded from `LandMeshFactory.WallDepth` below the water up to the land height, with a flat top. |
 
 <a id="marinameshfactory"></a>
@@ -2108,6 +2166,7 @@ Well-known mesh ids referenced by render objects.
 | `const int Buoy = 6` | White sphere, 0.5 m radius (status buoys, boom floats). |
 | `const int Cylinder = 7` | White cylinder, 1 m diameter, Y 0–1 (steel piles, bollards). |
 | `const int GlyphBase = 300` | First id of the text glyph meshes (see `GlyphFont`). |
+| `const int Shoreline = 9000` | The mainland behind the shore (see `Shoreline`), drawn beneath the land areas. |
 | `const int LandBase = 10000` | First id of the per-land-area meshes (see `MeshIds.ForLand`). |
 | `static int ForBoat(BoatType type)` | Mesh id of a boat model (100 + type). Register a `MeshData` under this id to replace the model. |
 | `static int ForLand(int slot)` | Mesh id of a land area's mesh slot (world-space geometry built by `LandMeshFactory`). Loading a layout assigns slots 0, 1, ... in layout order; land areas added later get the next free slot. |
@@ -2377,6 +2436,8 @@ Colors of land areas and their trees (`MarinaStyle.Land`). Changing them rebuild
 | `ColorRgba TrunkColor { get; set; }` | Tree trunks. |
 | `ColorRgba PalmColor { get; set; }` | Fronds of palms. |
 | `ColorRgba BlossomColor { get; set; }` | Blossom of cherry trees (`TreeShape.Cherry`). |
+| `ColorRgba BuildingColor { get; set; }` | Walls of the buildings in a `HinterlandScenery.Town` behind the shore. |
+| `ColorRgba RoofColor { get; set; }` | Roofs of those buildings. |
 | `bool ShowTrees { get; set; }` | Draw the trees of land areas (`LandArea.Trees`). Default true. |
 
 <a id="lightingsettings"></a>

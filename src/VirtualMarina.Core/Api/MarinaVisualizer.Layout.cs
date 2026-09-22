@@ -17,6 +17,7 @@ public sealed partial class MarinaVisualizer
         ClearState();
 
         MarinaName = layout.Name;
+        _shoreline = layout.Shoreline;
         foreach (var land in layout.LandAreas)
         {
             _landAreas[land.Id] = land;
@@ -78,6 +79,7 @@ public sealed partial class MarinaVisualizer
         Dividers = OrderedDividers().ToArray(),
         MultiBerths = OrderedMultiBerths().ToArray(),
         LandAreas = OrderedLandAreas().ToArray(),
+        Shoreline = _shoreline,
     };
 
     /// <inheritdoc/>
@@ -445,6 +447,30 @@ public sealed partial class MarinaVisualizer
         return true;
     }
 
+    // ---- The mainland ---------------------------------------------------------------------------
+
+    /// <inheritdoc/>
+    public Shoreline? Shoreline => _shoreline;
+
+    /// <inheritdoc/>
+    public void SetShoreline(Shoreline? shoreline)
+    {
+        if (shoreline is not null) ThrowIfInvalid(shoreline.Validate());
+
+        _shoreline = shoreline;
+        RegisterShorelineMesh();
+        MarkSceneDirty();
+        RaiseLayoutChanged(LayoutChangeKind.ShorelineChanged);
+    }
+
+    /// <inheritdoc/>
+    public bool RemoveShoreline()
+    {
+        if (_shoreline is null) return false;
+        SetShoreline(null);
+        return true;
+    }
+
     /// <inheritdoc/>
     public object[] ExportObjects() => GetLayout().ToObjects();
 
@@ -667,6 +693,7 @@ public sealed partial class MarinaVisualizer
         _multiBerthOrder.Clear();
         _landAreas.Clear();
         _landOrder.Clear();
+        _shoreline = null;
         _selection.Clear();
         _hoveredBerthId = null;
         _popupRefreshPending = false;

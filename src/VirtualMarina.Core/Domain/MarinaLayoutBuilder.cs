@@ -24,6 +24,7 @@ public sealed class MarinaLayoutBuilder
     private readonly List<Divider> _dividers = new();
     private readonly List<MultiBerth> _multiBerths = new();
     private readonly List<LandArea> _land = new();
+    private Shoreline? _shoreline;
 
     /// <summary>Starts an empty layout.</summary>
     /// <param name="name">Marina name.</param>
@@ -96,6 +97,13 @@ public sealed class MarinaLayoutBuilder
         return this;
     }
 
+    /// <summary>Sets the mainland behind the marina, drawn beneath the land areas. Replaces any set earlier.</summary>
+    public MarinaLayoutBuilder WithShoreline(Shoreline? shoreline)
+    {
+        _shoreline = shoreline;
+        return this;
+    }
+
     /// <summary>Creates the layout. It is not validated here; <c>InitializeLayout</c> (or <see cref="MarinaLayout.Validate"/>) does that.</summary>
     public MarinaLayout Build() => new()
     {
@@ -105,6 +113,7 @@ public sealed class MarinaLayoutBuilder
         Dividers = _dividers.ToArray(),
         MultiBerths = _multiBerths.ToArray(),
         LandAreas = _land.ToArray(),
+        Shoreline = _shoreline,
     };
 }
 

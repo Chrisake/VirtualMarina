@@ -816,6 +816,51 @@ Renderer: {2}</value>
     <value>{0} is already taken; {1} keeps its name.</value>
     <comment>{0} = the name asked for, {1} = the berth.</comment>
   </data>
+  <!-- Inspector: the mainland -->
+  <data name="ToolCoast">
+    <value>Coast</value>
+  </data>
+  <data name="ToolCoastTip">
+    <value>Draw the coast of the mainland behind the marina</value>
+  </data>
+  <data name="TitleCoast">
+    <value>Coast</value>
+  </data>
+  <data name="CardCoast">
+    <value>The mainland</value>
+  </data>
+  <data name="CoastScenery">
+    <value>Cover</value>
+  </data>
+  <data name="CoastSceneryTip">
+    <value>What is scattered across the land behind the shore. Bare ground is the cheapest to draw.</value>
+  </data>
+  <data name="CoastHint">
+    <value>Click along the coast (two points make a straight one), press Enter, then click the side that is land.</value>
+  </data>
+  <data name="CoastEndlessHint">
+    <value>The first and last stretches run on without end, so the land never stops however far you pull back.</value>
+  </data>
+  <data name="CoastRemove">
+    <value>Remove the mainland</value>
+  </data>
+  <data name="CoastNone">
+    <value>No mainland: the marina stands in open water.</value>
+  </data>
+  <data name="CoastPresent">
+    <value>Mainland from {0} points, {1}.</value>
+    <comment>{0} = how many points the coast has, {1} = the cover, e.g. "Countryside".</comment>
+  </data>
+  <data name="MenuCoast">
+    <value>Draw the &amp;coast</value>
+  </data>
+  <data name="LogCoastDrawn">
+    <value>Drew the mainland along {0} points</value>
+    <comment>{0} = how many points the coast has.</comment>
+  </data>
+  <data name="LogCoastRemoved">
+    <value>Removed the mainland</value>
+  </data>
   <!-- Inspector: reference image -->
   <data name="ImageLoad">
     <value>Load image…</value>

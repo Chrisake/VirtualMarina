@@ -74,6 +74,16 @@ public static class DisplayNames
         _ => kind.ToString(),
     };
 
+    /// <summary>Name of what covers the mainland behind the shore, e.g. "Countryside".</summary>
+    public static string GetDisplayName(this HinterlandScenery scenery) => scenery switch
+    {
+        HinterlandScenery.None => Strings.SceneryNone,
+        HinterlandScenery.Countryside => Strings.SceneryCountryside,
+        HinterlandScenery.Fields => Strings.SceneryFields,
+        HinterlandScenery.Town => Strings.SceneryTown,
+        _ => scenery.ToString(),
+    };
+
     /// <summary>Name of a divider, e.g. "Mooring piles".</summary>
     public static string GetDisplayName(this DividerType type) => type switch
     {

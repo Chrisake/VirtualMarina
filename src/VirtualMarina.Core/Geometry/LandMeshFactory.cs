@@ -5,7 +5,10 @@ using VirtualMarina.Core.Rendering;
 
 namespace VirtualMarina.Core.Geometry;
 
-/// <summary>World-space meshes for <see cref="LandArea"/> outlines: solid slabs for quays and lawns, rock piles for breakwaters.</summary>
+/// <summary>
+/// World-space meshes for the ground: solid slabs for quays and lawns, rock piles for breakwaters, and the mainland
+/// behind a <see cref="Shoreline"/>.
+/// </summary>
 public static class LandMeshFactory
 {
     /// <summary>How far land walls reach below the water surface, in meters.</summary>
@@ -115,13 +118,16 @@ public static class LandMeshFactory
     }
 
     /// <summary>Trunks and crowns of the area's trees, standing on its surface. Colors vary slightly per tree (from its position).</summary>
-    private static void AddTrees(MeshBuilder b, LandArea area, LandStyle style)
+    private static void AddTrees(MeshBuilder b, LandArea area, LandStyle style) => AddTrees(b, area.Trees, area.Height, style);
+
+    /// <summary>The same, for trees standing on any flat ground — the mainland behind the shore has no land area.</summary>
+    private static void AddTrees(MeshBuilder b, IEnumerable<LandTree> trees, float groundHeight, LandStyle style)
     {
-        foreach (var tree in area.Trees)
+        foreach (var tree in trees)
         {
             var hash = MarinaMath.StableHash01(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{tree.Position.X:0.00},{tree.Position.Y:0.00}"));
             var shade = 0.85f + hash * 0.3f;
-            var ground = MarinaMath.ToWorld(tree.Position, area.Height);
+            var ground = MarinaMath.ToWorld(tree.Position, groundHeight);
             var trunkHeight = tree.Shape switch
             {
                 TreeShape.Conifer or TreeShape.Cypress => tree.Height * 0.25f,
@@ -179,6 +185,215 @@ public static class LandMeshFactory
                 AddRock(b, random, center + offset - Vector3.UnitY * tree.CrownRadius * 0.25f, tree.CrownRadius * 0.7f, color * 0.9f, color, flatten: false);
             }
         }
+    }
+
+    /// <summary>How far the mainland sits below a land area of the same height, so a quay traced along the shore always wins.</summary>
+    private const float Underlap = 0.05f;
+
+    /// <summary>
+    /// How far inland the scenery reaches, in meters. Beyond it the mainland is bare ground running to the horizon.
+    /// Kept shallow on purpose: a band close to the water reads as a wooded or built-up shore, where the same things
+    /// spread thinly over a mile of hinterland only read as litter.
+    /// </summary>
+    private const float SceneryDepth = 260f;
+
+    /// <summary>How far past the ends of the drawn line the scenery carries on, in meters.</summary>
+    private const float SceneryRun = 800f;
+
+    /// <summary>
+    /// The mainland behind the marina: the shoreline's shape as one slab, with whatever scenery it asks for scattered
+    /// in a band along the coast.
+    /// </summary>
+    /// <param name="id">Mesh id (see <see cref="MeshIds.Shoreline"/>).</param>
+    /// <param name="shoreline">The shoreline. Vertices are in world space, so the mesh is drawn with an identity transform.</param>
+    /// <param name="style">Colors and tree visibility; the defaults when null.</param>
+    /// <remarks>
+    /// The ground itself is a handful of triangles however far it reaches, and the scenery is capped and thins out
+    /// inland, so a long coast costs no more to draw than a short one. An empty mesh comes back when the shoreline is
+    /// one <see cref="Shoreline.Validate"/> refuses.
+    /// </remarks>
+    public static MeshData CreateShoreline(int id, Shoreline shoreline, LandStyle? style = null)
+    {
+        ArgumentNullException.ThrowIfNull(shoreline);
+        style ??= new LandStyle();
+        var b = new MeshBuilder();
+        var outline = shoreline.BuildOutline();
+        if (outline.Count < 3) return b.Build(id, "Shoreline");
+
+        var ground = shoreline.Height - Underlap;
+        var (top, wall) = shoreline.Kind == LandKind.Grass ? (style.GrassColor, style.GrassBankColor) : (style.QuayColor, style.QuayWallColor);
+        AddPrism(b, outline, -WallDepth, ground, top.ToVector3(), wall.ToVector3());
+        AddScenery(b, shoreline, style, ground);
+        return b.Build(id, "Shoreline");
+    }
+
+    /// <summary>Whatever stands on the mainland: trees, crops or a town, in a band along the coast.</summary>
+    private static void AddScenery(MeshBuilder b, Shoreline shoreline, LandStyle style, float ground)
+    {
+        var random = new Random(shoreline.ScenerySeed);
+        switch (shoreline.Scenery)
+        {
+            case HinterlandScenery.Countryside:
+                if (style.ShowTrees) AddHinterlandTrees(b, shoreline, style, random, ground, 340, 10f, SceneryDepth);
+                break;
+
+            case HinterlandScenery.Fields:
+                AddFields(b, shoreline, style, random, ground);
+                if (style.ShowTrees) AddHinterlandTrees(b, shoreline, style, random, ground, 60, 12f, SceneryDepth);
+                break;
+
+            case HinterlandScenery.Town:
+                AddTown(b, shoreline, style, random, ground);
+                if (style.ShowTrees) AddHinterlandTrees(b, shoreline, style, random, ground, 70, 18f, SceneryDepth * 0.8f);
+                break;
+        }
+    }
+
+    /// <summary>Trees of the same mix as a land area's, standing on the mainland rather than inside an outline.</summary>
+    private static void AddHinterlandTrees(MeshBuilder b, Shoreline shoreline, LandStyle style, Random random, float ground, int count, float near, float depth)
+    {
+        var trees = new List<LandTree>(count);
+        foreach (var (position, _, _) in ScatterInland(shoreline, random, count, near, depth))
+        {
+            var shape = LandArea.PickShape(random);
+            var height = shape switch
+            {
+                TreeShape.Conifer => 6f + (float)random.NextDouble() * 7f,
+                TreeShape.Cypress => 7f + (float)random.NextDouble() * 5f,
+                TreeShape.Palm => 5f + (float)random.NextDouble() * 5f,
+                TreeShape.Cherry => 4f + (float)random.NextDouble() * 3f,
+                _ => 4f + (float)random.NextDouble() * 5f,
+            };
+
+            var radius = shape switch
+            {
+                TreeShape.Cypress => height * 0.09f,
+                TreeShape.Palm => height * 0.24f,
+                TreeShape.Conifer => height * 0.18f,
+                _ => height * 0.34f,
+            };
+
+            // Far enough apart to read as separate trees, and cheap to check at these counts.
+            if (trees.Any(t => Vector2.Distance(t.Position, position) < (t.CrownRadius + radius) * 0.9f)) continue;
+            trees.Add(new LandTree(position, height, radius, shape));
+        }
+
+        AddTrees(b, trees, ground, style);
+    }
+
+    /// <summary>Crops seen from the air: flat blocks of colour lying on the ground, lined up with the coast.</summary>
+    private static void AddFields(MeshBuilder b, Shoreline shoreline, LandStyle style, Random random, float ground)
+    {
+        var grass = style.GrassColor.ToVector3();
+        foreach (var (position, _, along) in ScatterInland(shoreline, random, 80, 20f, SceneryDepth))
+        {
+            var across = new Vector2(-along.Y, along.X);
+            var half = new Vector2(30f + (float)random.NextDouble() * 50f, 22f + (float)random.NextDouble() * 34f);
+            // Crops run from dark green through to bare, dusty earth.
+            var ripeness = (float)random.NextDouble();
+            var color = Vector3.Lerp(grass * 0.82f, new Vector3(0.78f, 0.70f, 0.42f), ripeness * ripeness);
+
+            var side = along * half.X;
+            var deep = across * half.Y;
+            // A hair above the ground, so the field shows rather than fighting the surface for the same pixels.
+            var level = ground + 0.03f;
+            b.AddQuadUp(
+                MarinaMath.ToWorld(position - side - deep, level),
+                MarinaMath.ToWorld(position + side - deep, level),
+                MarinaMath.ToWorld(position + side + deep, level),
+                MarinaMath.ToWorld(position - side + deep, level),
+                color);
+        }
+    }
+
+    /// <summary>A town: plain blocks with roofs, standing thickest and tallest near the water.</summary>
+    private static void AddTown(MeshBuilder b, Shoreline shoreline, LandStyle style, Random random, float ground)
+    {
+        const float depth = SceneryDepth * 0.7f;
+        var walls = style.BuildingColor.ToVector3();
+        var roofs = style.RoofColor.ToVector3();
+        var placed = new List<(Vector2 Center, float Radius)>(140);
+
+        foreach (var (position, inland, _) in ScatterInland(shoreline, random, 140, 25f, depth))
+        {
+            var seafront = 1f - Math.Clamp(inland / depth, 0f, 1f);
+            var footprint = new Vector2(9f + (float)random.NextDouble() * 9f, 9f + (float)random.NextDouble() * 9f);
+            var radius = MathF.Max(footprint.X, footprint.Y) * 0.5f;
+            if (placed.Any(other => Vector2.Distance(other.Center, position) < other.Radius + radius + 6f)) continue;
+            placed.Add((position, radius));
+
+            var height = 5f + (float)random.NextDouble() * (5f + seafront * 14f);
+            var shade = Lerp(0.86f, 1.12f, (float)random.NextDouble());
+            b.AddBox(MarinaMath.ToWorld(position, ground + height * 0.5f), new Vector3(footprint.X, height, footprint.Y), walls * shade);
+            b.AddBox(
+                MarinaMath.ToWorld(position, ground + height + 0.6f),
+                new Vector3(footprint.X * 1.12f, 1.2f, footprint.Y * 1.12f),
+                roofs * Lerp(0.9f, 1.1f, (float)random.NextDouble()));
+        }
+    }
+
+    /// <summary>
+    /// Places scattered in a band of mainland along the coast, thickest at the water's edge and thinning inland.
+    /// </summary>
+    /// <remarks>
+    /// The band follows the drawn line and carries on past both ends, so the scenery does not stop dead where the
+    /// designer stopped clicking. Places that come out over water — inside a bay the line cuts back into — are
+    /// dropped, which is what keeps the scenery on the land side without any extra work.
+    /// </remarks>
+    /// <returns>For each place: where it is, how far inland it fell, and the direction of the coast beside it.</returns>
+    private static IEnumerable<(Vector2 Position, float Inland, Vector2 Along)> ScatterInland(
+        Shoreline shoreline, Random random, int count, float near, float depth)
+    {
+        var line = ExtendedLine(shoreline);
+        var lengths = new float[line.Count - 1];
+        var total = 0f;
+        for (var i = 0; i < lengths.Length; i++)
+        {
+            lengths[i] = Vector2.Distance(line[i], line[i + 1]);
+            total += lengths[i];
+        }
+
+        if (total < 1f) yield break;
+
+        var placed = 0;
+        for (var attempt = 0; attempt < count * 3 && placed < count; attempt++)
+        {
+            // Somewhere along the coast, by length rather than by point, so long stretches get their share.
+            var along = (float)random.NextDouble() * total;
+            var segment = 0;
+            while (segment < lengths.Length - 1 && along > lengths[segment]) along -= lengths[segment++];
+
+            var step = line[segment + 1] - line[segment];
+            if (step.LengthSquared() < 1e-6f) continue;
+            var direction = Vector2.Normalize(step);
+            var inward = shoreline.LandOnLeft ? new Vector2(-direction.Y, direction.X) : new Vector2(direction.Y, -direction.X);
+
+            // Squaring the step inland puts more of it near the water, where it is actually seen.
+            var reach = (float)random.NextDouble();
+            var inland = near + depth * reach * reach;
+            var position = line[segment] + direction * along + inward * inland;
+            if (!shoreline.Contains(position)) continue;
+
+            placed++;
+            yield return (position, inland, direction);
+        }
+    }
+
+    /// <summary>The drawn line with both ends carried on, so scenery does not end where the drawing did.</summary>
+    private static IReadOnlyList<Vector2> ExtendedLine(Shoreline shoreline)
+    {
+        var points = shoreline.Points;
+        var line = new List<Vector2>(points.Count + 2) { points[0] + Onward(points[1], points[0]) * SceneryRun };
+        line.AddRange(points);
+        line.Add(points[^1] + Onward(points[^2], points[^1]) * SceneryRun);
+        return line;
+    }
+
+    /// <summary>The unit direction from one point through the next, and on.</summary>
+    private static Vector2 Onward(Vector2 from, Vector2 through)
+    {
+        var step = through - from;
+        return step.LengthSquared() < 1e-8f ? Vector2.UnitX : Vector2.Normalize(step);
     }
 
     /// <summary>Flat top and vertical walls of a (possibly concave) outline.</summary>

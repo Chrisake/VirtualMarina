@@ -343,6 +343,9 @@ public sealed class MarinaDocument
 
         var legacy = version.Major < 2;
 
+        var shoreline = dto.Shoreline?.ToDomain();
+        if (dto.Shoreline is not null) Remember(extras, "shoreline", string.Empty, dto.Shoreline.Extra);
+
         var landAreas = new List<LandArea>();
         foreach (var land in dto.LandAreas ?? new List<LandAreaDto>())
         {
@@ -382,6 +385,7 @@ public sealed class MarinaDocument
 
         return new MarinaLayout
         {
+            Shoreline = shoreline,
             LandAreas = landAreas,
             Piers = piers,
             Dividers = dividers,
@@ -394,6 +398,7 @@ public sealed class MarinaDocument
     {
         var layout = new LayoutDto
         {
+            Shoreline = Layout.Shoreline is { } shore ? Attach(ShorelineDto.From(shore), "shoreline", string.Empty) : null,
             LandAreas = Layout.LandAreas.Select(land => Attach(LandAreaDto.From(land), "land", land.Id)).ToList(),
             Piers = Layout.Piers.Select(pier => Attach(PierDto.From(pier), "pier", pier.Id)).ToList(),
             Dividers = Layout.Dividers.Select(divider => Attach(DividerDto.From(divider), "divider", divider.Id)).ToList(),

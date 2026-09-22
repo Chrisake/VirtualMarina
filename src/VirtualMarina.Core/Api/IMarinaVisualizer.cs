@@ -318,6 +318,29 @@ public interface IMarinaVisualizer
     /// <summary>All land areas, in layout order.</summary>
     IReadOnlyList<LandArea> GetLandAreas();
 
+    /// <summary>
+    /// The mainland behind the marina, or null when the marina stands in open water. Set it with
+    /// <see cref="SetShoreline"/>.
+    /// </summary>
+    Shoreline? Shoreline { get; }
+
+    /// <summary>
+    /// Sets (or replaces) the mainland behind the marina and builds its mesh. It is drawn beneath the land areas, so
+    /// a quay traced along the shore sits on top of it and the two read as one piece of ground.
+    /// </summary>
+    /// <param name="shoreline">The shoreline, or null to go back to open water.</param>
+    /// <exception cref="MarinaLayoutException">The shoreline is invalid (see <see cref="Domain.Shoreline.Validate"/>).</exception>
+    /// <example>
+    /// <code>
+    /// // A straight coast running east-west a hundred meters north of the marina.
+    /// marina.SetShoreline(new Shoreline(new[] { new Vector2(-800, -100), new Vector2(800, -100) }, landOnLeft: false));
+    /// </code>
+    /// </example>
+    void SetShoreline(Shoreline? shoreline);
+
+    /// <summary>Takes the mainland away, leaving open water. Returns false when there was none.</summary>
+    bool RemoveShoreline();
+
     /// <summary>Berths with a given status.</summary>
     IReadOnlyList<Berth> GetBerthsByStatus(BerthStatus status);
 

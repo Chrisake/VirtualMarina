@@ -50,6 +50,7 @@ public static class MarinaJson
             // Listed one by one rather than through a converter factory, so nothing is built by reflection and the format keeps
             // working in trimmed and ahead-of-time compiled builds. Add a line here when the format gains an enum.
             new TolerantEnumConverter<LandKind>(),
+            new TolerantEnumConverter<HinterlandScenery>(),
             new TolerantEnumConverter<TreeShape>(),
             new TolerantEnumConverter<PierType>(),
             new TolerantEnumConverter<PierSides>(),

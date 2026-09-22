@@ -89,6 +89,8 @@ public sealed class LandStyle : StyleSection
     private ColorRgba _trunk = new(0.38f, 0.27f, 0.17f);
     private ColorRgba _palm = new(0.33f, 0.52f, 0.26f);
     private ColorRgba _blossom = new(0.95f, 0.72f, 0.80f);
+    private ColorRgba _building = new(0.80f, 0.78f, 0.73f);
+    private ColorRgba _roof = new(0.59f, 0.33f, 0.25f);
     private bool _showTrees = true;
     private float _rockVariation = 0.2f;
 
@@ -124,6 +126,12 @@ public sealed class LandStyle : StyleSection
 
     /// <summary>Blossom of cherry trees (<see cref="Domain.TreeShape.Cherry"/>).</summary>
     public ColorRgba BlossomColor { get => _blossom; set => SetField(ref _blossom, value); }
+
+    /// <summary>Walls of the buildings in a <see cref="Domain.HinterlandScenery.Town"/> behind the shore.</summary>
+    public ColorRgba BuildingColor { get => _building; set => SetField(ref _building, value); }
+
+    /// <summary>Roofs of those buildings.</summary>
+    public ColorRgba RoofColor { get => _roof; set => SetField(ref _roof, value); }
 
     /// <summary>Draw the trees of land areas (<c>LandArea.Trees</c>). Default true.</summary>
     public bool ShowTrees { get => _showTrees; set => SetField(ref _showTrees, value); }

@@ -287,6 +287,19 @@
   <data name="LandKindGrass">
     <value>Lawn or park</value>
   </data>
+  <!-- Hinterland scenery -->
+  <data name="SceneryNone">
+    <value>Bare ground</value>
+  </data>
+  <data name="SceneryCountryside">
+    <value>Countryside</value>
+  </data>
+  <data name="SceneryFields">
+    <value>Fields</value>
+  </data>
+  <data name="SceneryTown">
+    <value>Town</value>
+  </data>
   <!-- Divider types -->
   <data name="DividerFingerPier">
     <value>Finger pier</value>
@@ -358,8 +371,29 @@
   <data name="HintMeasureScaleSecond">
     <value>Click the other end of the scale bar.</value>
   </data>
+  <data name="HintDrawShorelineFirst">
+    <value>Click to place the first point of the coast (two points are enough for a straight one).</value>
+  </data>
+  <data name="HintDrawShorelineMore">
+    <value>Click to add points along the coast, then press Enter. Backspace removes the last one, Esc cancels.</value>
+  </data>
+  <data name="HintDrawShorelineSide">
+    <value>Click the side of the line that is land.</value>
+  </data>
+  <data name="HintDrawShorelineCrossing">
+    <value>The two ends of this line run into each other, so neither side of it is the land. Move a point or press Esc.</value>
+  </data>
   <data name="HintNavigate">
     <value>Drag to pan, right-drag to orbit, wheel to zoom.</value>
+  </data>
+  <!-- Designer overlay labels -->
+  <data name="OverlayLandThisSide">
+    <value>LAND THIS SIDE</value>
+    <comment>Drawn beside the pointer while picking which side of the coast is land. The overlay font has no lowercase.</comment>
+  </data>
+  <data name="OverlayTreeCount">
+    <value>{0} TREES</value>
+    <comment>{0} = how many trees the lawn has. The overlay font has no lowercase.</comment>
   </data>
   <!-- Undo step descriptions -->
   <data name="UndoDrawLandArea">
@@ -369,6 +403,12 @@
   <data name="UndoDrawPier">
     <value>Draw pier {0}</value>
     <comment>{0} = pier name.</comment>
+  </data>
+  <data name="UndoDrawShoreline">
+    <value>Draw the mainland</value>
+  </data>
+  <data name="UndoRemoveShoreline">
+    <value>Remove the mainland</value>
   </data>
   <data name="UndoAddBerth">
     <value>Add berth {0}</value>

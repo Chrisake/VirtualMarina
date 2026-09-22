@@ -134,6 +134,24 @@ public static class MockMarinaFactory
                 },
                 BerthStatus.Occupied,
                 MooringStyle.Alongside))
+            // The mainland behind the quay, so the harbor is on a coast rather than adrift in open sea. It follows the
+            // quay's water edge and wanders off beyond it; the land is south of the line, under the quay and boatyard.
+            .WithShoreline(new Shoreline(
+                new[]
+                {
+                    new Vector2(-900f, -86f),
+                    new Vector2(-420f, -34f),
+                    new Vector2(-130f, quayEdge),
+                    new Vector2(150f, quayEdge),
+                    new Vector2(360f, -30f),
+                    new Vector2(880f, -104f),
+                },
+                landOnLeft: false)
+            {
+                Height = quayHeight,
+                Scenery = HinterlandScenery.Countryside,
+                ScenerySeed = 41,
+            })
             .Build();
 
         // A few interaction flags to demonstrate: under maintenance, contract locked, not rentable.

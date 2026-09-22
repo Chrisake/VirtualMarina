@@ -65,6 +65,13 @@ public enum DesignTool
     /// the selection already made instead of replacing it.
     /// </summary>
     SelectArea = 11,
+
+    /// <summary>
+    /// Draw the coast of the mainland behind the marina (<see cref="Domain.Shoreline"/>). Click to place points along
+    /// it — two are enough for a straight coast — then press Enter, and click the side of the line that is land.
+    /// Backspace removes the last point; Escape cancels. Drawing a new one replaces the one already there.
+    /// </summary>
+    DrawShoreline = 12,
 }
 
 /// <summary>
@@ -252,6 +259,12 @@ public sealed class DesignElementCreatingEventArgs : EventArgs
     /// <summary>Dividers generated between the new berths, when <see cref="MarinaDesigner.BerthSeparators"/> asks for them.</summary>
     public IReadOnlyList<Divider> Dividers { get; set; }
 
+    /// <summary>
+    /// The mainland to set (<see cref="DesignTool.DrawShoreline"/>); null for other tools. Replace it to change its
+    /// height, surface or scenery before it is drawn.
+    /// </summary>
+    public Shoreline? Shoreline { get; set; }
+
     /// <summary>Set to true to discard the drawing.</summary>
     public bool Cancel { get; set; }
 }
@@ -283,6 +296,9 @@ public sealed class DesignElementCreatedEventArgs : EventArgs
 
     /// <summary>The dividers added with the berths.</summary>
     public IReadOnlyList<Divider> Dividers { get; }
+
+    /// <summary>The mainland that was set (<see cref="DesignTool.DrawShoreline"/>), if any.</summary>
+    public Shoreline? Shoreline { get; init; }
 }
 
 /// <summary>Data for <see cref="MarinaDesigner.TreesPlanted"/> (raised when trees are scattered or removed).</summary>

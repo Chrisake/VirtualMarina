@@ -87,6 +87,7 @@ public sealed class MarinaDesigner
 
     private readonly MarinaVisualizer _marina;
     private readonly List<Vector2> _points = new();
+    private List<Vector2>? _shorelineSide;
     private bool _active;
     private DesignTool _tool;
     private Vector2? _pointer;
@@ -124,6 +125,7 @@ public sealed class MarinaDesigner
     private float _fogFactor = 0.15f;
     private float _treeDensity = 8f;
     private readonly Random _random = new();
+    private HinterlandScenery _scenery = HinterlandScenery.Countryside;
     private readonly List<DesignAction> _history = new();
     private bool _undoing;
 
@@ -253,6 +255,10 @@ public sealed class MarinaDesigner
         DesignTool.Rename => Strings.HintRename,
         DesignTool.EditServices => Strings.HintEditServices,
         DesignTool.SelectArea => Strings.HintSelectArea,
+        DesignTool.DrawShoreline when _shorelineSide is not null => Strings.HintDrawShorelineSide,
+        DesignTool.DrawShoreline when _points.Count == 0 => Strings.HintDrawShorelineFirst,
+        DesignTool.DrawShoreline when DraftShorelineCrosses() => Strings.HintDrawShorelineCrossing,
+        DesignTool.DrawShoreline => Strings.HintDrawShorelineMore,
         DesignTool.PlantTrees => _treeDensity > 0f ? Strings.HintPlantTrees : Strings.HintPlantTreesNone,
         DesignTool.MoveReferenceImage => _image is null ? Strings.HintReferenceImageMissing : Strings.HintMoveReferenceImage,
         DesignTool.MeasureScale when _image is null => Strings.HintReferenceImageMissing,
@@ -275,6 +281,16 @@ public sealed class MarinaDesigner
     {
         get => _landHeight;
         set => SetSetting(ref _landHeight, RequireRange(value, 0f, 50f));
+    }
+
+    /// <summary>
+    /// What is scattered across the mainland drawn by <see cref="DesignTool.DrawShoreline"/>. Default
+    /// <see cref="HinterlandScenery.Countryside"/>.
+    /// </summary>
+    public HinterlandScenery Scenery
+    {
+        get => _scenery;
+        set => SetSetting(ref _scenery, Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(value), value, null));
     }
 
     /// <summary>
@@ -467,18 +483,61 @@ public sealed class MarinaDesigner
             case DesignTool.AddLandBerths when _berthLandId is not null && _points.Count == 1:
                 return TryCreate(() => CreateLandBerth(_berthLandId, _points[0], HeadingFor(_points[0], _pointer)) is not null);
 
+            // Enter does not finish a coast; it settles the line, and the next click says which side is land.
+            case DesignTool.DrawShoreline when _shorelineSide is null && _points.Count >= 2 && !DraftShorelineCrosses():
+            {
+                var line = RemoveDuplicatePoints(_points);
+                if (line.Count < 2) return false;
+
+                _shorelineSide = line.ToList();
+                _points.Clear();
+                _marina.MarkSceneDirty();
+                DraftChanged?.Invoke(this, new DesignDraftChangedEventArgs(_tool, DesignDraftChange.PointAdded, _shorelineSide.ToArray()));
+                RaiseStateChanged();
+                return false;
+            }
+
             default:
                 return false;
         }
     }
 
+    /// <summary>
+    /// The coast that has been drawn and is waiting for a click to say which side of it is land, or null. Enter moves
+    /// a <see cref="DesignTool.DrawShoreline"/> drawing into this state (see <see cref="PickShorelineSide"/>).
+    /// </summary>
+    public IReadOnlyList<Vector2>? ShorelineAwaitingSide => _shorelineSide?.ToArray();
+
+    /// <summary>
+    /// Makes the mainland from the coast waiting for a side, putting the land on the side <paramref name="landSide"/>
+    /// falls on. Returns null when nothing is waiting, or when a handler cancels.
+    /// </summary>
+    /// <param name="landSide">A point on the side of the line that should be land.</param>
+    public Shoreline? PickShorelineSide(Vector2 landSide)
+    {
+        if (_shorelineSide is not { Count: >= 2 } line) return null;
+
+        // Both halves of the plan are covered by the two candidates, so testing one of them decides it.
+        var onLeft = new Shoreline(line, landOnLeft: true).Contains(landSide);
+        return CreateShoreline(line, onLeft);
+    }
+
+    /// <summary>True while a coast has been drawn whose endless ends run into each other, so neither side is the land.</summary>
+    private bool DraftShorelineCrosses()
+    {
+        if (_points.Count < 2) return false;
+        var line = RemoveDuplicatePoints(_points);
+        return line.Count >= 2 && new Shoreline(line, landOnLeft: true).Validate().Any();
+    }
+
     /// <summary>Abandons the drawing in progress. Returns false when there was none.</summary>
     public bool CancelDraft()
     {
-        if (_points.Count == 0 && _berthPierId is null) return false;
+        if (_points.Count == 0 && _berthPierId is null && _shorelineSide is null) return false;
         _points.Clear();
         _berthPierId = null;
         _berthLandId = null;
+        _shorelineSide = null;
         _marina.MarkSceneDirty();
         DraftChanged?.Invoke(this, new DesignDraftChangedEventArgs(_tool, DesignDraftChange.Canceled, Array.Empty<Vector2>()));
         RaiseStateChanged();
@@ -488,6 +547,16 @@ public sealed class MarinaDesigner
     /// <summary>Removes the last placed point. Returns false when there was none.</summary>
     public bool RemoveLastPoint()
     {
+        if (_points.Count == 0 && _shorelineSide is { Count: > 0 } waiting)
+        {
+            _points.AddRange(waiting);
+            _shorelineSide = null;
+            _marina.MarkSceneDirty();
+            DraftChanged?.Invoke(this, new DesignDraftChangedEventArgs(_tool, DesignDraftChange.PointRemoved, _points.ToArray()));
+            RaiseStateChanged();
+            return true;
+        }
+
         if (_points.Count == 0) return false;
         _points.RemoveAt(_points.Count - 1);
         if (_points.Count == 0)
@@ -535,6 +604,53 @@ public sealed class MarinaDesigner
         ElementCreated?.Invoke(this, new DesignElementCreatedEventArgs(DesignTool.DrawLandArea, added, null, Array.Empty<Berth>(), Array.Empty<Divider>()));
         if (added.Trees.Count > 0) TreesPlanted?.Invoke(this, new DesignTreesPlantedEventArgs(added, 0));
         return added;
+    }
+
+    /// <summary>
+    /// Sets the mainland behind the marina from a drawn coast and the side of it that is land, using the current
+    /// <see cref="Scenery"/>. Whatever mainland was there is replaced. Returns null when a handler cancels.
+    /// </summary>
+    /// <param name="line">The coast, at least two points. Its first and last segments run on without end.</param>
+    /// <param name="landOnLeft">True when the land is to the left of the line walked from the first point to the last.</param>
+    /// <exception cref="MarinaLayoutException">The line's endless segments cross, so neither side of it is the land.</exception>
+    public Shoreline? CreateShoreline(IReadOnlyList<Vector2> line, bool landOnLeft)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+        var previous = _marina.Shoreline;
+        var shoreline = new Shoreline(line, landOnLeft)
+        {
+            // The coast keeps the look of the land already drawn, so the two read as one piece of ground.
+            Height = previous?.Height ?? _landHeight,
+            Kind = previous?.Kind ?? LandKind.Grass,
+            Scenery = _scenery,
+            ScenerySeed = _random.Next(1, int.MaxValue),
+        };
+
+        var args = new DesignElementCreatingEventArgs(DesignTool.DrawShoreline, null, null, Array.Empty<Berth>(), Array.Empty<Divider>()) { Shoreline = shoreline };
+        ElementCreating?.Invoke(this, args);
+        if (args.Cancel || args.Shoreline is null)
+        {
+            FinishDraft(DesignDraftChange.Canceled);
+            return null;
+        }
+
+        _marina.SetShoreline(args.Shoreline);
+        Record(new DesignAction(Strings.UndoDrawShoreline) { PreviousShoreline = previous, TouchedShoreline = true });
+        FinishDraft(DesignDraftChange.Completed);
+        ElementCreated?.Invoke(this, new DesignElementCreatedEventArgs(DesignTool.DrawShoreline, null, null, Array.Empty<Berth>(), Array.Empty<Divider>()) { Shoreline = args.Shoreline });
+        return args.Shoreline;
+    }
+
+    /// <summary>Takes the mainland away, leaving the marina in open water. Returns false when there was none.</summary>
+    public bool DeleteShoreline()
+    {
+        var previous = _marina.Shoreline;
+        if (previous is null) return false;
+
+        _marina.SetShoreline(null);
+        Record(new DesignAction(Strings.UndoRemoveShoreline) { PreviousShoreline = previous, TouchedShoreline = true });
+        RaiseStateChanged();
+        return true;
     }
 
     /// <summary>
@@ -1058,6 +1174,8 @@ public sealed class MarinaDesigner
 
                 foreach (var (from, to) in action.RenamedBerths.Where(r => _marina.GetBerth(r.To) is not null)) _marina.RenameBerth(to, from);
                 foreach (var (from, to) in action.RenamedPiers.Where(r => _marina.GetPier(r.To) is not null)) _marina.ChangePierId(to, from);
+
+                if (action.TouchedShoreline) _marina.SetShoreline(action.PreviousShoreline);
             }
         }
         finally
@@ -1406,6 +1524,12 @@ public sealed class MarinaDesigner
                 ClickBerths(p);
                 break;
 
+            case DesignTool.DrawShoreline when _pointer is { } p:
+                // Points first; once Enter has settled the line, the click says which side is the land.
+                if (_shorelineSide is null) AddPoint(p);
+                else TryCreate(() => PickShorelineSide(p) is not null);
+                break;
+
             case DesignTool.AddLandBerths when _pointer is { } p:
                 ClickLandBerth(x, y, p);
                 break;
@@ -1553,12 +1677,15 @@ public sealed class MarinaDesigner
             case DesignTool.PlantTrees when _eraseTarget is LandArea target:
                 var outlineY = target.Height + 0.1f;
                 for (var i = 0; i < target.Points.Count; i++) overlay.Line(target.Points[i], target.Points[(i + 1) % target.Points.Count], outlineY, BerthPreviewColor with { W = 0.95f });
-                overlay.Text($"{target.Trees.Count} TREES", _pointer ?? target.Points[0], outlineY, TextColor);
+                overlay.Text(Strings.Format(Strings.OverlayTreeCount, target.Trees.Count), _pointer ?? target.Points[0], outlineY, TextColor);
                 break;
             case DesignTool.SelectArea when SelectionBox is { } box:
                 var boxY = textFloor - 0.4f;
                 var corners = new[] { box.Min, new Vector2(box.Max.X, box.Min.Y), box.Max, new Vector2(box.Min.X, box.Max.Y) };
                 for (var i = 0; i < 4; i++) overlay.Line(corners[i], corners[(i + 1) % 4], boxY, SelectionBoxColor);
+                break;
+            case DesignTool.DrawShoreline:
+                AppendShorelineDraft(overlay);
                 break;
             case DesignTool.MoveReferenceImage:
             case DesignTool.MeasureScale:
@@ -1585,6 +1712,48 @@ public sealed class MarinaDesigner
         {
             overlay.Dot(pointer, y, _pointerSnapped ? SnapColor : PointerColor, _pointerSnapped ? 1.5f : 1f);
             if (_points.Count > 0) overlay.Text(FormatMeters(Vector2.Distance(_points[^1], pointer)), pointer, y, TextColor);
+        }
+    }
+
+    /// <summary>
+    /// The coast being drawn: the line itself, its two ends carried on to show where the land is cut, and — once the
+    /// line is settled — which side the pointer is choosing.
+    /// </summary>
+    private void AppendShorelineDraft(Overlay overlay)
+    {
+        const float endless = 300f;   // enough of the endless ends to read which way they go
+        var y = (_marina.Shoreline?.Height ?? _landHeight) + 0.08f;
+        var settled = _shorelineSide is not null;
+        var line = _shorelineSide ?? (_pointer is { } p && (_points.Count == 0 || Vector2.DistanceSquared(_points[^1], p) > 1e-6f)
+            ? _points.Append(p).ToList()
+            : _points.ToList());
+
+        var crosses = line.Count >= 2 && new Shoreline(line, landOnLeft: true).Validate().Any();
+        var color = crosses ? InvalidColor : settled ? SnapColor : DraftColor;
+
+        for (var i = 0; i + 1 < line.Count; i++) overlay.Line(line[i], line[i + 1], y, color);
+        foreach (var point in _points) overlay.Dot(point, y, color);
+
+        if (line.Count >= 2)
+        {
+            // The ends run on without end; showing a few hundred meters of them says which way the land is cut.
+            overlay.Line(line[0], line[0] + Vector2.Normalize(line[0] - line[1]) * endless, y, color with { W = color.W * 0.45f });
+            overlay.Line(line[^1], line[^1] + Vector2.Normalize(line[^1] - line[^2]) * endless, y, color with { W = color.W * 0.45f });
+        }
+
+        if (_pointer is not { } pointer) return;
+        overlay.Dot(pointer, y, _pointerSnapped ? SnapColor : PointerColor, _pointerSnapped ? 1.5f : 1f);
+
+        if (settled && line.Count >= 2)
+        {
+            // A line from the coast out to the pointer, showing the half of the plan the click would make land.
+            var nearest = line.OrderBy(point => Vector2.DistanceSquared(point, pointer)).First();
+            overlay.Line(nearest, pointer, y, BerthPreviewColor with { W = 0.9f });
+            overlay.Text(Strings.OverlayLandThisSide, pointer, y, TextColor);
+        }
+        else if (_points.Count > 0)
+        {
+            overlay.Text(FormatMeters(Vector2.Distance(_points[^1], pointer)), pointer, y, TextColor);
         }
     }
 
@@ -1824,10 +1993,11 @@ public sealed class MarinaDesigner
     private void FinishDraft(DesignDraftChange change)
     {
         var points = _points.ToArray();
-        var hadDraft = points.Length > 0 || _berthPierId is not null;
+        var hadDraft = points.Length > 0 || _berthPierId is not null || _shorelineSide is not null;
         _points.Clear();
         _berthPierId = null;
         _berthLandId = null;
+        _shorelineSide = null;
         _marina.MarkSceneDirty();
         if (hadDraft) DraftChanged?.Invoke(this, new DesignDraftChangedEventArgs(_tool, change, change == DesignDraftChange.Canceled ? Array.Empty<Vector2>() : points));
         RaiseStateChanged();
@@ -2337,7 +2507,14 @@ public sealed class MarinaDesigner
         /// <summary>Piers that were given another id, as (old id, new id); undoing moves them back.</summary>
         public List<(string From, string To)> RenamedPiers { get; } = new();
 
+        /// <summary>True when this action set or removed the mainland, so undoing puts <see cref="PreviousShoreline"/> back.</summary>
+        public bool TouchedShoreline { get; init; }
+
+        /// <summary>The mainland as it was before the change. Null is a real value here: there was none.</summary>
+        public Shoreline? PreviousShoreline { get; init; }
+
         public bool IsEmpty =>
+            !TouchedShoreline &&
             AddedLandAreas.Count + AddedPiers.Count + AddedDividers.Count + AddedBerths.Count +
             RemovedLandAreas.Count + RemovedPiers.Count + RemovedDividers.Count + RemovedBerths.Count +
             ChangedLandAreas.Count + ChangedPiers.Count + ChangedBerths.Count + RenamedBerths.Count + RenamedPiers.Count == 0;

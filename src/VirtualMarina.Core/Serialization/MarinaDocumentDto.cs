@@ -173,6 +173,8 @@ internal sealed class MarinaDto : ExtensibleDto
 
 internal sealed class LayoutDto : ExtensibleDto
 {
+    public ShorelineDto? Shoreline { get; set; }
+
     public List<LandAreaDto>? LandAreas { get; set; }
 
     public List<PierDto>? Piers { get; set; }
@@ -208,6 +210,53 @@ internal sealed class LayoutDto : ExtensibleDto
         {
             return null;
         }
+    }
+}
+
+/// <summary>
+/// The mainland behind the marina. Only the drawn line and which side of it is land are written: the shape covering
+/// that side is worked out on load, so the far edge never ends up in the file.
+/// </summary>
+internal sealed class ShorelineDto : ExtensibleDto
+{
+    public List<Vector2>? Line { get; set; }
+
+    public bool LandOnLeft { get; set; }
+
+    public float Height { get; set; } = 1.4f;
+
+    public LandKind Kind { get; set; }
+
+    public HinterlandScenery Scenery { get; set; }
+
+    public int ScenerySeed { get; set; } = 1;
+
+    /// <summary>Host-owned string attributes; written only when there are any.</summary>
+    public Dictionary<string, string>? Metadata { get; set; }
+
+    public static ShorelineDto From(Shoreline shoreline) => new()
+    {
+        Line = shoreline.Points.ToList(),
+        LandOnLeft = shoreline.LandOnLeft,
+        Height = shoreline.Height,
+        Kind = shoreline.Kind,
+        Scenery = shoreline.Scenery,
+        ScenerySeed = shoreline.ScenerySeed,
+        Metadata = Copy(shoreline.Metadata),
+    };
+
+    /// <summary>The shoreline, or null when the file's line is too short to divide the plan.</summary>
+    public Shoreline? ToDomain()
+    {
+        if (Line is not { Count: >= 2 }) return null;
+        return new Shoreline(Line, LandOnLeft)
+        {
+            Height = Height,
+            Kind = Kind,
+            Scenery = Scenery,
+            ScenerySeed = ScenerySeed,
+            Metadata = Read(Metadata),
+        };
     }
 }
 

@@ -746,6 +746,50 @@ internal static class Strings
     /// <summary>"{0} is already taken; {1} keeps its name."</summary>
     internal static string LogRenameRefused => Get("LogRenameRefused");
 
+    // ---- Inspector: the mainland ---------------------------------------------------------------------
+
+    /// <summary>"Coast"</summary>
+    internal static string ToolCoast => Get("ToolCoast");
+
+    /// <summary>"Draw the coast of the mainland behind the marina"</summary>
+    internal static string ToolCoastTip => Get("ToolCoastTip");
+
+    /// <summary>"Coast"</summary>
+    internal static string TitleCoast => Get("TitleCoast");
+
+    /// <summary>"The mainland"</summary>
+    internal static string CardCoast => Get("CardCoast");
+
+    /// <summary>"Cover"</summary>
+    internal static string CoastScenery => Get("CoastScenery");
+
+    /// <summary>"What is scattered across the land behind the shore. Bare ground is the cheapest to draw."</summary>
+    internal static string CoastSceneryTip => Get("CoastSceneryTip");
+
+    /// <summary>"Click along the coast (two points make a straight one), press Enter, then click the side that..."</summary>
+    internal static string CoastHint => Get("CoastHint");
+
+    /// <summary>"The first and last stretches run on without end, so the land never stops however far you pull..."</summary>
+    internal static string CoastEndlessHint => Get("CoastEndlessHint");
+
+    /// <summary>"Remove the mainland"</summary>
+    internal static string CoastRemove => Get("CoastRemove");
+
+    /// <summary>"No mainland: the marina stands in open water."</summary>
+    internal static string CoastNone => Get("CoastNone");
+
+    /// <summary>"Mainland from {0} points, {1}."</summary>
+    internal static string CoastPresent => Get("CoastPresent");
+
+    /// <summary>"Draw the &amp;coast"</summary>
+    internal static string MenuCoast => Get("MenuCoast");
+
+    /// <summary>"Drew the mainland along {0} points"</summary>
+    internal static string LogCoastDrawn => Get("LogCoastDrawn");
+
+    /// <summary>"Removed the mainland"</summary>
+    internal static string LogCoastRemoved => Get("LogCoastRemoved");
+
     // ---- Inspector: reference image ------------------------------------------------------------------
 
     /// <summary>"Load image…"</summary>

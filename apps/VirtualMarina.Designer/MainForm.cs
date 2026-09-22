@@ -201,6 +201,7 @@ internal sealed class MainForm : Form
         AddToolButton(DesignTool.Rename, Strings.ToolRename, Strings.ToolRenameTip);
         AddToolButton(DesignTool.EditServices, Strings.ToolServices, Strings.ToolServicesTip);
         AddToolButton(DesignTool.SelectArea, Strings.ToolSelect, Strings.ToolSelectTip);
+        AddToolButton(DesignTool.DrawShoreline, Strings.ToolCoast, Strings.ToolCoastTip);
         _toolbar.Items.Add(new ToolStripSeparator());
 
         // Not a drawing tool: it swaps the panel beside the view for the look settings.

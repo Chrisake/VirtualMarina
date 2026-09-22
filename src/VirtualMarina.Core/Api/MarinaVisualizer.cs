@@ -67,6 +67,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private readonly List<string> _multiBerthOrder = new();
     private readonly Dictionary<string, LandArea> _landAreas = new(IdComparer);
     private readonly List<string> _landOrder = new();
+    private Shoreline? _shoreline;
     private readonly Dictionary<string, int> _landMeshSlots = new(IdComparer);
     private int _nextLandMeshSlot;
     private readonly List<CameraPreset> _presets = new();
@@ -251,6 +252,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
                 Berths = OrderedBerths().ToList(),
                 Dividers = OrderedDividers(),
                 Land = OrderedLandAreas(),
+                HasShoreline = _shoreline is not null,
                 LandMeshId = land => MeshIds.ForLand(_landMeshSlots.TryGetValue(land.Id, out var slot) ? slot : -1),
                 LandLookup = GetLandArea,
                 BerthLookup = GetBerth,
@@ -364,6 +366,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private void OnLandStyleChanged(object? sender, EventArgs e)
     {
         foreach (var land in OrderedLandAreas()) RegisterLandMesh(land);
+        RegisterShorelineMesh();
         MarkSceneDirty();
     }
 
@@ -435,6 +438,14 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         _landMeshSlots.Clear();
         _nextLandMeshSlot = 0;
         foreach (var land in OrderedLandAreas()) RegisterLandMesh(land);
+        RegisterShorelineMesh();
+    }
+
+    /// <summary>Builds the mainland's mesh, or drops it when there is no shoreline.</summary>
+    private void RegisterShorelineMesh()
+    {
+        if (_shoreline is null) Meshes.Unregister(MeshIds.Shoreline);
+        else Meshes.Register(LandMeshFactory.CreateShoreline(MeshIds.Shoreline, _shoreline, _style.Land));
     }
 
     /// <summary>Builds (or rebuilds) the mesh of one land area, keeping its slot so other land meshes are untouched.</summary>

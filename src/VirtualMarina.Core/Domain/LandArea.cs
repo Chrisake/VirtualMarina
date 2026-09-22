@@ -171,7 +171,7 @@ public sealed record LandArea
     /// What the next scattered tree is: mostly broadleaf, a good share of conifers, a few cypresses and palms, and
     /// once in a great while a cherry in blossom.
     /// </summary>
-    private static TreeShape PickShape(Random random) => random.NextDouble() switch
+    internal static TreeShape PickShape(Random random) => random.NextDouble() switch
     {
         < 0.010 => TreeShape.Cherry,
         < 0.075 => TreeShape.Palm,

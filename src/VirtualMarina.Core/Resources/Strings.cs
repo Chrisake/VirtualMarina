@@ -260,6 +260,20 @@ internal static class Strings
     /// <summary>"Lawn or park"</summary>
     internal static string LandKindGrass => Get("LandKindGrass");
 
+    // ---- Hinterland scenery --------------------------------------------------------------------------
+
+    /// <summary>"Bare ground"</summary>
+    internal static string SceneryNone => Get("SceneryNone");
+
+    /// <summary>"Countryside"</summary>
+    internal static string SceneryCountryside => Get("SceneryCountryside");
+
+    /// <summary>"Fields"</summary>
+    internal static string SceneryFields => Get("SceneryFields");
+
+    /// <summary>"Town"</summary>
+    internal static string SceneryTown => Get("SceneryTown");
+
     // ---- Divider types -------------------------------------------------------------------------------
 
     /// <summary>"Finger pier"</summary>
@@ -333,8 +347,28 @@ internal static class Strings
     /// <summary>"Click the other end of the scale bar."</summary>
     internal static string HintMeasureScaleSecond => Get("HintMeasureScaleSecond");
 
+    /// <summary>"Click to place the first point of the coast (two points are enough for a straight one)."</summary>
+    internal static string HintDrawShorelineFirst => Get("HintDrawShorelineFirst");
+
+    /// <summary>"Click to add points along the coast, then press Enter. Backspace removes the last one, Esc ca..."</summary>
+    internal static string HintDrawShorelineMore => Get("HintDrawShorelineMore");
+
+    /// <summary>"Click the side of the line that is land."</summary>
+    internal static string HintDrawShorelineSide => Get("HintDrawShorelineSide");
+
+    /// <summary>"The two ends of this line run into each other, so neither side of it is the land. Move a poin..."</summary>
+    internal static string HintDrawShorelineCrossing => Get("HintDrawShorelineCrossing");
+
     /// <summary>"Drag to pan, right-drag to orbit, wheel to zoom."</summary>
     internal static string HintNavigate => Get("HintNavigate");
+
+    // ---- Designer overlay labels ---------------------------------------------------------------------
+
+    /// <summary>"LAND THIS SIDE"</summary>
+    internal static string OverlayLandThisSide => Get("OverlayLandThisSide");
+
+    /// <summary>"{0} TREES"</summary>
+    internal static string OverlayTreeCount => Get("OverlayTreeCount");
 
     // ---- Undo step descriptions ----------------------------------------------------------------------
 
@@ -343,6 +377,12 @@ internal static class Strings
 
     /// <summary>"Draw pier {0}"</summary>
     internal static string UndoDrawPier => Get("UndoDrawPier");
+
+    /// <summary>"Draw the mainland"</summary>
+    internal static string UndoDrawShoreline => Get("UndoDrawShoreline");
+
+    /// <summary>"Remove the mainland"</summary>
+    internal static string UndoRemoveShoreline => Get("UndoRemoveShoreline");
 
     /// <summary>"Add berth {0}"</summary>
     internal static string UndoAddBerth => Get("UndoAddBerth");
