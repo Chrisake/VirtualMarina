@@ -12,7 +12,13 @@ Referencing SonarAnalyzer locally is the point of the arrangement. Without it, S
 
 ## Reading a finding
 
-Findings are **warnings, not errors**. The build stays green while the backlog is worked down; nobody is blocked by a rule they disagree with. The exception is the documentation warnings the shipped libraries already treat as errors (`CS1591` and friends, see `src/Directory.Build.props`) — an undocumented public member is still a build failure.
+Findings are **errors**. Every compiler warning, every `CA` and every `S` fails the build, at the
+highest warning level the compiler offers (`WarningLevel` 9999, so warnings added by a future SDK
+arrive switched on rather than silently off). The backlog is zero and this is what keeps it there.
+
+That is a strong setting, so it comes with an obligation: when a rule does not fit this codebase,
+switch it off **by name in `.editorconfig` with its reason**, and never reach for a blanket
+suppression or a `<NoWarn>` of convenience. The list of what is off, and why, is below.
 
 Each rule number links to its explanation: `CA` rules at [learn.microsoft.com](https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/), `S` rules at [rules.sonarsource.com/csharp](https://rules.sonarsource.com/csharp/).
 
@@ -33,11 +39,9 @@ One suppression could not go in `.editorconfig`: Roslyn resolves analyzer config
 
 Switching a rule off is a decision that has to be written down. If you add one, add the reason with it: a bare suppression is worse than the warning it silences, because the next person cannot tell whether it was reasoned about or just noisy that day.
 
-That tuning takes the catalogue from 662 findings to 216. Those 216 were then worked through: 86
-were fixed, and the rest were rules this codebase deliberately does not follow, switched off by name
-with the reason beside each one. **One warning is left**, and it is a question rather than a defect:
-`CA1812` says `AppearanceForm` is never instantiated, which is true — it is a whole form nothing
-opens. Deleting it or wiring it up is a product decision, so the warning stays until it is made.
+That tuning takes the catalogue from 662 findings to 216, and those 216 were then worked through:
+86 were fixed and the rest were rules this codebase deliberately does not follow, switched off by
+name with the reason beside each one. The build now carries **no warnings at all**.
 
 What the fixes changed:
 
@@ -60,16 +64,22 @@ What the fixes changed:
 | `S1244` float equality | 6 | Every hit is a "did this value change?" guard, where a tolerance would drop real changes |
 | `S4136`, `S2365`, `S3267`, `CA1819`, `CA1700`, `CA1710`, `CA1720`, `CA1721` | 21 | Public naming this domain owns, arrays handed to the GPU, and LINQ that would allocate in per-frame loops |
 
+`CA1812` was the last finding standing, and it was right: `AppearanceForm` was a whole dialog
+nothing opened, superseded by `AppearancePanel`. It is deleted rather than suppressed.
+`TextInputForm`, which shared the file and is used, moved to `TextInputForm.cs`.
+
 Two findings did not belong in `.editorconfig` because they are one site each, so they carry a
 `#pragma` with the reason next to the code instead: the deliberate `b`/`c` swap that reverses a
 triangle's winding in `MeshBuilder`, and the `FontFamily` in `FontCapture` that a `using` takes over
 on the following line.
 
-### Tightening later
+### Kept at zero
 
-The backlog is one warning away from zero. Once `CA1812` is settled, set
-`CodeAnalysisTreatWarningsAsErrors` to `true` in `Directory.Build.props` and it cannot come back:
-a new finding then fails the build rather than scrolling past in the log.
+Already done. `TreatWarningsAsErrors` and `CodeAnalysisTreatWarningsAsErrors` are both true in
+`Directory.Build.props`, so a new finding fails the build rather than scrolling past in the log.
+
+To check the wiring is live, add an unused private field to any file and build: it should come back
+as `CS0414`, `CA1823` and `S1144`, all three as errors.
 
 ## Coverage
 
@@ -119,7 +129,7 @@ The project key and organization default to what SonarQube Cloud assigns a proje
 
 | File | What it decides |
 |---|---|
-| `Directory.Build.props` | Which analysers run, at what level, and that findings are warnings |
+| `Directory.Build.props` | Which analysers run, at what level, and that every finding is an error |
 | `.editorconfig` | The severity of individual rules, and the code style the analyzers enforce |
 | `.config/dotnet-tools.json` | The pinned scanner version |
 | `.github/workflows/static-analysis.yml` | The CI build, test and analysis |

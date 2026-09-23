@@ -22,14 +22,23 @@
         referenced here so the issues show up while the code is being written instead of after the
         push. See Docs/19-static-analysis.md.
 
-    Findings are warnings, not errors: the build stays green while the backlog is worked down.
-    Tighten by setting CodeAnalysisTreatWarningsAsErrors to true once it reaches zero.
+    The backlog reached zero, so both are errors now: a finding fails the build rather than
+    scrolling past in the log, and it cannot come back without somebody noticing. A rule that does
+    not fit gets switched off by name in .editorconfig, with its reason, rather than ignored.
   -->
   <PropertyGroup>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-all</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+
+    <!--
+      Every compiler warning, at the highest level the compiler offers, and all of them errors
+      along with the analyzer findings. WarningLevel 9999 asks for levels this compiler does not
+      have yet, so a future SDK's new warnings arrive switched on rather than silently off.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <WarningLevel>9999</WarningLevel>
   </PropertyGroup>
 
   <ItemGroup>
