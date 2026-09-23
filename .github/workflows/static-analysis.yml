@@ -27,32 +27,32 @@ jobs:
 
     steps:
       - name: Check out the full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Sonar dates each issue from the commit that introduced it, which needs the real history,
           # not the single commit a shallow clone would give it.
           fetch-depth: 0
 
       - name: Set up the .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 
       - name: Set up the JDK the scanner runs on
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Cache the SonarQube analysis cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~\.sonar\cache
           key: ${{ runner.os }}-sonar-cache
           restore-keys: ${{ runner.os }}-sonar-cache
 
       - name: Cache NuGet packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~\.nuget\packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
