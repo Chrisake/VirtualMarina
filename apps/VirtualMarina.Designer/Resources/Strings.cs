@@ -400,7 +400,7 @@ internal static class Strings
     /// <summary>"Marina full"</summary>
     internal static string PreviewFill => Get("PreviewFill");
 
-    /// <summary>"How many of the berths get a boat when you press Add boats."</summary>
+    /// <summary>"How full the marina ends up when you press Add boats: at 100% every berth has a boat in..."</summary>
     internal static string PreviewFillTip => Get("PreviewFillTip");
 
     /// <summary>"Add boats"</summary>
@@ -409,10 +409,10 @@ internal static class Strings
     /// <summary>"Clear boats"</summary>
     internal static string PreviewClear => Get("PreviewClear");
 
-    /// <summary>"Boats to judge the settings against. They are never saved with the design — the host applicat..."</summary>
+    /// <summary>"Boats to judge the settings against, each picked to suit the berth it goes in, with the wi..."</summary>
     internal static string PreviewHint => Get("PreviewHint");
 
-    /// <summary>"Put {0} preview boats in the marina"</summary>
+    /// <summary>"Filled {0} of the {1} berths with preview boats"</summary>
     internal static string LogPreviewBoats => Get("LogPreviewBoats");
 
     /// <summary>"Cleared the preview boats"</summary>

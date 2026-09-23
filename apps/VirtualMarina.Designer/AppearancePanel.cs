@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
@@ -426,55 +425,59 @@ internal sealed class AppearancePanel : UserControl
     // ---- Preview boats ------------------------------------------------------------------------
 
     /// <summary>
-    /// Puts boats in a share of the free berths, to judge the colours and the motion against. They are ordinary
-    /// boats as far as the visualizer is concerned; the design file simply never stores occupancy.
+    /// Fills the marina to the share of its berths the slider asks for, to judge the colours and the motion
+    /// against. They are ordinary boats as far as the visualizer is concerned; the design file simply never stores
+    /// occupancy.
     /// </summary>
+    /// <remarks>
+    /// The share is of the whole marina, ashore berths included, and it is where the marina ends up rather than
+    /// what gets added: the boats already there are taken out first, so pressing the button again deals a fresh
+    /// fleet to the same figure instead of piling more on top of a marina that is already half full. At 100% every
+    /// berth has a boat in it, which is why a berth too small for any of the models still gets the smallest one,
+    /// cut down to fit, rather than being quietly skipped.
+    /// </remarks>
     private void FillWithBoats()
     {
-        var free = _marina.GetBerths().Where(berth => berth.Status == BerthStatus.Free && !berth.IsOnLand).ToList();
-        var wanted = (int)MathF.Round(free.Count * _fill.Value / 100f);
-        if (wanted == 0) return;
+        ClearBoats(log: false);
 
-        // Shuffle, so the boats are scattered rather than filling the first pier.
-        for (var i = free.Count - 1; i > 0; i--)
+        var berths = _marina.GetBerths();
+        var wanted = (int)MathF.Round(berths.Count * _fill.Value / 100f);
+        if (wanted == 0)
         {
-            var j = _random.Next(i + 1);
-            (free[i], free[j]) = (free[j], free[i]);
+            _log(Strings.LogPreviewCleared);
+            return;
         }
 
-        var types = Enum.GetValues<BoatType>();
+        var plan = PreviewFleet.Plan(berths, wanted, _random);
+        var filled = 0;
         using (_marina.BeginUpdate())
         {
-            for (var i = 0; i < wanted; i++)
+            foreach (var mooring in plan)
             {
-                var berth = free[i];
-                var type = types[_random.Next(types.Length)];
-                var size = BoatTypeCatalog.GetNominalDimensions(type);
-
-                // A boat that would not fit is not worth drawing; leave the berth empty.
-                if (size.Length > berth.Length || size.Beam > berth.Width) continue;
-                _marina.AssignBoat(berth.Id, new Boat($"PREVIEW-{i}", BoatName(type, i), type));
+                if (mooring.BerthIds.Count == 1) _marina.AssignBoat(mooring.BerthIds[0], mooring.Boat);
+                else _marina.AssignBoatToBerths(mooring.BerthIds, mooring.Boat, style: mooring.Style);
+                filled += mooring.BerthIds.Count;
             }
         }
 
-        _log(Strings.Format(Strings.LogPreviewBoats, wanted));
+        _log(Strings.Format(Strings.LogPreviewBoats, filled, berths.Count));
     }
 
-    private void ClearBoats()
+    /// <summary>Empties every berth, whether the boat is in one of them or moored across two.</summary>
+    private void ClearBoats(bool log = true)
     {
         using (_marina.BeginUpdate())
         {
+            // Releasing a multi-berth frees its members, so the list is re-read rather than walked as it was.
+            foreach (var berth in _marina.GetMultiBerths()) _marina.ReleaseMultiBerth(berth.Id);
             foreach (var berth in _marina.GetBerths().Where(b => b.Boat is not null))
             {
                 _marina.SetBerthStatus(berth.Id, BerthStatus.Free);
             }
         }
 
-        _log(Strings.LogPreviewCleared);
+        if (log) _log(Strings.LogPreviewCleared);
     }
-
-    private static string BoatName(BoatType type, int index) =>
-        string.Create(CultureInfo.InvariantCulture, $"{BoatTypeCatalog.GetDisplayName(type)} {index + 1}");
 
     // ---- Row helpers --------------------------------------------------------------------------
 

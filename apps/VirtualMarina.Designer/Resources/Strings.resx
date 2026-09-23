@@ -469,7 +469,7 @@ Runtime      {4}
     <value>Marina full</value>
   </data>
   <data name="PreviewFillTip">
-    <value>How many of the berths get a boat when you press Add boats.</value>
+    <value>How full the marina ends up when you press Add boats: at 100% every berth has a boat in it, ashore ones included. Pressing it again clears the boats and deals a new fleet to the same figure.</value>
   </data>
   <data name="PreviewAdd">
     <value>Add boats</value>
@@ -478,11 +478,11 @@ Runtime      {4}
     <value>Clear boats</value>
   </data>
   <data name="PreviewHint">
-    <value>Boats to judge the settings against. They are never saved with the design — the host application decides who is in the marina.</value>
+    <value>Boats to judge the settings against, each picked to suit the berth it goes in, with the wide ones moored across two berths side by side. They are never saved with the design — the host application decides who is in the marina.</value>
   </data>
   <data name="LogPreviewBoats">
-    <value>Put {0} preview boats in the marina</value>
-    <comment>{0} = how many.</comment>
+    <value>Filled {0} of the {1} berths with preview boats</value>
+    <comment>{0} = berths filled, {1} = berths in the marina.</comment>
   </data>
   <data name="LogPreviewCleared">
     <value>Cleared the preview boats</value>

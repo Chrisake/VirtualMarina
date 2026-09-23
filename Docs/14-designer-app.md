@@ -91,8 +91,13 @@ tool's settings lead, and scrolling down carries them off the top and leaves the
 **Look** shows the appearance settings while the marina stays visible, so the effect of each one can be seen as it is
 changed: water and waves, light and air, shadows, berth colours, the land and its trees, berth labels. Each setting
 has a small ↺ beside it that puts only that one back to its default, and a full reset sits at the bottom.
-**Add preview boats** fills empty berths with a random mix so colours and water can be judged against a full marina;
-those boats are not saved with the design.
+**Marina full** fills the marina with preview boats, so colours, light and water can be judged against a marina with
+boats in it rather than an empty one. The slider says how full the marina ends up, not how many boats get added: the
+boats already there are cleared first, so pressing *Add boats* again deals a fresh fleet to the same figure, and 100%
+means every berth in the marina has a boat in it, the ones ashore included. Each boat is picked to suit the berth it
+goes in — no jet ski rattling around in a twenty-metre yacht berth — and a boat too wide for one berth, a catamaran
+above all, is moored across two berths side by side. None of it is saved with the design; the host application
+decides who is really in the marina.
 
 The **labels** card sets the **Font** berth names are drawn in, listing every font installed on this machine.
 Choosing one captures its letter shapes into the design, so the marina reads the same wherever it is opened — the
