@@ -963,6 +963,22 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     void SetReferenceImage(VirtualMarina.Core.Design.ReferenceImage image, float? metersPerPixel = null, Vector2? center = null)
     void ViewTopDown(bool immediate = false)
 
+static class VirtualMarina.Core.Design.PreviewFleet
+    static IReadOnlyList<VirtualMarina.Core.Design.PreviewMooring> Plan(IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, int wanted, Random random)
+
+struct VirtualMarina.Core.Design.PreviewMooring : IEquatable<VirtualMarina.Core.Design.PreviewMooring>
+    .ctor(IReadOnlyList<string> BerthIds, VirtualMarina.Core.Domain.Boat Boat, VirtualMarina.Core.Domain.MooringStyle Style)
+    IReadOnlyList<string> BerthIds { get; init; }
+    VirtualMarina.Core.Domain.Boat Boat { get; init; }
+    VirtualMarina.Core.Domain.MooringStyle Style { get; init; }
+    bool Equals(VirtualMarina.Core.Design.PreviewMooring other)
+    static bool op_Equality(VirtualMarina.Core.Design.PreviewMooring left, VirtualMarina.Core.Design.PreviewMooring right)
+    static bool op_Inequality(VirtualMarina.Core.Design.PreviewMooring left, VirtualMarina.Core.Design.PreviewMooring right)
+    virtual bool Equals(object obj)
+    virtual int GetHashCode()
+    virtual string ToString()
+    void Deconstruct(out IReadOnlyList<string> BerthIds, out VirtualMarina.Core.Domain.Boat Boat, out VirtualMarina.Core.Domain.MooringStyle Style)
+
 sealed class VirtualMarina.Core.Design.ReferenceImage
     .ctor(int pixelWidth, int pixelHeight, byte[] rgba, byte[] encodedData = null, string contentType = null)
     bool CanBeSaved { get; }

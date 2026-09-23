@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using VirtualMarina.Core.Api;
+using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Rendering;

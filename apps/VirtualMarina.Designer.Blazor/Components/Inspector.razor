@@ -1,0 +1,436 @@
+@namespace VirtualMarina.Designer.Blazor.Components
+@implements IDisposable
+
+@* The panel beside the view: the tool in hand, what to do with it, and only the settings that tool needs. Mirrors InspectorPanel. *@
+<div class="vm-inspector">
+    <div class="vm-panel__title">@ToolTitle(Designer.Tool)</div>
+    <div class="vm-panel__hint">@Designer.ToolHint</div>
+
+    @if (Designer.Tool == DesignTool.DrawShoreline)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardCoast</div>
+            <div class="vm-grid">
+                <span class="vm-grid__label" title="@Strings.CoastSceneryTip">@Strings.CoastScenery</span>
+                <select value="@Designer.Scenery" @onchange="e => Apply(d => d.Scenery = Parse<HinterlandScenery>(e))">
+                    @foreach (var scenery in Sceneries) { <option value="@scenery">@scenery.GetDisplayName()</option> }
+                </select>
+            </div>
+            <div class="vm-hint">@Strings.CoastHint</div>
+            <div class="vm-hint">@Strings.CoastEndlessHint</div>
+            <div class="vm-hint">@CoastState()</div>
+            <div class="vm-row"><button class="vm-btn" disabled="@(Marina.Shoreline is null)" @onclick="RemoveShoreline">@Strings.CoastRemove</button></div>
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.DrawLandArea)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardLandArea</div>
+            <div class="vm-grid">
+                <span class="vm-grid__label" title="@Strings.LandSurfaceTip">@Strings.LandSurface</span>
+                <select value="@Designer.LandKind" @onchange="e => Apply(d => d.LandKind = Parse<LandKind>(e))">
+                    @foreach (var kind in LandKinds) { <option value="@kind">@kind.GetDisplayName()</option> }
+                </select>
+                <span class="vm-grid__label">@Strings.LandHeight</span>
+                <input type="number" min="0" max="50" step="0.25" value="@Num(Designer.LandHeight)" @onchange="e => SetNum(e, (d, v) => d.LandHeight = v)" />
+            </div>
+            <div class="vm-hint">@Strings.LandHint</div>
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.PlantTrees || (Designer.Tool == DesignTool.DrawLandArea && Designer.LandKind == LandKind.Grass))
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardTrees</div>
+            <div class="vm-slider">
+                <input type="range" min="0" max="60" step="1" value="@((int)MathF.Round(Designer.TreeDensity))" @oninput="e => SetNum(e, (d, v) => d.TreeDensity = v)" />
+                <span class="vm-slider__value">@(Designer.TreeDensity <= 0 ? Strings.TreeNone : ((int)MathF.Round(Designer.TreeDensity)).ToString(CultureInfo.CurrentCulture))</span>
+            </div>
+            <div class="vm-hint">@Strings.TreeHint</div>
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.DrawPier)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardPier</div>
+            <div class="vm-grid">
+                <span class="vm-grid__label" title="@Strings.PierConstructionTip">@Strings.PierConstruction</span>
+                <select value="@Designer.PierType" @onchange="e => Apply(d => d.PierType = Parse<PierType>(e))">
+                    @foreach (var type in Enum.GetValues<PierType>()) { <option value="@type">@Pier.GetDisplayName(type)</option> }
+                </select>
+                <span class="vm-grid__label">@Strings.PierWidth</span>
+                <input type="number" min="0.5" max="30" step="0.25" value="@Num(Designer.PierWidth)" @onchange="e => SetNum(e, (d, v) => d.PierWidth = v)" />
+                <span class="vm-grid__label" title="@Strings.PierBerthsTip">@Strings.PierBerths</span>
+                <select value="@Designer.PierBerthingSides" @onchange="e => Apply(d => d.PierBerthingSides = Parse<PierSides>(e))">
+                    @foreach (var sides in BerthingSides) { <option value="@sides">@sides.GetDisplayName()</option> }
+                </select>
+                <span class="vm-grid__label" title="@Strings.PierNameTip">@Strings.PierName</span>
+                <input type="text" value="@Designer.PierNamePattern" @onchange="OnPierPattern" />
+            </div>
+            <div class="vm-hint">@Strings.PierHint</div>
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.AddBerths)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardBerths</div>
+            <div class="vm-grid">
+                <span class="vm-grid__label" title="@Strings.BerthWidthTip">@Strings.BerthWidth</span>
+                <input type="number" min="1" max="50" step="0.25" value="@Num(Designer.BerthWidth)" @onchange="e => SetNum(e, (d, v) => d.BerthWidth = v)" />
+                <span class="vm-grid__label" title="@Strings.BerthLengthTip">@Strings.BerthLength</span>
+                <input type="number" min="1" max="150" step="0.5" value="@Num(Designer.BerthLength)" @onchange="e => SetNum(e, (d, v) => d.BerthLength = v)" />
+                <span class="vm-grid__label" title="@Strings.BerthDepthTip">@Strings.BerthDepth</span>
+                <input type="number" min="0.1" max="50" step="0.1" value="@Num(Designer.BerthDepth)" @onchange="e => SetNum(e, (d, v) => d.BerthDepth = v)" />
+                <span class="vm-grid__label">@Strings.BerthSeparator</span>
+                <select value="@Designer.BerthSeparators" @onchange="e => Apply(d => d.BerthSeparators = Parse<BerthSeparator>(e))">
+                    @foreach (var separator in Separators) { <option value="@separator">@separator.GetDisplayName()</option> }
+                </select>
+                <span class="vm-grid__label" title="@Strings.BerthGapTip">@Strings.BerthGap</span>
+                <input type="number" min="0" max="20" step="0.1" value="@Num(Designer.BerthGap)" @onchange="e => SetNum(e, (d, v) => d.BerthGap = v)" />
+                <span class="vm-grid__wide vm-hint">@SeparatorHint(Designer.BerthSeparators, Designer.BerthWidth, Designer.BerthGap)</span>
+                <span class="vm-grid__label" title="@Strings.BerthServicesTip">@Strings.BerthServices</span>
+                <select value="@Designer.BerthServices" @onchange="e => Apply(d => d.BerthServices = Parse<PierServices>(e))">
+                    @foreach (var services in ServiceKinds) { <option value="@services">@services.GetDisplayName()</option> }
+                </select>
+                <label class="vm-grid__wide vm-check"><input type="checkbox" checked="@Designer.AlignBerthsToExisting" @onchange="e => Apply(d => d.AlignBerthsToExisting = e.Value is true)" /> @Strings.AlignBerths</label>
+            </div>
+            <div class="vm-hint">@Strings.BerthHint</div>
+            @BerthNaming(landVariant: false)
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.AddLandBerths)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardStorageAshore</div>
+            <div class="vm-grid">
+                <span class="vm-grid__label">@Strings.LandBerthWidth</span>
+                <input type="number" min="1" max="50" step="0.25" value="@Num(Designer.BerthWidth)" @onchange="e => SetNum(e, (d, v) => d.BerthWidth = v)" />
+                <span class="vm-grid__label">@Strings.LandBerthLength</span>
+                <input type="number" min="1" max="150" step="0.5" value="@Num(Designer.BerthLength)" @onchange="e => SetNum(e, (d, v) => d.BerthLength = v)" />
+                <span class="vm-grid__label" title="@Strings.LandBerthHeadingTip">@Strings.LandBerthHeading</span>
+                <input type="number" min="-180" max="180" step="15" value="@Num(Designer.LandBerthHeading, "0")" @onchange="e => SetNum(e, (d, v) => d.LandBerthHeading = v)" />
+                <span class="vm-grid__wide vm-row">
+                    @foreach (var (text, heading) in Compass) { <button class="vm-btn" @onclick="() => Apply(d => d.LandBerthHeading = heading)">@text</button> }
+                </span>
+            </div>
+            <div class="vm-hint">@Strings.LandBerthHint</div>
+            @BerthNaming(landVariant: true)
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.EditServices)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardServices</div>
+            <div class="vm-grid">
+                <span class="vm-grid__label" title="@Strings.BerthServicesTip">@Strings.BerthServices</span>
+                <select value="@Designer.BerthServices" @onchange="e => Apply(d => d.BerthServices = Parse<PierServices>(e))">
+                    @foreach (var services in ServiceKinds) { <option value="@services">@services.GetDisplayName()</option> }
+                </select>
+            </div>
+            <div class="vm-hint">@Strings.ServicesHint</div>
+            <div class="vm-hint">@Strings.ServicesInheritHint</div>
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.SelectArea)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardSelect</div>
+            <div class="vm-hint">@Strings.SelectHint</div>
+            <div class="vm-hint">@Strings.Format(Strings.SelectCount, Marina.SelectedBerths.Count)</div>
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.Erase)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardErase</div>
+            <div class="vm-hint">@Strings.EraseHint</div>
+            <div class="vm-hint">@Strings.EraseUndoHint</div>
+        </div>
+    }
+
+    @if (Designer.Tool == DesignTool.Rename)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardRename</div>
+            <div class="vm-hint">@Strings.RenameHint</div>
+            <div class="vm-hint">@Strings.RenameUndoHint</div>
+        </div>
+    }
+
+    @if (Designer.Tool is DesignTool.Navigate or DesignTool.MoveReferenceImage or DesignTool.MeasureScale)
+    {
+        var hasImage = Designer.ReferenceImage is not null;
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardReferenceImage</div>
+            <div class="vm-row">
+                <button class="vm-btn" @onclick="LoadImage">@Strings.ImageLoad</button>
+                <button class="vm-btn" disabled="@(!hasImage)" @onclick="() => Apply(d => d.FocusReferenceImage())">@Strings.ImageFit</button>
+                <button class="vm-btn" disabled="@(!hasImage)" @onclick="() => Apply(d => d.ClearReferenceImage())">@Strings.ImageRemove</button>
+            </div>
+            <div class="vm-hint">@ImageState()</div>
+            <div class="vm-row">
+                <button class="vm-btn vm-btn--primary" disabled="@(!hasImage)" @onclick="() => Apply(d => d.Tool = DesignTool.MeasureScale)">@Strings.ImageMeasure</button>
+                <button class="vm-btn" disabled="@(!hasImage)" @onclick="() => Apply(d => d.Tool = DesignTool.MoveReferenceImage)">@Strings.ImageMove</button>
+            </div>
+            <div class="vm-grid">
+                <span class="vm-grid__label">@Strings.ImageRealLength</span>
+                <span class="vm-slider" style="gap:6px">
+                    <input type="number" min="0.01" step="1" style="width:84px;flex:none" disabled="@(Designer.ScaleLine is null)" @bind="_scaleLength" />
+                    <button class="vm-btn" disabled="@(Designer.ScaleLine is null || !(_scaleLength > 0))" @onclick="Calibrate">@Strings.ImageApply</button>
+                </span>
+            </div>
+            <div class="vm-row"><button class="vm-btn" disabled="@(Designer.ScaleLine is null)" title="@Strings.ImageClearScaleLineTip" @onclick="() => Apply(d => d.ClearScaleLine())">@Strings.ImageClearScaleLine</button></div>
+            <div class="vm-grid">
+                <span class="vm-grid__label">@Strings.ImageOpacity</span>
+                <div class="vm-slider">
+                    <input type="range" min="0" max="100" disabled="@(!hasImage)" value="@((int)MathF.Round(Designer.ReferenceImageOpacity * 100f))" @oninput="e => SetNum(e, (d, v) => d.ReferenceImageOpacity = v / 100f)" />
+                    <span class="vm-slider__value">@Strings.Format(Strings.Percent, (int)MathF.Round(Designer.ReferenceImageOpacity * 100f))</span>
+                </div>
+            </div>
+            <label class="vm-check" style="margin-top:6px"><input type="checkbox" disabled="@(!hasImage)" checked="@Designer.ReferenceImageVisible" @onchange="e => Apply(d => d.ReferenceImageVisible = e.Value is true)" /> @Strings.ImageShown</label>
+            <label class="vm-check" style="margin-top:6px"><input type="checkbox" disabled="@(!hasImage)" checked="@Designer.ReferenceImageAboveScene" @onchange="e => Apply(d => d.ReferenceImageAboveScene = e.Value is true)" /> @Strings.ImageAbove</label>
+        </div>
+    }
+
+    @if (Designer.Tool is DesignTool.Navigate or DesignTool.Erase)
+    {
+        <div class="vm-card">
+            <div class="vm-card__title">@Strings.CardSummary</div>
+            <div class="vm-hint">@Summary()</div>
+        </div>
+    }
+</div>
+
+@code {
+    private MarinaVisualizer? _subscribed;
+    private float? _scaleLength;
+
+    /// <summary>The visualizer whose designer this panel drives. Required.</summary>
+    [Parameter, EditorRequired] public MarinaVisualizer Marina { get; set; } = default!;
+
+    /// <summary>Opens the operating system's picture picker to load a reference image.</summary>
+    [Parameter] public EventCallback LoadImage { get; set; }
+
+    private MarinaDesigner Designer => Marina.Designer;
+
+    private static readonly LandKind[] LandKinds = { LandKind.Quay, LandKind.Grass, LandKind.Breakwater };
+    private static readonly PierSides[] BerthingSides = { PierSides.Both, PierSides.Left, PierSides.Right };
+    private static readonly HinterlandScenery[] Sceneries = { HinterlandScenery.Countryside, HinterlandScenery.Fields, HinterlandScenery.Town, HinterlandScenery.None };
+    private static readonly PierServices[] ServiceKinds = { PierServices.None, PierServices.PowerAndWater, PierServices.Power, PierServices.Water };
+    private static readonly BerthSeparator[] Separators =
+    {
+        BerthSeparator.FingerPiers, BerthSeparator.PairedFingerPiers, BerthSeparator.FingerPier,
+        BerthSeparator.Piles, BerthSeparator.SinglePile, BerthSeparator.Boom, BerthSeparator.None,
+    };
+    private static readonly (string Text, float Heading)[] Compass = { ("N", 0f), ("E", 90f), ("S", 180f), ("W", -90f) };
+
+    protected override void OnParametersSet()
+    {
+        if (Marina is null) throw new InvalidOperationException($"{nameof(Inspector)} requires the {nameof(Marina)} parameter.");
+        if (ReferenceEquals(_subscribed, Marina)) return;
+        Unsubscribe();
+        _subscribed = Marina;
+        Marina.Designer.StateChanged += OnChanged;
+        Marina.Designer.ScaleLineDrawn += OnScaleLineDrawn;
+        Marina.SelectionChanged += OnChanged;
+    }
+
+    /// <summary>Redraws the panel, e.g. after New or Open replaced the marina under it.</summary>
+    public void Refresh() => StateHasChanged();
+
+    public void Dispose() => Unsubscribe();
+
+    private void Unsubscribe()
+    {
+        if (_subscribed is null) return;
+        _subscribed.Designer.StateChanged -= OnChanged;
+        _subscribed.Designer.ScaleLineDrawn -= OnScaleLineDrawn;
+        _subscribed.SelectionChanged -= OnChanged;
+        _subscribed = null;
+    }
+
+    private void OnChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    private void OnScaleLineDrawn(object? sender, ScaleLineDrawnEventArgs e)
+    {
+        _scaleLength = null;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private RenderFragment BerthNaming(bool landVariant) => __builder =>
+    {
+        var naming = Designer.BerthNaming;
+        var pattern = landVariant ? naming.LandPattern ?? naming.Pattern : naming.Pattern;
+        var start = landVariant ? naming.LandStartNumber ?? naming.StartNumber : naming.StartNumber;
+        var increment = landVariant ? naming.LandIncrement ?? naming.Increment : naming.Increment;
+        var digits = landVariant ? naming.LandNumberDigits ?? naming.NumberDigits : naming.NumberDigits;
+        <div class="vm-section">@Strings.BerthNamingHeading</div>
+        <div class="vm-grid">
+            <span class="vm-grid__label" title="@Strings.BerthNamePatternTip">@Strings.BerthNamePattern</span>
+            <input type="text" value="@pattern" @onchange="e => OnPattern(e, landVariant)" />
+            <span class="vm-grid__label" title="@Strings.BerthStartNumberTip">@Strings.BerthStartNumber</span>
+            <input type="number" step="1" value="@start" @onchange="e => OnNaming(e, (n, v) => landVariant ? n with { LandStartNumber = v } : n with { StartNumber = v })" />
+            <span class="vm-grid__label" title="@Strings.BerthIncrementTip">@Strings.BerthIncrement</span>
+            <input type="number" step="1" value="@increment" @onchange="e => OnIncrement(e, landVariant)" />
+            <span class="vm-grid__label" title="@Strings.BerthNumberDigitsTip">@Strings.BerthNumberDigits</span>
+            <input type="number" min="1" max="9" step="1" value="@digits" @onchange="e => OnNaming(e, (n, v) => landVariant ? n with { LandNumberDigits = v } : n with { NumberDigits = v })" />
+            <span class="vm-grid__wide vm-hint">@(landVariant ? AshoreNameExample(naming) : NamingExample(naming))</span>
+        </div>
+    };
+
+    private void OnPierPattern(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(text)) Apply(d => d.PierNamePattern = text);
+    }
+
+    private void OnPattern(ChangeEventArgs e, bool landVariant)
+    {
+        var text = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(text)) return;
+        ApplyNaming(n => landVariant ? n with { LandPattern = text } : n with { Pattern = text });
+    }
+
+    private void OnNaming(ChangeEventArgs e, Func<BerthNamingScheme, int, BerthNamingScheme> change)
+    {
+        if (int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+        {
+            ApplyNaming(n => change(n, value));
+        }
+    }
+
+    private void OnIncrement(ChangeEventArgs e, bool landVariant)
+    {
+        // Zero would give every berth the same number, so it is ignored and the field shows the scheme's value again.
+        if (int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value != 0)
+        {
+            ApplyNaming(n => landVariant ? n with { LandIncrement = value } : n with { Increment = value });
+        }
+    }
+
+    private void RemoveShoreline()
+    {
+        Designer.DeleteShoreline();
+        StateHasChanged();
+    }
+
+    private void Calibrate()
+    {
+        if (_scaleLength is > 0f and var length) Apply(d => d.CalibrateReferenceImage(length));
+    }
+
+    private void Apply(Action<MarinaDesigner> change)
+    {
+        try
+        {
+            change(Designer);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            // The control ranges match the designer's; ignore anything typed past them.
+        }
+
+        StateHasChanged();
+    }
+
+    private void ApplyNaming(Func<BerthNamingScheme, BerthNamingScheme> change) => Apply(d =>
+    {
+        var naming = change(d.BerthNaming);
+        if (!naming.Validate().Any()) d.BerthNaming = naming;
+    });
+
+    private void SetNum(ChangeEventArgs e, Action<MarinaDesigner, float> change)
+    {
+        if (float.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            Apply(d => change(d, value));
+        }
+    }
+
+    private static T Parse<T>(ChangeEventArgs e) where T : struct, Enum => Enum.Parse<T>(e.Value?.ToString() ?? string.Empty);
+
+    private static string Num(float value, string format = "0.##") => value.ToString(format, CultureInfo.InvariantCulture);
+
+    // ---- Text -----------------------------------------------------------------------------------
+
+    private static string ToolTitle(DesignTool tool) => tool switch
+    {
+        DesignTool.DrawLandArea => Strings.TitleLandArea,
+        DesignTool.DrawPier => Strings.TitlePier,
+        DesignTool.AddBerths => Strings.TitleBerths,
+        DesignTool.AddLandBerths => Strings.TitleStorageAshore,
+        DesignTool.PlantTrees => Strings.TitleTrees,
+        DesignTool.Erase => Strings.TitleErase,
+        DesignTool.Rename => Strings.TitleRename,
+        DesignTool.EditServices => Strings.TitleServices,
+        DesignTool.SelectArea => Strings.TitleSelect,
+        DesignTool.DrawShoreline => Strings.TitleCoast,
+        DesignTool.MoveReferenceImage => Strings.TitleMoveImage,
+        DesignTool.MeasureScale => Strings.TitleMeasureScale,
+        _ => Strings.TitleNavigate,
+    };
+
+    private static string SeparatorHint(BerthSeparator separator, float width, float gap) => (separator switch
+    {
+        BerthSeparator.FingerPiers => Strings.SeparatorHintFingerPiers,
+        BerthSeparator.None => Strings.SeparatorHintNone,
+        BerthSeparator.FingerPier => Strings.SeparatorHintFingerPier,
+        BerthSeparator.Piles => Strings.SeparatorHintPiles,
+        BerthSeparator.Boom => Strings.SeparatorHintBoom,
+        BerthSeparator.PairedFingerPiers => Strings.SeparatorHintPaired,
+        BerthSeparator.SinglePile => Strings.SeparatorHintSinglePile,
+        _ => string.Empty,
+    }) + (gap > 0f ? string.Format(CultureInfo.CurrentCulture, Strings.SeparatorHintSpacing, gap, width + gap) : string.Empty);
+
+    private string CoastState() => Marina.Shoreline is { } shore
+        ? Strings.Format(Strings.CoastPresent, shore.Points.Count, shore.Scenery.GetDisplayName())
+        : Strings.CoastNone;
+
+    private string ImageState()
+    {
+        var designer = Designer;
+        if (designer.ReferenceImage is null) return Strings.ImageStateEmpty;
+        if (designer.ScaleLine is { } line) return string.Format(CultureInfo.CurrentCulture, Strings.ImageStateLine, Vector2.Distance(line.Start, line.End));
+        return string.Format(CultureInfo.CurrentCulture, Strings.ImageStateReady, designer.ReferenceImageSize.X, designer.ReferenceImageSize.Y, designer.ReferenceImageMetersPerPixel);
+    }
+
+    private string NamingExample(BerthNamingScheme naming)
+    {
+        var piers = Marina.GetPiers();
+        var pier = (piers.Count > 0 ? piers[0] : null) ?? new Pier("A", "Pier A", Vector2.Zero, 0f, 20f);
+        var numbers = Enumerable.Range(0, 3).Select(i => naming.StartNumber + i * naming.Increment);
+        return Strings.Format(Strings.BerthNamingExample, string.Join(", ", numbers.Select(n => naming.Format(pier, PierSide.Left, n))));
+    }
+
+    private string AshoreNameExample(BerthNamingScheme naming)
+    {
+        var areas = Marina.GetLandAreas();
+        var land = (areas.Count > 0 ? areas[0] : null)
+            ?? new LandArea("yard", new[] { new Vector2(0, 0), new Vector2(10, 0), new Vector2(10, 10) }, 1f);
+        var start = naming.LandStartNumber ?? naming.StartNumber;
+        var step = naming.LandIncrement ?? naming.Increment;
+        var numbers = Enumerable.Range(0, 3).Select(i => start + i * step);
+        return Strings.Format(Strings.BerthNamingExample, string.Join(", ", numbers.Select(n => naming.Format(land, n))));
+    }
+
+    private string Summary()
+    {
+        var berths = Marina.GetBerths();
+        var piers = Marina.GetPiers();
+        var land = Marina.GetLandAreas();
+        var water = berths.Count(s => !s.IsOnLand);
+        var ashore = berths.Count - water;
+        var trees = land.Sum(l => l.Trees.Count);
+        var (min, max) = Marina.GetLayout().ComputeBounds();
+        var size = max - min;
+        return string.Format(CultureInfo.CurrentCulture, Strings.Summary,
+            berths.Count, water, ashore, piers.Count, land.Count, Marina.GetDividers().Count, trees, size.X, size.Y);
+    }
+}

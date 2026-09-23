@@ -1,9 +1,15 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Numerics;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Mathematics;
 
-namespace VirtualMarina.Designer;
+namespace VirtualMarina.Core.Design;
+
+/// <summary>One preview boat and the berth (or pair of berths) it goes in.</summary>
+/// <param name="BerthIds">The berths it takes: one, or two side by side.</param>
+/// <param name="Boat">The boat, sized to the space.</param>
+/// <param name="Style">How it lies; only meaningful across two berths.</param>
+public readonly record struct PreviewMooring(IReadOnlyList<string> BerthIds, Boat Boat, MooringStyle Style);
 
 /// <summary>
 /// Picks the boats that fill a marina to a given share of its berths, for judging the look of a design against.
@@ -12,15 +18,13 @@ namespace VirtualMarina.Designer;
 /// Two things make the result worth looking at rather than merely present. Each boat is chosen to suit the berth it
 /// goes in, so a twelve-metre berth does not end up with a jet ski rattling around in it; and a boat too wide for
 /// one berth, a catamaran above all, is moored across two berths side by side rather than left out.
+/// <para>
+/// It works entirely from the Core domain model, so both the WinForms and the Blazor designers fill their preview
+/// fleets from this one copy rather than each carrying its own.
+/// </para>
 /// </remarks>
-internal static class PreviewFleet
+public static class PreviewFleet
 {
-    /// <summary>One boat and the berth (or pair of berths) it goes in.</summary>
-    /// <param name="BerthIds">The berths it takes: one, or two side by side.</param>
-    /// <param name="Boat">The boat, sized to the space.</param>
-    /// <param name="Style">How it lies; only meaningful across two berths.</param>
-    internal readonly record struct Mooring(IReadOnlyList<string> BerthIds, Boat Boat, MooringStyle Style);
-
     /// <summary>How long a boat has to be, against the berth, to look at home in it rather than lost in it.</summary>
     private const float Snug = 0.55f;
 
@@ -43,15 +47,17 @@ internal static class PreviewFleet
     /// <param name="berths">Every berth in the marina, ashore ones included.</param>
     /// <param name="wanted">How many berths should end up full. A boat across two berths fills both.</param>
     /// <param name="random">Source of the randomness, so a caller can repeat a fleet.</param>
-    public static IReadOnlyList<Mooring> Plan(IReadOnlyList<Berth> berths, int wanted, Random random)
+    public static IReadOnlyList<PreviewMooring> Plan(IReadOnlyList<Berth> berths, int wanted, Random random)
     {
-        if (wanted <= 0 || berths.Count == 0) return Array.Empty<Mooring>();
+        ArgumentNullException.ThrowIfNull(berths);
+        ArgumentNullException.ThrowIfNull(random);
+        if (wanted <= 0 || berths.Count == 0) return Array.Empty<PreviewMooring>();
 
         var neighbours = Neighbours(berths);
         var order = berths.ToArray();
         Shuffle(order, random);
 
-        var plan = new List<Mooring>(wanted);
+        var plan = new List<PreviewMooring>(wanted);
         var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var left = Math.Min(wanted, berths.Count);
 
@@ -71,7 +77,7 @@ internal static class PreviewFleet
                 continue;
             }
 
-            plan.Add(new Mooring(new[] { berth.Id }, Single(berth, random, plan.Count), MooringStyle.Alongside));
+            plan.Add(new PreviewMooring(new[] { berth.Id }, Single(berth, random, plan.Count), MooringStyle.Alongside));
             taken.Add(berth.Id);
             left--;
         }
@@ -99,7 +105,7 @@ internal static class PreviewFleet
     /// <summary>
     /// Looks for a boat too wide for one berth but at home across two: a catamaran in the pair of berths beside it.
     /// </summary>
-    private static bool TryPair(Berth berth, IReadOnlyList<Berth> mates, HashSet<string> taken, Random random, int index, out Mooring pair)
+    private static bool TryPair(Berth berth, IReadOnlyList<Berth> mates, HashSet<string> taken, Random random, int index, out PreviewMooring pair)
     {
         var order = mates.ToArray();
         Shuffle(order, random);
@@ -124,7 +130,7 @@ internal static class PreviewFleet
 
             if (wide.Length == 0) continue;
 
-            pair = new Mooring(
+            pair = new PreviewMooring(
                 new[] { berth.Id, mate.Id },
                 Vessel(wide[random.Next(wide.Length)], length, width * PairUse, random, index),
                 MooringStyle.BowIn);

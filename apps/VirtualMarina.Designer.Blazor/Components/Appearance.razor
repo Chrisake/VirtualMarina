@@ -1,0 +1,363 @@
+@namespace VirtualMarina.Designer.Blazor.Components
+@inject IJSRuntime JS
+@implements IDisposable
+
+@* How the marina is drawn: water, light, colours and labels, changed live beside the view. Mirrors AppearancePanel. *@
+<div class="vm-appearance">
+    <div class="vm-panel__title">@Strings.TitleLook</div>
+    <div class="vm-panel__hint">@Strings.LookHint</div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardWater</div>
+        @Percent(Strings.WaveHeight, 0, 60, () => Water.WaveAmplitude * 100f, v => Water.WaveAmplitude = v / 100f, Defaults.Water.WaveAmplitude * 100f, v => Meters(v / 100f))
+        @Percent(Strings.WaveLength, 20, 300, () => Water.WaveFrequency * 100f, v => Water.WaveFrequency = v / 100f, Defaults.Water.WaveFrequency * 100f, v => Times(v / 100f))
+        @Percent(Strings.WaveSpeed, 0, 300, () => Water.WaveSpeed * 100f, v => Water.WaveSpeed = v / 100f, Defaults.Water.WaveSpeed * 100f, v => v == 0 ? Strings.ValueStill : Times(v / 100f))
+        @Percent(Strings.Reflections, 0, 100, () => Water.SkyReflection * 100f, v => Water.SkyReflection = v / 100f, Defaults.Water.SkyReflection * 100f, Percentage)
+        @Percent(Strings.Ripples, 0, 200, () => Water.Ripples * 100f, v => Water.Ripples = v / 100f, Defaults.Water.Ripples * 100f, Percentage)
+        @Percent(Strings.SunGlints, 0, 200, () => Water.SunGlints * 100f, v => Water.SunGlints = v / 100f, Defaults.Water.SunGlints * 100f, Percentage)
+        @Percent(Strings.WaterArea, 800, 12000, () => Water.Size, v => Water.Size = v, Defaults.Water.Size, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.WaterAreaTip)
+        @Color(Strings.DeepWater, () => V(Water.DeepColor), c => Water.DeepColor = V3(c), V(Defaults.Water.DeepColor))
+        @Color(Strings.ShallowWater, () => V(Water.ShallowColor), c => Water.ShallowColor = V3(c), V(Defaults.Water.ShallowColor))
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardBoats</div>
+        @Percent(Strings.BoatMovement, 0, 300, () => Water.BoatMotion * 100f, v => Water.BoatMotion = v / 100f, Defaults.Water.BoatMotion * 100f, v => v == 0 ? Strings.ValueStill : Percentage(v))
+        <div class="vm-hint">@Strings.BoatMovementHint</div>
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardLight</div>
+        @Percent(Strings.SunDirection, 0, 359, () => SunAzimuth, v => Lighting.SetSunAngles(v, SunElevation), 0f, v => Strings.Format(Strings.ValueDegreesFromNorth, v))
+        @Percent(Strings.SunHeight, 5, 89, () => SunElevation, v => Lighting.SetSunAngles(SunAzimuth, v), 40f, v => Strings.Format(Strings.ValueDegreesAboveHorizon, v))
+        @Percent(Strings.Haze, 0, 100, () => Lighting.FogDensity * 20000f, v => Lighting.FogDensity = v / 20000f, Defaults.Lighting.FogDensity * 20000f, Percentage)
+        @Color(Strings.Sky, () => V(Lighting.SkyColor), c => Lighting.SkyColor = V3(c), V(Defaults.Lighting.SkyColor))
+        @Color(Strings.Horizon, () => V(Lighting.FogColor), c => Lighting.FogColor = V3(c), V(Defaults.Lighting.FogColor))
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardBerthColors</div>
+        @Color(Strings.ColorFree, () => Status.FreeColor, c => Status.FreeColor = c, Defaults.Status.FreeColor)
+        @Color(Strings.ColorOccupied, () => Status.OccupiedColor, c => Status.OccupiedColor = c, Defaults.Status.OccupiedColor)
+        @Color(Strings.ColorReserved, () => Status.ReservedColor, c => Status.ReservedColor = c, Defaults.Status.ReservedColor)
+        @Color(Strings.ColorOwnerAway, () => Status.TemporarilyFreeColor, c => Status.TemporarilyFreeColor = c, Defaults.Status.TemporarilyFreeColor)
+        @Percent(Strings.PadStrength, 0, 100, () => Status.PadOpacity * 100f, v => Status.PadOpacity = v / 100f, Defaults.Status.PadOpacity * 100f, Percentage)
+        @Check(Strings.ShowStatusBuoys, () => Status.ShowStatusMarkers, v => Status.ShowStatusMarkers = v)
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardLand</div>
+        @Color(Strings.LandQuay, () => Land.QuayColor, c => Land.QuayColor = c, Defaults.Land.QuayColor)
+        @Color(Strings.LandQuayWall, () => Land.QuayWallColor, c => Land.QuayWallColor = c, Defaults.Land.QuayWallColor)
+        @Color(Strings.LandGrass, () => Land.GrassColor, c => Land.GrassColor = c, Defaults.Land.GrassColor)
+        @Color(Strings.LandGrassBank, () => Land.GrassBankColor, c => Land.GrassBankColor = c, Defaults.Land.GrassBankColor)
+        @Color(Strings.LandRock, () => Land.RockColor, c => Land.RockColor = c, Defaults.Land.RockColor)
+        @Percent(Strings.LandRockVariation, 0, 50, () => Land.RockColorVariation * 100f, v => Land.RockColorVariation = v / 100f, Defaults.Land.RockColorVariation * 100f, Percentage, Strings.LandRockVariationTip)
+        <div class="vm-section">@Strings.CardTrees</div>
+        @Color(Strings.LandFoliage, () => Land.FoliageColor, c => Land.FoliageColor = c, Defaults.Land.FoliageColor)
+        @Color(Strings.LandConifer, () => Land.ConiferColor, c => Land.ConiferColor = c, Defaults.Land.ConiferColor)
+        @Color(Strings.LandPalm, () => Land.PalmColor, c => Land.PalmColor = c, Defaults.Land.PalmColor)
+        @Color(Strings.LandBlossom, () => Land.BlossomColor, c => Land.BlossomColor = c, Defaults.Land.BlossomColor)
+        @Color(Strings.LandTrunk, () => Land.TrunkColor, c => Land.TrunkColor = c, Defaults.Land.TrunkColor)
+        @Color(Strings.LandBuilding, () => Land.BuildingColor, c => Land.BuildingColor = c, Defaults.Land.BuildingColor)
+        @Color(Strings.LandRoof, () => Land.RoofColor, c => Land.RoofColor = c, Defaults.Land.RoofColor)
+        @Check(Strings.LandShowTrees, () => Land.ShowTrees, v => Land.ShowTrees = v)
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardShadows</div>
+        @Check(Strings.ShadowsShow, () => Shadows.IsEnabled, v => Shadows.IsEnabled = v, Strings.ShadowsShowTip)
+        @Percent(Strings.ShadowStrength, 0, 100, () => Shadows.Strength * 100f, v => Shadows.Strength = v / 100f, Defaults.Shadows.Strength * 100f, Percentage, Strings.ShadowStrengthTip)
+        <div class="vm-hint">@Strings.ShadowHint</div>
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardTraffic</div>
+        @Check(Strings.TrafficShow, () => Traffic.IsEnabled, v => SetTraffic(t => t with { IsEnabled = v }), Strings.TrafficShowTip)
+        @Percent(Strings.TrafficClearance, 50, 1200, () => Traffic.Clearance, v => SetTraffic(t => t with { Clearance = v }), MarineTraffic.None.Clearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip)
+        @Percent(Strings.TrafficEdgeClearance, 50, 4000, () => Traffic.EdgeClearance, v => SetTraffic(t => t with { EdgeClearance = v }), MarineTraffic.None.EdgeClearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficEdgeClearanceTip)
+        @Percent(Strings.TrafficLanes, 1, MarineTraffic.LaneLimit, () => Traffic.LaneCount, v => SetTraffic(t => t with { LaneCount = (int)v }), MarineTraffic.None.LaneCount, v => Strings.Format(Strings.ValueLanes, v), Strings.TrafficLanesTip)
+        @Percent(Strings.TrafficLaneSpacing, 40, 600, () => Traffic.LaneSpacing, v => SetTraffic(t => t with { LaneSpacing = v }), MarineTraffic.None.LaneSpacing, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficLaneSpacingTip)
+        @Percent(Strings.TrafficMaximum, 1, MarineTraffic.VesselLimit, () => Traffic.MaximumVessels, v => SetTraffic(t => t with { MaximumVessels = (int)v }), MarineTraffic.None.MaximumVessels, v => Strings.Format(Strings.ValueVessels, v), Strings.TrafficMaximumTip)
+        @Percent(Strings.TrafficSpeed, 10, 400, () => Traffic.SpeedPercent, v => SetTraffic(t => t with { SpeedPercent = v }), MarineTraffic.None.SpeedPercent, Percentage, Strings.TrafficSpeedTip)
+        @Percent(Strings.TrafficSpawnDelay, 1, 180, () => Traffic.SpawnDelaySeconds, v => SetTraffic(t => t with { SpawnDelaySeconds = v }), MarineTraffic.None.SpawnDelaySeconds, v => Strings.Format(Strings.ValueSeconds, v), Strings.TrafficSpawnDelayTip)
+        @Check(Strings.TrafficShowLanes, () => Marina.ShowTrafficLanes, v => Changed(() => Marina.ShowTrafficLanes = v), Strings.TrafficShowLanesTip)
+        <div class="vm-hint">@Strings.TrafficHint</div>
+        <div class="vm-hint">@TrafficLanesNote()</div>
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardLabels</div>
+        <div class="vm-grid">
+            <span class="vm-grid__label" title="@Strings.LabelFontTip">@Strings.LabelFont</span>
+            <select value="@_fontSelection" @onchange="OnFontChanged">
+                <option value="">@Strings.FontBuiltIn</option>
+                @foreach (var family in _fontFamilies) { <option value="@family">@family</option> }
+            </select>
+        </div>
+        <label class="vm-check" style="margin-top:6px" title="@Strings.LabelBoldTip"><input type="checkbox" checked="@_bold" @onchange="OnBoldChanged" /> @Strings.LabelBold</label>
+        @if (_capturing) { <div class="vm-hint">@Strings.FontBuiltIn…</div> }
+        @Color(Strings.LabelColorNormal, () => Labels.Color, c => Labels.Color = c, Defaults.Labels.Color)
+        @Color(Strings.LabelColorAshore, () => Labels.AshoreColor, c => Labels.AshoreColor = c, Defaults.Labels.AshoreColor, Strings.LabelColorAshoreTip)
+        @Color(Strings.LabelColorHighlight, () => Labels.HighlightColor, c => Labels.HighlightColor = c, Defaults.Labels.HighlightColor)
+        @Color(Strings.LabelColorDisabled, () => Labels.DisabledColor, c => Labels.DisabledColor = c, Defaults.Labels.DisabledColor)
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardPreview</div>
+        <div class="vm-grid">
+            <span class="vm-grid__label" title="@Strings.PreviewFillTip">@Strings.PreviewFill</span>
+            <div class="vm-slider">
+                <input type="range" min="0" max="100" step="1" value="@_fill" @oninput="e => _fill = ToInt(e, _fill)" />
+                <span class="vm-slider__value">@Strings.Format(Strings.Percent, _fill)</span>
+            </div>
+        </div>
+        <div class="vm-row">
+            <button class="vm-btn vm-btn--primary" @onclick="FillWithBoats">@Strings.PreviewAdd</button>
+            <button class="vm-btn" @onclick="() => ClearBoats()">@Strings.PreviewClear</button>
+        </div>
+        <div class="vm-hint">@Strings.PreviewHint</div>
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.AppearanceReset</div>
+        <div class="vm-row"><button class="vm-btn" @onclick="ResetAll">@Strings.AppearanceReset</button></div>
+    </div>
+</div>
+
+@code {
+    private static readonly MarinaStyle Defaults = new();
+
+    private MarinaVisualizer? _subscribed;
+    private readonly Random _random = new();
+    private int _fill = 60;
+    private IReadOnlyList<string> _fontFamilies = Array.Empty<string>();
+    private string _fontSelection = string.Empty;
+    private bool _bold;
+    private bool _capturing;
+
+    /// <summary>The marina whose look is being changed. Required.</summary>
+    [Parameter, EditorRequired] public MarinaVisualizer Marina { get; set; } = default!;
+
+    /// <summary>Where to note what happened, for the activity log.</summary>
+    [Parameter] public EventCallback<string> Log { get; set; }
+
+    private WaterSettings Water => Marina.Style.Water;
+    private LightingSettings Lighting => Marina.Style.Lighting;
+    private LandStyle Land => Marina.Style.Land;
+    private MarineTraffic Traffic => Marina.MarineTraffic;
+    private ShadowStyle Shadows => Marina.Style.Shadows;
+    private StatusColorScheme Status => Marina.Style.Status;
+    private LabelStyle Labels => Marina.Style.Labels;
+
+    private float SunAzimuth
+    {
+        get
+        {
+            var sun = Lighting.SunDirection;
+            var degrees = MathF.Atan2(sun.X, sun.Z) * 180f / MathF.PI;
+            return degrees < 0f ? degrees + 360f : degrees;
+        }
+    }
+
+    private float SunElevation => MathF.Asin(Math.Clamp(Lighting.SunDirection.Y, -1f, 1f)) * 180f / MathF.PI;
+
+    private IJSInProcessRuntime InProcess => (IJSInProcessRuntime)JS;
+
+    protected override void OnParametersSet()
+    {
+        if (Marina is null) throw new InvalidOperationException($"{nameof(Appearance)} requires the {nameof(Marina)} parameter.");
+        if (ReferenceEquals(_subscribed, Marina)) return;
+        Unsubscribe();
+        _subscribed = Marina;
+        Marina.Designer.StateChanged += OnChanged;
+        SyncFont();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender || _fontFamilies.Count > 0) return;
+        _fontFamilies = BrowserFonts.InstalledFamilies(InProcess);
+        SyncFont();
+        StateHasChanged();
+    }
+
+    /// <summary>Reads every setting back out of the marina, e.g. after New or Open replaced the style.</summary>
+    public void Refresh()
+    {
+        SyncFont();
+        StateHasChanged();
+    }
+
+    public void Dispose() => Unsubscribe();
+
+    private void Unsubscribe()
+    {
+        if (_subscribed is null) return;
+        _subscribed.Designer.StateChanged -= OnChanged;
+        _subscribed = null;
+    }
+
+    private void OnChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    // ---- Row helpers ----------------------------------------------------------------------------
+
+    private RenderFragment Percent(string label, int min, int max, Func<float> read, Action<float> write, float fallback, Func<int, string> format, string? tooltip = null) => __builder =>
+    {
+        var value = Clamp(read(), min, max);
+        <div class="vm-grid">
+            <span class="vm-grid__label" title="@tooltip">@label</span>
+            <div class="vm-with-reset">
+                <div class="vm-slider">
+                    <input type="range" min="@min" max="@max" step="1" value="@value" @oninput="e => Changed(() => write(ToInt(e, value)))" />
+                    <span class="vm-slider__value">@format(value)</span>
+                </div>
+                <button class="vm-reset" title="@Strings.ResetTip" @onclick="() => Changed(() => write(Clamp(fallback, min, max)))">@Strings.ResetGlyph</button>
+            </div>
+        </div>
+    };
+
+    private RenderFragment Color(string label, Func<ColorRgba> read, Action<ColorRgba> write, ColorRgba fallback, string? tooltip = null) => __builder =>
+    {
+        <div class="vm-grid">
+            <span class="vm-grid__label" title="@tooltip">@label</span>
+            <div class="vm-with-reset">
+                <input class="vm-swatch" type="color" value="@Hex(read())" @onchange="e => Changed(() => write(ColorRgba.FromHex(e.Value?.ToString() ?? Hex(fallback))))" />
+                <button class="vm-reset" title="@Strings.ResetTip" @onclick="() => Changed(() => write(fallback))">@Strings.ResetGlyph</button>
+            </div>
+        </div>
+    };
+
+    private RenderFragment Check(string label, Func<bool> read, Action<bool> write, string? tooltip = null) => __builder =>
+    {
+        <label class="vm-check" style="margin-top:6px" title="@tooltip"><input type="checkbox" checked="@read()" @onchange="e => Changed(() => write(e.Value is true))" /> @label</label>
+    };
+
+    // ---- Traffic --------------------------------------------------------------------------------
+
+    private void SetTraffic(Func<MarineTraffic, MarineTraffic> change) => Changed(() => Marina.SetMarineTraffic(change(Marina.MarineTraffic)));
+
+    private string TrafficLanesNote()
+    {
+        if (!Traffic.IsEnabled) return string.Empty;
+        var lanes = Marina.TrafficLanes;
+        if (lanes.Count == 0) return Strings.TrafficNoRoom;
+        var (min, max) = Marina.GetLayout().ComputeBounds();
+        var center = (min + max) * 0.5f;
+        return Strings.Format(Strings.TrafficPasses, lanes.Count, (int)MathF.Round(lanes.Min(lane => lane.DistanceTo(center))));
+    }
+
+    // ---- Labels / fonts -------------------------------------------------------------------------
+
+    private void SyncFont()
+    {
+        _fontSelection = Labels.Font is null ? string.Empty : FamilyOf(Labels.Font.Name);
+        _bold = Labels.Font?.IsBold ?? Labels.FontFamily == LabelFont.Bold;
+    }
+
+    private void OnFontChanged(ChangeEventArgs e)
+    {
+        _fontSelection = e.Value?.ToString() ?? string.Empty;
+        UseFont();
+    }
+
+    private void OnBoldChanged(ChangeEventArgs e)
+    {
+        _bold = e.Value is true;
+        UseFont();
+    }
+
+    private void UseFont()
+    {
+        _capturing = true;
+        var family = string.IsNullOrEmpty(_fontSelection) ? null : _fontSelection;
+        Changed(() =>
+        {
+            Labels.Font = family is null ? null : BrowserFonts.Capture(InProcess, family, _bold);
+            Labels.FontFamily = _bold ? LabelFont.Bold : LabelFont.Regular;
+            if (family is not null && Labels.Font is null) _fontSelection = string.Empty;
+        });
+        _capturing = false;
+    }
+
+    private static string FamilyOf(string fontName) =>
+        fontName.EndsWith(" Bold", StringComparison.Ordinal) ? fontName[..^5] : fontName;
+
+    // ---- Preview fleet --------------------------------------------------------------------------
+
+    private async Task FillWithBoats()
+    {
+        ClearBoats(log: false);
+
+        var berths = Marina.GetBerths();
+        var wanted = (int)MathF.Round(berths.Count * _fill / 100f);
+        if (wanted == 0)
+        {
+            await Log.InvokeAsync(Strings.LogPreviewCleared);
+            return;
+        }
+
+        var plan = PreviewFleet.Plan(berths, wanted, _random);
+        var filled = 0;
+        using (Marina.BeginUpdate())
+        {
+            foreach (var mooring in plan)
+            {
+                if (mooring.BerthIds.Count == 1) Marina.AssignBoat(mooring.BerthIds[0], mooring.Boat);
+                else Marina.AssignBoatToBerths(mooring.BerthIds, mooring.Boat, style: mooring.Style);
+                filled += mooring.BerthIds.Count;
+            }
+        }
+
+        await Log.InvokeAsync(Strings.Format(Strings.LogPreviewBoats, filled, berths.Count));
+    }
+
+    private void ClearBoats(bool log = true)
+    {
+        using (Marina.BeginUpdate())
+        {
+            foreach (var berth in Marina.GetMultiBerths()) Marina.ReleaseMultiBerth(berth.Id);
+            foreach (var berth in Marina.GetBerths().Where(b => b.Boat is not null))
+            {
+                Marina.SetBerthStatus(berth.Id, BerthStatus.Free);
+            }
+        }
+
+        if (log) _ = Log.InvokeAsync(Strings.LogPreviewCleared);
+    }
+
+    private void ResetAll()
+    {
+        Marina.Style = new MarinaStyle();
+        Marina.SetMarineTraffic(MarineTraffic.None);
+        SyncFont();
+        Marina.InvalidateScene();
+        StateHasChanged();
+    }
+
+    // ---- Plumbing -------------------------------------------------------------------------------
+
+    private void Changed(Action change)
+    {
+        change();
+        Marina.InvalidateScene();
+        StateHasChanged();
+    }
+
+    private static int Clamp(float value, int min, int max) => Math.Clamp((int)MathF.Round(value), min, max);
+
+    private static int ToInt(ChangeEventArgs e, int fallback) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+
+    private static string Percentage(int value) => Strings.Format(Strings.Percent, value);
+    private static string Meters(float value) => Strings.Format(Strings.ValueMeters, value);
+    private static string Times(float value) => Strings.Format(Strings.ValueTimes, value);
+
+    private static string Hex(ColorRgba color) =>
+        string.Create(CultureInfo.InvariantCulture, $"#{Byte(color.R):x2}{Byte(color.G):x2}{Byte(color.B):x2}");
+
+    private static int Byte(float value) => Math.Clamp((int)MathF.Round(value * 255f), 0, 255);
+
+    private static ColorRgba V(Vector3 color) => new(color.X, color.Y, color.Z);
+    private static Vector3 V3(ColorRgba color) => new(color.R, color.G, color.B);
+}

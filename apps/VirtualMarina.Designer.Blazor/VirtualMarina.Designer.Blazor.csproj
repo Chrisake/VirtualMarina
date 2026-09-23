@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!--
+    VirtualMarina Designer, Blazor WebAssembly edition: the same tool as apps/VirtualMarina.Designer
+    (WinForms), running in the browser. Every piece of designer logic is the shared MarinaDesigner /
+    MarinaVisualizer in VirtualMarina.Core, driven through the reusable <MarinaView> of
+    VirtualMarina.Blazor; only the shell, panels and dialogs are re-hosted here as Razor components.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>VirtualMarina.Designer.Blazor</RootNamespace>
+    <AssemblyName>VirtualMarina.Designer.Blazor</AssemblyName>
+    <Product>VirtualMarina Designer</Product>
+    <IsPackable>false</IsPackable>
+
+    <!--
+      Suppressions shared with the WinForms designer and the Blazor test host:
+      CA5394 "Random is insecure": the preview fleet picks sample boats at random. Decorative randomness.
+      S5693  "limit HTTP request content length": about a server accepting uploads, which this browser app is not.
+    -->
+    <NoWarn>$(NoWarn);CA5394;S5693</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.31" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.31" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VirtualMarina.Blazor\VirtualMarina.Blazor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- One copy of the resource lookup, compiled into each assembly that shows text. See shared/ResourceText.cs. -->
+    <Compile Include="..\..\shared\ResourceText.cs" Link="Resources\ResourceText.cs" />
+
+    <!--
+      The Designer's displayed text lives once, in the WinForms app's resources, and is shared here rather
+      than copied: the same Strings class and the same .resx, linked in. The logical name pins the embedded
+      resource to the base name Strings passes to its ResourceManager, whatever assembly it lands in.
+    -->
+    <Compile Include="..\VirtualMarina.Designer\Resources\Strings.cs" Link="Resources\Strings.cs" />
+    <EmbeddedResource Include="..\VirtualMarina.Designer\Resources\Strings.resx" Link="Resources\Strings.resx">
+      <LogicalName>VirtualMarina.Designer.Resources.Strings.resources</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

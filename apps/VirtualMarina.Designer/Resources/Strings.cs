@@ -267,6 +267,9 @@ internal static class Strings
     /// <summary>"Save the changes to {0} first?"</summary>
     internal static string ConfirmDiscard => Get("ConfirmDiscard");
 
+    /// <summary>"Don't save"</summary>
+    internal static string ConfirmDiscardButton => Get("ConfirmDiscardButton");
+
     /// <summary>"Marina name"</summary>
     internal static string MarinaNameTitle => Get("MarinaNameTitle");
 

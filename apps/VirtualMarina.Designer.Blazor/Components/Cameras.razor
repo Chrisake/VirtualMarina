@@ -1,0 +1,130 @@
+@namespace VirtualMarina.Designer.Blazor.Components
+@implements IDisposable
+
+@* The saved and automatic views of the marina. Mirrors CamerasPanel. *@
+<div class="vm-cameras">
+    <div class="vm-panel__title">@Strings.TitleCameras</div>
+    <div class="vm-panel__hint">@Strings.CamerasHint</div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardCameraSave</div>
+        <div class="vm-grid">
+            <span class="vm-grid__label" title="@Strings.CameraNameTip">@Strings.CameraName</span>
+            <input type="text" @bind="_name" @bind:event="oninput" />
+        </div>
+        <div class="vm-row"><button class="vm-btn vm-btn--primary" @onclick="Save">@Strings.CameraSave</button></div>
+        <div class="vm-hint">@Strings.CameraSaveHint</div>
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardCameraAutomatic</div>
+        @{ var automatic = Marina.CameraPresets.Where(p => p.IsBuiltIn).ToList(); }
+        @if (automatic.Count == 0)
+        {
+            <div class="vm-hint">@Strings.CameraNoneSaved</div>
+        }
+        else
+        {
+            @foreach (var preset in automatic)
+            {
+                var name = preset.Name;
+                <div class="vm-camera-row">
+                    <label class="vm-check vm-camera-row__name" title="@(preset.Description ?? name)">
+                        <input type="checkbox" checked="@preset.IsEnabled" @onchange="e => SetEnabled(name, e.Value is true)" /> @name
+                    </label>
+                    <button class="vm-btn vm-icon-btn" title="@Strings.CameraGoToTip" @onclick="() => GoToBuiltIn(name)">@Strings.CameraGoToGlyph</button>
+                </div>
+            }
+        }
+    </div>
+
+    <div class="vm-card">
+        <div class="vm-card__title">@Strings.CardCameraSaved</div>
+        @{ var saved = Marina.CameraPresets.Where(p => !p.IsBuiltIn).ToList(); }
+        @if (saved.Count == 0)
+        {
+            <div class="vm-hint">@Strings.CameraNoneSaved</div>
+        }
+        else
+        {
+            @foreach (var preset in saved)
+            {
+                var name = preset.Name;
+                <div class="vm-camera-row">
+                    <span class="vm-camera-row__name" title="@(preset.Description ?? name)">@name</span>
+                    <button class="vm-btn vm-icon-btn" title="@Strings.CameraGoToTip" @onclick="() => GoTo(name)">@Strings.CameraGoToGlyph</button>
+                    <button class="vm-btn vm-icon-btn vm-btn--danger" title="@Strings.CameraDeleteTip" @onclick="() => Delete(name)">@Strings.CameraDeleteGlyph</button>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private MarinaVisualizer? _subscribed;
+    private string _name = string.Empty;
+
+    /// <summary>The visualizer whose views are managed. Required.</summary>
+    [Parameter, EditorRequired] public MarinaVisualizer Marina { get; set; } = default!;
+
+    /// <summary>Where to note what happened, for the activity log.</summary>
+    [Parameter] public EventCallback<string> Log { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Marina is null) throw new InvalidOperationException($"{nameof(Cameras)} requires the {nameof(Marina)} parameter.");
+        if (ReferenceEquals(_subscribed, Marina)) return;
+        Unsubscribe();
+        _subscribed = Marina;
+        Marina.LayoutChanged += OnChanged;
+        Marina.Designer.StateChanged += OnChanged;
+    }
+
+    /// <summary>Redraws the panel, e.g. after New or Open replaced the marina under it.</summary>
+    public void Refresh() => StateHasChanged();
+
+    public void Dispose() => Unsubscribe();
+
+    private void Unsubscribe()
+    {
+        if (_subscribed is null) return;
+        _subscribed.LayoutChanged -= OnChanged;
+        _subscribed.Designer.StateChanged -= OnChanged;
+        _subscribed = null;
+    }
+
+    private void OnChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    private async Task Save()
+    {
+        var wanted = _name.Trim();
+        if (wanted.Length == 0)
+        {
+            var taken = Marina.CameraPresets.Count(preset => !preset.IsBuiltIn);
+            wanted = Strings.Format(Strings.CameraDefaultName, taken + 1);
+        }
+
+        Marina.SaveCameraPreset(wanted);
+        _name = string.Empty;
+        await Log.InvokeAsync(Strings.Format(Strings.LogCameraSaved, wanted));
+        StateHasChanged();
+    }
+
+    private async Task SetEnabled(string name, bool enabled)
+    {
+        Marina.SetCameraPresetEnabled(name, enabled);
+        await Log.InvokeAsync(Strings.Format(enabled ? Strings.LogCameraEnabled : Strings.LogCameraDisabled, name));
+        StateHasChanged();
+    }
+
+    private void GoTo(string name) => Marina.ApplyCameraPreset(name);
+
+    private void GoToBuiltIn(string name) => Marina.ApplyBuiltInCameraPreset(name);
+
+    private async Task Delete(string name)
+    {
+        if (!Marina.RemoveCameraPreset(name)) return;
+        await Log.InvokeAsync(Strings.Format(Strings.LogCameraDeleted, name));
+        StateHasChanged();
+    }
+}

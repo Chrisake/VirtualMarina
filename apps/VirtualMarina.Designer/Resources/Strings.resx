@@ -324,6 +324,9 @@
     <value>Save the changes to {0} first?</value>
     <comment>{0} = file or marina name.</comment>
   </data>
+  <data name="ConfirmDiscardButton">
+    <value>Don't save</value>
+  </data>
   <data name="MarinaNameTitle">
     <value>Marina name</value>
   </data>

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Opens the Blazor designer in its own window. It is deliberately not a native wrapper: it serves the very same
+    WebAssembly app in-process and opens Chrome in application mode (a chromeless, single-page window) pointed at it.
+    The behaviour is identical on Windows, macOS and Linux, and nothing here overlaps apps/VirtualMarina.Designer,
+    which stays the native desktop app on Windows.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>VirtualMarina.Designer.Desktop</RootNamespace>
+    <AssemblyName>VirtualMarina.Designer.Desktop</AssemblyName>
+    <Product>VirtualMarina Designer</Product>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Serves the WebAssembly client's _framework files and static assets from this host. -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.31" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VirtualMarina.Designer.Blazor\VirtualMarina.Designer.Blazor.csproj" />
+  </ItemGroup>
+
+</Project>

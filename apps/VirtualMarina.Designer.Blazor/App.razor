@@ -1,0 +1,651 @@
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>@_title</PageTitle>
+
+<div class="vm-shell">
+    @* ---- Menu ---- *@
+    @if (_openMenu.Length > 0)
+    {
+        <div style="position:fixed;inset:0;z-index:35" @onclick="() => _openMenu = string.Empty"></div>
+    }
+    <div class="vm-menu">
+        @foreach (var menu in _menus)
+        {
+            var open = _openMenu == menu.Title;
+            <div class="vm-menu__item @(open ? "vm-menu__item--open" : null)">
+                <div class="vm-menu__label" @onclick="() => _openMenu = open ? string.Empty : menu.Title">@Strip(menu.Title)</div>
+                @if (open)
+                {
+                    <div class="vm-menu__drop">
+                        @foreach (var entry in menu.Entries)
+                        {
+                            @if (entry.Separator)
+                            {
+                                <div class="vm-menu__sep"></div>
+                            }
+                            else
+                            {
+                                <div class="vm-menu__entry @(entry.Checked?.Invoke() == true ? "vm-menu__entry--checked" : null)" @onclick="() => RunMenu(entry.Action)">
+                                    <span>@Strip(entry.Label)</span>
+                                    @if (entry.Shortcut is not null)
+                                    {
+                                        <span class="vm-menu__shortcut">@entry.Shortcut</span>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @* ---- Toolbar ---- *@
+    <div class="vm-toolbar">
+        @ToolButton(DesignTool.Navigate, Strings.ToolNavigate, Strings.ToolNavigateTip)
+        @ToolButton(DesignTool.SelectArea, Strings.ToolSelect, Strings.ToolSelectTip)
+        <span class="vm-toolbar__sep"></span>
+        @ToolButton(DesignTool.DrawShoreline, Strings.ToolCoast, Strings.ToolCoastTip)
+        @ToolButton(DesignTool.DrawLandArea, Strings.ToolLand, Strings.ToolLandTip)
+        @ToolButton(DesignTool.DrawPier, Strings.ToolPier, Strings.ToolPierTip)
+        @ToolButton(DesignTool.AddBerths, Strings.ToolBerths, Strings.ToolBerthsTip)
+        @ToolButton(DesignTool.AddLandBerths, Strings.ToolAshore, Strings.ToolAshoreTip)
+        <span class="vm-toolbar__sep"></span>
+        @ToolButton(DesignTool.PlantTrees, Strings.ToolTrees, Strings.ToolTreesTip)
+        @ToolButton(DesignTool.EditServices, Strings.ToolServices, Strings.ToolServicesTip)
+        <span class="vm-toolbar__sep"></span>
+        @ToolButton(DesignTool.Rename, Strings.ToolRename, Strings.ToolRenameTip)
+        @ToolButton(DesignTool.Erase, Strings.ToolErase, Strings.ToolEraseTip)
+        <span class="vm-toolbar__sep"></span>
+        <button class="vm-tool @(_side == SidePanel.Look ? "vm-tool--active" : null)" title="@Strings.ToolLookTip" @onclick="() => ShowSidePanel(_side == SidePanel.Look ? SidePanel.Tools : SidePanel.Look)">@Strings.ToolLook</button>
+        <button class="vm-tool @(_side == SidePanel.Cameras ? "vm-tool--active" : null)" title="@Strings.ToolCamerasTip" @onclick="() => ShowSidePanel(_side == SidePanel.Cameras ? SidePanel.Tools : SidePanel.Cameras)">@Strings.ToolCameras</button>
+        <span class="vm-toolbar__sep"></span>
+        <button class="vm-tool" title="@Strings.CommandTopViewTip" @onclick="ViewTopDown">@Strings.CommandTopView</button>
+        <button class="vm-tool" title="@Strings.CommandFitMarinaTip" @onclick="() => Marina.ResetCamera()">@Strings.CommandFitMarina</button>
+    </div>
+
+    @* ---- Body ---- *@
+    <div class="vm-body">
+        <div class="vm-view">
+            <MarinaView @ref="_view" Marina="Marina" Style="position:absolute;inset:0" OnRendererReady="OnRendererReady" OnRendererError="OnRendererError" />
+            @if (_logVisible)
+            {
+                <div class="vm-log">
+                    <div class="vm-log__header">@Strings.LogHeader</div>
+                    <ul class="vm-log__list">
+                        @foreach (var entry in _log) { <li>@entry</li> }
+                    </ul>
+                </div>
+            }
+        </div>
+        <div class="vm-side">
+            <Inspector @ref="_inspector" Marina="Marina" LoadImage="LoadReferenceImage" />
+            @if (_side == SidePanel.Look) { <Appearance @ref="_appearance" Marina="Marina" Log="Log" /> }
+            @if (_side == SidePanel.Cameras) { <Cameras @ref="_cameras" Marina="Marina" Log="Log" /> }
+        </div>
+    </div>
+
+    @* ---- Status bar ---- *@
+    <div class="vm-status">
+        <span class="vm-status__hint">@Designer.ToolHint</span>
+        <span>@PointerText()</span>
+        <span>@CameraText()</span>
+    </div>
+</div>
+
+@* Hidden file pickers, triggered from the menu and the inspector. *@
+<div style="display:none">
+    <InputFile id="vmOpenDesign" OnChange="OnDesignFilePicked" accept=".json,application/json" />
+    <InputFile id="vmOpenImage" OnChange="OnImageFilePicked" accept="image/png,image/jpeg,image/webp" />
+</div>
+
+@if (_confirm is not null)
+{
+    <div class="vm-modal-backdrop">
+        <div class="vm-modal">
+            <div class="vm-modal__title">@Strings.AppName</div>
+            <div>@_confirm</div>
+            <div class="vm-modal__buttons">
+                <button class="vm-btn vm-btn--primary" @onclick="() => ResolveConfirm(ConfirmChoice.Save)">@Strings.MenuSave</button>
+                <button class="vm-btn" @onclick="() => ResolveConfirm(ConfirmChoice.Discard)">@Strings.ConfirmDiscardButton</button>
+                <button class="vm-btn" @onclick="() => ResolveConfirm(ConfirmChoice.Cancel)">@Strings.DialogCancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Which settings sit beside the marina.</summary>
+    private enum SidePanel { Tools, Look, Cameras }
+
+    private enum ConfirmChoice { Save, Discard, Cancel }
+
+    /// <summary>How much of the scene's haze is drawn while the marina is being traced.</summary>
+    private const float DesigningFogFactor = 0.15f;
+
+    private const string Author = "Christoforos Sakellaris";
+
+    private readonly MarinaVisualizer _marina = new();
+    private readonly LinkedList<string> _log = new();
+    private MarinaView? _view;
+    private Inspector? _inspector;
+    private Appearance? _appearance;
+    private Cameras? _cameras;
+    private DotNetObjectReference<App>? _self;
+
+    private SidePanel _side = SidePanel.Tools;
+    private bool _logVisible;
+    private string? _filePath;
+    private bool _dirty;
+    private string _title = string.Empty;
+    private string? _rendererDescription;
+    private string? _confirm;
+    private TaskCompletionSource<ConfirmChoice>? _confirmResult;
+    private string _openMenu = string.Empty;
+
+    private MarinaVisualizer Marina => _marina;
+    private MarinaDesigner Designer => _marina.Designer;
+    private IJSInProcessRuntime InProcess => (IJSInProcessRuntime)JS;
+
+    protected override void OnInitialized()
+    {
+        Designer.IsActive = true;
+        Designer.Tool = DesignTool.Navigate;
+
+        Designer.StateChanged += OnStateChanged;
+        Marina.SelectionChanged += OnStateChanged;
+        Marina.LayoutChanged += OnLayoutChanged;
+        Designer.ElementCreated += OnElementCreated;
+        Designer.ElementErased += OnElementErased;
+        Designer.TreesPlanted += OnTreesPlanted;
+        Designer.ActionUndone += OnActionUndone;
+        Designer.ScaleLineDrawn += OnScaleLineDrawn;
+        Designer.ReferenceImageChanged += OnReferenceImageChanged;
+        Designer.ElementRenaming += OnElementRenaming;
+
+        BuildMenus();
+        _ = NewMarina(askToSave: false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("vmDesigner.registerShortcuts", _self);
+    }
+
+    public void Dispose()
+    {
+        Designer.StateChanged -= OnStateChanged;
+        Marina.SelectionChanged -= OnStateChanged;
+        Marina.LayoutChanged -= OnLayoutChanged;
+        Designer.ElementCreated -= OnElementCreated;
+        Designer.ElementErased -= OnElementErased;
+        Designer.TreesPlanted -= OnTreesPlanted;
+        Designer.ActionUndone -= OnActionUndone;
+        Designer.ScaleLineDrawn -= OnScaleLineDrawn;
+        Designer.ReferenceImageChanged -= OnReferenceImageChanged;
+        Designer.ElementRenaming -= OnElementRenaming;
+        _self?.Dispose();
+    }
+
+    // ---- Menu building --------------------------------------------------------------------------
+
+    /// <summary>One line of a menu: a command with an optional shortcut and tick, or a separator.</summary>
+    private sealed record MenuEntry(string Label, string? Shortcut, Func<Task> Action, bool Separator = false, Func<bool>? Checked = null);
+
+    private sealed record MenuColumn(string Title, IReadOnlyList<MenuEntry> Entries);
+
+    private List<MenuColumn> _menus = new();
+
+    private static MenuEntry Sep() => new(string.Empty, null, () => Task.CompletedTask, Separator: true);
+
+    private static Func<Task> Do(Action action) => () => { action(); return Task.CompletedTask; };
+
+    private void BuildMenus() => _menus = new List<MenuColumn>
+    {
+        new(Strings.MenuFile, new[]
+        {
+            new MenuEntry(Strings.MenuNew, "Ctrl+N", () => NewMarina(askToSave: true)),
+            new MenuEntry(Strings.MenuOpen, "Ctrl+O", OpenDesign),
+            Sep(),
+            new MenuEntry(Strings.MenuSave, "Ctrl+S", SaveDesign),
+            new MenuEntry(Strings.MenuSaveAs, "Ctrl+Shift+S", SaveDesign),
+            Sep(),
+            new MenuEntry(Strings.MenuLoadImage, "Ctrl+I", LoadReferenceImage),
+        }),
+        new(Strings.MenuEdit, new[]
+        {
+            new MenuEntry(Strings.MenuUndo, "Ctrl+Z", Do(() => Designer.Undo())),
+            new MenuEntry(Strings.MenuCancelDraft, null, Do(() => Designer.CancelDraft())),
+            Sep(),
+            new MenuEntry(Strings.MenuRename, "F2", Do(() => Designer.Tool = DesignTool.Rename)),
+            Sep(),
+            new MenuEntry(Strings.MenuMarinaProperties, null, Do(EditMarinaProperties)),
+        }),
+        new(Strings.MenuView, new[]
+        {
+            new MenuEntry(Strings.MenuTopView, "Ctrl+T", Do(ViewTopDown)),
+            new MenuEntry(Strings.MenuFitMarina, "Ctrl+F", Do(() => Marina.ResetCamera())),
+            new MenuEntry(Strings.MenuFitImage, null, Do(() => Designer.FocusReferenceImage())),
+            Sep(),
+            new MenuEntry(Strings.MenuShowLog, null, Do(() => _logVisible = !_logVisible), Checked: () => _logVisible),
+        }),
+        new(Strings.MenuMarina, new[]
+        {
+            new MenuEntry(Strings.MenuAppearance, null, Do(() => ShowSidePanel(SidePanel.Look))),
+            new MenuEntry(Strings.MenuCameras, null, Do(() => ShowSidePanel(SidePanel.Cameras))),
+            new MenuEntry(Strings.MenuBerthLabels, null, Do(ToggleLabels)),
+        }),
+        new(Strings.MenuHelp, new[]
+        {
+            new MenuEntry(Strings.MenuShortcuts, "F1", Do(ShowShortcuts)),
+            new MenuEntry(Strings.MenuAbout, null, Do(ShowAbout)),
+        }),
+    };
+
+    private async Task RunMenu(Func<Task> action)
+    {
+        _openMenu = string.Empty;
+        await action();
+    }
+
+    /// <summary>Drops the &amp; accelerators from a WinForms menu label.</summary>
+    private static string Strip(string label) => label.Replace("&", string.Empty, StringComparison.Ordinal);
+
+    private RenderFragment ToolButton(DesignTool tool, string text, string tip) => __builder =>
+    {
+        var active = Designer.IsActive && Designer.Tool == tool;
+        <button class="vm-tool @(active ? "vm-tool--active" : null)" title="@tip" @onclick="() => SelectTool(tool)">@text</button>
+    };
+
+    private void SelectTool(DesignTool tool)
+    {
+        Designer.IsActive = true;
+        Designer.Tool = tool;
+    }
+
+    // ---- Global shortcuts -----------------------------------------------------------------------
+
+    /// <summary>Called from designer.js when a menu shortcut is pressed. Not for direct use.</summary>
+    [JSInvokable]
+    public async Task OnShortcut(string name)
+    {
+        switch (name)
+        {
+            case "new": await NewMarina(askToSave: true); break;
+            case "open": await OpenDesign(); break;
+            case "save": case "saveAs": await SaveDesign(); break;
+            case "loadImage": await LoadReferenceImage(); break;
+            case "topView": ViewTopDown(); break;
+            case "fitMarina": Marina.ResetCamera(); break;
+            case "rename": Designer.Tool = DesignTool.Rename; break;
+            case "shortcuts": ShowShortcuts(); break;
+            default: break;
+        }
+
+        StateHasChanged();
+    }
+
+    // ---- Designer events ------------------------------------------------------------------------
+
+    private void OnStateChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    private void OnLayoutChanged(object? sender, LayoutChangedEventArgs e) => MarkDirty();
+
+    private void OnElementCreated(object? sender, DesignElementCreatedEventArgs e)
+    {
+        MarkDirty();
+        Log(e switch
+        {
+            { LandArea: { } land } => Strings.Format(Strings.LogAddedLand, land.DisplayName, land.Points.Count, land.Area),
+            { Pier: { } pier } => Strings.Format(Strings.LogAddedPier, pier.Id, pier.Length, pier.Width),
+            { Berths.Count: 1 } => Strings.Format(Strings.LogAddedBerth, e.Berths[0].Id),
+            _ => Strings.Format(Strings.LogAddedBerths, e.Berths.Count, string.Join(", ", e.Berths.Select(s => s.Id))),
+        });
+    }
+
+    private void OnElementErased(object? sender, DesignElementErasedEventArgs e)
+    {
+        MarkDirty();
+        Log(Strings.Format(Strings.LogRemoved, e.Element.GetType().Name.ToLowerInvariant(), e.RemovedBerths.Count, e.RemovedDividers.Count));
+    }
+
+    private void OnTreesPlanted(object? sender, DesignTreesPlantedEventArgs e)
+    {
+        MarkDirty();
+        Log(Strings.Format(Strings.LogTrees, e.LandArea.DisplayName, e.LandArea.Trees.Count, e.PreviousCount));
+    }
+
+    private void OnActionUndone(object? sender, DesignActionUndoneEventArgs e)
+    {
+        MarkDirty();
+        Log(Strings.Format(Strings.LogUndone, e.Description));
+    }
+
+    private void OnScaleLineDrawn(object? sender, ScaleLineDrawnEventArgs e) => Log(Strings.Format(Strings.LogScaleLine, e.MeasuredLength));
+
+    private void OnReferenceImageChanged(object? sender, ReferenceImageChangedEventArgs e) =>
+        Log(Strings.Format(Strings.LogReferenceImage, e.Change.ToString().ToLowerInvariant(), e.MetersPerPixel));
+
+    private void OnRendererReady(string description) => _rendererDescription = description;
+
+    private void OnRendererError(string message) => Log(Strings.Format(Strings.LogRendererError, message));
+
+    // ---- Rename (synchronous, driven by the designer through browser prompts) --------------------
+
+    private void OnElementRenaming(object? sender, DesignElementRenamingEventArgs e)
+    {
+        if (e.Scope == DesignRenameScope.BerthsOfPier)
+        {
+            AskForBerthPattern(e);
+            return;
+        }
+
+        var berth = e.Berth is not null;
+        var name = e.CurrentName;
+        var pierId = e.Pier?.Id ?? string.Empty;
+        var pattern = e.BerthPattern ?? string.Empty;
+        var askPattern = !berth && e.BerthPattern is not null;
+
+        while (true)
+        {
+            var answer = Prompt(berth ? Strings.RenameBerthQuestion : Strings.RenamePierQuestion, name);
+            if (answer is null || string.IsNullOrWhiteSpace(answer)) { e.Cancel = true; return; }
+            name = answer.Trim();
+
+            if (!berth)
+            {
+                var idAnswer = Prompt(Strings.RenamePierIdQuestion, pierId);
+                if (idAnswer is null) { e.Cancel = true; return; }
+                pierId = idAnswer.Trim();
+            }
+
+            if (askPattern)
+            {
+                var patternAnswer = Prompt($"{Strings.RenamePatternQuestion}\n{Strings.RenamePatternHint}", pattern);
+                if (patternAnswer is null) { e.Cancel = true; return; }
+                pattern = patternAnswer.Trim();
+            }
+
+            string? taken;
+            if (berth) taken = Designer.IsBerthNameAvailable(name, e.Berth!.Id) ? null : name;
+            else taken = pierId.Length > 0 && !Designer.IsPierIdAvailable(pierId, e.Pier!.Id) ? pierId : null;
+
+            if (taken is null) break;
+
+            Log(Strings.Format(Strings.LogRenameRefused, taken, berth ? e.CurrentName : pierId));
+            Alert(Strings.Format(Strings.RenameTakenBody, taken));
+        }
+
+        if (!berth && e.Pier is { } pier)
+        {
+            var id = pierId.Length == 0 ? pier.Id : pierId;
+            e.NewPierId = id;
+            if (!string.Equals(id, pier.Id, StringComparison.Ordinal))
+            {
+                MarkDirty();
+                Log(Strings.Format(Strings.LogPierIdChanged, pier.Id, id));
+            }
+        }
+
+        if (askPattern && pattern.Length > 0 && !string.Equals(pattern, e.BerthPattern, StringComparison.Ordinal))
+        {
+            e.NewBerthPattern = pattern;
+            MarkDirty();
+            Log(Strings.Format(Strings.LogBerthPattern, e.Pier!.Id, pattern));
+        }
+
+        e.NewName = name;
+        if (name != e.CurrentName)
+        {
+            MarkDirty();
+            Log(Strings.Format(Strings.LogRenamed, e.CurrentName, name));
+        }
+    }
+
+    private void AskForBerthPattern(DesignElementRenamingEventArgs e)
+    {
+        if (e.Pier is not { } pier) return;
+
+        var berths = Marina.GetBerthsByPier(pier.Id).Count;
+        var pattern = e.BerthPattern ?? string.Empty;
+
+        while (true)
+        {
+            var answer = Prompt($"{Strings.Format(Strings.RenameBerthsQuestion, berths, pier.Id)}\n{Strings.RenamePatternHint}", pattern);
+            if (answer is null || string.IsNullOrWhiteSpace(answer)) { e.Cancel = true; return; }
+            pattern = answer.Trim();
+
+            var plan = Designer.PlanBerthNames(pier.Id, pattern);
+            if (plan.IsClear) break;
+
+            var clashes = string.Join(", ", plan.Clashes.Take(8));
+            if (plan.Clashes.Count > 8) clashes += Strings.Format(Strings.RenameClashMore, plan.Clashes.Count - 8);
+            Log(Strings.Format(Strings.LogRenameClash, pier.Id, clashes));
+            Alert(Strings.Format(Strings.RenameClashBody, clashes));
+        }
+
+        e.NewBerthPattern = pattern;
+        MarkDirty();
+        Log(Strings.Format(Strings.LogBerthPattern, pier.Id, pattern));
+    }
+
+    // ---- Side panel / view ----------------------------------------------------------------------
+
+    private void ShowSidePanel(SidePanel which)
+    {
+        _side = which;
+        Designer.FogFactor = which == SidePanel.Look ? 1f : DesigningFogFactor;
+        if (which == SidePanel.Look) MarkDirty();
+        StateHasChanged();
+    }
+
+    private void ViewTopDown()
+    {
+        if (!Marina.ApplyBuiltInCameraPreset(MarinaVisualizer.TopDownPresetName)) Designer.ViewTopDown();
+    }
+
+    private void ToggleLabels()
+    {
+        Marina.BerthLabelMode = Marina.BerthLabelMode == BerthLabelMode.None ? BerthLabelMode.All : BerthLabelMode.None;
+        MarkDirty();
+        Log(Marina.BerthLabelMode == BerthLabelMode.None ? Strings.LogBerthLabelsHidden : Strings.LogBerthLabelsShown);
+    }
+
+    // ---- File -----------------------------------------------------------------------------------
+
+    private async Task NewMarina(bool askToSave)
+    {
+        if (askToSave && !await ConfirmDiscardChanges()) return;
+
+        Marina.Style = new MarinaStyle();
+        Marina.InitializeLayout(new MarinaLayout { Name = Strings.NewMarinaName });
+        Designer.ClearHistory();
+        Designer.ClearReferenceImage();
+        Designer.IsActive = true;
+        Designer.Tool = DesignTool.Navigate;
+        Designer.ViewTopDown(immediate: true);
+        Marina.Camera.SetPose(Marina.Camera.DesiredPose with { Distance = 220f }, immediate: true);
+        _filePath = null;
+        SetDirty(false);
+        UpdateTitle();
+        RefreshPanels();
+        Log(Strings.LogNewMarina);
+    }
+
+    private async Task OpenDesign()
+    {
+        if (!await ConfirmDiscardChanges()) return;
+        await JS.InvokeVoidAsync("vmDesigner.clickElement", "vmOpenDesign");
+    }
+
+    private async Task OnDesignFilePicked(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            await using var stream = e.File.OpenReadStream(32 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            var document = MarinaDocument.Parse(await reader.ReadToEndAsync());
+            document.ApplyTo(Marina);
+            _filePath = e.File.Name;
+            SetDirty(false);
+            Designer.ClearHistory();
+            Designer.IsActive = true;
+            Designer.Tool = DesignTool.Navigate;
+            UpdateTitle();
+            RefreshPanels();
+            Log(Strings.Format(Strings.LogOpened, e.File.Name, document.Layout.Berths.Count, document.Layout.Piers.Count) +
+                (document.IsFromNewerVersion ? Strings.Format(Strings.LogOpenedNewerVersion, document.Version) : string.Empty));
+        }
+        catch (Exception ex) when (ex is MarinaFormatException or MarinaLayoutException or IOException)
+        {
+            Warn(Strings.OpenFailed, ex);
+        }
+    }
+
+    private async Task SaveDesign()
+    {
+        var json = MarinaDocument.FromVisualizer(Marina, $"{Strings.AppName} {Version(typeof(App))}").ToJson();
+        var fileName = Sanitize(Marina.MarinaName) + MarinaDocument.FileExtension;
+        await JS.InvokeVoidAsync("vmDesigner.downloadText", fileName, json);
+        _filePath = fileName;
+        SetDirty(false);
+        UpdateTitle();
+        Log(Strings.Format(Strings.LogSaved, fileName, Marina.GetBerths().Count));
+    }
+
+    private async Task LoadReferenceImage() => await JS.InvokeVoidAsync("vmDesigner.clickElement", "vmOpenImage");
+
+    private async Task OnImageFilePicked(InputFileChangeEventArgs e)
+    {
+        if (_view is null) return;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(25 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            var contentType = string.IsNullOrWhiteSpace(e.File.ContentType) ? "image/png" : e.File.ContentType;
+            if (await _view.LoadReferenceImageAsync(buffer.ToArray(), contentType) is null)
+            {
+                Warn(Strings.ImageLoadFailed, new InvalidOperationException(Strings.ImageStateEmpty));
+                return;
+            }
+
+            Designer.IsActive = true;
+            Designer.FocusReferenceImage();
+            Designer.Tool = DesignTool.MeasureScale;
+            Log(Strings.Format(Strings.LogImageLoaded, e.File.Name));
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException)
+        {
+            Warn(Strings.ImageLoadFailed, ex);
+        }
+    }
+
+    private void EditMarinaProperties()
+    {
+        var answer = Prompt(Strings.MarinaNameQuestion, Marina.MarinaName);
+        if (answer is null || string.IsNullOrWhiteSpace(answer)) return;
+        Marina.MarinaName = answer.Trim();
+        MarkDirty();
+        UpdateTitle();
+        StateHasChanged();
+    }
+
+    /// <summary>Returns false when the user wants to keep unsaved work.</summary>
+    private async Task<bool> ConfirmDiscardChanges()
+    {
+        if (!_dirty) return true;
+
+        _confirm = Strings.Format(Strings.ConfirmDiscard, _filePath ?? Marina.MarinaName);
+        _confirmResult = new TaskCompletionSource<ConfirmChoice>();
+        StateHasChanged();
+        var choice = await _confirmResult.Task;
+        _confirm = null;
+        StateHasChanged();
+
+        if (choice == ConfirmChoice.Cancel) return false;
+        if (choice == ConfirmChoice.Discard) return true;
+        await SaveDesign();
+        return !_dirty;
+    }
+
+    private void ResolveConfirm(ConfirmChoice choice) => _confirmResult?.TrySetResult(choice);
+
+    // ---- State ----------------------------------------------------------------------------------
+
+    private void RefreshPanels()
+    {
+        _inspector?.Refresh();
+        _appearance?.Refresh();
+        _cameras?.Refresh();
+        StateHasChanged();
+    }
+
+    private void MarkDirty()
+    {
+        if (_dirty) return;
+        SetDirty(true);
+        UpdateTitle();
+    }
+
+    private void SetDirty(bool value)
+    {
+        _dirty = value;
+        InProcess.InvokeVoid("vmDesigner.setDirty", value);
+    }
+
+    private void UpdateTitle()
+    {
+        _title = Strings.Format(Strings.WindowTitle, _dirty ? Strings.UnsavedMarker : string.Empty, _filePath ?? Marina.MarinaName, Strings.AppName);
+        StateHasChanged();
+    }
+
+    private void Log(string message)
+    {
+        _log.AddFirst(Strings.Format(Strings.LogEntry, DateTime.Now, message));
+        while (_log.Count > 500) _log.RemoveLast();
+        StateHasChanged();
+    }
+
+    private string PointerText()
+    {
+        if (Designer.PointerPosition is not { } p) return string.Empty;
+        return string.Format(CultureInfo.CurrentCulture, Strings.StatusPointer, p.X, p.Y);
+    }
+
+    private string CameraText()
+    {
+        var pose = Marina.Camera.Pose;
+        return string.Format(CultureInfo.CurrentCulture, Strings.StatusCamera, pose.Distance, pose.PitchDegrees);
+    }
+
+    // ---- Dialog boxes ---------------------------------------------------------------------------
+
+    private void ShowShortcuts() => Alert($"{Strings.ShortcutsTitle}\n\n{Strings.ShortcutsBody}");
+
+    private void ShowAbout() => Alert(Strings.Format(
+        Strings.AboutBody, Strings.AppName, Version(typeof(App)), Version(typeof(MarinaVisualizer)),
+        _rendererDescription ?? "WebGL", System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription, DateTime.Now.Year, Author));
+
+    private void Warn(string title, Exception ex)
+    {
+        Log(Strings.Format(Strings.LogFailed, title, ex.Message));
+        Alert(Strings.Format(Strings.WarnBody, title, ex.Message));
+    }
+
+    private string? Prompt(string question, string value) => InProcess.Invoke<string?>("prompt", question, value);
+
+    private void Alert(string message) => InProcess.InvokeVoid("alert", message);
+
+    private static string Version(Type type) =>
+        type.Assembly.GetName().Version is { } version ? $"{version.Major}.{version.Minor}.{version.Build}" : "1.0.0";
+
+    private static string Sanitize(string name)
+    {
+        var cleaned = new string(name.Select(c => char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '-').ToArray()).Trim('-');
+        return cleaned.Length == 0 ? Strings.DefaultFileName : cleaned;
+    }
+}
