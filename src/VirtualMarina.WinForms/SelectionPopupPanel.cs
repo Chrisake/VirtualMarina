@@ -111,7 +111,6 @@ internal sealed class SelectionPopupPanel : Control
         g.SmoothingMode = SmoothingMode.AntiAlias;
         g.Clear(CardColor);
 
-        var radius = S(8);
         var accent = popup.Tooltip.AccentColor is { } c
             ? Color.FromArgb(255, ToByte(c.R), ToByte(c.G), ToByte(c.B))
             : DefaultAccent;
@@ -384,7 +383,7 @@ internal sealed class SelectionPopupPanel : Control
     }
 
     private static string TitleText(BerthPopup popup) =>
-        popup.Tooltip.IsVisible && !string.IsNullOrWhiteSpace(popup.Tooltip.Title) ? popup.Tooltip.Title! : popup.PrimaryBerth.DisplayName;
+        popup.Tooltip.IsVisible && !string.IsNullOrWhiteSpace(popup.Tooltip.Title) ? popup.Tooltip.Title : popup.PrimaryBerth.DisplayName;
 
     private void UpdateRegion()
     {

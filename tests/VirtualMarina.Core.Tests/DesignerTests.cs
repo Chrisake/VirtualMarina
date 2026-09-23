@@ -153,7 +153,7 @@ public class DesignerTests
 
         var quad = designer.SelectionQuad;
         Assert.NotNull(quad);
-        Assert.Equal(4, quad!.Count);
+        Assert.Equal(4, quad.Count);
 
         // Its sides run with the camera, so none of them is aligned to north while the view is turned.
         var side = Vector2.Normalize(quad[1] - quad[0]);
@@ -192,7 +192,7 @@ public class DesignerTests
 
         var shoreline = marina.Shoreline;
         Assert.NotNull(shoreline);
-        Assert.False(shoreline!.LandOnLeft);
+        Assert.False(shoreline.LandOnLeft);
         Assert.True(shoreline.Contains(new Vector2(0, -400)));
         Assert.False(shoreline.Contains(new Vector2(0, 400)));
         Assert.Equal(HinterlandScenery.Town, shoreline.Scenery);

@@ -177,7 +177,9 @@ public sealed partial class MarinaVisualizer
     {
         var baseId = $"MB-{(string.IsNullOrWhiteSpace(firstBerthId) ? "X" : firstBerthId)}";
         var id = baseId;
-        for (var n = 2; _multiBerths.ContainsKey(id); n++) id = $"{baseId}-{n}";
+        // A while loop, because the condition tests the id the body rewrites rather than the counter.
+        var n = 2;
+        while (_multiBerths.ContainsKey(id)) id = $"{baseId}-{n++}";
         return id;
     }
 }

@@ -472,7 +472,7 @@ public sealed partial class MarinaVisualizer
     /// thousand while the fit halves its way in.
     /// </summary>
     /// <param name="points">The points to wrap, in plan coordinates.</param>
-    private static IReadOnlyList<Vector3> Outline(IEnumerable<Vector2> points)
+    private static Vector3[] Outline(IEnumerable<Vector2> points)
     {
         var sorted = points.Distinct().OrderBy(p => p.X).ThenBy(p => p.Y).ToArray();
         if (sorted.Length < 3) return sorted.Select(point => MarinaMath.ToWorld(point)).ToArray();
@@ -520,7 +520,7 @@ public sealed partial class MarinaVisualizer
             .Concat(OrderedLandAreas().SelectMany(land => land.Points));
 
         var frame = Outline(shape);
-        if (frame.Count < 3)
+        if (frame.Length < 3)
         {
             frame = new[]
             {

@@ -193,6 +193,7 @@ public sealed class StructureStyle : StyleSection
 public sealed class LabelStyle : StyleSection
 {
     private ColorRgba _color = new(0.97f, 0.98f, 1f);
+    private ColorRgba _ashore = new(0.16f, 0.18f, 0.20f);
     private ColorRgba _highlight = new(1f, 0.90f, 0.35f);
     private ColorRgba _disabled = new(0.62f, 0.64f, 0.66f);
     private Geometry.LabelFont _font = Geometry.LabelFont.Regular;
@@ -226,10 +227,17 @@ public sealed class LabelStyle : StyleSection
     /// </remarks>
     public Geometry.LabelFontDefinition? Font { get => _fontDefinition; set => SetField(ref _fontDefinition, value); }
 
-    /// <summary>Normal label color.</summary>
+    /// <summary>Normal label color, for berths on the water.</summary>
     public ColorRgba Color { get => _color; set => SetField(ref _color, value); }
 
-    /// <summary>Label of a hovered or selected berth.</summary>
+    /// <summary>
+    /// Label of a berth ashore (<see cref="Domain.Berth.IsOnLand"/>). Dark by default, because a name ashore is
+    /// read against quay concrete or grass rather than against water, and <see cref="Color"/> is near-white so it
+    /// carries on the dark sea. Set it to <see cref="Color"/> to letter both the same way again.
+    /// </summary>
+    public ColorRgba AshoreColor { get => _ashore; set => SetField(ref _ashore, value); }
+
+    /// <summary>Label of a hovered or selected berth, on the water or ashore.</summary>
     public ColorRgba HighlightColor { get => _highlight; set => SetField(ref _highlight, value); }
 
     /// <summary>Label of a disabled berth.</summary>

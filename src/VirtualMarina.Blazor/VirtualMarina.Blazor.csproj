@@ -21,4 +21,9 @@
     <ProjectReference Include="..\VirtualMarina.Core\VirtualMarina.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- One copy of the resource lookup, compiled into each assembly that shows text. See shared/ResourceText.cs. -->
+    <Compile Include="..\..\shared\ResourceText.cs" Link="Resources\ResourceText.cs" />
+  </ItemGroup>
+
 </Project>

@@ -15,35 +15,13 @@ namespace VirtualMarina.Designer;
 /// Every setting has a small reset button of its own, next to the full reset at the bottom, so one colour can be put
 /// back without losing the rest. The preview boats exist only to judge the settings against; they are never saved.
 /// </remarks>
-internal sealed class AppearancePanel : UserControl
+internal sealed class AppearancePanel : SidePanel
 {
     /// <summary>A fresh style, read whenever a single setting is put back to its default.</summary>
     private static readonly MarinaStyle Defaults = new();
 
     private readonly MarinaVisualizer _marina;
     private readonly Action<string> _log;
-    /// <summary>
-    /// The cards, stacked. It sizes to its content and sits inside <see cref="_scroller"/>: a TableLayoutPanel
-    /// scrolls its own content unreliably, so the scrolling is left to a plain panel around it.
-    /// </summary>
-    private readonly TableLayoutPanel _stack = new()
-    {
-        ColumnCount = 1,
-        AutoSize = true,
-        AutoSizeMode = AutoSizeMode.GrowAndShrink,
-        Dock = DockStyle.Top,
-        BackColor = Theme.Background,
-        Padding = new Padding(12, 12, 12, 12),
-        GrowStyle = TableLayoutPanelGrowStyle.AddRows,
-    };
-
-    /// <summary>Scrolls the cards when there are more of them than fit, which a tall tool easily manages.</summary>
-    private readonly Panel _scroller = new()
-    {
-        AutoScroll = true,
-        Dock = DockStyle.Fill,
-        BackColor = Theme.Background,
-    };
 
     private readonly TrackBar _fill = new() { Minimum = 0, Maximum = 100, Value = 60 };
     private readonly Label _fillValue = new();
@@ -56,60 +34,7 @@ internal sealed class AppearancePanel : UserControl
     /// <summary>True while values are being read back, so the controls do not write what they are being given.</summary>
     private bool _updating;
 
-    private TableLayoutPanel _header = null!;
 
-    /// <summary>
-    /// Shows or hides the panel by its height rather than by <see cref="Control.Visible"/>.
-    /// </summary>
-    /// <remarks>
-    /// WinForms does not lay out a hidden control, so hiding one throws its layout away and showing it again works
-    /// the whole tree out afresh — most of a second on a panel with a few hundred nested auto-sized controls.
-    /// Collapsing to nothing leaves it laid out, and the swap becomes a resize.
-    /// </remarks>
-    public bool Collapsed
-    {
-        get => _collapsed;
-        set
-        {
-            _collapsed = value;
-            if (value) Height = 0;
-            else ContentChanged();
-        }
-    }
-
-    /// <summary>How tall the panel wants to be: its heading plus its cards. Measured once per width.</summary>
-    private int ContentHeight
-    {
-        get
-        {
-            if (_contentHeight <= 0)
-            {
-                _contentHeight = _header.PreferredSize.Height + _stack.PreferredSize.Height;
-                _measuredWidth = Width;
-            }
-
-            return _contentHeight;
-        }
-    }
-
-    /// <summary>Measures again, after something changed how much there is to show or how wide it is shown in.</summary>
-    private void ContentChanged()
-    {
-        _contentHeight = 0;
-        if (!_collapsed) Height = ContentHeight;
-    }
-
-    /// <summary>A panel shown in a different width wraps differently, so its height has to be worked out again.</summary>
-    protected override void OnSizeChanged(EventArgs e)
-    {
-        base.OnSizeChanged(e);
-        if (_collapsed || Width == _measuredWidth) return;
-        ContentChanged();
-    }
-
-    private bool _collapsed;
-    private int _contentHeight;
-    private int _measuredWidth = -1;
 
 
     /// <summary>Creates the panel over a visualizer.</summary>
@@ -122,7 +47,7 @@ internal sealed class AppearancePanel : UserControl
         BackColor = Theme.Background;
         Dock = DockStyle.Fill;
 
-        _header = new TableLayoutPanel
+        var header = new TableLayoutPanel
         {
             ColumnCount = 1,
             AutoSize = true,
@@ -131,40 +56,22 @@ internal sealed class AppearancePanel : UserControl
             BackColor = Theme.Background,
             Padding = new Padding(12, 12, 12, 0),
         };
-        var header = _header;
+        SetHeader(header);
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
         header.Controls.Add(new Label { Text = Strings.TitleLook, Font = new Font("Segoe UI Semibold", 13f), ForeColor = Theme.Text, AutoSize = true, Dock = DockStyle.Fill }, 0, 0);
         header.Controls.Add(new Label { Text = Strings.LookHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
 
-        _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        Stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
         foreach (var card in new[] { BuildWaterCard(), BuildBoatsCard(), BuildLightCard(), BuildStatusCard(), BuildLandCard(), BuildShadowCard(), BuildTrafficCard(), BuildLabelCard(), BuildPreviewCard(), BuildResetCard() })
         {
             card.Dock = DockStyle.Top;
-            _stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _stack.Controls.Add(card, 0, _stack.RowCount++);
+            Stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            Stack.Controls.Add(card, 0, Stack.RowCount++);
         }
 
-        _scroller.Controls.Add(_stack);
-        Controls.Add(_scroller);
+        Scroller.Controls.Add(Stack);
+        Controls.Add(Scroller);
         Controls.Add(header);
-    }
-
-    /// <summary>
-    /// Hands the scrolling to a panel outside this one, so several of these can share a single scrollbar. This panel
-    /// then sizes to its content instead of to the space it is given, and scrolls away with everything else.
-    /// </summary>
-    public void UseOuterScrolling()
-    {
-        // The header is added after the scroller, so it still docks above it once both are Top.
-        _scroller.AutoScroll = false;
-        _scroller.Dock = DockStyle.Top;
-        _scroller.AutoSize = true;
-        _scroller.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        Dock = DockStyle.Top;
-
-        // The height is ours to set, so that collapsing to nothing can stand in for hiding.
-        AutoSize = false;
-        Height = ContentHeight;
     }
 
     private WaterSettings Water => _marina.Style.Water;
@@ -246,7 +153,7 @@ internal sealed class AppearancePanel : UserControl
         Color(table, Strings.ColorOwnerAway, () => Status.TemporarilyFreeColor, c => Status.TemporarilyFreeColor = c, Defaults.Status.TemporarilyFreeColor);
         Percent(table, Strings.PadStrength, 0, 100, () => Status.PadOpacity * 100f, v => Status.PadOpacity = v / 100f, Defaults.Status.PadOpacity * 100f, Percentage);
 
-        var markers = Check(table, Strings.ShowStatusBuoys, () => Status.ShowStatusMarkers, v => Status.ShowStatusMarkers = v);
+        Check(table, Strings.ShowStatusBuoys, () => Status.ShowStatusMarkers, v => Status.ShowStatusMarkers = v);
         return card;
     }
 
@@ -386,6 +293,7 @@ internal sealed class AppearancePanel : UserControl
         Theme.Tips.SetToolTip(bold, Strings.LabelBoldTip);
 
         Color(table, Strings.LabelColorNormal, () => Labels.Color, c => Labels.Color = c, Defaults.Labels.Color);
+        Color(table, Strings.LabelColorAshore, () => Labels.AshoreColor, c => Labels.AshoreColor = c, Defaults.Labels.AshoreColor, Strings.LabelColorAshoreTip);
         Color(table, Strings.LabelColorHighlight, () => Labels.HighlightColor, c => Labels.HighlightColor = c, Defaults.Labels.HighlightColor);
         Color(table, Strings.LabelColorDisabled, () => Labels.DisabledColor, c => Labels.DisabledColor = c, Defaults.Labels.DisabledColor);
         return card;
@@ -491,7 +399,7 @@ internal sealed class AppearancePanel : UserControl
     }
 
     /// <summary>A tick box that reads itself back from the marina when the panel is synced.</summary>
-    private CheckBox Check(TableLayoutPanel table, string label, Func<bool> read, Action<bool> write, string? tooltip = null)
+    private void Check(TableLayoutPanel table, string label, Func<bool> read, Action<bool> write, string? tooltip = null)
     {
         var box = Theme.Check(label);
         box.Checked = read();
@@ -499,11 +407,10 @@ internal sealed class AppearancePanel : UserControl
         _refresh.Add(() => box.Checked = read());
         Theme.FullRow(table, box);
         if (tooltip is not null) Theme.Tips.SetToolTip(box, tooltip);
-        return box;
     }
 
     /// <summary>A colour swatch row that can be put back to its default on its own.</summary>
-    private void Color(TableLayoutPanel table, string label, Func<ColorRgba> read, Action<ColorRgba> write, ColorRgba fallback)
+    private void Color(TableLayoutPanel table, string label, Func<ColorRgba> read, Action<ColorRgba> write, ColorRgba fallback, string? tooltip = null)
     {
         var swatch = new Panel
         {
@@ -527,7 +434,7 @@ internal sealed class AppearancePanel : UserControl
         {
             swatch.BackColor = ToColor(fallback);
             Changed(() => write(fallback));
-        });
+        }, tooltip);
     }
 
     /// <summary>Applies a change and redraws, so the effect shows the moment the slider moves.</summary>

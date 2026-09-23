@@ -152,15 +152,15 @@ public sealed class LabelFontDefinition
 
     /// <summary>Groups outlines into shapes and the counters inside them, by how many outlines each one sits in.</summary>
     private static IEnumerable<(IReadOnlyList<Vector2> Outer, IReadOnlyList<IReadOnlyList<Vector2>> Holes)> Nest(
-        IReadOnlyList<IReadOnlyList<Vector2>> rings)
+        IReadOnlyList<Vector2>[] rings)
     {
-        var depth = new int[rings.Count];
-        var parent = new int[rings.Count];
-        for (var i = 0; i < rings.Count; i++)
+        var depth = new int[rings.Length];
+        var parent = new int[rings.Length];
+        for (var i = 0; i < rings.Length; i++)
         {
             parent[i] = -1;
             var smallest = float.MaxValue;
-            for (var j = 0; j < rings.Count; j++)
+            for (var j = 0; j < rings.Length; j++)
             {
                 if (i == j || !PolygonMath.Contains(rings[j], rings[i][0])) continue;
 
@@ -173,12 +173,12 @@ public sealed class LabelFontDefinition
             }
         }
 
-        for (var i = 0; i < rings.Count; i++)
+        for (var i = 0; i < rings.Length; i++)
         {
             if (depth[i] % 2 != 0) continue;   // odd means it sits inside something: a counter, not a shape
 
             var holes = new List<IReadOnlyList<Vector2>>();
-            for (var j = 0; j < rings.Count; j++)
+            for (var j = 0; j < rings.Length; j++)
             {
                 if (depth[j] % 2 == 1 && parent[j] == i) holes.Add(rings[j]);
             }
@@ -252,7 +252,7 @@ public sealed class LabelFontDefinition
 
         var character = line[0];
         var rest = line[2..];
-        var space = rest.IndexOf(' ');
+        var space = rest.IndexOf(' ', StringComparison.Ordinal);
         var advanceText = space < 0 ? rest : rest[..space];
         if (!float.TryParse(advanceText, NumberStyles.Float, CultureInfo.InvariantCulture, out var advance)) return null;
 
@@ -264,7 +264,7 @@ public sealed class LabelFontDefinition
                 var points = new List<Vector2>();
                 foreach (var pair in part.Split(' ', StringSplitOptions.RemoveEmptyEntries))
                 {
-                    var comma = pair.IndexOf(',');
+                    var comma = pair.IndexOf(',', StringComparison.Ordinal);
                     if (comma <= 0) continue;
                     if (!float.TryParse(pair[..comma], NumberStyles.Float, CultureInfo.InvariantCulture, out var x)) continue;
                     if (!float.TryParse(pair[(comma + 1)..], NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) continue;

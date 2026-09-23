@@ -251,7 +251,7 @@ public class ModifierAndPatternTests
         ClickWhereThePointerIs(marina);
 
         Assert.NotNull(seen);
-        Assert.NotNull(seen!.Berth);
+        Assert.NotNull(seen.Berth);
         Assert.Null(seen.BerthPattern);
     }
 
@@ -276,7 +276,7 @@ public class ModifierAndPatternTests
 
         // It asked about the pier's berths, not about the one berth that was clicked.
         Assert.NotNull(asked);
-        Assert.Equal(DesignRenameScope.BerthsOfPier, asked!.Scope);
+        Assert.Equal(DesignRenameScope.BerthsOfPier, asked.Scope);
         Assert.NotNull(asked.Pier);
         Assert.Equal("{pier}-{side}{number}", asked.BerthPattern);
 
@@ -505,7 +505,7 @@ public class ModifierAndPatternTests
     {
         var at = marina.Designer.PointerPosition;
         Assert.NotNull(at);
-        Assert.True(marina.TryProjectToScreen(MarinaMath.ToWorld(at!.Value), out var screen));
+        Assert.True(marina.TryProjectToScreen(MarinaMath.ToWorld(at.Value), out var screen));
         marina.Input.PointerDown(screen.X, screen.Y, PointerButton.Left, modifiers);
         marina.Input.PointerUp(screen.X, screen.Y, PointerButton.Left, modifiers);
     }

@@ -45,7 +45,7 @@ internal static class Theme
             Dock = DockStyle.Top,
             Margin = Padding.Empty,
         };
-        content.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 104f));
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 92f));
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
         var header = new Label
@@ -269,10 +269,13 @@ internal static class Theme
     {
         var host = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top, Margin = Padding.Empty };
         host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        host.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 84f));
+        host.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60f));
         bar.Dock = DockStyle.Fill;
         bar.AutoSize = false;
         bar.Height = 26;
+        // A percent column will shrink to nothing if the row runs out of width, and a track with no width left
+        // cannot be dragged. This is the point below which the row scrolls sideways instead of swallowing it.
+        bar.MinimumSize = new Size(120, 26);
         bar.TickStyle = TickStyle.None;
         value.AutoSize = false;
         value.Dock = DockStyle.Fill;

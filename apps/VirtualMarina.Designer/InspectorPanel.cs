@@ -10,7 +10,7 @@ namespace VirtualMarina.Designer;
 /// The panel beside the view: the name of the tool in use, what to do with it, and only the settings that tool needs. Everything
 /// else stays out of the way, so the window never has to be scrolled to reach a control.
 /// </summary>
-internal sealed class InspectorPanel : Panel
+internal sealed class InspectorPanel : SidePanel
 {
     private readonly MarinaVisualizer _marina;
     private readonly Action _loadImage;
@@ -21,28 +21,6 @@ internal sealed class InspectorPanel : Panel
     /// column is given its width by the layout engine, so dragging the splitter resizes the cards and the text
     /// inside them without anything being measured here.
     /// </summary>
-    /// <summary>
-    /// The cards, stacked. It sizes to its content and sits inside <see cref="_scroller"/>: a TableLayoutPanel
-    /// scrolls its own content unreliably, so the scrolling is left to a plain panel around it.
-    /// </summary>
-    private readonly TableLayoutPanel _stack = new()
-    {
-        ColumnCount = 1,
-        AutoSize = true,
-        AutoSizeMode = AutoSizeMode.GrowAndShrink,
-        Dock = DockStyle.Top,
-        BackColor = Theme.Background,
-        Padding = new Padding(12, 12, 12, 12),
-        GrowStyle = TableLayoutPanelGrowStyle.AddRows,
-    };
-
-    /// <summary>Scrolls the cards when there are more of them than fit, which a tall tool easily manages.</summary>
-    private readonly Panel _scroller = new()
-    {
-        AutoScroll = true,
-        Dock = DockStyle.Fill,
-        BackColor = Theme.Background,
-    };
 
     // Land area
     private readonly Panel _landCard;
@@ -126,60 +104,7 @@ internal sealed class InspectorPanel : Panel
     private readonly Label _summary = Theme.Hint(string.Empty);
 
     private bool _updating;
-    private TableLayoutPanel _header = null!;
 
-    /// <summary>
-    /// Shows or hides the panel by its height rather than by <see cref="Control.Visible"/>.
-    /// </summary>
-    /// <remarks>
-    /// WinForms does not lay out a hidden control, so hiding one throws its layout away and showing it again works
-    /// the whole tree out afresh — most of a second on a panel with a few hundred nested auto-sized controls.
-    /// Collapsing to nothing leaves it laid out, and the swap becomes a resize.
-    /// </remarks>
-    public bool Collapsed
-    {
-        get => _collapsed;
-        set
-        {
-            _collapsed = value;
-            if (value) Height = 0;
-            else ContentChanged();
-        }
-    }
-
-    /// <summary>How tall the panel wants to be: its heading plus its cards. Measured once per width.</summary>
-    private int ContentHeight
-    {
-        get
-        {
-            if (_contentHeight <= 0)
-            {
-                _contentHeight = _header.PreferredSize.Height + _stack.PreferredSize.Height;
-                _measuredWidth = Width;
-            }
-
-            return _contentHeight;
-        }
-    }
-
-    /// <summary>Measures again, after something changed how much there is to show or how wide it is shown in.</summary>
-    private void ContentChanged()
-    {
-        _contentHeight = 0;
-        if (!_collapsed) Height = ContentHeight;
-    }
-
-    /// <summary>A panel shown in a different width wraps differently, so its height has to be worked out again.</summary>
-    protected override void OnSizeChanged(EventArgs e)
-    {
-        base.OnSizeChanged(e);
-        if (_collapsed || Width == _measuredWidth) return;
-        ContentChanged();
-    }
-
-    private bool _collapsed;
-    private int _contentHeight;
-    private int _measuredWidth = -1;
 
 
     public InspectorPanel(MarinaVisualizer marina, Action loadImage)
@@ -219,19 +144,19 @@ internal sealed class InspectorPanel : Panel
         _imageCard = BuildImageCard(out _imageMove, out _imageMeasure, out _applyScale);
         _summaryCard = BuildSummaryCard();
 
-        _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        Stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
         foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _coastCard, _treeCard, _eraseCard, _renameCard, _servicesCard, _selectCard, _imageCard, _summaryCard })
         {
             // Top, not Fill: the column still decides the width, but the height stays the card's own.
             card.Dock = DockStyle.Top;
-            _stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _stack.Controls.Add(card, 0, _stack.RowCount++);
+            Stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            Stack.Controls.Add(card, 0, Stack.RowCount++);
         }
 
         // A last row that soaks up the space left over, so the cards stay at the top instead of spreading out.
-        _scroller.Controls.Add(_stack);
-        Controls.Add(_scroller);
-        _header = header;
+        Scroller.Controls.Add(Stack);
+        Controls.Add(Scroller);
+        SetHeader(header);
         Controls.Add(header);
 
         Wire();
@@ -239,24 +164,6 @@ internal sealed class InspectorPanel : Panel
     }
 
     private MarinaDesigner Designer => _marina.Designer;
-
-    /// <summary>
-    /// Hands the scrolling to a panel outside this one, so several of these can share a single scrollbar. This panel
-    /// then sizes to its content instead of to the space it is given, and scrolls away with everything else.
-    /// </summary>
-    public void UseOuterScrolling()
-    {
-        // The header is added after the scroller, so it still docks above it once both are Top.
-        _scroller.AutoScroll = false;
-        _scroller.Dock = DockStyle.Top;
-        _scroller.AutoSize = true;
-        _scroller.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        Dock = DockStyle.Top;
-
-        // The height is ours to set, so that collapsing to nothing can stand in for hiding.
-        AutoSize = false;
-        Height = ContentHeight;
-    }
 
     /// <summary>Brings the panel in line with the designer: the tool's name and hint, its settings, and which cards are shown.</summary>
     public void Sync(bool force = false)
@@ -503,7 +410,7 @@ internal sealed class InspectorPanel : Panel
         return card;
     }
 
-    private Panel BuildEraseCard()
+    private static Panel BuildEraseCard()
     {
         var card = Theme.Card(Strings.CardErase, out var table);
         Theme.FullRow(table, Theme.Hint(Strings.EraseHint));
@@ -529,7 +436,7 @@ internal sealed class InspectorPanel : Panel
         return card;
     }
 
-    private Panel BuildRenameCard()
+    private static Panel BuildRenameCard()
     {
         var card = Theme.Card(Strings.CardRename, out var table);
         Theme.FullRow(table, Theme.Hint(Strings.RenameHint));
@@ -654,7 +561,8 @@ internal sealed class InspectorPanel : Panel
     /// <summary>The first three names the slots ashore would get, mirroring the preview on the berth card.</summary>
     private string AshoreNameExample(BerthNamingScheme naming)
     {
-        var land = _marina.GetLandAreas().FirstOrDefault()
+        var areas = _marina.GetLandAreas();
+        var land = (areas.Count > 0 ? areas[0] : null)
             ?? new LandArea("yard", new[] { new System.Numerics.Vector2(0, 0), new System.Numerics.Vector2(10, 0), new System.Numerics.Vector2(10, 10) }, 1f);
         var start = naming.LandStartNumber ?? naming.StartNumber;
         var step = naming.LandIncrement ?? naming.Increment;
@@ -665,7 +573,8 @@ internal sealed class InspectorPanel : Panel
     /// <summary>The first three names the scheme would give, so the effect of a pattern is visible while typing it.</summary>
     private string NamingExample(BerthNamingScheme naming)
     {
-        var pier = _marina.GetPiers().FirstOrDefault() ?? new Pier("A", "Pier A", System.Numerics.Vector2.Zero, 0f, 20f);
+        var piers = _marina.GetPiers();
+        var pier = (piers.Count > 0 ? piers[0] : null) ?? new Pier("A", "Pier A", System.Numerics.Vector2.Zero, 0f, 20f);
         var numbers = Enumerable.Range(0, 3).Select(i => naming.StartNumber + i * naming.Increment);
         return Strings.Format(Strings.BerthNamingExample, string.Join(", ", numbers.Select(n => naming.Format(pier, PierSide.Left, n))));
     }
@@ -710,7 +619,7 @@ internal sealed class InspectorPanel : Panel
             _ => value?.ToString() ?? string.Empty,
         };
 
-        public static object? Of<T>(ComboBox combo, T value) => combo.Items.Cast<Choice<T>>().FirstOrDefault(c => Equals(c.Value, value));
+        public static Choice<T>? Of<T>(ComboBox combo, T value) => combo.Items.Cast<Choice<T>>().FirstOrDefault(c => Equals(c.Value, value));
 
         public static T Value<T>(ComboBox combo) => ((Choice<T>)combo.SelectedItem!).Value;
     }

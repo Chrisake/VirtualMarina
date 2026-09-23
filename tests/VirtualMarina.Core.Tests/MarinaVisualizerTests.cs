@@ -127,7 +127,7 @@ public class MarinaVisualizerTests
         var hit = marina.HitTest(400, 300);
 
         Assert.NotNull(hit);
-        Assert.True(hit!.Value.HitBoat);
+        Assert.True(hit.Value.HitBoat);
         Assert.Equal("A-L01", hit.Value.BerthId);
     }
 

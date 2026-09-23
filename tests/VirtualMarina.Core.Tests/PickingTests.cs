@@ -26,7 +26,7 @@ public class PickingTests
         return marina;
     }
 
-    private static IReadOnlyList<BoatInstance> Boats(MarinaVisualizer marina) =>
+    private static List<BoatInstance> Boats(MarinaVisualizer marina) =>
         BerthPlacement.EnumerateBoats(marina.GetBerths(), marina.GetBerth, marina.GetMultiBerth, BerthStatusFilter.All).ToList();
 
     private static bool HitsBox(BoatInstance boat, MeshLibrary meshes, Ray ray, out MeshData mesh, out Vector3 origin, out Vector3 direction)

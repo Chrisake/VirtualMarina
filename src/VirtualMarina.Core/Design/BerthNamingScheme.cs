@@ -168,11 +168,15 @@ public sealed record BerthNamingScheme
     {
         var numberFormat = new string('0', Math.Clamp(digits, 1, 9));
         var text = new StringBuilder(pattern.Length + 8);
-        for (var i = 0; i < pattern.Length; i++)
+        // A while loop rather than a for: a token is consumed whole, so the index jumps to the end
+        // of it rather than advancing one character, which a for loop's own step would fight.
+        var i = 0;
+        while (i < pattern.Length)
         {
             if (pattern[i] != '{')
             {
                 text.Append(pattern[i]);
+                i++;
                 continue;
             }
 
@@ -191,7 +195,7 @@ public sealed record BerthNamingScheme
             else if (token.Equals("number", StringComparison.OrdinalIgnoreCase)) text.Append(number.ToString(numberFormat, CultureInfo.InvariantCulture));
             else text.Append(pattern.AsSpan(i, close - i + 1));
 
-            i = close;
+            i = close + 1;
         }
 
         var name = text.ToString().Trim();

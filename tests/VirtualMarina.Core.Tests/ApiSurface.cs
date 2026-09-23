@@ -162,8 +162,6 @@ internal static class ApiSurface
         return prefix + name;
     }
 
-    private static string Name(MemberInfo member) => member is Type type ? Name(type) : member.Name;
-
     private static readonly Dictionary<Type, string> Aliases = new()
     {
         [typeof(void)] = "void", [typeof(bool)] = "bool", [typeof(byte)] = "byte", [typeof(sbyte)] = "sbyte",

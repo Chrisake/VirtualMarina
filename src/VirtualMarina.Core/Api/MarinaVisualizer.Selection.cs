@@ -387,12 +387,11 @@ public sealed partial class MarinaVisualizer
     }
 
     /// <summary>Marks the open popup's content stale. Applied immediately, or when the current update scope/event ends.</summary>
-    private void RequestPopupRefresh()
-    {
-        if (_popup is null) return;
-        _popupRefreshPending = true;
-        FlushPopupRefresh();
-    }
+    /// <remarks>
+    /// The internal name for <see cref="RefreshPopup"/>. Kept because it reads correctly at the call
+    /// sites inside the visualizer, which are asking for a refresh rather than performing one.
+    /// </remarks>
+    private void RequestPopupRefresh() => RefreshPopup();
 
     private void FlushPopupRefresh()
     {

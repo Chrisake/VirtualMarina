@@ -25,7 +25,7 @@ public class ShadowTests
         return marina;
     }
 
-    private static IReadOnlyList<RenderObject> Shadows(MarinaVisualizer marina) =>
+    private static List<RenderObject> Shadows(MarinaVisualizer marina) =>
         marina.BuildRenderFrame().Objects.Where(o => o.Tint.X == 0f && o.Tint.Y == 0f && o.Tint.Z == 0f && o.Tint.W is > 0f and < 1f).ToList();
 
     [Fact]

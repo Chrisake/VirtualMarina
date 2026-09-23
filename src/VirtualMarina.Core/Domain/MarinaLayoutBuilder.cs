@@ -205,6 +205,7 @@ public sealed class PierBuilder
     /// <summary>Adds a berth defined by absolute position (its <see cref="Berth.PierId"/> is set to this pier).</summary>
     public PierBuilder AddBerth(Berth berth)
     {
+        ArgumentNullException.ThrowIfNull(berth);
         _berths.Add(berth.PierId == Pier.Id ? berth : berth with { PierId = Pier.Id });
         return this;
     }
@@ -212,6 +213,7 @@ public sealed class PierBuilder
     /// <summary>Adds a divider defined by absolute position (its <see cref="Divider.PierId"/> is set to this pier).</summary>
     public PierBuilder AddDivider(Divider divider)
     {
+        ArgumentNullException.ThrowIfNull(divider);
         _dividers.Add(divider.PierId == Pier.Id ? divider : divider with { PierId = Pier.Id });
         return this;
     }

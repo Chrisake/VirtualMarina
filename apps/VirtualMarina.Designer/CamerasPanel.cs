@@ -12,33 +12,14 @@ namespace VirtualMarina.Designer;
 /// The automatic views are rebuilt whenever the layout changes, so this panel rebuilds its rows from
 /// <see cref="IMarinaVisualizer.CameraPresets"/> rather than holding on to them.
 /// </remarks>
-internal sealed class CamerasPanel : UserControl
+internal sealed class CamerasPanel : SidePanel
 {
     private readonly MarinaVisualizer _marina;
     private readonly Action<string> _log;
 
-    private readonly TableLayoutPanel _stack = new()
-    {
-        ColumnCount = 1,
-        AutoSize = true,
-        AutoSizeMode = AutoSizeMode.GrowAndShrink,
-        Dock = DockStyle.Top,
-        BackColor = Theme.Background,
-        Padding = new Padding(12, 12, 12, 12),
-        GrowStyle = TableLayoutPanelGrowStyle.AddRows,
-    };
-
-    private readonly Panel _scroller = new()
-    {
-        AutoScroll = true,
-        Dock = DockStyle.Fill,
-        BackColor = Theme.Background,
-    };
-
     private readonly TextBox _name = Theme.Field();
     private readonly TableLayoutPanel _automatic;
     private readonly TableLayoutPanel _saved;
-    private readonly Label _noneSaved = Theme.Hint(Strings.CameraNoneSaved);
 
     private bool _updating;
 
@@ -55,60 +36,7 @@ internal sealed class CamerasPanel : UserControl
     /// <summary>True when a sync actually added or removed a row, so only then is a layout worth doing.</summary>
     private bool _rowsChanged;
 
-    private TableLayoutPanel _header = null!;
 
-    /// <summary>
-    /// Shows or hides the panel by its height rather than by <see cref="Control.Visible"/>.
-    /// </summary>
-    /// <remarks>
-    /// WinForms does not lay out a hidden control, so hiding one throws its layout away and showing it again works
-    /// the whole tree out afresh — most of a second on a panel with a few hundred nested auto-sized controls.
-    /// Collapsing to nothing leaves it laid out, and the swap becomes a resize.
-    /// </remarks>
-    public bool Collapsed
-    {
-        get => _collapsed;
-        set
-        {
-            _collapsed = value;
-            if (value) Height = 0;
-            else ContentChanged();
-        }
-    }
-
-    /// <summary>How tall the panel wants to be: its heading plus its cards. Measured once per width.</summary>
-    private int ContentHeight
-    {
-        get
-        {
-            if (_contentHeight <= 0)
-            {
-                _contentHeight = _header.PreferredSize.Height + _stack.PreferredSize.Height;
-                _measuredWidth = Width;
-            }
-
-            return _contentHeight;
-        }
-    }
-
-    /// <summary>Measures again, after something changed how much there is to show or how wide it is shown in.</summary>
-    private void ContentChanged()
-    {
-        _contentHeight = 0;
-        if (!_collapsed) Height = ContentHeight;
-    }
-
-    /// <summary>A panel shown in a different width wraps differently, so its height has to be worked out again.</summary>
-    protected override void OnSizeChanged(EventArgs e)
-    {
-        base.OnSizeChanged(e);
-        if (_collapsed || Width == _measuredWidth) return;
-        ContentChanged();
-    }
-
-    private bool _collapsed;
-    private int _contentHeight;
-    private int _measuredWidth = -1;
 
 
     /// <summary>Creates the panel over a visualizer.</summary>
@@ -121,7 +49,7 @@ internal sealed class CamerasPanel : UserControl
         BackColor = Theme.Background;
         Dock = DockStyle.Fill;
 
-        _header = new TableLayoutPanel
+        var header = new TableLayoutPanel
         {
             ColumnCount = 1,
             AutoSize = true,
@@ -130,7 +58,7 @@ internal sealed class CamerasPanel : UserControl
             BackColor = Theme.Background,
             Padding = new Padding(12, 12, 12, 0),
         };
-        var header = _header;
+        SetHeader(header);
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
         header.Controls.Add(new Label { Text = Strings.TitleCameras, Font = new Font("Segoe UI Semibold", 13f), ForeColor = Theme.Text, AutoSize = true, Dock = DockStyle.Fill }, 0, 0);
         header.Controls.Add(new Label { Text = Strings.CamerasHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
@@ -143,36 +71,18 @@ internal sealed class CamerasPanel : UserControl
         var automaticCard = Theme.Card(Strings.CardCameraAutomatic, out _automatic);
         var savedCard = Theme.Card(Strings.CardCameraSaved, out _saved);
 
-        _stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        Stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
         foreach (var card in new[] { saveCard, automaticCard, savedCard })
         {
             card.Dock = DockStyle.Top;
-            _stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            _stack.Controls.Add(card, 0, _stack.RowCount++);
+            Stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            Stack.Controls.Add(card, 0, Stack.RowCount++);
         }
 
-        _scroller.Controls.Add(_stack);
-        Controls.Add(_scroller);
+        Scroller.Controls.Add(Stack);
+        Controls.Add(Scroller);
         Controls.Add(header);
         Sync();
-    }
-
-    /// <summary>
-    /// Hands the scrolling to a panel outside this one, so several of these can share a single scrollbar. This panel
-    /// then sizes to its content instead of to the space it is given, and scrolls away with everything else.
-    /// </summary>
-    public void UseOuterScrolling()
-    {
-        // The header is added after the scroller, so it still docks above it once both are Top.
-        _scroller.AutoScroll = false;
-        _scroller.Dock = DockStyle.Top;
-        _scroller.AutoSize = true;
-        _scroller.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        Dock = DockStyle.Top;
-
-        // The height is ours to set, so that collapsing to nothing can stand in for hiding.
-        AutoSize = false;
-        Height = ContentHeight;
     }
 
     /// <summary>Rebuilds the two lists from the marina, e.g. after a pier was added or a view saved.</summary>
@@ -184,7 +94,7 @@ internal sealed class CamerasPanel : UserControl
         // Suspend the whole panel, not just the tables: adding a row to a live table lays out every container above
         // it as well, which is most of the cost of putting one view in the list.
         SuspendLayout();
-        _stack.SuspendLayout();
+        Stack.SuspendLayout();
         _rowsChanged = false;
         try
         {
@@ -195,7 +105,7 @@ internal sealed class CamerasPanel : UserControl
         finally
         {
             _updating = false;
-            _stack.ResumeLayout(performLayout: false);
+            Stack.ResumeLayout(performLayout: false);
 
             // Nothing moved on most refreshes, and laying out anyway is the whole cost of them.
             ResumeLayout(performLayout: _rowsChanged);
@@ -211,7 +121,7 @@ internal sealed class CamerasPanel : UserControl
     /// of this panel, and it used to happen on every refresh; now saving a view costs one new row rather than all of
     /// them.
     /// </remarks>
-    private void Fill(TableLayoutPanel table, IReadOnlyList<CameraPreset> presets, bool automatic)
+    private void Fill(TableLayoutPanel table, List<CameraPreset> presets, bool automatic)
     {
         // What the rows would have to say. Unchanged means there is nothing to do but tick the boxes.
         var names = presets.Select(preset => preset.Name).ToList();

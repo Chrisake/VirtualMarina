@@ -151,7 +151,7 @@ public sealed record Berth
     public MarinaDataBag ExternalData { get; init; } = new();
 
     /// <summary><see cref="Label"/> when set, otherwise <see cref="Id"/>. Used for tooltips and water labels.</summary>
-    public string DisplayName => string.IsNullOrWhiteSpace(Label) ? Id : Label!;
+    public string DisplayName => string.IsNullOrWhiteSpace(Label) ? Id : Label;
 
     /// <summary>Visible and not disabled: can be hovered, selected and show a tooltip.</summary>
     public bool IsInteractive => IsVisible && !IsDisabled;
@@ -187,8 +187,8 @@ public sealed record Berth
             yield return $"Berth '{Id}' must reference a pier or a land area.";
         }
 
-        if (!(Length > 0f)) yield return $"Berth '{Id}' must have a positive length.";
-        if (!(Width > 0f)) yield return $"Berth '{Id}' must have a positive width.";
+        if (!(Length > 0f && float.IsFinite(Length))) yield return $"Berth '{Id}' must have a positive, finite length.";
+        if (!(Width > 0f && float.IsFinite(Width))) yield return $"Berth '{Id}' must have a positive, finite width.";
         if (!float.IsFinite(Center.X) || !float.IsFinite(Center.Y)) yield return $"Berth '{Id}' has a non-finite position.";
         if (!float.IsFinite(HeadingDegrees)) yield return $"Berth '{Id}' has a non-finite heading.";
         if (!Enum.IsDefined(Status)) yield return $"Berth '{Id}' has an unknown status '{Status}'.";

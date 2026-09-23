@@ -174,7 +174,7 @@ public class ShorelineTests
 
         var copy = reloaded.Shoreline;
         Assert.NotNull(copy);
-        Assert.Equal(marina.Shoreline!.Points, copy!.Points);
+        Assert.Equal(marina.Shoreline.Points, copy.Points);
         Assert.Equal(marina.Shoreline.LandOnLeft, copy.LandOnLeft);
         Assert.Equal(HinterlandScenery.Fields, copy.Scenery);
         Assert.Equal(3, copy.ScenerySeed);

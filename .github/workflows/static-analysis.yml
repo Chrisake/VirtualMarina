@@ -1,0 +1,90 @@
+# Build, test and analyse every push to main and every pull request.
+#
+# Two analysers run over the same build: the .NET and SonarAnalyzer rules compiled in by
+# Directory.Build.props, whose warnings appear in the job log, and SonarQube Cloud, which takes the
+# same findings plus its own server-side rules and the coverage report. See Docs/19-static-analysis.md.
+#
+# Requires one repository secret, SONAR_TOKEN, from sonarcloud.io -> My Account -> Security.
+name: Static analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  analyse:
+    name: Build, test and analyse
+    # The marina renders through WinForms and OpenGL, so parts of the solution target net8.0-windows.
+    # The analysis only covers them if the whole solution builds, which means building on Windows.
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@v4
+        with:
+          # Sonar dates each issue from the commit that introduced it, which needs the real history,
+          # not the single commit a shallow clone would give it.
+          fetch-depth: 0
+
+      - name: Set up the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Set up the JDK the scanner runs on
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache the SonarQube analysis cache
+        uses: actions/cache@v4
+        with:
+          path: ~\.sonar\cache
+          key: ${{ runner.os }}-sonar-cache
+          restore-keys: ${{ runner.os }}-sonar-cache
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~\.nuget\packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore the scanner and the solution
+        run: |
+          dotnet tool restore
+          dotnet restore VirtualMarina.sln
+
+      - name: Begin the SonarQube analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          dotnet tool run dotnet-sonarscanner begin
+          /k:"Chrisake_VirtualMarina"
+          /o:"chrisake"
+          /d:sonar.token="$env:SONAR_TOKEN"
+          /d:sonar.host.url="https://sonarcloud.io"
+          /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
+          /d:sonar.coverage.exclusions="apps/VirtualMarina.Designer/**/*,samples/VirtualMarina.TestHost.*/**/*,src/VirtualMarina.WinForms/**/*,src/VirtualMarina.Rendering.OpenGL/**/*,src/VirtualMarina.Blazor/**/*,**/wwwroot/**/*,**/Resources/Strings.*,**/*.Designer.cs"
+          /d:sonar.scanner.scanAll=false
+
+      - name: Build
+        run: dotnet build VirtualMarina.sln --configuration Release --no-restore
+
+      - name: Test with coverage
+        run: >
+          dotnet test VirtualMarina.sln --configuration Release --no-build
+          --collect:"XPlat Code Coverage;Format=opencover"
+
+      - name: End the SonarQube analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet tool run dotnet-sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"

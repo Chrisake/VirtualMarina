@@ -88,6 +88,7 @@ public readonly record struct BoundingBox(Vector3 Min, Vector3 Max)
     /// <param name="stride">Floats per vertex.</param>
     public static BoundingBox FromVertices(float[] vertices, int stride)
     {
+        ArgumentNullException.ThrowIfNull(vertices);
         if (vertices.Length < 3) return new BoundingBox(Vector3.Zero, Vector3.Zero);
 
         var min = new Vector3(float.MaxValue);

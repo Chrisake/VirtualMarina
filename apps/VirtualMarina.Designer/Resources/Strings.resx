@@ -441,6 +441,12 @@ Runtime      {4}
   <data name="LabelColorNormal">
     <value>Normal</value>
   </data>
+  <data name="LabelColorAshore">
+    <value>Ashore</value>
+  </data>
+  <data name="LabelColorAshoreTip">
+    <value>Colour of the names of berths ashore. They are read against quay concrete or grass rather than against the water, so they are dark by default where the ones afloat are light.</value>
+  </data>
   <data name="LabelColorHighlight">
     <value>Selected</value>
   </data>

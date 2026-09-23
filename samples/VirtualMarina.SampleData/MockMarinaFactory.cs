@@ -184,14 +184,14 @@ public static class MockMarinaFactory
     };
 
     /// <summary>A closed outline of the given width around a polyline (a breakwater's crest line).</summary>
-    private static Vector2[] Band(IReadOnlyList<Vector2> centerline, float width)
+    private static Vector2[] Band(Vector2[] centerline, float width)
     {
         var left = new List<Vector2>();
         var right = new List<Vector2>();
-        for (var i = 0; i < centerline.Count; i++)
+        for (var i = 0; i < centerline.Length; i++)
         {
             var prev = centerline[Math.Max(0, i - 1)];
-            var next = centerline[Math.Min(centerline.Count - 1, i + 1)];
+            var next = centerline[Math.Min(centerline.Length - 1, i + 1)];
             var direction = Vector2.Normalize(next - prev);
             var normal = new Vector2(-direction.Y, direction.X) * (width * 0.5f);
             left.Add(centerline[i] + normal);

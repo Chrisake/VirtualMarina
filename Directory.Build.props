@@ -9,4 +9,42 @@
     <Product>VirtualMarina 3D Marina Visualization</Product>
     <Version>1.0.0</Version>
   </PropertyGroup>
+
+  <!--
+    Static analysis. Two analyzer sets run on every build, in Visual Studio and on the command line
+    alike, so a finding looks the same in the IDE, in `dotnet build` and in the SonarQube report:
+
+      * The .NET analyzers that ship with the SDK (the CAxxxx rules Visual Studio calls "code
+        analysis"). latest-all turns on the whole catalogue rather than the small default set; the
+        rules that do not apply to a 3D visualisation library are switched off by name in
+        .editorconfig, where each one carries its reason.
+      * SonarAnalyzer.CSharp (the Sxxxx rules). The same analyzer SonarQube Cloud runs server-side,
+        referenced here so the issues show up while the code is being written instead of after the
+        push. See Docs/19-static-analysis.md.
+
+    The backlog reached zero, so both are errors now: a finding fails the build rather than
+    scrolling past in the log, and it cannot come back without somebody noticing. A rule that does
+    not fit gets switched off by name in .editorconfig, with its reason, rather than ignored.
+  -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!--
+      Every compiler warning, at the highest level the compiler offers, and all of them errors
+      along with the analyzer findings. WarningLevel 9999 asks for levels this compiler does not
+      have yet, so a future SDK's new warnings arrive switched on rather than silently off.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+    <WarningLevel>9999</WarningLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.34.0.3385">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>

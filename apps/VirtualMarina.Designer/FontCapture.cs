@@ -61,7 +61,9 @@ internal static class FontCapture
         FontFamily family;
         try
         {
-            family = new FontFamily(familyName);
+#pragma warning disable CA2000 // Disposed by the using below. It cannot be created inside that
+            family = new FontFamily(familyName);   // using: the constructor is what throws for a
+#pragma warning restore CA2000 // family that is not installed, and that has to be caught here.
         }
         catch (ArgumentException)
         {

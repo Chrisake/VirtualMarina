@@ -5,5 +5,8 @@ obj/
 *.suo
 TestResults/
 
+# The scanner's working directory: the protobuf dumps and the analysis config it writes per build.
+.sonarqube/
+
 # API baselines: the .approved.txt files are committed, the .received.txt a failing test writes is not.
 *.received.txt

@@ -875,7 +875,7 @@ public sealed class MarinaDesigner
         return _marina.GetBerth(berthId) is { } berth ? SetBerthServices(berth, wholeSide) : Array.Empty<Berth>();
     }
 
-    private IReadOnlyList<Berth> SetBerthServices(Berth berth, bool wholeSide)
+    private Berth[] SetBerthServices(Berth berth, bool wholeSide)
     {
         var targets = ServiceTargets(berth, wholeSide).Where(b => b.Services != _berthServices).ToArray();
         if (targets.Length == 0) return Array.Empty<Berth>();
@@ -897,7 +897,7 @@ public sealed class MarinaDesigner
     }
 
     /// <summary>The berths a pedestal change would touch: the one clicked, or its whole side of the pier.</summary>
-    private IReadOnlyList<Berth> ServiceTargets(Berth berth, bool wholeSide)
+    private Berth[] ServiceTargets(Berth berth, bool wholeSide)
     {
         if (!wholeSide || berth.PierId is not { } pierId || _marina.GetPier(pierId) is not { } pier) return new[] { berth };
 
@@ -1185,6 +1185,13 @@ public sealed class MarinaDesigner
     /// The pattern a pier's berths are named by now, read back out of the first one that carries a running number.
     /// Null when the pier has no berths, or none of them was named from a pattern.
     /// </summary>
+    /// <summary>
+    /// First element or null. The lookups return <see cref="IReadOnlyList{T}"/>, so indexing costs
+    /// nothing where <c>FirstOrDefault</c> would allocate an enumerator on every call (CA1826).
+    /// </summary>
+    private static T? FirstOrNull<T>(IReadOnlyList<T> items) where T : class =>
+        items.Count > 0 ? items[0] : null;
+
     /// <param name="pier">The pier to look at.</param>
     private (string Pattern, int Digits)? InferBerthPattern(Pier pier)
     {
@@ -1326,7 +1333,7 @@ public sealed class MarinaDesigner
         {
             Berth berth => new DesignElementRenamingEventArgs(berth, null, berth.Id),
             Pier pier => new DesignElementRenamingEventArgs(
-                wholeRow ? _marina.GetBerthsByPier(pier.Id).FirstOrDefault() : null,
+                wholeRow ? FirstOrNull(_marina.GetBerthsByPier(pier.Id)) : null,
                 pier,
                 pier.Name,
                 wholeRow ? DefaultBerthPattern(pier.Id) : InferBerthPattern(pier)?.Pattern ?? _berthNaming.Pattern,
@@ -1458,7 +1465,7 @@ public sealed class MarinaDesigner
     /// The dividers along <paramref name="doomedBerths"/> that no other berth uses: the separators of the berths about to go. A divider
     /// shared with a berth that stays is kept, so erasing one of two neighbours leaves the pier between them standing.
     /// </summary>
-    private IReadOnlyList<Divider> OrphanedDividers(IReadOnlyList<Berth> doomedBerths)
+    private List<Divider> OrphanedDividers(IReadOnlyList<Berth> doomedBerths)
     {
         var doomedIds = new HashSet<string>(doomedBerths.Select(berth => berth.Id), StringComparer.OrdinalIgnoreCase);
         var survivors = _marina.GetBerths().Where(berth => !doomedIds.Contains(berth.Id)).ToList();
@@ -2740,7 +2747,7 @@ public sealed class MarinaDesigner
     /// <param name="newOffsets">Near edge of each berth about to be added, in order along the pier.</param>
     /// <param name="occupied">Stretches the berths already on this side cover.</param>
     /// <param name="width">Width of the new berths.</param>
-    private IReadOnlyList<float> SeparatorEdges(IReadOnlyList<float> newOffsets, IReadOnlyList<(float Min, float Max)> occupied, float width)
+    private List<float> SeparatorEdges(IReadOnlyList<float> newOffsets, IReadOnlyList<(float Min, float Max)> occupied, float width)
     {
         var mine = new List<float>();
         foreach (var offset in newOffsets)

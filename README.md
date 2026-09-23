@@ -22,6 +22,8 @@ dotnet run --project samples/VirtualMarina.TestHost.Blazor       # then open htt
 
 Requirements: .NET 8 SDK or newer (`global.json` rolls forward), and a GPU/driver with OpenGL 3.3 (desktop) or WebGL 2 (browser). The WinForms host accepts `--preset "Top Down"` and `--select A-L03`.
 
+Every build runs the .NET and SonarAnalyzer static analysers, and `tools/sonar-scan.ps1` sends the same build to SonarQube Cloud. See [static analysis](Docs/19-static-analysis.md) for which rules are on, which are deliberately off, and why.
+
 ## Solution layout
 
 ```

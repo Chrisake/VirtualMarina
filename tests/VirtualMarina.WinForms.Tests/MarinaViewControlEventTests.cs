@@ -38,7 +38,7 @@ public class MarinaViewControlEventTests
         var controlEvent = typeof(MarinaViewControl).GetEvent(eventName, BindingFlags.Public | BindingFlags.Instance);
 
         Assert.True(controlEvent is not null, $"MarinaViewControl must forward IMarinaVisualizer.{eventName} so it appears in the designer.");
-        Assert.Equal(visualizerEvent.EventHandlerType, controlEvent!.EventHandlerType);
+        Assert.Equal(visualizerEvent.EventHandlerType, controlEvent.EventHandlerType);
 
         // Declared on the control itself (not inherited from Control under the same name) and shown in the designer.
         Assert.Equal(typeof(MarinaViewControl), controlEvent.DeclaringType);

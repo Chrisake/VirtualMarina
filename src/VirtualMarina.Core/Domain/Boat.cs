@@ -57,7 +57,7 @@ public sealed record Boat
     {
         if (string.IsNullOrWhiteSpace(Id)) yield return "Boat id must not be empty.";
         if (!Enum.IsDefined(Type)) yield return $"Boat '{Id}' has an unknown type '{Type}'.";
-        if (!(LengthMeters > 0f)) yield return $"Boat '{Id}' must have a positive length.";
-        if (!(BeamMeters > 0f)) yield return $"Boat '{Id}' must have a positive beam.";
+        if (!(LengthMeters > 0f && float.IsFinite(LengthMeters))) yield return $"Boat '{Id}' must have a positive, finite length.";
+        if (!(BeamMeters > 0f && float.IsFinite(BeamMeters))) yield return $"Boat '{Id}' must have a positive, finite beam.";
     }
 }

@@ -163,11 +163,17 @@ public sealed class MultiBerthSelectedEventArgs : EventArgs
     /// <summary>The most recently clicked berth; the popup is drawn above it.</summary>
     public Berth PrimaryBerth => Berths[^1];
 
+    // Both are derived from Berths, which never changes after construction, so they are built once
+    // on first use rather than allocating a new array on every read. A handler that walks BerthIds
+    // in a loop used to pay for a Select and a ToArray each time round.
+    private IReadOnlyList<string>? _berthIds;
+    private IReadOnlyList<Berth>? _actionableBerths;
+
     /// <summary>Ids of <see cref="Berths"/>, in selection order.</summary>
-    public IReadOnlyList<string> BerthIds => Berths.Select(s => s.Id).ToArray();
+    public IReadOnlyList<string> BerthIds => _berthIds ??= Berths.Select(s => s.Id).ToArray();
 
     /// <summary>Selected berths that are not read-only, i.e. the ones actions may apply to.</summary>
-    public IReadOnlyList<Berth> ActionableBerths => Berths.Where(s => s.AllowsActions).ToArray();
+    public IReadOnlyList<Berth> ActionableBerths => _actionableBerths ??= Berths.Where(s => s.AllowsActions).ToArray();
 
     /// <summary>Pre-filled with a summary of the selection (<see cref="DefaultPopupContent.ForBerths"/>). Edit freely.</summary>
     public BerthTooltip Tooltip { get; }
@@ -227,8 +233,11 @@ public sealed class BerthActionInvokedEventArgs : EventArgs
     /// <summary>Every berth the actions window was opened for (current snapshots).</summary>
     public IReadOnlyList<Berth> Berths { get; }
 
+    // Derived from Berths, which never changes after construction; built once rather than per read.
+    private IReadOnlyList<Berth>? _actionableBerths;
+
     /// <summary>The berths in <see cref="Berths"/> that are not read-only.</summary>
-    public IReadOnlyList<Berth> ActionableBerths => Berths.Where(s => s.AllowsActions).ToArray();
+    public IReadOnlyList<Berth> ActionableBerths => _actionableBerths ??= Berths.Where(s => s.AllowsActions).ToArray();
 
     /// <summary>True when the window was opened for two or more berths.</summary>
     public bool IsMultiSelection => Berths.Count > 1;
@@ -359,7 +368,10 @@ public enum LayoutChangeKind
     PierRemoved = 4,
 
     /// <summary>A pier was given another id (<see cref="LayoutChangedEventArgs.PierId"/> is the new one).</summary>
-    PierRenamed = 19,
+    // 21, not 19: it is grouped with the other pier changes for reading, but it was added after
+    // LandAreaRemoved = 18 and has to take the next free number. 19 and 20 are the shoreline and
+    // traffic members below.
+    PierRenamed = 21,
 
     /// <summary>A berth was added (<see cref="LayoutChangedEventArgs.BerthId"/>).</summary>
     BerthAdded = 5,

@@ -217,7 +217,7 @@ public class LandAndSingleSidedPierTests
     /// Where the long raised strips along a pier's edges are: the kerb of a fixed pier, the waler of a wooden one.
     /// Both run the whole length, which is what tells them from the deck, the seams and the fittings.
     /// </summary>
-    private static IReadOnlyList<float> RaisedEdges(IReadOnlyList<RenderObject> objects, PierType type) =>
+    private static List<float> RaisedEdges(IReadOnlyList<RenderObject> objects, PierType type) =>
         objects
             .Where(o => o.MeshId == MeshIds.UnitBox)
             .Where(o => o.World.M33 >= 39f)                                  // runs the length of the pier

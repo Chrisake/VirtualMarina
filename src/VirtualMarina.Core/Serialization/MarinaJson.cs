@@ -118,7 +118,7 @@ internal sealed partial class MarinaJsonContext : JsonSerializerContext
 /// <summary>Plan-view point as <c>[x, y]</c>; also reads <c>{ "x": .., "y": .. }</c>.</summary>
 internal sealed class Vector2Converter : JsonConverter<Vector2>
 {
-    public override Vector2 Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options) => ReadValue(ref reader);
+    public override Vector2 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => ReadValue(ref reader);
 
     public override void Write(Utf8JsonWriter writer, Vector2 value, JsonSerializerOptions options) =>
         MarinaJson.WriteInlineArray(writer, value.X, value.Y);
@@ -149,7 +149,7 @@ internal sealed class Vector2Converter : JsonConverter<Vector2>
 /// <summary>An outline as one line of points, <c>[[x, y], [x, y], ...]</c>, so a 40-corner quay stays readable.</summary>
 internal sealed class Vector2ListConverter : JsonConverter<List<Vector2>>
 {
-    public override List<Vector2> Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options)
+    public override List<Vector2> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var points = new List<Vector2>();
         if (reader.TokenType != JsonTokenType.StartArray)
@@ -169,7 +169,7 @@ internal sealed class Vector2ListConverter : JsonConverter<List<Vector2>>
 /// <summary>World point or light color as <c>[x, y, z]</c>; also reads <c>{ "x": .., "y": .., "z": .. }</c> and a hex color.</summary>
 internal sealed class Vector3Converter : JsonConverter<Vector3>
 {
-    public override Vector3 Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options)
+    public override Vector3 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.String)
         {
@@ -204,7 +204,7 @@ internal sealed class Vector3Converter : JsonConverter<Vector3>
 /// <summary>Color as <c>"#RRGGBB"</c> (or <c>"#RRGGBBAA"</c> when it is see-through); also reads <c>[r, g, b, a]</c> in 0..1.</summary>
 internal sealed class ColorRgbaConverter : JsonConverter<ColorRgba>
 {
-    public override ColorRgba Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options)
+    public override ColorRgba Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.String)
         {
@@ -242,7 +242,7 @@ internal sealed class ColorRgbaConverter : JsonConverter<ColorRgba>
 internal sealed class TolerantEnumConverter<T> : JsonConverter<T>
     where T : struct, Enum
 {
-    public override T Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options)
+    public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         switch (reader.TokenType)
         {

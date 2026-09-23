@@ -77,6 +77,7 @@ public static class MarinaMath
     /// <summary>Deterministic hash of a string mapped to [0, 1). Stable across processes (unlike string.GetHashCode).</summary>
     public static float StableHash01(string value)
     {
+        ArgumentNullException.ThrowIfNull(value);
         unchecked
         {
             uint hash = 2166136261;

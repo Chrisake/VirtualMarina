@@ -65,12 +65,14 @@ public static class ReferenceImageLoader
             : FromBytes(data, image.ContentType ?? "image/png");
     }
 
-    private static string ContentTypeOf(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+    // Upper-cased rather than lower-cased: casing an extension is a normalisation, and only the
+    // upper-case direction round-trips for every culture (CA1308).
+    private static string ContentTypeOf(string path) => Path.GetExtension(path).ToUpperInvariant() switch
     {
-        ".jpg" or ".jpeg" => "image/jpeg",
-        ".bmp" => "image/bmp",
-        ".gif" => "image/gif",
-        ".tif" or ".tiff" => "image/tiff",
+        ".JPG" or ".JPEG" => "image/jpeg",
+        ".BMP" => "image/bmp",
+        ".GIF" => "image/gif",
+        ".TIF" or ".TIFF" => "image/tiff",
         _ => "image/png",
     };
 

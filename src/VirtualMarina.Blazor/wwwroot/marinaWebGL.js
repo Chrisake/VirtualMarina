@@ -331,7 +331,7 @@ function drawObjects(view, transparentPass) {
         gl.uniform4f(u.uTint, objects[base + 16], objects[base + 17], objects[base + 18], objects[base + 19]);
         if (u.uEmissive) gl.uniform1f(u.uEmissive, objects[base + 20]);
         if (u.uDesaturation) gl.uniform1f(u.uDesaturation, objects[base + 24]);
-        if (u.uAnimation) gl.uniform1i(u.uAnimation, objects[base + 21] | 0);
+        if (u.uAnimation) gl.uniform1i(u.uAnimation, Math.trunc(objects[base + 21]));
         if (u.uPhase) gl.uniform1f(u.uPhase, objects[base + 22]);
         gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_INT, 0);
     }
@@ -414,7 +414,7 @@ function createProgram(gl, vertexSource, fragmentSource) {
 function decodeBase64(base64) {
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.codePointAt(i);
     return bytes.buffer;
 }
 

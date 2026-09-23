@@ -334,7 +334,12 @@ internal static class SceneBuilder
         }
 
         var (center, height, upHeading, reading) = BerthPlacement.LabelPlacementForWidth(berth, total);
-        var tint = berth.IsDisabled ? Colors.LabelDisabled : highlighted ? Colors.LabelHighlight : Colors.Label;
+        // A name ashore is read against quay concrete or grass, not against the sea, so it gets its own
+        // colour. Highlight and disabled still win: those say something about the berth, wherever it is.
+        var tint = berth.IsDisabled ? Colors.LabelDisabled
+            : highlighted ? Colors.LabelHighlight
+            : berth.IsOnLand ? Colors.LabelAshore
+            : Colors.Label;
         var scale = new Vector3(height, 1f, height);
         var pen = total * -0.5f;
 
@@ -751,6 +756,7 @@ internal static class SceneBuilder
             PowerTop = Opaque(d.PowerColor.ToVector3());
             WaterTop = Opaque(d.WaterColor.ToVector3());
             Label = Opaque(style.Labels.Color.ToVector3());
+            LabelAshore = Opaque(style.Labels.AshoreColor.ToVector3());
             LabelHighlight = Opaque(style.Labels.HighlightColor.ToVector3());
             LabelDisabled = Opaque(style.Labels.DisabledColor.ToVector3());
             LabelFontFamily = style.Labels.FontFamily;
@@ -778,6 +784,7 @@ internal static class SceneBuilder
         public Vector4 PowerTop { get; }
         public Vector4 WaterTop { get; }
         public Vector4 Label { get; }
+        public Vector4 LabelAshore { get; }
         public Vector4 LabelHighlight { get; }
         public Vector4 LabelDisabled { get; }
 

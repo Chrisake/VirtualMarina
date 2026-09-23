@@ -215,6 +215,29 @@ public sealed class MarinaLayoutException : Exception
         Errors = errors;
     }
 
+    /// <summary>Creates the exception with no problems listed.</summary>
+    public MarinaLayoutException()
+        : this(Array.Empty<string>())
+    {
+    }
+
+    /// <summary>Creates the exception with a message of its own.</summary>
+    /// <param name="message">What is wrong with the definition.</param>
+    public MarinaLayoutException(string message)
+        : base(message)
+    {
+        Errors = Array.Empty<string>();
+    }
+
+    /// <summary>Creates the exception from a lower-level failure.</summary>
+    /// <param name="message">What is wrong with the definition.</param>
+    /// <param name="innerException">The failure underneath.</param>
+    public MarinaLayoutException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+        Errors = Array.Empty<string>();
+    }
+
     /// <summary>Every problem found (the message joins them).</summary>
     public IReadOnlyList<string> Errors { get; }
 }

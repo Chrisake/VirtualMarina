@@ -198,7 +198,10 @@ public sealed class OrbitCamera
         var minPitchForHeight = MathF.Asin(Math.Clamp(c.MinEyeHeight / distance, 0f, 1f)) * MarinaMath.RadToDeg;
         pitch = MathF.Min(MathF.Max(pitch, minPitchForHeight), maxPitch);
 
+        // Math.Clamp returns NaN for a NaN input, so the finiteness check has to come first; without it
+        // a NaN target reaches the view matrix and the whole frame renders as nothing, silently.
         var target = pose.Target;
+        if (!float.IsFinite(target.X) || !float.IsFinite(target.Y) || !float.IsFinite(target.Z)) target = Vector3.Zero;
         target = new Vector3(
             Math.Clamp(target.X, c.TargetBoundsMin.X, c.TargetBoundsMax.X),
             Math.Clamp(target.Y, 0f, 50f),

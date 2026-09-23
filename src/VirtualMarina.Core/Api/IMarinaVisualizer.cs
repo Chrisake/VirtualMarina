@@ -466,7 +466,7 @@ public interface IMarinaVisualizer
 
     /// <summary>Replaces a berth's boat, status, style and/or member berths. Berths no longer listed become Free.</summary>
     /// <exception cref="KeyNotFoundException">No berth has this id.</exception>
-    MultiBerth UpdateMultiBerth(MultiBerth berth);
+    MultiBerth UpdateMultiBerth(MultiBerth multiBerth);
 
     /// <summary>Partial update of a berth; null arguments leave values unchanged. Berths no longer listed become Free.</summary>
     /// <exception cref="KeyNotFoundException">No berth has this id.</exception>
