@@ -36,7 +36,6 @@ internal sealed class MainForm : Form
         Dock = DockStyle.Fill,
         BackColor = Theme.Background,
     };
-    private SplitContainer _split = null!;
     private readonly ToolStrip _toolbar = new();
     private readonly Dictionary<DesignTool, ToolStripButton> _toolButtons = new();
     private readonly StatusStrip _status = new();
@@ -85,8 +84,12 @@ internal sealed class MainForm : Form
     /// </summary>
     private const float DesigningFogFactor = 0.15f;
 
-    /// <summary>Narrowest the settings panel may be dragged: below this its rows stop fitting.</summary>
-    private const int MinInspectorWidth = 300;
+    /// <summary>
+    /// Narrowest the settings panel may be dragged: below this its rows stop fitting. A slider row is the tightest
+    /// of them, and has the least room left over: the row label, the reset button and the value text all take their
+    /// width before the track gets what remains.
+    /// </summary>
+    private const int MinInspectorWidth = 380;
 
     /// <summary>Widest it may be dragged: past this it takes room from the marina without gaining anything.</summary>
     private const int MaxInspectorWidth = 560;
@@ -108,7 +111,6 @@ internal sealed class MainForm : Form
             Panel1MinSize = MinViewWidth,
             Panel2MinSize = MinInspectorWidth,
         };
-        _split = split;
         split.Panel1.Controls.Add(_view);
         // One scrolling column. Docked Top and added in this order, the last one added ends up at the very top, so
         // the tool settings lead and the open side panel follows underneath.
