@@ -103,7 +103,7 @@ public sealed record Divider
     internal IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Id)) yield return "Divider id must not be empty.";
-        if (!(Length > 0f)) yield return $"Divider '{Id}' must have a positive length.";
+        if (!(Length > 0f && float.IsFinite(Length))) yield return $"Divider '{Id}' must have a positive, finite length.";
         if (!(Width > 0f)) yield return $"Divider '{Id}' must have a positive width.";
         if (!(Spacing >= 0.5f)) yield return $"Divider '{Id}' spacing must be at least 0.5 m.";
         if (!float.IsFinite(Start.X) || !float.IsFinite(Start.Y) || !float.IsFinite(HeadingDegrees)) yield return $"Divider '{Id}' has a non-finite position or heading.";

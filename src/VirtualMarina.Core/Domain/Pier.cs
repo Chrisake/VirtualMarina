@@ -164,9 +164,9 @@ public sealed record Pier
     internal IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Id)) yield return "Pier id must not be empty.";
-        if (!(Length > 0f)) yield return $"Pier '{Id}' must have a positive length.";
-        if (!(Width > 0f)) yield return $"Pier '{Id}' must have a positive width.";
-        if (!(PilingSpacing > 0.5f)) yield return $"Pier '{Id}' piling spacing must be greater than 0.5 m.";
+        if (!(Length > 0f && float.IsFinite(Length))) yield return $"Pier '{Id}' must have a positive, finite length.";
+        if (!(Width > 0f && float.IsFinite(Width))) yield return $"Pier '{Id}' must have a positive, finite width.";
+        if (!(PilingSpacing > 0.5f && float.IsFinite(PilingSpacing))) yield return $"Pier '{Id}' piling spacing must be greater than 0.5 m and finite.";
         if (!float.IsFinite(Start.X) || !float.IsFinite(Start.Y) || !float.IsFinite(HeadingDegrees)) yield return $"Pier '{Id}' has a non-finite position or heading.";
         if (!Enum.IsDefined(Type)) yield return $"Pier '{Id}' has an unknown type '{Type}'.";
         if (BerthingSides is not (PierSides.Left or PierSides.Right or PierSides.Both)) yield return $"Pier '{Id}' berthing sides must be Left, Right or Both.";
