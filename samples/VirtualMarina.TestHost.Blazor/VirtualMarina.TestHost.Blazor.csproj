@@ -4,6 +4,19 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VirtualMarina.TestHost.Blazor</RootNamespace>
     <IsPackable>false</IsPackable>
+
+    <!--
+      Roslyn resolves analyzer configuration for a .razor file through the Razor source generator,
+      not through the file's own path, so the severities .editorconfig sets for *.cs never reach
+      App.razor. The rules that have to be switched off there are switched off here instead.
+
+      CA5394 "Random is insecure": ReloadLayout picks a seed for the sample marina. Decorative
+      randomness, the same case the .editorconfig entry for CA5394 describes.
+
+      S5693 "limit the content length of HTTP requests": about a server accepting uploads, which
+      this in-browser sample is not.
+    -->
+    <NoWarn>$(NoWarn);CA5394;S5693</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

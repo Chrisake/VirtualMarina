@@ -9,4 +9,33 @@
     <Product>VirtualMarina 3D Marina Visualization</Product>
     <Version>1.0.0</Version>
   </PropertyGroup>
+
+  <!--
+    Static analysis. Two analyzer sets run on every build, in Visual Studio and on the command line
+    alike, so a finding looks the same in the IDE, in `dotnet build` and in the SonarQube report:
+
+      * The .NET analyzers that ship with the SDK (the CAxxxx rules Visual Studio calls "code
+        analysis"). latest-all turns on the whole catalogue rather than the small default set; the
+        rules that do not apply to a 3D visualisation library are switched off by name in
+        .editorconfig, where each one carries its reason.
+      * SonarAnalyzer.CSharp (the Sxxxx rules). The same analyzer SonarQube Cloud runs server-side,
+        referenced here so the issues show up while the code is being written instead of after the
+        push. See Docs/19-static-analysis.md.
+
+    Findings are warnings, not errors: the build stays green while the backlog is worked down.
+    Tighten by setting CodeAnalysisTreatWarningsAsErrors to true once it reaches zero.
+  -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-all</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.34.0.3385">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
 </Project>

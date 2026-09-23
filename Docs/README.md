@@ -44,6 +44,7 @@ VirtualMarina is a .NET 8 library that renders an interactive 3D marina (piers, 
 |---|---|
 | [API reference](11-api-reference.md) | Every public type and member, grouped by namespace |
 | [Compatibility and versioning](16-compatibility.md) | What the API promises between versions, what may change, and how to extend it safely |
+| [Static analysis](19-static-analysis.md) | The .NET and SonarQube analysers, which rules are on and why, coverage, and how to run the scan |
 
 The same descriptions are in the XML documentation comments. Visual Studio shows them in IntelliSense and Quick Info (the `VirtualMarina.*.xml` files are generated next to each DLL).
 

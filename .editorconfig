@@ -1,0 +1,215 @@
+# Code style and static-analysis severities for the whole solution.
+#
+# Visual Studio, Rider, `dotnet build` and the SonarQube scanner all read this file, so a rule is
+# configured once and behaves the same everywhere. Directory.Build.props turns the analyzers on;
+# this file decides which of their findings are worth reading.
+#
+# Every rule switched off below is switched off for a reason stated next to it. A rule that is
+# merely inconvenient stays on.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{csproj,props,targets,config,resx,xml}]
+indent_size = 2
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# ---------------------------------------------------------------------------------------------
+# C#
+# ---------------------------------------------------------------------------------------------
+[*.{cs,razor}]
+
+# -- Language conventions the codebase already follows, recorded so the analyzers enforce them ---
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+csharp_prefer_braces = true:suggestion
+csharp_style_var_for_built_in_types = false:none
+csharp_style_var_when_type_is_apparent = true:none
+csharp_style_var_elsewhere = false:none
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_readonly_field = true:suggestion
+
+# Naming: private fields are _camelCase, everything public is PascalCase.
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+
+# Formatting findings are a suggestion, not a warning: reformatting 148 files in one commit would
+# bury the real findings and every later `git blame`.
+dotnet_diagnostic.IDE0055.severity = suggestion
+
+# -- .NET analyzer (CAxxxx) rules that do not apply to this solution ---------------------------
+
+# CA5394 "Random is insecure". The marina generates berths, hulls and fleets procedurally; the
+# randomness is decorative and is deliberately seedable so a layout reproduces. Nothing here
+# guards a secret. 85 findings, all of them this.
+dotnet_diagnostic.CA5394.severity = none
+
+# CA2213 "disposable field is never disposed". WinForms controls are owned by the Controls
+# collection of the form or panel they are added to, which disposes them; the analyzer cannot see
+# that ownership transfer. 121 findings, every one a control held in a field for later access.
+dotnet_diagnostic.CA2213.severity = none
+
+# CA1303 "pass literals as localized strings". VirtualMarina localizes through its own resource
+# layer (Docs/15-localization.md), not through the LocalizableAttribute convention this rule looks
+# for, so it flags the wrong strings and misses the right ones.
+dotnet_diagnostic.CA1303.severity = none
+
+# CA1716 "identifier conflicts with a keyword in another language". The public API is C#-first and
+# renaming Shore, Stop and friends for the benefit of Visual Basic is not worth a breaking change.
+dotnet_diagnostic.CA1716.severity = none
+
+# -- .NET analyzer rules kept, but at suggestion while the backlog is worked down ---------------
+
+# CA1861 "prefer static readonly for constant arrays" and CA1863 "cache a CompositeFormat":
+# micro-optimisations in code that runs once per frame at most. Worth doing, not worth a warning.
+dotnet_diagnostic.CA1861.severity = suggestion
+dotnet_diagnostic.CA1863.severity = suggestion
+
+# -- .NET analyzer rules the code was measured against and deliberately does not follow ---------
+
+# CA1508 "condition is always true/false". Every hit is a variable a test assigns inside an event
+# handler lambda; the dataflow analysis does not follow the assignment through the event, so it
+# concludes the variable is still null. The tests that "can never pass" all pass.
+dotnet_diagnostic.CA1508.severity = none
+
+# CA1700 "do not name enum values 'Reserved'". Reserved is what a marina calls a berth someone has
+# booked. The rule is about the other meaning of the word, the placeholder member.
+dotnet_diagnostic.CA1700.severity = none
+
+# CA1710/CA1720/CA1721 all ask for public names to change: MarinaDataBag to end in Dictionary,
+# no type name inside 'Pointer', no property Style beside a method GetStyle. These are the domain's
+# own vocabulary, and renaming published members is a major-version change (Docs/16-compatibility.md).
+dotnet_diagnostic.CA1710.severity = none
+dotnet_diagnostic.CA1720.severity = none
+dotnet_diagnostic.CA1721.severity = none
+
+# -- SonarAnalyzer (Sxxxx) rules ---------------------------------------------------------------
+
+# S3358 "extract this nested ternary". A chained ternary, one condition per line, is how this
+# codebase writes a multi-way expression, from geometry to colour selection. Unpicking 47 of them
+# into statements or switch expressions would churn the code without making any of it clearer.
+dotnet_diagnostic.S3358.severity = none
+
+# S1244 "do not test floating point equality". Every hit is a property setter asking "did this
+# value actually change?" before raising a change event. Exact equality is the right test there:
+# a tolerance would swallow small but real changes and drop the notification.
+dotnet_diagnostic.S1244.severity = none
+
+# S4136 "overloads should be adjacent". The files it flags group public overloads together and keep
+# the private helper they share with the other private members, which is the more useful order.
+dotnet_diagnostic.S4136.severity = none
+
+# S2365 "properties should not copy collections". The remaining hits recompute because what they
+# derive from genuinely changes between reads. The ones whose source is fixed after construction
+# were changed to build once and cache instead (see MarinaEvents).
+dotnet_diagnostic.S2365.severity = none
+
+# S3267 "simplify this loop with LINQ". These are the geometry loops that run per frame, where
+# Select and Where allocate an enumerator the explicit loop does not. CA1826 and CA1859 push the
+# same code the other way, and they are the ones worth following here.
+dotnet_diagnostic.S3267.severity = none
+
+
+# S2245 is Sonar's CA5394; see above.
+dotnet_diagnostic.S2245.severity = none
+
+# S1104 "make field private and expose a property". Vector and geometry structs expose fields on
+# purpose: a property would copy the struct on every read in the render loop.
+dotnet_diagnostic.S1104.severity = suggestion
+
+# ---------------------------------------------------------------------------------------------
+# Tests: named and written to be read as specifications, not as shipped library code.
+# ---------------------------------------------------------------------------------------------
+[tests/**/*.{cs,razor}]
+
+# CA1707 "identifiers should not contain underscores". Test names are Method_Scenario_Expectation
+# by convention; that is the whole point of the underscores. 258 of the 662 findings are this.
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.S2699.severity = warning
+
+# Culture-sensitive string comparison (CA1307/CA1305/CA1310) in a test asserting on an invariant
+# literal is noise; in shipped code it stays a warning.
+dotnet_diagnostic.CA1307.severity = none
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1310.severity = none
+
+# CA1062 "validate arguments of public methods" and CA2007 "call ConfigureAwait": both are rules
+# about being a well-behaved library. A test assembly is not one.
+dotnet_diagnostic.CA1062.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1515.severity = none
+
+# ---------------------------------------------------------------------------------------------
+# Applications and samples: executables, not libraries with a public surface to defend.
+# ---------------------------------------------------------------------------------------------
+[{apps,samples}/**/*.{cs,razor}]
+
+# CA1515 "type can be internal", CA2007 "call ConfigureAwait", CA1062 "validate public arguments":
+# all three protect a published API surface. An app has no callers outside itself.
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1062.severity = suggestion
+
+# ---------------------------------------------------------------------------------------------
+# Generated code. Nobody edits it, so nobody can fix a finding in it.
+# ---------------------------------------------------------------------------------------------
+[*.{Designer,generated,g,g.i}.cs]
+generated_code = true
+
+
+# ---------------------------------------------------------------------------------------------
+# Scoped exceptions: a rule that is right in general but wrong for one file or one project.
+# ---------------------------------------------------------------------------------------------
+
+# S3218 "inner member shadows an outer one". SceneBuilder keeps 19 one-line static properties that
+# read the current thread's Palette, so dense geometry code can say WoodDeck rather than
+# Colors.WoodDeck. The nested Palette holds the same 19 names, which is the shadowing reported.
+# The repetition is the point: renaming either side, or expanding 43 call sites, reads worse.
+[src/VirtualMarina.Core/Rendering/SceneBuilder.cs]
+dotnet_diagnostic.S3218.severity = none
+
+# Blazor WebAssembly runs on a single thread with a synchronisation context the component needs to
+# stay on. CA2007 (call ConfigureAwait) would take it off that context, and CA1849 objects to the
+# IJSInProcessObjectReference calls that exist precisely to be synchronous in the browser.
+[src/VirtualMarina.Blazor/**.cs]
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1849.severity = none
+
+# CA1819 "properties should not return arrays". MeshData and ReferenceImage hand their buffers
+# straight to the GPU and to the image decoder. Copying them per read, which is what the rule asks
+# for, is the one thing that would actually hurt here.
+[src/VirtualMarina.Core/{Geometry/MeshData,Design/ReferenceImage}.cs]
+dotnet_diagnostic.CA1819.severity = none
+
+# The test hosts print numbers and dates into a debug panel for a person to read, so they should
+# follow that person's locale; CA1305 wants the culture named at each of the 11 sites. S5693 is
+# about limiting HTTP request size, which the sample's in-browser fetch has no part in.
+[samples/**.{cs,razor}]
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.S5693.severity = none
+
+# CA1308 "prefer ToUpperInvariant". These lower-case a type or enum name to drop it into a sentence
+# in the log, which is presentation, not the normalisation the rule guards. The one place that did
+# normalise (a file extension, in ReferenceImageLoader) was changed to upper-case instead.
+[{apps,tests}/**.cs]
+dotnet_diagnostic.CA1308.severity = none
