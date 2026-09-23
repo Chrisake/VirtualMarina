@@ -285,9 +285,6 @@ internal sealed class CamerasPanel : UserControl
             row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
             row.Tag = preset.Name;
 
-            // The row holds its own preset rather than looking one up by name, so a saved view named after an
-            // automatic one still goes where its own row says.
-            var entry = preset;
             var name = preset.Name;
             if (automatic)
             {
@@ -306,7 +303,15 @@ internal sealed class CamerasPanel : UserControl
             }
 
             var buttons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = Padding.Empty, WrapContents = false };
-            buttons.Controls.Add(Theme.Icon(Strings.CameraGoToGlyph, Strings.CameraGoToTip, (_, _) => _marina.ApplyCameraPreset(entry)));
+            // The row asks for the view by name when it is pressed rather than carrying the one it was built from.
+            // Automatic views are worked out afresh from the layout every time it changes, so a row built for an
+            // earlier layout that still holds its own copy sends the camera to where the marina used to be. Asking
+            // for it by name also keeps a saved view named after an automatic one distinct from it: a row in the
+            // automatic list asks for the automatic one, a row in the saved list gets the saved one first.
+            var goTo = automatic
+                ? new EventHandler((_, _) => _marina.ApplyBuiltInCameraPreset(name))
+                : new EventHandler((_, _) => _marina.ApplyCameraPreset(name));
+            buttons.Controls.Add(Theme.Icon(Strings.CameraGoToGlyph, Strings.CameraGoToTip, goTo));
             if (!automatic)
             {
                 buttons.Controls.Add(Theme.Icon(Strings.CameraDeleteGlyph, Strings.CameraDeleteTip, (_, _) => Delete(name), danger: true));

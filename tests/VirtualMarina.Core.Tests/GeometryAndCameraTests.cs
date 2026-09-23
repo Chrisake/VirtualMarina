@@ -293,6 +293,47 @@ public class GeometryAndCameraTests
     }
 
     [Fact]
+    public void TheAutomaticViews_AreRefittedWhenTheMarinaGrows()
+    {
+        var marina = new MarinaVisualizer();
+        marina.SetViewportSize(1400f, 900f);
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+
+        // A preset is a snapshot of where the camera has to stand for the marina as it is now. Anything that holds
+        // on to one past a layout change is holding a view of a marina that no longer exists, which is how the
+        // designer's camera list ended up sending every automatic view to the middle of a marina many times smaller.
+        var held = marina.CameraPresets.Where(preset => preset.IsBuiltIn).ToDictionary(preset => preset.Name);
+
+        var (min, max) = marina.GetLayout().ComputeBounds();
+        var far = new Vector2(max.X + 900f, max.Y + 900f);
+        marina.AddLandArea(new LandArea("far", new[]
+        {
+            far,
+            far + new Vector2(300f, 0f),
+            far + new Vector2(300f, 300f),
+            far + new Vector2(0f, 300f),
+        }, 3f));
+
+        var reach = marina.GetLandAreas().SelectMany(land => land.Points).Select(point => MarinaMath.ToWorld(point))
+            .Concat(marina.GetBerths().Select(berth => MarinaMath.ToWorld(berth.Center)))
+            .ToArray();
+
+        foreach (var name in new[] { MarinaVisualizer.OverviewPresetName, MarinaVisualizer.TopDownPresetName, "North", "East", "South", "West" })
+        {
+            var now = marina.CameraPresets.Single(preset => preset.IsBuiltIn && preset.Name == name);
+            Assert.True(now.Pose.Distance > held[name].Pose.Distance * 1.5f, $"{name} was not pulled back for the bigger marina");
+
+            // Applying the one the marina offers now holds the lot; applying the one from before does not.
+            Assert.True(marina.ApplyBuiltInCameraPreset(name, immediate: true));
+            Assert.True(TryScreenBounds(marina, reach, out var seen), $"{name} puts the marina behind the camera");
+            Assert.InRange(seen.Min.X, 0f, 1400f);
+            Assert.InRange(seen.Max.X, 0f, 1400f);
+            Assert.InRange(seen.Min.Y, 0f, 900f);
+            Assert.InRange(seen.Max.Y, 0f, 900f);
+        }
+    }
+
+    [Fact]
     public void AViewCanBeSwitchedOff_AndStaysOffThroughALayoutChangeAndAFile()
     {
         var marina = new MarinaVisualizer();
