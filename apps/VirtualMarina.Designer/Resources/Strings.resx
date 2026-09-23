@@ -315,8 +315,8 @@
     <value>The image could not be loaded</value>
   </data>
   <data name="WarnBody">
-    <value>{0}:
-
+    <value>{0}:
+
 {1}</value>
     <comment>{0} = what failed, {1} = the reason.</comment>
   </data>
@@ -1121,8 +1121,8 @@ Change the pattern and try again.</value>
   </data>
   <!-- Inspector: summary -->
   <data name="Summary">
-    <value>{0} berth(s): {1} on the water, {2} ashore
-{3} pier(s), {4} land area(s), {5} separator(s), {6} tree(s)
+    <value>{0} berth(s): {1} on the water, {2} ashore
+{3} pier(s), {4} land area(s), {5} separator(s), {6} tree(s)
 {7:0} × {8:0} m overall</value>
     <comment>Counts of everything drawn, then the overall size.</comment>
   </data>

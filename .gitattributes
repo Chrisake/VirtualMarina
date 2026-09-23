@@ -1,0 +1,10 @@
+# Line endings belong to the repository, not to each clone's core.autocrlf. Without this, a checkout on Windows
+# converts the tree to CRLF and every `git add` warns that it is about to, on every file.
+
+# Text is stored LF and checked out LF. Git works out for itself what is text.
+* text=auto eol=lf
+
+# Except the two kinds of file Visual Studio writes and rewrites itself, which it writes CRLF. Storing them LF and
+# checking them out CRLF keeps them readable in a diff without VS reformatting them back on every save.
+*.sln  text eol=crlf
+*.resx text eol=crlf
