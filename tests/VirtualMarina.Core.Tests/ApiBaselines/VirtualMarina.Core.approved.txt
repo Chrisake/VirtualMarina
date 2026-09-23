@@ -1733,6 +1733,7 @@ sealed class VirtualMarina.Core.Rendering.LabelStyle : VirtualMarina.Core.Render
     VirtualMarina.Core.Geometry.LabelFont FontFamily { get; set; }
     VirtualMarina.Core.Geometry.LabelFontDefinition Font { get; set; }
     VirtualMarina.Core.Geometry.LabelTypeface Typeface { get; set; }
+    VirtualMarina.Core.Rendering.ColorRgba AshoreColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba Color { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba DisabledColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba HighlightColor { get; set; }

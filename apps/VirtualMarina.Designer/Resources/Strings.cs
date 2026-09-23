@@ -1,5 +1,5 @@
 ﻿using System.Globalization;
-using System.Resources;
+using VirtualMarina.Resources;
 
 namespace VirtualMarina.Designer.Resources;
 
@@ -9,30 +9,19 @@ namespace VirtualMarina.Designer.Resources;
 /// </summary>
 internal static class Strings
 {
-    private static readonly ResourceManager Manager = new("VirtualMarina.Designer.Resources.Strings", typeof(Strings).Assembly);
+    private static readonly ResourceText Text = new("VirtualMarina.Designer.Resources.Strings", typeof(Strings).Assembly);
 
     /// <summary>Culture used to look the text up; null (the default) follows <see cref="CultureInfo.CurrentUICulture"/>.</summary>
-    internal static CultureInfo? Culture { get; set; }
+    internal static CultureInfo? Culture { get => Text.Culture; set => Text.Culture = value; }
 
     /// <summary>The text of a resource by name, or the name itself when the resource is missing.</summary>
-    internal static string Get(string name) => Manager.GetString(name, Culture) ?? name;
+    internal static string Get(string name) => Text.Get(name);
 
     /// <summary>Fills the placeholders of a localized format string using the current culture.</summary>
-    internal static string Format(string format, params object?[] args) => string.Format(CultureInfo.CurrentCulture, format, args);
+    internal static string Format(string format, params object?[] args) => ResourceText.Format(format, args);
 
     /// <summary>The neutral language plus every culture a Strings.&lt;culture&gt;.resx (or a host satellite assembly) supplies.</summary>
-    internal static IReadOnlyList<CultureInfo> AvailableCultures()
-    {
-        var found = new List<CultureInfo> { CultureInfo.InvariantCulture };
-        foreach (var culture in CultureInfo.GetCultures(CultureTypes.AllCultures))
-        {
-            if (culture.Equals(CultureInfo.InvariantCulture)) continue;
-            // Only the culture itself, never its parents: that is what tells a real translation from a fallback.
-            if (Manager.GetResourceSet(culture, createIfNotExists: true, tryParents: false) is not null) found.Add(culture);
-        }
-
-        return found;
-    }
+    internal static IReadOnlyList<CultureInfo> AvailableCultures() => Text.AvailableCultures();
 
     // ---- Application ---------------------------------------------------------------------------------
 
@@ -376,6 +365,12 @@ internal static class Strings
 
     /// <summary>"Selected"</summary>
     internal static string LabelColorHighlight => Get("LabelColorHighlight");
+
+    /// <summary>"Ashore"</summary>
+    internal static string LabelColorAshore => Get("LabelColorAshore");
+
+    /// <summary>"Colour of the names of berths ashore. ..."</summary>
+    internal static string LabelColorAshoreTip => Get("LabelColorAshoreTip");
 
     /// <summary>"Disabled"</summary>
     internal static string LabelColorDisabled => Get("LabelColorDisabled");

@@ -574,7 +574,7 @@ internal sealed class BerthDto : ExtensibleDto
             MaxDraft = MaxDraft,
             Status = Status ?? BerthStatus.Free,
             Boat = Boat?.ToDomain(),
-            HasFingerPiers = LandAreaId is { Length: > 0 } ? false : HasFingerPiers,
+            HasFingerPiers = LandAreaId is not { Length: > 0 } && HasFingerPiers,
             Services = Services,
             IsVisible = IsVisible ?? true,
             IsDisabled = IsDisabled ?? false,
@@ -1177,6 +1177,8 @@ internal sealed class LabelDto : ExtensibleDto
 {
     public ColorRgba Color { get; set; } = new(0.97f, 0.98f, 1f);
 
+    public ColorRgba Ashore { get; set; } = new(0.16f, 0.18f, 0.20f);
+
     public ColorRgba Highlight { get; set; } = new(1f, 0.90f, 0.35f);
 
     public ColorRgba Disabled { get; set; } = new(0.62f, 0.64f, 0.66f);
@@ -1200,6 +1202,7 @@ internal sealed class LabelDto : ExtensibleDto
     public static LabelDto From(LabelStyle labels) => new()
     {
         Color = labels.Color,
+        Ashore = labels.AshoreColor,
         Highlight = labels.HighlightColor,
         Disabled = labels.DisabledColor,
         FontFamily = labels.FontFamily,
@@ -1212,6 +1215,7 @@ internal sealed class LabelDto : ExtensibleDto
     public void ApplyTo(LabelStyle labels)
     {
         labels.Color = Color;
+        labels.AshoreColor = Ashore;
         labels.HighlightColor = Highlight;
         labels.DisabledColor = Disabled;
         labels.FontFamily = FontFamily;
