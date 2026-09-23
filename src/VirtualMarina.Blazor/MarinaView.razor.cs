@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using VirtualMarina.Blazor.Resources;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Input;
@@ -14,11 +15,25 @@ namespace VirtualMarina.Blazor;
 /// &lt;MarinaView Marina="_marina" style="height:600px" /&gt;
 /// </code>
 /// </example>
+/// <remarks>
+/// <para>
+/// The view draws only while something changes or moves (see <see cref="MarinaVisualizer.NeedsRedraw"/> and
+/// <see cref="MarinaVisualizer.IsAnimating"/>), and not at all while it is scrolled out of sight or its tab is hidden, so a
+/// still marina costs nothing. <see cref="ContinuousRendering"/> makes it draw every display frame regardless.
+/// </para>
+/// <para>
+/// The popup's look comes from <c>_content/VirtualMarina.Blazor/marinaView.css</c>, which the script links into the page
+/// by itself. Its rules sit in the <c>virtualmarina</c> cascade layer, so any rule of the host's for the <c>vm-popup</c>
+/// classes wins over them. A page with a strict Content-Security-Policy can reference the file itself with a
+/// <c>&lt;link rel="stylesheet"&gt;</c>; the script then leaves it alone.
+/// </para>
+/// </remarks>
 public partial class MarinaView : ComponentBase, IAsyncDisposable
 {
     private const string ModulePath = "./_content/VirtualMarina.Blazor/marinaWebGL.js";
 
-    private static readonly double[] HiddenAnchor = { 0d, 0d, 0d };
+    /// <summary>Frames that may throw one after another before the view stops drawing and shows the error.</summary>
+    private const int MaxFrameFailures = 3;
 
     private ElementReference _canvas;
     private ElementReference _popupElement;
@@ -29,7 +44,9 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
     private WebGlSceneRenderer? _renderer;
     private int _viewId = -1;
     private double _lastTimestampMs = -1;
+    private int _frameFailures;
     private string? _errorMessage;
+    private bool _disposed;
 
     [Inject]
     private IJSRuntime JS { get; set; } = default!;
@@ -58,9 +75,27 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback<string> OnRendererReady { get; set; }
 
-    /// <summary>Invoked if WebGL cannot be initialized.</summary>
+    /// <summary>Invoked if WebGL cannot be initialized, or when drawing keeps failing and the view stops.</summary>
     [Parameter]
     public EventCallback<string> OnRendererError { get; set; }
+
+    /// <summary>
+    /// Draw every display frame, even when nothing changes. Off by default: the view draws only while something changes or
+    /// moves, which is all a marina needs.
+    /// </summary>
+    [Parameter]
+    public bool ContinuousRendering { get; set; }
+
+    /// <summary>
+    /// Whether the waves, floating boats, pulses and traffic move. When false the picture holds still (and the view stops
+    /// drawing), while the camera and input still work. Default true.
+    /// </summary>
+    [Parameter]
+    public bool Animate { get; set; } = true;
+
+    /// <summary>The canvas's accessible name, read by screen readers; a short localized description when null.</summary>
+    [Parameter]
+    public string? AriaLabel { get; set; }
 
     /// <summary>Backend and GPU description once WebGL is running, otherwise null.</summary>
     public string? RendererDescription { get; private set; }
@@ -75,11 +110,16 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
     public async Task<ReferenceImage?> LoadReferenceImageAsync(byte[] data, string contentType, float? metersPerPixel = null)
     {
         ArgumentNullException.ThrowIfNull(data);
-        if (_module is null || data.Length == 0) return null;
-        var size = await _module.InvokeAsync<int[]?>("measureImage", data, contentType);
-        if (size is not { Length: 2 } || size[0] <= 0 || size[1] <= 0) return null;
+        if (_module is null || _viewId < 0 || data.Length == 0) return null;
 
-        var image = ReferenceImage.FromEncoded(data, size[0], size[1], contentType);
+        // The browser decodes the picture once: the size comes back, and the decoded picture stays with the view to become
+        // the texture, so the bytes are neither sent nor decoded a second time when the image is first drawn.
+        var decoded = await _module.InvokeAsync<double[]?>("decodeImage", _viewId, data, contentType);
+        if (decoded is not { Length: 3 } || decoded[0] < 1d || decoded[1] < 1d) return null;
+
+        var image = ReferenceImage.FromEncoded(data, (int)decoded[0], (int)decoded[1], contentType);
+        _module.InvokeVoid("adoptImage", _viewId, (int)decoded[2], image.Key);
+        _renderer?.ReferenceImageUploaded(image.Key);
         Marina.Designer.SetReferenceImage(image, metersPerPixel);
         return image;
     }
@@ -92,17 +132,50 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
         if (MarinaStyle is not null && !ReferenceEquals(Marina.Style, MarinaStyle)) Marina.Style = MarinaStyle;
         if (ReferenceEquals(_subscribedMarina, Marina)) return;
 
-        if (_subscribedMarina is not null) _subscribedMarina.PopupChanged -= OnPopupChanged;
+        if (_subscribedMarina is not null)
+        {
+            _subscribedMarina.PopupChanged -= OnPopupChanged;
+            _subscribedMarina.RedrawRequested -= OnRedrawRequested;
+
+            // Meshes and the like are tracked by what was uploaded for the old visualizer; start the new one from nothing.
+            _renderer?.Reset();
+        }
+
         _subscribedMarina = Marina;
         Marina.PopupChanged += OnPopupChanged;
+        Marina.RedrawRequested += OnRedrawRequested;
         _popup = Marina.ActivePopup;
     }
+
+    /// <summary>Wakes the frame loop for a new parameter (<see cref="ContinuousRendering"/>, <see cref="Animate"/>, a new marina).</summary>
+    protected override void OnAfterRender(bool firstRender) => Wake();
 
     private void OnPopupChanged(object? sender, BerthPopupChangedEventArgs e)
     {
         _popup = e.Current;
         StateHasChanged();
     }
+
+    /// <summary>Something changed in the marina: a view that stopped drawing, because nothing moved, starts again.</summary>
+    private void OnRedrawRequested(object? sender, EventArgs e) => Wake();
+
+    private void Wake()
+    {
+        if (_module is null || _renderer is null || _disposed) return;
+        try
+        {
+            _module.InvokeVoid("wakeView", _viewId);
+        }
+        catch (JSDisconnectedException)
+        {
+            // Page is being torn down.
+        }
+    }
+
+    /// <summary>The popup's accessible name: the title it shows.</summary>
+    private string? PopupLabel => _popup is { } popup
+        ? popup.Tooltip.IsVisible && !string.IsNullOrWhiteSpace(popup.Tooltip.Title) ? popup.Tooltip.Title : popup.PrimaryBerth.DisplayName
+        : null;
 
     private string? PopupKindClass => _popup?.Kind switch
     {
@@ -133,7 +206,15 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
 
         try
         {
-            _module = await JS.InvokeAsync<IJSInProcessObjectReference>("import", ModulePath);
+            var module = await JS.InvokeAsync<IJSInProcessObjectReference>("import", ModulePath);
+            if (_disposed)
+            {
+                // Disposed while the module was loading: DisposeAsync found nothing to release, so nothing may start now.
+                await DisposeModuleAsync(module);
+                return;
+            }
+
+            _module = module;
             _selfReference = DotNetObjectReference.Create(this);
             _viewId = _module.Invoke<int>("createView", _canvas, _selfReference, _popupElement);
             if (_viewId < 0)
@@ -156,23 +237,61 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
 
     // ---- Called from marinaWebGL.js ----------------------------------------------------------------
 
-    /// <summary>Renders a frame and returns the popup anchor as [visible (0/1), x, y] in CSS pixels.</summary>
+    /// <summary>
+    /// Called by marinaWebGL.js once per display frame while the view is awake: draws a frame (positioning the popup with it)
+    /// if anything changed or moves. Returns false when nothing did, and the script then stops asking until it is woken.
+    /// Not for direct use.
+    /// </summary>
     [JSInvokable]
-    public double[] OnAnimationFrame(double timestampMs, double cssWidth, double cssHeight)
+    public bool OnAnimationFrame(double timestampMs, double cssWidth, double cssHeight)
     {
-        if (_renderer is null) return HiddenAnchor;
+        if (_renderer is null || _errorMessage is not null) return false;
+
+        Marina.SetViewportSize((float)cssWidth, (float)cssHeight);
+        if (!NeedsFrame())
+        {
+            // Asleep from here on; the first frame after waking starts the clock again rather than jumping.
+            _lastTimestampMs = -1;
+            return false;
+        }
 
         var deltaSeconds = _lastTimestampMs < 0 ? 0d : (timestampMs - _lastTimestampMs) / 1000d;
         _lastTimestampMs = timestampMs;
 
-        Marina.SetViewportSize((float)cssWidth, (float)cssHeight);
-        Marina.Update(deltaSeconds);
-        _renderer.Render(Marina.BuildRenderFrame());
+        try
+        {
+            Marina.Update(deltaSeconds, Animate);
+            _renderer.SetPopupAnchor(_popup is not null && Marina.TryGetPopupAnchor(out var anchor) ? anchor : null);
+            _renderer.Render(Marina.BuildRenderFrame());
+            _frameFailures = 0;
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or ArgumentException)
+        {
+            // One bad frame is retried; a frame that keeps failing stops the view and says why, rather than failing sixty
+            // times a second with nothing on screen to show for it.
+            if (++_frameFailures < MaxFrameFailures) return true;
+            _ = InvokeAsync(() => FailAsync(Strings.Format(Strings.RenderingStopped, ex.Message)));
+            return false;
+        }
 
-        return _popup is not null && Marina.TryGetPopupAnchor(out var anchor)
-            ? new double[] { 1d, anchor.X, anchor.Y }
-            : HiddenAnchor;
+        return true;
     }
+
+    /// <summary>
+    /// Called by marinaWebGL.js while the view sleeps: true when there is something to draw after all (the camera or the
+    /// lighting was changed without the visualizer announcing it). Not for direct use.
+    /// </summary>
+    [JSInvokable]
+    public bool NeedsFrame() =>
+        _renderer is not null && _errorMessage is null && (ContinuousRendering || Marina.NeedsRedraw || (Animate && Marina.IsAnimating));
+
+    /// <summary>
+    /// Called by marinaWebGL.js when its frame loop gave up after frames failing one after another: shows the error and
+    /// reports it through <see cref="OnRendererError"/>. Not for direct use.
+    /// </summary>
+    /// <param name="message">What went wrong.</param>
+    [JSInvokable]
+    public Task OnRenderLoopFailed(string message) => InvokeAsync(() => FailAsync(Strings.Format(Strings.RenderingStopped, message)));
 
     /// <summary>Called by marinaWebGL.js; forwards to <see cref="MarinaInputController.PointerDown"/>. Not for direct use.</summary>
     [JSInvokable]
@@ -221,37 +340,32 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
     [JSInvokable]
     public void OnPointerLeave() => Marina.Input.PointerLeave();
 
-    /// <summary>Called by marinaWebGL.js; maps DOM keys to <see cref="MarinaKey"/>. Returns true when handled. Not for direct use.</summary>
+    /// <summary>
+    /// Called by marinaWebGL.js; maps the key through <see cref="MarinaKeyMap.FromDomKey"/> and forwards it to
+    /// <see cref="MarinaInputController.KeyDown"/>. Returns true when handled, and only then does the script stop the
+    /// key going any further: Ctrl, Alt and Cmd chords (other than the undo and redo chords Ctrl+Z, Ctrl+Shift+Z and
+    /// Ctrl+Y), and keys the view has no use for right now, carry on to the page and the browser. Not for direct use.
+    /// </summary>
+    /// <param name="code"><c>KeyboardEvent.code</c>: the physical key.</param>
+    /// <param name="key"><c>KeyboardEvent.key</c>: what the key types.</param>
+    /// <param name="modifiers">The modifiers held, as <see cref="InputModifiers"/> flags (Cmd counts as Control).</param>
     [JSInvokable]
-    public bool OnKeyDown(string key, int modifiers)
+    public bool OnKeyDown(string? code, string? key, int modifiers)
     {
-        MarinaKey? mapped = key switch
-        {
-            "ArrowLeft" or "a" or "A" => MarinaKey.Left,
-            "ArrowRight" or "d" or "D" => MarinaKey.Right,
-            "ArrowUp" or "w" or "W" => MarinaKey.Up,
-            "ArrowDown" or "s" or "S" => MarinaKey.Down,
-            "PageUp" => MarinaKey.PageUp,
-            "PageDown" => MarinaKey.PageDown,
-            "+" or "=" => MarinaKey.ZoomIn,
-            "-" or "_" => MarinaKey.ZoomOut,
-            "Home" => MarinaKey.Home,
-            "Escape" => MarinaKey.Escape,
-            "Enter" => MarinaKey.Enter,
-            "Backspace" => MarinaKey.Backspace,
-            "Delete" => MarinaKey.Delete,
-            "z" or "Z" when ((InputModifiers)modifiers & InputModifiers.Control) != 0 => MarinaKey.Undo,
-            _ => null,
-        };
-        return mapped is { } k && Marina.Input.KeyDown(k, (InputModifiers)modifiers);
+        var held = (InputModifiers)modifiers;
+        return MarinaKeyMap.FromDomKey(code, key, held) is { } mapped && Marina.Input.KeyDown(mapped, held);
     }
 
     /// <summary>Stops the animation loop, releases WebGL resources and unsubscribes from the visualizer.</summary>
     public async ValueTask DisposeAsync()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         if (_subscribedMarina is not null)
         {
             _subscribedMarina.PopupChanged -= OnPopupChanged;
+            _subscribedMarina.RedrawRequested -= OnRedrawRequested;
             _subscribedMarina = null;
         }
 
@@ -260,12 +374,13 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
             try
             {
                 if (_viewId >= 0) _module.InvokeVoid("destroyView", _viewId);
-                await _module.DisposeAsync();
             }
             catch (JSDisconnectedException)
             {
                 // Page is being torn down.
             }
+
+            await DisposeModuleAsync(_module);
         }
 
         _renderer?.Dispose();
@@ -281,8 +396,21 @@ public partial class MarinaView : ComponentBase, IAsyncDisposable
         _ => PointerButton.None,
     };
 
+    private static async ValueTask DisposeModuleAsync(IJSInProcessObjectReference module)
+    {
+        try
+        {
+            await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // Page is being torn down.
+        }
+    }
+
     private async Task FailAsync(string message)
     {
+        if (_disposed) return;
         _errorMessage = message;
         StateHasChanged();
         await OnRendererError.InvokeAsync(message);

@@ -169,13 +169,13 @@ public static class MarinaMeshFactory
             var o0 = first + 4u + (uint)side;         // the matching corners of the far square
             var o1 = first + 4u + (uint)nextSide;
 
-            // Counter-clockwise from above, the same way round as the grid itself.
+            // Counter-clockwise from above (facing +Y), the same way round as the grid itself.
             indices[k++] = i0;
+            indices[k++] = o1;
             indices[k++] = o0;
-            indices[k++] = o1;
             indices[k++] = i0;
-            indices[k++] = o1;
             indices[k++] = i1;
+            indices[k++] = o1;
         }
 
         return new MeshData(id, "Water", vertices, indices, isWater: true);

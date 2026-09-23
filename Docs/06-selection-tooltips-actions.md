@@ -12,7 +12,7 @@
 | Double-click | Unchanged | Unchanged | `BerthClicked` (`IsDoubleClick`); a left double-click focuses the camera |
 | Left click on empty water | Cleared | Closed | `SelectionChanged`, `SelectionCleared`, `PopupChanged` |
 | Right click on empty water | Unchanged | Closed | `PopupChanged` |
-| Esc | Closes the popup; pressed again, clears the selection | | |
+| Esc | Closes the popup; pressed again, clears the selection. With neither, the key is left to the host | | as closing or clearing |
 | Any click on a disabled berth | Unchanged | Unchanged | None |
 
 - **Primary berth:** the most recently clicked (or last listed) selected berth. The popup points at it and the selection marker above it is larger.
@@ -38,10 +38,11 @@ bool removed = marina.RemoveFromSelection("A-L01");
 marina.ClearSelection();
 
 Berth? primary = marina.SelectedBerth;
-IReadOnlyList<Berth> all = marina.SelectedBerths;                 // selection order, primary last
+IReadOnlyList<Berth> all = marina.SelectedBerths;                 // selection order, primary last; a read-only snapshot
 bool isSelected = marina.IsBerthSelected("A-L02");
 ```
 
+- **`SelectedBerths`** is a read-only snapshot: it does not change after it is handed out (read it again after the selection changes), and it cannot be cast back to a list and modified.
 - **`SelectionResult`:** `SelectedBerthIds` (the selection after the call), `Rejected`, `Changed`, `Count` and `IsEmpty`.
 - **Events:** API selection raises `BerthSelected` or `MultiBerthSelected` with `Reason = SelectionReason.Api`, but only when the selection actually changed.
 - **Tooltip:** shown after an API selection when `ShowTooltipOnApiSelection` is true (the default).
@@ -54,10 +55,10 @@ The popup's content comes from the selection events. The visualizer pre-fills th
 ```csharp
 marina.BerthSelected += (sender, e) =>
 {
-    // e.Berth, e.BerthId, e.Status, e.Boat, e.Pier, e.Berth, e.ExternalData
+    // e.Berth, e.BerthId, e.Status, e.Boat, e.Pier (or e.LandArea), e.MultiBerth, e.ExternalData
     // e.Button (Left / Right / None), e.OpensActions, e.Reason (Pointer / Api / Refresh), e.IsNewSelection
 
-    // Tooltip: pre-filled with berth, pier, status, size, boat, owner, registration, ETA, berth, access
+    // Tooltip: pre-filled with berth, pier, status, size, boat, owner, registration, ETA, multi-berth, access
     e.Tooltip.AddLine("Contract", contract.Number);
     e.Tooltip.AddLine("Balance", contract.Balance.ToString("C"), emphasize: contract.Balance > 0);
     e.Tooltip.SetLine("Owner", contract.HolderName);     // replace a default row
@@ -100,6 +101,8 @@ marina.MultiBerthSelected += (sender, e) =>
 | `IsVisible` | False: no tooltip (the actions window still shows its header) |
 
 The default content comes from `DefaultPopupContent.ForBerth` and `ForBerths`, which you can also call yourself.
+
+The default rows and headings come from the resource files, so they follow the [current UI culture](15-localization.md), and counts are worded for the number ("1 berth selected", "3 berths selected"). Match rows by the localized label you get from them, or rebuild the tooltip with `Clear()` if your code needs to know exactly what is in it.
 
 ### `BerthAction`
 
@@ -185,6 +188,15 @@ if (marina.GetBerth("A-L03")!.ExternalData.TryGet<Contract>("Erp.Contract", out 
 | `GetOrAdd<T>(key, factory)` | Lazy creation |
 
 - **Preserved:** the bag survives status, boat, flag and geometry updates. `UpdateBerth(newBerthObject)` keeps the existing bag and merges entries from the new object's bag.
-- **In batches:** `BerthUpdate.ExternalData` merges entries (`new BerthUpdate(id) { ExternalData = new Dictionary<string, object?> { ["Note"] = "VIP" } }`).
+- **In batches:** `BerthUpdate.ExternalData` merges entries: keys listed are added or overwritten, keys not listed are left alone, and a null value is stored as null (the key stays). To take keys out, list them in `BerthUpdate.ExternalDataRemovals`; removals are applied first, so a key both removed and written ends up with the written value.
+
+  ```csharp
+  marina.BatchUpdate(new[]
+  {
+      new BerthUpdate("A-L03") { ExternalData = new Dictionary<string, object?> { ["Note"] = "VIP" } },
+      new BerthUpdate("A-L04") { ExternalDataRemovals = new[] { "Note", "Erp.Contract" } },
+  });
+  ```
 - **Not interpreted:** the visualizer never reads, renders or serializes the bag.
+- **Equality:** a `Berth` compares its bag by reference, so two snapshots of the same berth are equal while two berths built separately are not, even with the same entries.
 - **For your own attributes:** use `Berth.Metadata` for read-only string attributes you supply with the layout.

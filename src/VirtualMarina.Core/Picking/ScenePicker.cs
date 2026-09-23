@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Mathematics;
@@ -115,7 +115,7 @@ internal static class ScenePicker
     private static Vector3 Position(float[] vertices, int offset) => new(vertices[offset], vertices[offset + 1], vertices[offset + 2]);
 
     /// <summary>For a boat spanning several berths, the visible member berth nearest the hit point (interactive ones first).</summary>
-    private static string ResolveBerth(BoatInstance boat, Vector2 plan)
+    internal static string ResolveBerth(BoatInstance boat, Vector2 plan)
     {
         if (boat.Berths.Count == 1) return boat.PrimaryBerth.Id;
 

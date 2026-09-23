@@ -8,6 +8,11 @@ using VirtualMarina.Core.Resources;
 namespace VirtualMarina.Core.Tests;
 
 /// <summary>Displayed text comes from Strings.resx, and an untranslated culture falls back to it instead of breaking.</summary>
+/// <remarks>
+/// Switching <see cref="MarinaLocalization.Culture"/> changes the UI culture of the whole process, so the class runs
+/// in <see cref="ProcessWideState"/>, alone, instead of beside tests that expect English.
+/// </remarks>
+[Collection(ProcessWideState.Name)]
 public class LocalizationTests
 {
     [Fact]
@@ -46,6 +51,8 @@ public class LocalizationTests
     public void AnUntranslatedCulture_FallsBackToTheNeutralText()
     {
         var previous = MarinaLocalization.Culture;
+        var previousDefault = CultureInfo.DefaultThreadCurrentUICulture;
+        var previousCurrent = CultureInfo.CurrentUICulture;
         try
         {
             MarinaLocalization.Culture = new CultureInfo("fr-FR");
@@ -55,8 +62,10 @@ public class LocalizationTests
         }
         finally
         {
+            // The setter changes three things; put all three back, not only the one it was handed.
             MarinaLocalization.Culture = previous;
-            CultureInfo.DefaultThreadCurrentUICulture = null;
+            CultureInfo.DefaultThreadCurrentUICulture = previousDefault;
+            CultureInfo.CurrentUICulture = previousCurrent;
         }
     }
 

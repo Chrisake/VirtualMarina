@@ -175,17 +175,14 @@ public class DesignerEventsAndBuilderTests
     [InlineData(-1f)]
     [InlineData(float.NaN)]
     [InlineData(1e9f)]
-    public void AnImpossibleImageScale_IsRefusedOrClamped_NotStored(float scale)
+    public void AnImpossibleImageScale_IsRefused_NotStored(float scale)
     {
         var marina = WithAPier();
+        var before = marina.Designer.ReferenceImageMetersPerPixel;
 
-        var exception = Record.Exception(() => marina.Designer.ReferenceImageMetersPerPixel = scale);
+        Assert.Throws<ArgumentOutOfRangeException>(() => marina.Designer.ReferenceImageMetersPerPixel = scale);
 
-        if (exception is null)
-        {
-            var stored = marina.Designer.ReferenceImageMetersPerPixel;
-            Assert.True(float.IsFinite(stored) && stored > 0f, $"stored scale {stored} should be positive and finite");
-        }
+        Assert.Equal(before, marina.Designer.ReferenceImageMetersPerPixel);
     }
 
     // ---- The layout builder ------------------------------------------------------------------

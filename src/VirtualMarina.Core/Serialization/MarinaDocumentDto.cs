@@ -7,37 +7,45 @@ using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
+using VirtualMarina.Core.Mathematics;
 using VirtualMarina.Core.Rendering;
 
 namespace VirtualMarina.Core.Serialization;
 
-// The wire shape of a marina file. These types exist only for serialization; the public model is MarinaDocument and the domain
-// records. Every field is optional with a sensible default, and every object keeps the properties it doesn't know in Extra, so a
-// file written by a newer version survives a round trip through an older one (see Docs/13-marina-file-format.md).
+// The wire shape of a marina file, current version only: files written by older versions are brought up to date as raw JSON by
+// the steps in MarinaMigrations before they get here. These types exist only for serialization; the public model is
+// MarinaDocument and the domain records. Every field is optional, and every object keeps the properties it doesn't know in
+// Extra, so a file written by a newer version survives a round trip through an older one (see Docs/13-marina-file-format.md).
+//
+// Defaults: a setting the domain has a default for is nullable here, and a missing one takes the domain's default when read
+// (`value ?? defaults.Value`), so no default is written down twice. Everything is written out in full on save.
 
-/// <summary>Base of every serialized node: keeps properties this version doesn't know about, including the names older versions used.</summary>
-internal abstract class ExtensibleDto
+/// <summary>Base of every serialized node: keeps the properties this version doesn't know about.</summary>
+/// <remarks>
+/// A file may hold <c>null</c> where this version expects something: a null entry in a list is dropped, and a null or blank id
+/// reads as if the id were missing (the node's default id), so reading a file only ever fails with a
+/// <see cref="MarinaFormatException"/>, never with an exception from deep inside. Each node tidies itself up in
+/// <see cref="Normalize"/> as soon as it has been read.
+/// </remarks>
+internal abstract class ExtensibleDto : IJsonOnDeserialized
 {
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
 
-    /// <summary>A property written under an older name, e.g. "dockId" before piers were called piers.</summary>
-    protected bool TryOld(string name, out JsonElement value)
+    void IJsonOnDeserialized.OnDeserialized() => Normalize();
+
+    /// <summary>Replaces what the file left null with what a missing value means.</summary>
+    protected virtual void Normalize()
     {
-        if (Extra is not null && Extra.TryGetValue(name, out value)) return true;
-        value = default;
-        return false;
     }
 
-    protected string? OldText(string name) => TryOld(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+    /// <summary><paramref name="id"/>, or <paramref name="fallback"/> when it is null or blank.</summary>
+    protected static string IdOr(string? id, string fallback) => string.IsNullOrWhiteSpace(id) ? fallback : id;
 
-    protected float? OldNumber(string name) => TryOld(name, out var value) && value.TryGetSingle(out var number) ? number : null;
-
-    protected bool? OldFlag(string name) => TryOld(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : null;
-
-    protected T? OldChoice<T>(string name)
-        where T : struct, Enum =>
-        OldText(name) is { } text && Enum.TryParse<T>(text, ignoreCase: true, out var parsed) ? parsed : null;
+    /// <summary>Drops null entries from a list read from the file.</summary>
+    protected static void DropNulls<T>(List<T>? list)
+        where T : class =>
+        list?.RemoveAll(item => item is null);
 
     /// <summary>Host metadata on its way out; an empty bag is left out of the file entirely.</summary>
     protected static Dictionary<string, string>? Copy(IReadOnlyDictionary<string, string> metadata) =>
@@ -46,6 +54,15 @@ internal abstract class ExtensibleDto
     /// <summary>Host metadata on its way in; a missing one reads as empty rather than null.</summary>
     protected static IReadOnlyDictionary<string, string> Read(Dictionary<string, string>? metadata) =>
         metadata is null or { Count: 0 } ? ReadOnlyDictionary<string, string>.Empty : metadata;
+
+    /// <summary>
+    /// A drawn line on its way in, without points repeated next to each other (within a centimetre, as the designer
+    /// strips them while drawing). Validation now refuses such points; files written before it did can still hold
+    /// them, and they would otherwise stop the whole design from opening. With <paramref name="closed"/>, a last point
+    /// repeating the first goes too.
+    /// </summary>
+    protected static List<Vector2> WithoutRepeatedPoints(List<Vector2> points, bool closed) =>
+        [.. PolygonMath.RemoveRepeatedPoints(points, closed)];
 }
 
 internal sealed class DocumentDto : ExtensibleDto
@@ -74,6 +91,12 @@ internal sealed class DocumentDto : ExtensibleDto
 
     /// <summary>Names of the built-in views that are switched off; written only when there are any.</summary>
     public List<string>? DisabledCameraPresets { get; set; }
+
+    protected override void Normalize()
+    {
+        DropNulls(CameraPresets);
+        DisabledCameraPresets?.RemoveAll(string.IsNullOrWhiteSpace);
+    }
 }
 
 /// <summary>A viewpoint saved with the design.</summary>
@@ -103,12 +126,17 @@ internal sealed class CameraPresetDto : ExtensibleDto
 
     public CameraPreset ToDomain() =>
         new(Name, new CameraPose(Target, YawDegrees, PitchDegrees, Distance), Description);
+
+    protected override void Normalize() => Name = IdOr(Name, "View");
 }
 
-/// <summary>The traced-over picture: the original file in base64, and where it sits.</summary>
+/// <summary>
+/// The traced-over picture: the original file, and where it sits. <see cref="Data"/> is base64 in the file, decoded straight from
+/// the UTF-8 bytes into the array (see <see cref="TolerantBase64Converter"/>), so a large photo is never held as a string.
+/// </summary>
 internal sealed class ReferenceImageDto : ExtensibleDto
 {
-    public string? Data { get; set; }
+    public byte[]? Data { get; set; }
 
     public string? ContentType { get; set; }
 
@@ -118,17 +146,17 @@ internal sealed class ReferenceImageDto : ExtensibleDto
 
     public Vector2 Center { get; set; }
 
-    public float MetersPerPixel { get; set; } = 1f;
+    public float? MetersPerPixel { get; set; }
 
-    public float Opacity { get; set; } = 0.6f;
+    public float? Opacity { get; set; }
 
-    public bool Visible { get; set; } = true;
+    public bool? Visible { get; set; }
 
-    public bool AboveScene { get; set; } = true;
+    public bool? AboveScene { get; set; }
 
     public static ReferenceImageDto From(ReferenceImageRecord record) => new()
     {
-        Data = Convert.ToBase64String(record.Image.EncodedData ?? Array.Empty<byte>()),
+        Data = record.Image.EncodedData ?? Array.Empty<byte>(),
         ContentType = record.Image.ContentType,
         PixelWidth = record.Image.PixelWidth,
         PixelHeight = record.Image.PixelHeight,
@@ -142,27 +170,18 @@ internal sealed class ReferenceImageDto : ExtensibleDto
     /// <summary>The stored picture, or null when the entry is unusable (no bytes, or a size that makes no sense).</summary>
     public ReferenceImageRecord? ToDomain()
     {
-        if (string.IsNullOrWhiteSpace(Data) || PixelWidth <= 0 || PixelHeight <= 0) return null;
+        // A missing or corrupted picture (the converter reads bad base64 as none) must not stop the rest of the design loading.
+        if (Data is not { Length: > 0 } bytes || PixelWidth <= 0 || PixelHeight <= 0) return null;
 
-        byte[] bytes;
-        try
+        var image = Design.ReferenceImage.FromEncoded(bytes, PixelWidth, PixelHeight, ContentType ?? "image/png");
+        var defaults = new ReferenceImageRecord { Image = image };
+        return defaults with
         {
-            bytes = Convert.FromBase64String(Data);
-        }
-        catch (FormatException)
-        {
-            return null; // A corrupted picture must not stop the rest of the design from loading.
-        }
-
-        if (bytes.Length == 0) return null;
-        return new ReferenceImageRecord
-        {
-            Image = Design.ReferenceImage.FromEncoded(bytes, PixelWidth, PixelHeight, ContentType ?? "image/png"),
             Center = Center,
-            MetersPerPixel = MetersPerPixel,
-            Opacity = Opacity,
-            Visible = Visible,
-            AboveScene = AboveScene,
+            MetersPerPixel = MetersPerPixel ?? defaults.MetersPerPixel,
+            Opacity = Opacity ?? defaults.Opacity,
+            Visible = Visible ?? defaults.Visible,
+            AboveScene = AboveScene ?? defaults.AboveScene,
         };
     }
 }
@@ -190,31 +209,13 @@ internal sealed class LayoutDto : ExtensibleDto
 
     public List<MultiBerthDto>? MultiBerths { get; set; }
 
-    /// <summary>The piers. Up to format 1.x they were written as "docks".</summary>
-    public List<PierDto> ReadPiers() => Piers ?? Read(MarinaJson.Indented.ListPierDto, "docks") ?? [];
-
-    /// <summary>
-    /// The berths. Up to format 1.x they were "slips", and "berths" meant the multi-berth groups, so an older file's berth list
-    /// lives under the old name.
-    /// </summary>
-    public List<BerthDto> ReadBerths(bool legacy) =>
-        (legacy ? Read(MarinaJson.Indented.ListBerthDto, "slips") : Berths) ?? [];
-
-    /// <summary>The multi-berth groups; in an older file they are the list called "berths".</summary>
-    public List<MultiBerthDto> ReadMultiBerths(bool legacy) =>
-        (legacy ? Berths?.Select(MultiBerthDto.FromLegacyBerthEntry).ToList() : MultiBerths) ?? [];
-
-    private List<T>? Read<T>(System.Text.Json.Serialization.Metadata.JsonTypeInfo<List<T>> typeInfo, string name)
+    protected override void Normalize()
     {
-        if (!TryOld(name, out var value) || value.ValueKind != JsonValueKind.Array) return null;
-        try
-        {
-            return value.Deserialize(typeInfo);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
+        DropNulls(LandAreas);
+        DropNulls(Piers);
+        DropNulls(Dividers);
+        DropNulls(Berths);
+        DropNulls(MultiBerths);
     }
 }
 
@@ -224,25 +225,25 @@ internal sealed class LayoutDto : ExtensibleDto
 /// </summary>
 internal sealed class MarineTrafficDto : ExtensibleDto
 {
-    public bool Enabled { get; set; }
+    public bool? Enabled { get; set; }
 
-    public float Clearance { get; set; } = 300f;
+    public float? Clearance { get; set; }
 
-    public float EdgeClearance { get; set; } = 700f;
+    public float? EdgeClearance { get; set; }
 
-    public float SpeedPercent { get; set; } = 100f;
+    public float? SpeedPercent { get; set; }
 
-    public float SpawnDelaySeconds { get; set; } = 25f;
+    public float? SpawnDelaySeconds { get; set; }
 
-    public float Reach { get; set; } = 8000f;
+    public float? Reach { get; set; }
 
-    public int MaximumVessels { get; set; } = 16;
+    public int? MaximumVessels { get; set; }
 
-    public int LaneCount { get; set; } = 2;
+    public int? LaneCount { get; set; }
 
-    public float LaneSpacing { get; set; } = 160f;
+    public float? LaneSpacing { get; set; }
 
-    public int Seed { get; set; } = 1;
+    public int? Seed { get; set; }
 
     /// <summary>The vessel mix; written only when it is not the default one.</summary>
     public List<BoatType>? Vessels { get; set; }
@@ -266,23 +267,27 @@ internal sealed class MarineTrafficDto : ExtensibleDto
         Metadata = Copy(traffic.Metadata),
     };
 
-    public MarineTraffic ToDomain() => new()
+    public MarineTraffic ToDomain()
     {
-        IsEnabled = Enabled,
-        Clearance = Clearance,
-        EdgeClearance = EdgeClearance > 0f ? EdgeClearance : new MarineTraffic().EdgeClearance,
-        SpeedPercent = SpeedPercent > 0f ? SpeedPercent : new MarineTraffic().SpeedPercent,
-        SpawnDelaySeconds = SpawnDelaySeconds >= 0f ? SpawnDelaySeconds : new MarineTraffic().SpawnDelaySeconds,
-        Reach = Reach,
-        MaximumVessels = MaximumVessels > 0 ? MaximumVessels : new MarineTraffic().MaximumVessels,
+        var defaults = MarineTraffic.None;
+        return new MarineTraffic
+        {
+            IsEnabled = Enabled ?? defaults.IsEnabled,
+            Clearance = Clearance ?? defaults.Clearance,
+            EdgeClearance = EdgeClearance is > 0f and var edge ? edge : defaults.EdgeClearance,
+            SpeedPercent = SpeedPercent is > 0f and var speed ? speed : defaults.SpeedPercent,
+            SpawnDelaySeconds = SpawnDelaySeconds is >= 0f and var delay ? delay : defaults.SpawnDelaySeconds,
+            Reach = Reach ?? defaults.Reach,
+            MaximumVessels = MaximumVessels is > 0 and var most ? most : defaults.MaximumVessels,
 
-        // A file written before the traffic had lanes has neither, and zero would fail validation and empty the sea.
-        LaneCount = LaneCount > 0 ? LaneCount : new MarineTraffic().LaneCount,
-        LaneSpacing = LaneSpacing > 0f ? LaneSpacing : new MarineTraffic().LaneSpacing,
-        Seed = Seed,
-        Vessels = Vessels?.ToArray() ?? Array.Empty<BoatType>(),
-        Metadata = Read(Metadata),
-    };
+            // A file written before the traffic had lanes has neither, and zero would fail validation and empty the sea.
+            LaneCount = LaneCount is > 0 and var lanes ? lanes : defaults.LaneCount,
+            LaneSpacing = LaneSpacing is > 0f and var spacing ? spacing : defaults.LaneSpacing,
+            Seed = Seed ?? defaults.Seed,
+            Vessels = (IReadOnlyList<BoatType>?)Vessels ?? Array.Empty<BoatType>(),
+            Metadata = Read(Metadata),
+        };
+    }
 }
 
 /// <summary>
@@ -295,13 +300,13 @@ internal sealed class ShorelineDto : ExtensibleDto
 
     public bool LandOnLeft { get; set; }
 
-    public float Height { get; set; } = 1.4f;
+    public float? Height { get; set; }
 
-    public LandKind Kind { get; set; }
+    public LandKind? Kind { get; set; }
 
-    public HinterlandScenery Scenery { get; set; }
+    public HinterlandScenery? Scenery { get; set; }
 
-    public int ScenerySeed { get; set; } = 1;
+    public int? ScenerySeed { get; set; }
 
     /// <summary>Host-owned string attributes; written only when there are any.</summary>
     public Dictionary<string, string>? Metadata { get; set; }
@@ -317,16 +322,22 @@ internal sealed class ShorelineDto : ExtensibleDto
         Metadata = Copy(shoreline.Metadata),
     };
 
-    /// <summary>The shoreline, or null when the file's line is too short to divide the plan.</summary>
+    /// <summary>
+    /// The shoreline, or null when the file's line is too short to divide the plan. A line that is long enough but crosses itself
+    /// is read as it is, so nothing is lost; <see cref="MarinaLayout.Validate"/> then reports it, as it does a land area whose
+    /// outline crosses itself.
+    /// </summary>
     public Shoreline? ToDomain()
     {
-        if (Line is not { Count: >= 2 }) return null;
-        return new Shoreline(Line, LandOnLeft)
+        var line = Line is null ? [] : WithoutRepeatedPoints(Line, closed: false);
+        if (line.Count < 2) return null;
+        var shoreline = new Shoreline(line, LandOnLeft);
+        return shoreline with
         {
-            Height = Height,
-            Kind = Kind,
-            Scenery = Scenery,
-            ScenerySeed = ScenerySeed,
+            Height = Height ?? shoreline.Height,
+            Kind = Kind ?? shoreline.Kind,
+            Scenery = Scenery ?? shoreline.Scenery,
+            ScenerySeed = ScenerySeed ?? shoreline.ScenerySeed,
             Metadata = Read(Metadata),
         };
     }
@@ -349,6 +360,12 @@ internal sealed class LandAreaDto : ExtensibleDto
     /// <summary>Host-owned string attributes; written only when there are any.</summary>
     public Dictionary<string, string>? Metadata { get; set; }
 
+    protected override void Normalize()
+    {
+        Id = IdOr(Id, "land");
+        DropNulls(Trees);
+    }
+
     public static LandAreaDto From(LandArea land) => new()
     {
         Id = land.Id,
@@ -360,10 +377,10 @@ internal sealed class LandAreaDto : ExtensibleDto
         Metadata = Copy(land.Metadata),
     };
 
-    public LandArea ToDomain() => new(Id, Outline ?? [], Height, Kind)
+    public LandArea ToDomain() => new(Id, Outline is null ? [] : WithoutRepeatedPoints(Outline, closed: true), Height, Kind)
     {
         Name = Name,
-        Trees = Trees?.Select(t => t.ToDomain()).ToArray() ?? Array.Empty<LandTree>(),
+        Trees = Trees?.Select(tree => tree.ToDomain()).ToArray() ?? Array.Empty<LandTree>(),
         Metadata = Read(Metadata),
     };
 }
@@ -405,16 +422,19 @@ internal sealed class PierDto : ExtensibleDto
 
     public PierType Type { get; set; }
 
+    /// <summary>Written only when the pier has a height of its own; missing means the default for its type.</summary>
     public float? DeckHeight { get; set; }
 
-    public float PilingSpacing { get; set; } = 6f;
+    public float? PilingSpacing { get; set; }
 
-    public PierSides BerthingSides { get; set; } = PierSides.Both;
+    public PierSides? BerthingSides { get; set; }
 
-    public PierServices Services { get; set; }
+    public PierServices? Services { get; set; }
 
     /// <summary>Host-owned string attributes; written only when there are any.</summary>
     public Dictionary<string, string>? Metadata { get; set; }
+
+    protected override void Normalize() => Id = IdOr(Id, "pier");
 
     public static PierDto From(Pier pier) => new()
     {
@@ -425,7 +445,7 @@ internal sealed class PierDto : ExtensibleDto
         Length = pier.Length,
         Width = pier.Width,
         Type = pier.Type,
-        DeckHeight = pier.DeckHeight,
+        DeckHeight = pier.HasCustomDeckHeight ? pier.DeckHeight : null,
         PilingSpacing = pier.PilingSpacing,
         BerthingSides = pier.BerthingSides,
         Services = pier.Services,
@@ -434,15 +454,18 @@ internal sealed class PierDto : ExtensibleDto
 
     public Pier ToDomain()
     {
-        var pier = new Pier(Id, Name ?? Id, Start, HeadingDegrees, Length, Width, Type)
+        var pier = new Pier(Id, Name ?? Id, Start, HeadingDegrees, Length, Width, Type);
+        pier = pier with
         {
-            PilingSpacing = PilingSpacing,
-            BerthingSides = BerthingSides == 0 ? PierSides.Both : BerthingSides,
-            Services = Services,
+            PilingSpacing = PilingSpacing ?? pier.PilingSpacing,
+            BerthingSides = BerthingSides is { } sides && sides != 0 ? sides : pier.BerthingSides,
+            Services = Services ?? pier.Services,
             Metadata = Read(Metadata),
         };
 
-        return DeckHeight is { } height ? pier with { DeckHeight = height } : pier;
+        // Files used to write the height whatever it was; one that is just the type's default is read as the default, so
+        // changing the pier's type later still changes its height.
+        return DeckHeight is { } height && height != Pier.GetDefaultDeckHeight(pier.Type) ? pier with { DeckHeight = height } : pier;
     }
 }
 
@@ -458,14 +481,16 @@ internal sealed class DividerDto : ExtensibleDto
 
     public float Length { get; set; } = 8f;
 
-    public float Width { get; set; } = 0.8f;
+    public float? Width { get; set; }
 
     public DividerType Type { get; set; }
 
-    public float Spacing { get; set; } = 4f;
+    public float? Spacing { get; set; }
 
     /// <summary>Host-owned string attributes; written only when there are any.</summary>
     public Dictionary<string, string>? Metadata { get; set; }
+
+    protected override void Normalize() => Id = IdOr(Id, "divider");
 
     public static DividerDto From(Divider divider) => new()
     {
@@ -480,13 +505,17 @@ internal sealed class DividerDto : ExtensibleDto
         Metadata = Copy(divider.Metadata),
     };
 
-    public Divider ToDomain() => new(Id, Start, HeadingDegrees, Length, Type)
+    public Divider ToDomain()
     {
-        PierId = PierId ?? OldText("dockId"),
-        Width = Width <= 0f ? 0.8f : Width,
-        Spacing = Spacing < 0.5f ? 4f : Spacing,
-        Metadata = Read(Metadata),
-    };
+        var divider = new Divider(Id, Start, HeadingDegrees, Length, Type);
+        return divider with
+        {
+            PierId = PierId,
+            Width = Width is > 0f and var width ? width : divider.Width,
+            Spacing = Spacing is >= 0.5f and var spacing ? spacing : divider.Spacing,
+            Metadata = Read(Metadata),
+        };
+    }
 }
 
 internal sealed class BerthDto : ExtensibleDto
@@ -511,13 +540,15 @@ internal sealed class BerthDto : ExtensibleDto
 
     /// <summary>
     /// Occupancy and the interaction flags are runtime state: the host application sets them from its own records
-    /// every session, so a design does not carry them. They are still read, for files written before that was so.
+    /// every session, so a design does not carry them. They are still read, for files written before that was so. (A
+    /// <see cref="MultiBerthDto"/> does carry its boat and status: a multi-berth cannot exist without them.)
     /// </summary>
     public BerthStatus? Status { get; set; }
 
+    /// <inheritdoc cref="Status"/>
     public BoatDto? Boat { get; set; }
 
-    public bool HasFingerPiers { get; set; } = true;
+    public bool? HasFingerPiers { get; set; }
 
     /// <summary>Pedestals at this berth alone; absent means it takes whatever its pier offers.</summary>
     public PierServices? Services { get; set; }
@@ -533,16 +564,7 @@ internal sealed class BerthDto : ExtensibleDto
 
     public Dictionary<string, string>? Metadata { get; set; }
 
-    /// <summary>Member ids when this entry is really a multi-berth group from a file up to format 1.x.</summary>
-    public List<string>? LegacyMemberIds =>
-        TryOld("slipIds", out var value) && value.ValueKind == JsonValueKind.Array
-            ? value.EnumerateArray().Where(id => id.ValueKind == JsonValueKind.String).Select(id => id.GetString()!).ToList()
-            : TryOld("berthIds", out var ids) && ids.ValueKind == JsonValueKind.Array
-                ? ids.EnumerateArray().Where(id => id.ValueKind == JsonValueKind.String).Select(id => id.GetString()!).ToList()
-                : null;
-
-    /// <summary>Mooring style when this entry is really a multi-berth group from a file up to format 1.x.</summary>
-    public MooringStyle? LegacyMooringStyle => OldChoice<MooringStyle>("style");
+    protected override void Normalize() => Id = IdOr(Id, "berth");
 
     public static BerthDto From(Berth berth) => new()
     {
@@ -558,15 +580,15 @@ internal sealed class BerthDto : ExtensibleDto
         // Status, the flags and any boat are left out on purpose: see the Status property.
         HasFingerPiers = berth.HasFingerPiers,
         Services = berth.Services,
-        Metadata = berth.Metadata.Count == 0 ? null : berth.Metadata.ToDictionary(e => e.Key, e => e.Value),
+        Metadata = Copy(berth.Metadata),
     };
 
     public Berth ToDomain()
     {
-        PierId ??= OldText("dockId"); // Piers were called docks up to format 1.x.
-        var berth = LandAreaId is { Length: > 0 }
-            ? Berth.OnLand(Id, LandAreaId, Center, HeadingDegrees, Length, Width)
-            : new Berth(Id, PierId is { Length: > 0 } pierId ? pierId : "pier", Center, HeadingDegrees, Length, Width);
+        var onLand = !string.IsNullOrWhiteSpace(LandAreaId);
+        var berth = onLand
+            ? Berth.OnLand(Id, LandAreaId!, Center, HeadingDegrees, Length, Width)
+            : new Berth(Id, IdOr(PierId, "pier"), Center, HeadingDegrees, Length, Width);
 
         return berth with
         {
@@ -574,12 +596,12 @@ internal sealed class BerthDto : ExtensibleDto
             MaxDraft = MaxDraft,
             Status = Status ?? BerthStatus.Free,
             Boat = Boat?.ToDomain(),
-            HasFingerPiers = LandAreaId is not { Length: > 0 } && HasFingerPiers,
+            HasFingerPiers = !onLand && (HasFingerPiers ?? berth.HasFingerPiers),
             Services = Services,
             IsVisible = IsVisible ?? true,
             IsDisabled = IsDisabled ?? false,
             IsReadOnly = IsReadOnly ?? false,
-            Metadata = Metadata is null ? berth.Metadata : Metadata,
+            Metadata = Read(Metadata),
         };
     }
 }
@@ -592,9 +614,11 @@ internal sealed class BoatDto : ExtensibleDto
 
     public BoatType Type { get; set; }
 
-    public float LengthMeters { get; set; }
+    /// <summary>Written only when the boat has a length of its own; missing means the nominal length of its type.</summary>
+    public float? LengthMeters { get; set; }
 
-    public float BeamMeters { get; set; }
+    /// <summary>Written only when the boat has a beam of its own; missing means the nominal beam of its type.</summary>
+    public float? BeamMeters { get; set; }
 
     public string? OwnerName { get; set; }
 
@@ -604,17 +628,19 @@ internal sealed class BoatDto : ExtensibleDto
 
     public Dictionary<string, string>? Metadata { get; set; }
 
+    protected override void Normalize() => Id = IdOr(Id, "boat");
+
     public static BoatDto From(Boat boat) => new()
     {
         Id = boat.Id,
         Name = boat.Name,
         Type = boat.Type,
-        LengthMeters = boat.LengthMeters,
-        BeamMeters = boat.BeamMeters,
+        LengthMeters = boat.HasCustomLength ? boat.LengthMeters : null,
+        BeamMeters = boat.HasCustomBeam ? boat.BeamMeters : null,
         OwnerName = boat.OwnerName,
         RegistrationNumber = boat.RegistrationNumber,
         ExpectedArrival = boat.ExpectedArrival,
-        Metadata = boat.Metadata.Count == 0 ? null : boat.Metadata.ToDictionary(e => e.Key, e => e.Value),
+        Metadata = Copy(boat.Metadata),
     };
 
     public Boat ToDomain()
@@ -626,9 +652,10 @@ internal sealed class BoatDto : ExtensibleDto
             ExpectedArrival = ExpectedArrival,
         };
 
-        if (LengthMeters > 0f) boat = boat with { LengthMeters = LengthMeters };
-        if (BeamMeters > 0f) boat = boat with { BeamMeters = BeamMeters };
-        return Metadata is null ? boat : boat with { Metadata = Metadata };
+        // Zero was how a file said "the type's size" before it could leave the number out.
+        if (LengthMeters is > 0f and var length) boat = boat with { LengthMeters = length };
+        if (BeamMeters is > 0f and var beam) boat = boat with { BeamMeters = beam };
+        return Metadata is null ? boat : boat with { Metadata = Read(Metadata) };
     }
 }
 
@@ -640,12 +667,14 @@ internal sealed class MultiBerthDto : ExtensibleDto
 
     public BoatDto? Boat { get; set; }
 
-    public BerthStatus Status { get; set; } = BerthStatus.Occupied;
+    public BerthStatus? Status { get; set; }
 
-    public MooringStyle Style { get; set; }
+    public MooringStyle? Style { get; set; }
 
     /// <summary>Host-owned string attributes; written only when there are any.</summary>
     public Dictionary<string, string>? Metadata { get; set; }
+
+    protected override void Normalize() => Id = IdOr(Id, "berth");
 
     public static MultiBerthDto From(MultiBerth berth) => new()
     {
@@ -657,28 +686,15 @@ internal sealed class MultiBerthDto : ExtensibleDto
         Metadata = Copy(berth.Metadata),
     };
 
+    /// <summary>
+    /// The multi-berth, or null when the entry has no members or no boat, which no multi-berth can be without. A status of Free
+    /// (or none) reads as Occupied.
+    /// </summary>
     public MultiBerth? ToDomain()
     {
-        var members = BerthIds ?? ReadOldBerthIds();
-        if (members is not { Count: > 0 } || Boat is null) return null;
-        return new MultiBerth(Id, members, Boat.ToDomain(), Status, Style) { Metadata = Read(Metadata) };
-    }
-
-    /// <summary>A group from a file up to format 1.x, where the groups were the list called "berths" and their members "slipIds".</summary>
-    public static MultiBerthDto FromLegacyBerthEntry(BerthDto entry) => new()
-    {
-        Id = entry.Id,
-        Boat = entry.Boat,
-        Status = entry.Status ?? BerthStatus.Occupied,
-        Style = entry.LegacyMooringStyle ?? MooringStyle.Alongside,
-        BerthIds = entry.LegacyMemberIds,
-        Extra = entry.Extra,
-    };
-
-    private List<string>? ReadOldBerthIds()
-    {
-        if (!TryOld("slipIds", out var value) || value.ValueKind != JsonValueKind.Array) return null;
-        return value.EnumerateArray().Where(id => id.ValueKind == JsonValueKind.String).Select(id => id.GetString()!).ToList();
+        if (BerthIds is not { Count: > 0 } members || Boat is null) return null;
+        var status = Status is { } read && read != BerthStatus.Free ? read : BerthStatus.Occupied;
+        return new MultiBerth(Id, members, Boat.ToDomain(), status, Style ?? MooringStyle.Alongside) { Metadata = Read(Metadata) };
     }
 }
 
@@ -695,35 +711,39 @@ internal sealed class CameraDto : ExtensibleDto
 
 internal sealed class DesignerDto : ExtensibleDto
 {
-    public LandKind LandKind { get; set; }
+    public LandKind? LandKind { get; set; }
 
-    public float LandHeight { get; set; } = 1f;
+    public float? LandHeight { get; set; }
 
-    public float TreeDensity { get; set; } = 8f;
+    public float? TreeDensity { get; set; }
 
-    public PierType PierType { get; set; }
+    public HinterlandScenery? Scenery { get; set; }
 
-    public float PierWidth { get; set; } = 2.5f;
+    public float? FogFactor { get; set; }
 
-    public PierSides PierBerthingSides { get; set; } = PierSides.Both;
+    public PierType? PierType { get; set; }
 
-    public float BerthWidth { get; set; } = 5f;
+    public float? PierWidth { get; set; }
 
-    public float BerthLength { get; set; } = 12f;
+    public PierSides? PierBerthingSides { get; set; }
 
-    public float BerthDepth { get; set; } = 3f;
+    public float? BerthWidth { get; set; }
 
-    public BerthSeparator BerthSeparators { get; set; }
+    public float? BerthLength { get; set; }
 
-    public float BerthGap { get; set; }
+    public float? BerthDepth { get; set; }
 
-    public bool AlignBerthsToExisting { get; set; } = true;
+    public BerthSeparator? BerthSeparators { get; set; }
 
-    public PierServices BerthServices { get; set; }
+    public float? BerthGap { get; set; }
 
-    public float LandBerthHeading { get; set; }
+    public bool? AlignBerthsToExisting { get; set; }
 
-    public float SnapDistancePixels { get; set; } = 12f;
+    public PierServices? BerthServices { get; set; }
+
+    public float? LandBerthHeading { get; set; }
+
+    public float? SnapDistancePixels { get; set; }
 
     public string? PierNamePattern { get; set; }
 
@@ -734,6 +754,8 @@ internal sealed class DesignerDto : ExtensibleDto
         LandKind = settings.LandKind,
         LandHeight = settings.LandHeight,
         TreeDensity = settings.TreeDensity,
+        Scenery = settings.Scenery,
+        FogFactor = settings.FogFactor,
         PierType = settings.PierType,
         PierWidth = settings.PierWidth,
         PierBerthingSides = settings.PierBerthingSides,
@@ -750,27 +772,32 @@ internal sealed class DesignerDto : ExtensibleDto
         BerthNaming = BerthNamingDto.From(settings.BerthNaming),
     };
 
-    public DesignerSettings ToDomain() => new()
+    public DesignerSettings ToDomain()
     {
-        LandKind = LandKind,
-        LandHeight = LandHeight,
-        TreeDensity = TreeDensity,
-        // The settings written before piers and berths had their names.
-        PierType = OldChoice<PierType>("dockType") ?? PierType,
-        PierWidth = OldNumber("dockWidth") ?? PierWidth,
-        PierBerthingSides = OldChoice<PierSides>("dockBerthingSides") ?? (PierBerthingSides == 0 ? PierSides.Both : PierBerthingSides),
-        BerthWidth = OldNumber("slipWidth") ?? BerthWidth,
-        BerthLength = OldNumber("slipLength") ?? BerthLength,
-        BerthDepth = OldNumber("slipDepth") ?? BerthDepth,
-        BerthSeparators = OldChoice<BerthSeparator>("slipSeparators") ?? BerthSeparators,
-        BerthGap = OldNumber("slipGap") ?? BerthGap,
-        AlignBerthsToExisting = OldFlag("alignSlipsToExisting") ?? AlignBerthsToExisting,
-        BerthServices = OldChoice<PierServices>("slipServices") ?? BerthServices,
-        LandBerthHeading = OldNumber("landSlipHeading") ?? LandBerthHeading,
-        SnapDistancePixels = SnapDistancePixels,
-        PierNamePattern = string.IsNullOrWhiteSpace(PierNamePattern) ? "Pier {pier}" : PierNamePattern,
-        BerthNaming = BerthNaming?.ToDomain() ?? BerthNamingScheme.Default,
-    };
+        var defaults = new DesignerSettings();
+        return new DesignerSettings
+        {
+            LandKind = LandKind ?? defaults.LandKind,
+            LandHeight = LandHeight ?? defaults.LandHeight,
+            TreeDensity = TreeDensity ?? defaults.TreeDensity,
+            Scenery = Scenery ?? defaults.Scenery,
+            FogFactor = FogFactor ?? defaults.FogFactor,
+            PierType = PierType ?? defaults.PierType,
+            PierWidth = PierWidth ?? defaults.PierWidth,
+            PierBerthingSides = PierBerthingSides is { } sides && sides != 0 ? sides : defaults.PierBerthingSides,
+            BerthWidth = BerthWidth ?? defaults.BerthWidth,
+            BerthLength = BerthLength ?? defaults.BerthLength,
+            BerthDepth = BerthDepth ?? defaults.BerthDepth,
+            BerthSeparators = BerthSeparators ?? defaults.BerthSeparators,
+            BerthGap = BerthGap ?? defaults.BerthGap,
+            AlignBerthsToExisting = AlignBerthsToExisting ?? defaults.AlignBerthsToExisting,
+            BerthServices = BerthServices ?? defaults.BerthServices,
+            LandBerthHeading = LandBerthHeading ?? defaults.LandBerthHeading,
+            SnapDistancePixels = SnapDistancePixels ?? defaults.SnapDistancePixels,
+            PierNamePattern = string.IsNullOrWhiteSpace(PierNamePattern) ? defaults.PierNamePattern : PierNamePattern,
+            BerthNaming = BerthNaming?.ToDomain() ?? defaults.BerthNaming,
+        };
+    }
 }
 
 /// <summary>How the designer names the berths it draws.</summary>
@@ -786,11 +813,11 @@ internal sealed class BerthNamingDto : ExtensibleDto
 
     public int? LandNumberDigits { get; set; }
 
-    public int StartNumber { get; set; } = 1;
+    public int? StartNumber { get; set; }
 
-    public int Increment { get; set; } = 1;
+    public int? Increment { get; set; }
 
-    public int NumberDigits { get; set; } = 2;
+    public int? NumberDigits { get; set; }
 
     public string? LeftSide { get; set; }
 
@@ -812,6 +839,7 @@ internal sealed class BerthNamingDto : ExtensibleDto
 
     public BerthNamingScheme ToDomain()
     {
+        var defaults = BerthNamingScheme.Default;
         var scheme = new BerthNamingScheme
         {
             Pattern = string.IsNullOrWhiteSpace(Pattern) ? BerthNamingScheme.Default.Pattern : Pattern,
@@ -819,9 +847,9 @@ internal sealed class BerthNamingDto : ExtensibleDto
             LandStartNumber = LandStartNumber,
             LandIncrement = LandIncrement == 0 ? null : LandIncrement,
             LandNumberDigits = LandNumberDigits is null ? null : Math.Clamp(LandNumberDigits.Value, 1, 9),
-            StartNumber = StartNumber,
-            Increment = Increment == 0 ? 1 : Increment,
-            NumberDigits = Math.Clamp(NumberDigits, 1, 9),
+            StartNumber = StartNumber ?? defaults.StartNumber,
+            Increment = Increment is { } step && step != 0 ? step : defaults.Increment,
+            NumberDigits = Math.Clamp(NumberDigits ?? defaults.NumberDigits, 1, 9),
             LeftSide = LeftSide ?? BerthNamingScheme.Default.LeftSide,
             RightSide = RightSide ?? BerthNamingScheme.Default.RightSide,
         };
@@ -851,10 +879,7 @@ internal sealed class PresentationDto : ExtensibleDto
 
     public ShadowDto? Shadows { get; set; }
 
-    public BerthLabelMode BerthLabels { get; set; }
-
-    /// <summary>Berth labels were called slip labels up to format 1.x.</summary>
-    public BerthLabelMode ReadBerthLabels() => BerthLabels != BerthLabelMode.None ? BerthLabels : OldChoice<BerthLabelMode>("slipLabels") ?? BerthLabelMode.None;
+    public BerthLabelMode? BerthLabels { get; set; }
 
     public static PresentationDto From(MarinaStyle style, BerthLabelMode labels) => new()
     {
@@ -875,10 +900,10 @@ internal sealed class PresentationDto : ExtensibleDto
         var style = new MarinaStyle
         {
             Water = Water?.ToDomain() ?? new WaterSettings(),
-            Lighting = Lighting?.ToDomain() ?? new LightingSettings(),
-            View = View?.ToDomain() ?? new ViewStyle(),
         };
 
+        Lighting?.ApplyTo(style.Lighting);
+        View?.ApplyTo(style.View);
         Status?.ApplyTo(style.Status);
         Land?.ApplyTo(style.Land);
         Structures?.ApplyTo(style.Piers);
@@ -891,31 +916,33 @@ internal sealed class PresentationDto : ExtensibleDto
 
 internal sealed class WaterDto : ExtensibleDto
 {
-    public float Size { get; set; } = 1400f;
+    /// <summary>Null when the file leaves it out, so the current default applies rather than one this class would have to repeat.</summary>
+    public float? Size { get; set; }
 
-    public int GridResolution { get; set; } = 160;
+    /// <summary>
+    /// Read as a number of any shape, so a file saying <c>1e9</c> is still read (and then held to the range) rather than refused
+    /// outright; written as the whole number it always is.
+    /// </summary>
+    public double? GridResolution { get; set; }
 
-    public Vector3 DeepColor { get; set; }
+    /// <summary>Null when the file leaves it out or it can't be read; black is a color like any other.</summary>
+    public Vector3? DeepColor { get; set; }
 
-    public Vector3 ShallowColor { get; set; }
+    public Vector3? ShallowColor { get; set; }
 
-    public float WaveAmplitude { get; set; } = 0.08f;
+    public float? WaveAmplitude { get; set; }
 
-    public float WaveFrequency { get; set; } = 1f;
+    public float? WaveFrequency { get; set; }
 
-    public float WaveSpeed { get; set; } = 1f;
+    public float? WaveSpeed { get; set; }
 
-    public float SkyReflection { get; set; } = 1f;
+    public float? SkyReflection { get; set; }
 
-    public float Ripples { get; set; } = 1f;
+    public float? Ripples { get; set; }
 
-    public float SunGlints { get; set; } = 1f;
+    public float? SunGlints { get; set; }
 
-
-
-
-
-    public float BoatMotion { get; set; } = 1f;
+    public float? BoatMotion { get; set; }
 
     public static WaterDto From(WaterSettings water) => new()
     {
@@ -932,43 +959,55 @@ internal sealed class WaterDto : ExtensibleDto
         BoatMotion = water.BoatMotion,
     };
 
+    /// <summary>A new section (the grid resolution can only be set as it is built), with every setting the file leaves out at its default.</summary>
     public WaterSettings ToDomain()
     {
         var defaults = new WaterSettings();
         return new WaterSettings
         {
-            Size = Size > 0f ? Size : defaults.Size,
-            GridResolution = GridResolution > 1 ? GridResolution : defaults.GridResolution,
-            DeepColor = DeepColor == Vector3.Zero ? defaults.DeepColor : DeepColor,
-            ShallowColor = ShallowColor == Vector3.Zero ? defaults.ShallowColor : ShallowColor,
-            WaveAmplitude = WaveAmplitude,
-            WaveFrequency = WaveFrequency,
-            WaveSpeed = WaveSpeed,
-            SkyReflection = SkyReflection,
-            Ripples = Ripples,
-            SunGlints = SunGlints,
-            BoatMotion = BoatMotion,
+            Size = Size is { } size && size > 0f ? size : defaults.Size,
+            GridResolution = ReadGridResolution(GridResolution, defaults.GridResolution),
+            DeepColor = DeepColor ?? defaults.DeepColor,
+            ShallowColor = ShallowColor ?? defaults.ShallowColor,
+            WaveAmplitude = WaveAmplitude ?? defaults.WaveAmplitude,
+            WaveFrequency = WaveFrequency ?? defaults.WaveFrequency,
+            WaveSpeed = WaveSpeed ?? defaults.WaveSpeed,
+            SkyReflection = SkyReflection ?? defaults.SkyReflection,
+            Ripples = Ripples ?? defaults.Ripples,
+            SunGlints = SunGlints ?? defaults.SunGlints,
+            BoatMotion = BoatMotion ?? defaults.BoatMotion,
         };
     }
+
+    /// <summary>
+    /// The grid size a file asks for, held to what the visualizer builds: nothing sensible (below two cells, or not a number)
+    /// means the default, and anything past the maximum is the maximum, since a grid of a billion cells a side is no grid at all.
+    /// </summary>
+    private static int ReadGridResolution(double? value, int fallback) =>
+        value is { } read && double.IsFinite(read) && read >= WaterSettings.MinGridResolution
+            ? (int)Math.Min(Math.Round(read), WaterSettings.MaxGridResolution)
+            : fallback;
 }
 
 internal sealed class LightingDto : ExtensibleDto
 {
-    public Vector3 SunDirection { get; set; }
+    /// <summary>Null when the file leaves it out; a zero vector points nowhere and is taken as missing too.</summary>
+    public Vector3? SunDirection { get; set; }
 
-    public Vector3 SunColor { get; set; }
+    /// <summary>Null when the file leaves it out or it can't be read, as for every color here; black is a color like any other.</summary>
+    public Vector3? SunColor { get; set; }
 
-    public Vector3 AmbientColor { get; set; }
+    public Vector3? AmbientColor { get; set; }
 
-    public float SpecularStrength { get; set; } = 0.35f;
+    public float? SpecularStrength { get; set; }
 
-    public float Shininess { get; set; } = 32f;
+    public float? Shininess { get; set; }
 
-    public Vector3 SkyColor { get; set; }
+    public Vector3? SkyColor { get; set; }
 
-    public Vector3 FogColor { get; set; }
+    public Vector3? FogColor { get; set; }
 
-    public float FogDensity { get; set; } = 0.0022f;
+    public float? FogDensity { get; set; }
 
     public static LightingDto From(LightingSettings lighting) => new()
     {
@@ -982,49 +1021,48 @@ internal sealed class LightingDto : ExtensibleDto
         FogDensity = lighting.FogDensity,
     };
 
-    public LightingSettings ToDomain()
+    public void ApplyTo(LightingSettings lighting)
     {
-        var lighting = new LightingSettings
-        {
-            SpecularStrength = SpecularStrength,
-            Shininess = Shininess,
-            FogDensity = FogDensity,
-        };
-
-        if (SunDirection != Vector3.Zero) lighting.SunDirection = SunDirection;
-        if (SunColor != Vector3.Zero) lighting.SunColor = SunColor;
-        if (AmbientColor != Vector3.Zero) lighting.AmbientColor = AmbientColor;
-        if (SkyColor != Vector3.Zero) lighting.SkyColor = SkyColor;
-        if (FogColor != Vector3.Zero) lighting.FogColor = FogColor;
-        return lighting;
+        if (SunDirection is { } sun && sun != Vector3.Zero) lighting.SunDirection = sun;
+        lighting.SunColor = SunColor ?? lighting.SunColor;
+        lighting.AmbientColor = AmbientColor ?? lighting.AmbientColor;
+        lighting.SpecularStrength = SpecularStrength ?? lighting.SpecularStrength;
+        lighting.Shininess = Shininess ?? lighting.Shininess;
+        lighting.SkyColor = SkyColor ?? lighting.SkyColor;
+        lighting.FogColor = FogColor ?? lighting.FogColor;
+        lighting.FogDensity = FogDensity ?? lighting.FogDensity;
     }
 }
 
+/// <summary>
+/// The status colors. Like every color of the style sections, a color is null when the file leaves it out or holds one that
+/// can't be read, and the section then keeps its own default.
+/// </summary>
 internal sealed class StatusDto : ExtensibleDto
 {
-    public ColorRgba Free { get; set; } = StatusColorScheme.DefaultFree;
+    public ColorRgba? Free { get; set; }
 
-    public ColorRgba Occupied { get; set; } = StatusColorScheme.DefaultOccupied;
+    public ColorRgba? Occupied { get; set; }
 
-    public ColorRgba Reserved { get; set; } = StatusColorScheme.DefaultReserved;
+    public ColorRgba? Reserved { get; set; }
 
-    public ColorRgba TemporarilyFree { get; set; } = StatusColorScheme.DefaultTemporarilyFree;
+    public ColorRgba? TemporarilyFree { get; set; }
 
-    public ColorRgba Disabled { get; set; } = StatusColorScheme.DefaultDisabled;
+    public ColorRgba? Disabled { get; set; }
 
-    public float PadOpacity { get; set; } = 0.45f;
+    public float? PadOpacity { get; set; }
 
-    public float OccupiedBoatOpacity { get; set; } = 1f;
+    public float? OccupiedBoatOpacity { get; set; }
 
-    public float ReservedBoatOpacity { get; set; } = 0.4f;
+    public float? ReservedBoatOpacity { get; set; }
 
-    public float TemporarilyFreeBoatOpacity { get; set; } = 0.4f;
+    public float? TemporarilyFreeBoatOpacity { get; set; }
 
-    public float GhostBoatTint { get; set; } = 0.55f;
+    public float? GhostBoatTint { get; set; }
 
-    public bool ShowStatusMarkers { get; set; } = true;
+    public bool? ShowStatusMarkers { get; set; }
 
-    public float StatusMarkerScale { get; set; } = 1f;
+    public float? StatusMarkerScale { get; set; }
 
     public static StatusDto From(StatusColorScheme status) => new()
     {
@@ -1044,46 +1082,50 @@ internal sealed class StatusDto : ExtensibleDto
 
     public void ApplyTo(StatusColorScheme status)
     {
-        status.FreeColor = Free;
-        status.OccupiedColor = Occupied;
-        status.ReservedColor = Reserved;
-        status.TemporarilyFreeColor = TemporarilyFree;
-        status.DisabledColor = Disabled;
-        status.PadOpacity = PadOpacity;
-        status.OccupiedBoatOpacity = OccupiedBoatOpacity;
-        status.ReservedBoatOpacity = ReservedBoatOpacity;
-        status.TemporarilyFreeBoatOpacity = TemporarilyFreeBoatOpacity;
-        status.GhostBoatTint = GhostBoatTint;
-        status.ShowStatusMarkers = ShowStatusMarkers;
-        status.StatusMarkerScale = StatusMarkerScale;
+        status.FreeColor = Free ?? status.FreeColor;
+        status.OccupiedColor = Occupied ?? status.OccupiedColor;
+        status.ReservedColor = Reserved ?? status.ReservedColor;
+        status.TemporarilyFreeColor = TemporarilyFree ?? status.TemporarilyFreeColor;
+        status.DisabledColor = Disabled ?? status.DisabledColor;
+        status.PadOpacity = PadOpacity ?? status.PadOpacity;
+        status.OccupiedBoatOpacity = OccupiedBoatOpacity ?? status.OccupiedBoatOpacity;
+        status.ReservedBoatOpacity = ReservedBoatOpacity ?? status.ReservedBoatOpacity;
+        status.TemporarilyFreeBoatOpacity = TemporarilyFreeBoatOpacity ?? status.TemporarilyFreeBoatOpacity;
+        status.GhostBoatTint = GhostBoatTint ?? status.GhostBoatTint;
+        status.ShowStatusMarkers = ShowStatusMarkers ?? status.ShowStatusMarkers;
+        status.StatusMarkerScale = StatusMarkerScale ?? status.StatusMarkerScale;
     }
 }
 
 internal sealed class LandStyleDto : ExtensibleDto
 {
-    public ColorRgba Quay { get; set; } = new(0.74f, 0.72f, 0.67f);
+    public ColorRgba? Quay { get; set; }
 
-    public ColorRgba QuayWall { get; set; } = new(0.62f, 0.60f, 0.56f);
+    public ColorRgba? QuayWall { get; set; }
 
-    public ColorRgba Grass { get; set; } = new(0.40f, 0.58f, 0.30f);
+    public ColorRgba? Grass { get; set; }
 
-    public ColorRgba GrassBank { get; set; } = new(0.47f, 0.40f, 0.30f);
+    public ColorRgba? GrassBank { get; set; }
 
-    public ColorRgba Rock { get; set; } = new(0.53f, 0.51f, 0.48f);
+    public ColorRgba? Rock { get; set; }
 
-    public float RockColorVariation { get; set; } = 0.2f;
+    public float? RockColorVariation { get; set; }
 
-    public ColorRgba Foliage { get; set; } = new(0.24f, 0.46f, 0.20f);
+    public ColorRgba? Foliage { get; set; }
 
-    public ColorRgba Conifer { get; set; } = new(0.16f, 0.36f, 0.22f);
+    public ColorRgba? Conifer { get; set; }
 
-    public ColorRgba Trunk { get; set; } = new(0.38f, 0.27f, 0.17f);
+    public ColorRgba? Trunk { get; set; }
 
-    public ColorRgba Palm { get; set; } = new(0.33f, 0.52f, 0.26f);
+    public ColorRgba? Palm { get; set; }
 
-    public ColorRgba Blossom { get; set; } = new(0.95f, 0.72f, 0.80f);
+    public ColorRgba? Blossom { get; set; }
 
-    public bool ShowTrees { get; set; } = true;
+    public ColorRgba? Building { get; set; }
+
+    public ColorRgba? Roof { get; set; }
+
+    public bool? ShowTrees { get; set; }
 
     public static LandStyleDto From(LandStyle land) => new()
     {
@@ -1098,49 +1140,53 @@ internal sealed class LandStyleDto : ExtensibleDto
         Trunk = land.TrunkColor,
         Palm = land.PalmColor,
         Blossom = land.BlossomColor,
+        Building = land.BuildingColor,
+        Roof = land.RoofColor,
         ShowTrees = land.ShowTrees,
     };
 
     public void ApplyTo(LandStyle land)
     {
-        land.QuayColor = Quay;
-        land.QuayWallColor = QuayWall;
-        land.GrassColor = Grass;
-        land.GrassBankColor = GrassBank;
-        land.RockColor = Rock;
-        land.RockColorVariation = RockColorVariation;
-        land.FoliageColor = Foliage;
-        land.ConiferColor = Conifer;
-        land.TrunkColor = Trunk;
-        land.PalmColor = Palm;
-        land.BlossomColor = Blossom;
-        land.ShowTrees = ShowTrees;
+        land.QuayColor = Quay ?? land.QuayColor;
+        land.QuayWallColor = QuayWall ?? land.QuayWallColor;
+        land.GrassColor = Grass ?? land.GrassColor;
+        land.GrassBankColor = GrassBank ?? land.GrassBankColor;
+        land.RockColor = Rock ?? land.RockColor;
+        land.RockColorVariation = RockColorVariation ?? land.RockColorVariation;
+        land.FoliageColor = Foliage ?? land.FoliageColor;
+        land.ConiferColor = Conifer ?? land.ConiferColor;
+        land.TrunkColor = Trunk ?? land.TrunkColor;
+        land.PalmColor = Palm ?? land.PalmColor;
+        land.BlossomColor = Blossom ?? land.BlossomColor;
+        land.BuildingColor = Building ?? land.BuildingColor;
+        land.RoofColor = Roof ?? land.RoofColor;
+        land.ShowTrees = ShowTrees ?? land.ShowTrees;
     }
 }
 
 internal sealed class StructureDto : ExtensibleDto
 {
-    public ColorRgba Wood { get; set; } = new(0.66f, 0.50f, 0.33f);
+    public ColorRgba? Wood { get; set; }
 
-    public ColorRgba Concrete { get; set; } = new(0.74f, 0.73f, 0.70f);
+    public ColorRgba? Concrete { get; set; }
 
-    public ColorRgba Float { get; set; } = new(0.20f, 0.21f, 0.23f);
+    public ColorRgba? Float { get; set; }
 
-    public ColorRgba Fender { get; set; } = new(0.12f, 0.12f, 0.13f);
+    public ColorRgba? Fender { get; set; }
 
-    public ColorRgba Bollard { get; set; } = new(0.17f, 0.18f, 0.20f);
+    public ColorRgba? Bollard { get; set; }
 
-    public ColorRgba Steel { get; set; } = new(0.56f, 0.58f, 0.61f);
+    public ColorRgba? Steel { get; set; }
 
-    public ColorRgba BoomFloat { get; set; } = new(0.96f, 0.56f, 0.12f);
+    public ColorRgba? BoomFloat { get; set; }
 
-    public ColorRgba BoomEnd { get; set; } = new(0.98f, 0.84f, 0.15f);
+    public ColorRgba? BoomEnd { get; set; }
 
-    public ColorRgba Pedestal { get; set; } = new(0.82f, 0.83f, 0.85f);
+    public ColorRgba? Pedestal { get; set; }
 
-    public ColorRgba Power { get; set; } = new(0.95f, 0.76f, 0.11f);
+    public ColorRgba? Power { get; set; }
 
-    public ColorRgba Water { get; set; } = new(0.16f, 0.52f, 0.85f);
+    public ColorRgba? Water { get; set; }
 
     public static StructureDto From(StructureStyle piers) => new()
     {
@@ -1159,45 +1205,47 @@ internal sealed class StructureDto : ExtensibleDto
 
     public void ApplyTo(StructureStyle piers)
     {
-        piers.WoodColor = Wood;
-        piers.ConcreteColor = Concrete;
-        piers.FloatColor = Float;
-        piers.FenderColor = Fender;
-        piers.BollardColor = Bollard;
-        piers.SteelColor = Steel;
-        piers.BoomFloatColor = BoomFloat;
-        piers.BoomEndColor = BoomEnd;
-        piers.PedestalColor = Pedestal;
-        piers.PowerColor = Power;
-        piers.WaterColor = Water;
+        piers.WoodColor = Wood ?? piers.WoodColor;
+        piers.ConcreteColor = Concrete ?? piers.ConcreteColor;
+        piers.FloatColor = Float ?? piers.FloatColor;
+        piers.FenderColor = Fender ?? piers.FenderColor;
+        piers.BollardColor = Bollard ?? piers.BollardColor;
+        piers.SteelColor = Steel ?? piers.SteelColor;
+        piers.BoomFloatColor = BoomFloat ?? piers.BoomFloatColor;
+        piers.BoomEndColor = BoomEnd ?? piers.BoomEndColor;
+        piers.PedestalColor = Pedestal ?? piers.PedestalColor;
+        piers.PowerColor = Power ?? piers.PowerColor;
+        piers.WaterColor = Water ?? piers.WaterColor;
     }
 }
 
 internal sealed class LabelDto : ExtensibleDto
 {
-    public ColorRgba Color { get; set; } = new(0.97f, 0.98f, 1f);
+    public ColorRgba? Color { get; set; }
 
-    public ColorRgba Ashore { get; set; } = new(0.16f, 0.18f, 0.20f);
+    public ColorRgba? Ashore { get; set; }
 
-    public ColorRgba Highlight { get; set; } = new(1f, 0.90f, 0.35f);
+    public ColorRgba? Highlight { get; set; }
 
-    public ColorRgba Disabled { get; set; } = new(0.62f, 0.64f, 0.66f);
+    public ColorRgba? Disabled { get; set; }
 
-    public LabelFont FontFamily { get; set; }
+    public LabelFont? FontFamily { get; set; }
 
-    public LabelTypeface Typeface { get; set; }
+    public LabelTypeface? Typeface { get; set; }
 
     /// <summary>Name of the captured font, when the design carries one.</summary>
     public string? FontName { get; set; }
 
     /// <summary>True when the captured face was the bold one.</summary>
-    public bool FontBold { get; set; }
+    public bool? FontBold { get; set; }
 
     /// <summary>
     /// The captured font's glyphs, one line per character. The outlines travel with the design so the lettering
     /// survives on a machine that does not have the font installed.
     /// </summary>
     public List<string>? FontGlyphs { get; set; }
+
+    protected override void Normalize() => FontGlyphs?.RemoveAll(line => line is null);
 
     public static LabelDto From(LabelStyle labels) => new()
     {
@@ -1208,35 +1256,35 @@ internal sealed class LabelDto : ExtensibleDto
         FontFamily = labels.FontFamily,
         Typeface = labels.Typeface,
         FontName = labels.Font?.Name,
-        FontBold = labels.Font?.IsBold ?? false,
+        FontBold = labels.Font?.IsBold,
         FontGlyphs = labels.Font?.Encode().ToList(),
     };
 
     public void ApplyTo(LabelStyle labels)
     {
-        labels.Color = Color;
-        labels.AshoreColor = Ashore;
-        labels.HighlightColor = Highlight;
-        labels.DisabledColor = Disabled;
-        labels.FontFamily = FontFamily;
-        labels.Typeface = Typeface;
-        labels.Font = LabelFontDefinition.Decode(FontName, FontGlyphs, FontBold);
+        labels.Color = Color ?? labels.Color;
+        labels.AshoreColor = Ashore ?? labels.AshoreColor;
+        labels.HighlightColor = Highlight ?? labels.HighlightColor;
+        labels.DisabledColor = Disabled ?? labels.DisabledColor;
+        labels.FontFamily = FontFamily ?? labels.FontFamily;
+        labels.Typeface = Typeface ?? labels.Typeface;
+        labels.Font = LabelFontDefinition.Decode(FontName, FontGlyphs, FontBold ?? false);
     }
 }
 
 internal sealed class SelectionDto : ExtensibleDto
 {
-    public bool ShowMarker { get; set; } = true;
+    public bool? ShowMarker { get; set; }
 
-    public ColorRgba MarkerTint { get; set; } = new(1f, 1f, 1f);
+    public ColorRgba? MarkerTint { get; set; }
 
-    public float MarkerScale { get; set; } = 1f;
+    public float? MarkerScale { get; set; }
 
-    public float SelectedGlow { get; set; } = 0.45f;
+    public float? SelectedGlow { get; set; }
 
-    public float HoverGlow { get; set; } = 0.25f;
+    public float? HoverGlow { get; set; }
 
-    public bool Pulse { get; set; } = true;
+    public bool? Pulse { get; set; }
 
     public static SelectionDto From(SelectionStyle selection) => new()
     {
@@ -1250,21 +1298,21 @@ internal sealed class SelectionDto : ExtensibleDto
 
     public void ApplyTo(SelectionStyle selection)
     {
-        selection.ShowMarker = ShowMarker;
-        selection.MarkerTint = MarkerTint;
-        selection.MarkerScale = MarkerScale;
-        selection.SelectedGlow = SelectedGlow;
-        selection.HoverGlow = HoverGlow;
-        selection.Pulse = Pulse;
+        selection.ShowMarker = ShowMarker ?? selection.ShowMarker;
+        selection.MarkerTint = MarkerTint ?? selection.MarkerTint;
+        selection.MarkerScale = MarkerScale ?? selection.MarkerScale;
+        selection.SelectedGlow = SelectedGlow ?? selection.SelectedGlow;
+        selection.HoverGlow = HoverGlow ?? selection.HoverGlow;
+        selection.Pulse = Pulse ?? selection.Pulse;
     }
 }
 
 /// <summary>Whether the marina casts shadows, and how dark they are.</summary>
 internal sealed class ShadowDto : ExtensibleDto
 {
-    public bool Enabled { get; set; } = true;
+    public bool? Enabled { get; set; }
 
-    public float Strength { get; set; } = 0.25f;
+    public float? Strength { get; set; }
 
     public static ShadowDto From(ShadowStyle shadows) => new()
     {
@@ -1274,16 +1322,16 @@ internal sealed class ShadowDto : ExtensibleDto
 
     public void ApplyTo(ShadowStyle shadows)
     {
-        shadows.IsEnabled = Enabled;
-        shadows.Strength = Strength;
+        shadows.IsEnabled = Enabled ?? shadows.IsEnabled;
+        shadows.Strength = Strength ?? shadows.Strength;
     }
 }
 
 internal sealed class ViewDto : ExtensibleDto
 {
-    public float FieldOfViewDegrees { get; set; } = 45f;
+    public float? FieldOfViewDegrees { get; set; }
 
-    public float CameraSmoothing { get; set; } = 10f;
+    public float? CameraSmoothing { get; set; }
 
     public static ViewDto From(ViewStyle view) => new()
     {
@@ -1291,9 +1339,9 @@ internal sealed class ViewDto : ExtensibleDto
         CameraSmoothing = view.CameraSmoothing,
     };
 
-    public ViewStyle ToDomain() => new()
+    public void ApplyTo(ViewStyle view)
     {
-        FieldOfViewDegrees = FieldOfViewDegrees,
-        CameraSmoothing = CameraSmoothing,
-    };
+        view.FieldOfViewDegrees = FieldOfViewDegrees ?? view.FieldOfViewDegrees;
+        view.CameraSmoothing = CameraSmoothing ?? view.CameraSmoothing;
+    }
 }

@@ -1,4 +1,5 @@
-using VirtualMarina.Core.Domain;
+﻿using VirtualMarina.Core.Domain;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Api;
 
@@ -93,29 +94,38 @@ public sealed partial class MarinaVisualizer
     private MultiBerth ApplyMultiBerth(MultiBerth? existing, MultiBerth group)
     {
         var errors = group.Validate().ToList();
+        if (errors.Count == 0 && _berths.ContainsKey(group.Id))
+        {
+            errors.Add(Strings.Format(Strings.ErrorMultiBerthIdIsBerthId, group.Id));
+        }
+
         var canonicalIds = new List<string>();
+        var members = new List<Berth>();
         foreach (var berthId in group.BerthIds ?? Array.Empty<string>())
         {
             if (string.IsNullOrWhiteSpace(berthId)) continue;
             if (!_berths.TryGetValue(berthId, out var berth))
             {
-                errors.Add($"Multi-berth '{group.Id}' references unknown berth '{berthId}'.");
+                errors.Add(Strings.Format(Strings.ErrorMultiBerthUnknownBerth, group.Id, berthId));
                 continue;
             }
 
             canonicalIds.Add(berth.Id);
+            members.Add(berth);
             if (berth.MultiBerthId is { } other && !IdComparer.Equals(other, group.Id))
             {
-                throw new InvalidOperationException($"Berth '{berth.Id}' already belongs to multi-berth '{other}'. Release or update that one first.");
+                throw new InvalidOperationException(Strings.Format(Strings.ErrorBerthAlreadyInMultiBerth, berth.Id, other));
             }
         }
 
+        // The same checks a layout gets when it is loaded: one boat lies across the members, so they have to be
+        // together — all on the water along one pier, or all ashore on one land area.
+        errors.AddRange(group.ValidateMembers(members));
         ThrowIfInvalid(errors);
 
         var stored = group with { BerthIds = canonicalIds.ToArray() };
         using (BeginUpdate())
         {
-            if (existing is null) _multiBerthOrder.Add(stored.Id);
             _multiBerths[stored.Id] = stored;
 
             if (existing is not null)
@@ -169,7 +179,6 @@ public sealed partial class MarinaVisualizer
     private void RemoveMultiBerthEntry(string multiBerthId)
     {
         _multiBerths.Remove(multiBerthId);
-        _multiBerthOrder.RemoveAll(id => IdComparer.Equals(id, multiBerthId));
         MarkSceneDirty();
     }
 

@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Domain;
 
@@ -6,27 +7,37 @@ namespace VirtualMarina.Core.Domain;
 /// Complete description of a marina: piers, berths (flat list, linked by <see cref="Berth.PierId"/>),
 /// dividers, multi-berths, surrounding land and land berths (linked by <see cref="Berth.LandAreaId"/>). Pass to <c>MarinaVisualizer.InitializeLayout</c>.
 /// </summary>
+/// <remarks>
+/// Every list is the record's own read-only copy, so a layout built from a host's lists does not change when those lists do, and
+/// two layouts with the same contents are equal. A list set to null reads as empty.
+/// </remarks>
 public sealed record MarinaLayout
 {
+    private readonly ValueList<Pier> _piers = ValueList<Pier>.Empty;
+    private readonly ValueList<Berth> _berths = ValueList<Berth>.Empty;
+    private readonly ValueList<Divider> _dividers = ValueList<Divider>.Empty;
+    private readonly ValueList<MultiBerth> _multiBerths = ValueList<MultiBerth>.Empty;
+    private readonly ValueList<LandArea> _landAreas = ValueList<LandArea>.Empty;
+
     /// <summary>Marina name (<c>IMarinaVisualizer.MarinaName</c>).</summary>
     public string Name { get; init; } = "Marina";
 
     /// <summary>Piers. Ids must be unique.</summary>
-    public IReadOnlyList<Pier> Piers { get; init; } = Array.Empty<Pier>();
+    public IReadOnlyList<Pier> Piers { get => _piers; init => _piers = ValueList<Pier>.From(value); }
 
     /// <summary>
     /// Berths, each referencing a pier in <see cref="Piers"/> or, for land berths, a land area in <see cref="LandAreas"/>. Ids must be unique.
     /// </summary>
-    public IReadOnlyList<Berth> Berths { get; init; } = Array.Empty<Berth>();
+    public IReadOnlyList<Berth> Berths { get => _berths; init => _berths = ValueList<Berth>.From(value); }
 
     /// <summary>Finger piers, pile rows and booms between berths.</summary>
-    public IReadOnlyList<Divider> Dividers { get; init; } = Array.Empty<Divider>();
+    public IReadOnlyList<Divider> Dividers { get => _dividers; init => _dividers = ValueList<Divider>.From(value); }
 
-    /// <summary>Boats spanning several berths. Member berths take the berth's status and boat when the layout is loaded.</summary>
-    public IReadOnlyList<MultiBerth> MultiBerths { get; init; } = Array.Empty<MultiBerth>();
+    /// <summary>Boats spanning several berths. Member berths take the multi-berth's status and boat when the layout is loaded.</summary>
+    public IReadOnlyList<MultiBerth> MultiBerths { get => _multiBerths; init => _multiBerths = ValueList<MultiBerth>.From(value); }
 
     /// <summary>Quays, breakwaters and lawns drawn around the water. Ids must be unique.</summary>
-    public IReadOnlyList<LandArea> LandAreas { get; init; } = Array.Empty<LandArea>();
+    public IReadOnlyList<LandArea> LandAreas { get => _landAreas; init => _landAreas = ValueList<LandArea>.From(value); }
 
     /// <summary>
     /// The mainland behind the marina, drawn beneath the <see cref="LandAreas"/>. Null for a marina standing in open
@@ -44,13 +55,15 @@ public sealed record MarinaLayout
     public static MarinaLayout Empty { get; } = new();
 
     /// <summary>
-    /// Every element as one flat array, in dependency order: the shoreline if there is one, then land areas, piers,
-    /// dividers, berths, then multi-berths. Each entry is the immutable record itself (<see cref="Domain.Shoreline"/>,
-    /// <see cref="LandArea"/>, <see cref="Pier"/>, <see cref="Divider"/>, <see cref="Berth"/>, <see cref="MultiBerth"/>),
-    /// so host code can pattern-match on it.
+    /// Every element as one flat array, in dependency order: the shoreline and the passing traffic, each if there is one,
+    /// then land areas, piers, dividers, berths, then multi-berths. Each entry is the immutable record itself
+    /// (<see cref="Domain.Shoreline"/>, <see cref="Domain.MarineTraffic"/>, <see cref="LandArea"/>, <see cref="Pier"/>,
+    /// <see cref="Divider"/>, <see cref="Berth"/>, <see cref="MultiBerth"/>), so host code can pattern-match on it.
+    /// Everything in the layout but its <see cref="Name"/> is there, so <see cref="FromObjects"/> given the array and the
+    /// name builds an equal layout.
     /// </summary>
     public object[] ToObjects() =>
-        (Shoreline is null ? Array.Empty<object>() : new object[] { Shoreline })
+        new object?[] { Shoreline, MarineTraffic }.OfType<object>()
             .Concat(LandAreas)
             .Concat(Piers)
             .Concat(Dividers)
@@ -59,13 +72,17 @@ public sealed record MarinaLayout
             .ToArray();
 
     /// <summary>Builds a layout from elements in any order (the inverse of <see cref="ToObjects"/>). The result is not validated.</summary>
-    /// <param name="elements">A shoreline, land areas, piers, dividers, berths and multi-berths.</param>
+    /// <param name="elements">
+    /// A shoreline and passing traffic (at most one of each; a later one replaces an earlier one), land areas, piers,
+    /// dividers, berths and multi-berths.
+    /// </param>
     /// <param name="name">Marina name.</param>
     /// <exception cref="ArgumentException">An element is null or of another type.</exception>
     public static MarinaLayout FromObjects(IEnumerable<object> elements, string name = "Marina")
     {
         ArgumentNullException.ThrowIfNull(elements);
         Shoreline? shoreline = null;
+        MarineTraffic? traffic = null;
         var land = new List<LandArea>();
         var piers = new List<Pier>();
         var dividers = new List<Divider>();
@@ -76,16 +93,17 @@ public sealed record MarinaLayout
             switch (element)
             {
                 case Shoreline c: shoreline = c; break;
+                case MarineTraffic t: traffic = t; break;
                 case LandArea l: land.Add(l); break;
                 case Pier d: piers.Add(d); break;
                 case Divider v: dividers.Add(v); break;
                 case Berth s: berths.Add(s); break;
                 case MultiBerth b: groups.Add(b); break;
-                default: throw new ArgumentException($"Unsupported marina element: {element?.GetType().Name ?? "null"}.", nameof(elements));
+                default: throw new ArgumentException(Strings.Format(Strings.ErrorUnsupportedMarinaElement, element?.GetType().Name ?? "null"), nameof(elements));
             }
         }
 
-        return new MarinaLayout { Name = name, Shoreline = shoreline, LandAreas = land, Piers = piers, Dividers = dividers, Berths = berths, MultiBerths = groups };
+        return new MarinaLayout { Name = name, Shoreline = shoreline, MarineTraffic = traffic, LandAreas = land, Piers = piers, Dividers = dividers, Berths = berths, MultiBerths = groups };
     }
 
     /// <summary>Plan-view bounds of all piers, berths, dividers and land. Returns a default 100 m square when empty.</summary>
@@ -122,12 +140,12 @@ public sealed record MarinaLayout
         {
             if (pier is null)
             {
-                errors.Add("Piers contains a null entry.");
+                errors.Add(Strings.ErrorNullPier);
                 continue;
             }
 
             errors.AddRange(pier.Validate());
-            if (!pierIds.Add(pier.Id)) errors.Add($"Duplicate pier id '{pier.Id}'.");
+            if (!pierIds.Add(pier.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicatePier, pier.Id));
         }
 
         if (Shoreline is not null) errors.AddRange(Shoreline.Validate());
@@ -138,12 +156,12 @@ public sealed record MarinaLayout
         {
             if (land is null)
             {
-                errors.Add("LandAreas contains a null entry.");
+                errors.Add(Strings.ErrorNullLandArea);
                 continue;
             }
 
             errors.AddRange(land.Validate());
-            if (!landIds.Add(land.Id)) errors.Add($"Duplicate land area id '{land.Id}'.");
+            if (!landIds.Add(land.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicateLandArea, land.Id));
         }
 
         var berthIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -151,14 +169,14 @@ public sealed record MarinaLayout
         {
             if (berth is null)
             {
-                errors.Add("Berths contains a null entry.");
+                errors.Add(Strings.ErrorNullBerth);
                 continue;
             }
 
             errors.AddRange(berth.Validate());
-            if (!berthIds.Add(berth.Id)) errors.Add($"Duplicate berth id '{berth.Id}'.");
-            if (berth.PierId is not null && !pierIds.Contains(berth.PierId)) errors.Add($"Berth '{berth.Id}' references unknown pier '{berth.PierId}'.");
-            if (berth.LandAreaId is not null && !landIds.Contains(berth.LandAreaId)) errors.Add($"Berth '{berth.Id}' references unknown land area '{berth.LandAreaId}'.");
+            if (!berthIds.Add(berth.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicateBerth, berth.Id));
+            if (berth.PierId is not null && !pierIds.Contains(berth.PierId)) errors.Add(Strings.Format(Strings.ErrorBerthUnknownPier, berth.Id, berth.PierId));
+            if (berth.LandAreaId is not null && !landIds.Contains(berth.LandAreaId)) errors.Add(Strings.Format(Strings.ErrorBerthUnknownLandArea, berth.Id, berth.LandAreaId));
         }
 
         var dividerIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -166,38 +184,47 @@ public sealed record MarinaLayout
         {
             if (divider is null)
             {
-                errors.Add("Dividers contains a null entry.");
+                errors.Add(Strings.ErrorNullDivider);
                 continue;
             }
 
             errors.AddRange(divider.Validate());
-            if (!dividerIds.Add(divider.Id)) errors.Add($"Duplicate divider id '{divider.Id}'.");
-            if (divider.PierId is not null && !pierIds.Contains(divider.PierId)) errors.Add($"Divider '{divider.Id}' references unknown pier '{divider.PierId}'.");
+            if (!dividerIds.Add(divider.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicateDivider, divider.Id));
+            if (divider.PierId is not null && !pierIds.Contains(divider.PierId)) errors.Add(Strings.Format(Strings.ErrorDividerUnknownPier, divider.Id, divider.PierId));
         }
 
         var multiBerthIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var berthsInMultiBerths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var berth in MultiBerths)
+        var berthsById = Berths.Where(berth => berth is not null).GroupBy(berth => berth.Id, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        foreach (var multiBerth in MultiBerths)
         {
-            if (berth is null)
+            if (multiBerth is null)
             {
-                errors.Add("MultiBerths contains a null entry.");
+                errors.Add(Strings.ErrorNullMultiBerth);
                 continue;
             }
 
-            errors.AddRange(berth.Validate());
-            if (!multiBerthIds.Add(berth.Id)) errors.Add($"Duplicate berth id '{berth.Id}'.");
-            foreach (var berthId in berth.BerthIds ?? Array.Empty<string>())
+            errors.AddRange(multiBerth.Validate());
+            if (!multiBerthIds.Add(multiBerth.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicateMultiBerth, multiBerth.Id));
+            if (berthIds.Contains(multiBerth.Id)) errors.Add(Strings.Format(Strings.ErrorMultiBerthIdIsBerthId, multiBerth.Id));
+
+            var members = new List<Berth>();
+            foreach (var berthId in multiBerth.BerthIds)
             {
                 if (string.IsNullOrWhiteSpace(berthId)) continue;
-                if (!berthIds.Contains(berthId)) errors.Add($"Berth '{berth.Id}' references unknown berth '{berthId}'.");
-                if (berthsInMultiBerths.TryGetValue(berthId, out var other) && !string.Equals(other, berth.Id, StringComparison.OrdinalIgnoreCase))
+                if (berthsById.TryGetValue(berthId, out var member)) members.Add(member);
+                else errors.Add(Strings.Format(Strings.ErrorMultiBerthUnknownBerth, multiBerth.Id, berthId));
+
+                if (berthsInMultiBerths.TryGetValue(berthId, out var other) && !string.Equals(other, multiBerth.Id, StringComparison.OrdinalIgnoreCase))
                 {
-                    errors.Add($"Berth '{berthId}' belongs to both berth '{other}' and berth '{berth.Id}'.");
+                    errors.Add(Strings.Format(Strings.ErrorBerthInTwoMultiBerths, berthId, other, multiBerth.Id));
                 }
 
-                berthsInMultiBerths[berthId] = berth.Id;
+                berthsInMultiBerths[berthId] = multiBerth.Id;
             }
+
+            errors.AddRange(multiBerth.ValidateMembers(members));
         }
 
         return errors;

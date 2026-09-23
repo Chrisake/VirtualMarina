@@ -55,6 +55,30 @@ public sealed class MarinaStyle
     /// <summary>A copy of the defaults.</summary>
     public static MarinaStyle CreateDefault() => new();
 
+    /// <summary>
+    /// A deep copy: every section is a new instance with the same values, so changing the copy leaves this style (and
+    /// any visualizer showing it) alone. The captured label font is shared, as it is never changed once built.
+    /// </summary>
+    /// <remarks>
+    /// Each section copies itself (an internal <c>CopyFrom</c> kept next to its fields), so a setting added to a section is added
+    /// to the copy in the same place. <see cref="WaterSettings.GridResolution"/> is fixed when the water section is built, so it
+    /// goes into the new section's initializer.
+    /// </remarks>
+    public MarinaStyle Clone()
+    {
+        var copy = new MarinaStyle { Water = new WaterSettings { GridResolution = Water.GridResolution } };
+        copy.Lighting.CopyFrom(Lighting);
+        copy.Water.CopyFrom(Water);
+        copy.Status.CopyFrom(Status);
+        copy.Land.CopyFrom(Land);
+        copy.Piers.CopyFrom(Piers);
+        copy.Labels.CopyFrom(Labels);
+        copy.Selection.CopyFrom(Selection);
+        copy.View.CopyFrom(View);
+        copy.Shadows.CopyFrom(Shadows);
+        return copy;
+    }
+
     internal IEnumerable<StyleSection> SceneSections => new StyleSection[] { Status, Piers, Labels, Selection, Shadows };
 }
 
@@ -138,6 +162,24 @@ public sealed class LandStyle : StyleSection
 
     /// <summary>Draw the trees of land areas (<c>LandArea.Trees</c>). Default true.</summary>
     public bool ShowTrees { get => _showTrees; set => SetField(ref _showTrees, value); }
+
+    internal void CopyFrom(LandStyle other)
+    {
+        QuayColor = other.QuayColor;
+        QuayWallColor = other.QuayWallColor;
+        GrassColor = other.GrassColor;
+        GrassBankColor = other.GrassBankColor;
+        RockColor = other.RockColor;
+        RockColorVariation = other.RockColorVariation;
+        FoliageColor = other.FoliageColor;
+        ConiferColor = other.ConiferColor;
+        TrunkColor = other.TrunkColor;
+        PalmColor = other.PalmColor;
+        BlossomColor = other.BlossomColor;
+        BuildingColor = other.BuildingColor;
+        RoofColor = other.RoofColor;
+        ShowTrees = other.ShowTrees;
+    }
 }
 
 /// <summary>Colors of piers and their fittings (<see cref="MarinaStyle.Piers"/>). Seams, walers, curbs and columns are shades of these.</summary>
@@ -187,6 +229,21 @@ public sealed class StructureStyle : StyleSection
 
     /// <summary>Top (or band) of pedestals that supply water.</summary>
     public ColorRgba WaterColor { get => _water; set => SetField(ref _water, value); }
+
+    internal void CopyFrom(StructureStyle other)
+    {
+        WoodColor = other.WoodColor;
+        ConcreteColor = other.ConcreteColor;
+        FloatColor = other.FloatColor;
+        FenderColor = other.FenderColor;
+        BollardColor = other.BollardColor;
+        SteelColor = other.SteelColor;
+        BoomFloatColor = other.BoomFloatColor;
+        BoomEndColor = other.BoomEndColor;
+        PedestalColor = other.PedestalColor;
+        PowerColor = other.PowerColor;
+        WaterColor = other.WaterColor;
+    }
 }
 
 /// <summary>Colors of berth names written on the water (<see cref="MarinaStyle.Labels"/>; see <c>BerthLabelMode</c>).</summary>
@@ -242,6 +299,18 @@ public sealed class LabelStyle : StyleSection
 
     /// <summary>Label of a disabled berth.</summary>
     public ColorRgba DisabledColor { get => _disabled; set => SetField(ref _disabled, value); }
+
+    /// <summary>Takes every value from <paramref name="other"/>; the captured font is shared, as it never changes once built.</summary>
+    internal void CopyFrom(LabelStyle other)
+    {
+        FontFamily = other.FontFamily;
+        Typeface = other.Typeface;
+        Font = other.Font;
+        Color = other.Color;
+        AshoreColor = other.AshoreColor;
+        HighlightColor = other.HighlightColor;
+        DisabledColor = other.DisabledColor;
+    }
 }
 
 /// <summary>Selection marker and highlight strengths (<see cref="MarinaStyle.Selection"/>).</summary>
@@ -271,6 +340,16 @@ public sealed class SelectionStyle : StyleSection
 
     /// <summary>Pulse the glow of selected berths. Default true.</summary>
     public bool Pulse { get => _pulse; set => SetField(ref _pulse, value); }
+
+    internal void CopyFrom(SelectionStyle other)
+    {
+        ShowMarker = other.ShowMarker;
+        MarkerTint = other.MarkerTint;
+        MarkerScale = other.MarkerScale;
+        SelectedGlow = other.SelectedGlow;
+        HoverGlow = other.HoverGlow;
+        Pulse = other.Pulse;
+    }
 }
 
 /// <summary>
@@ -294,6 +373,12 @@ public sealed class ShadowStyle : StyleSection
     /// rather more than this; past about 0.4 the overlaps start to show as blotches.
     /// </summary>
     public float Strength { get => _strength; set => SetField(ref _strength, Clamp(value, 0f, 1f)); }
+
+    internal void CopyFrom(ShadowStyle other)
+    {
+        IsEnabled = other.IsEnabled;
+        Strength = other.Strength;
+    }
 }
 
 /// <summary>Camera optics and motion (<see cref="MarinaStyle.View"/>). Applied to <c>MarinaVisualizer.Camera</c> when they change.</summary>
@@ -307,4 +392,10 @@ public sealed class ViewStyle : StyleSection
 
     /// <summary>How quickly the camera eases toward a new position; 0 jumps instantly (default 10).</summary>
     public float CameraSmoothing { get => _smoothing; set => SetField(ref _smoothing, Clamp(value, 0f, 100f)); }
+
+    internal void CopyFrom(ViewStyle other)
+    {
+        FieldOfViewDegrees = other.FieldOfViewDegrees;
+        CameraSmoothing = other.CameraSmoothing;
+    }
 }

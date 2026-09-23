@@ -1,23 +1,27 @@
 @namespace VirtualMarina.Designer.Blazor.Components
 @implements IDisposable
 
-@* The saved and automatic views of the marina. Mirrors CamerasPanel. *@
+@*
+    The saved and automatic views of the marina. Mirrors CamerasPanel. It redraws when the views change (the automatic
+    ones follow the layout; see MarinaVisualizer.CameraPresetsChanged) and for its own changes, not for every render of
+    the shell.
+*@
 <div class="vm-cameras">
-    <div class="vm-panel__title">@Strings.TitleCameras</div>
+    <h2 class="vm-panel__title">@Strings.TitleCameras</h2>
     <div class="vm-panel__hint">@Strings.CamerasHint</div>
 
     <div class="vm-card">
-        <div class="vm-card__title">@Strings.CardCameraSave</div>
+        <h3 class="vm-card__title">@Strings.CardCameraSave</h3>
         <div class="vm-grid">
-            <span class="vm-grid__label" title="@Strings.CameraNameTip">@Strings.CameraName</span>
-            <input type="text" @bind="_name" @bind:event="oninput" />
+            <label class="vm-grid__label" for="vm-camera-name" title="@Strings.CameraNameTip">@Strings.CameraName</label>
+            <input id="vm-camera-name" type="text" placeholder="@CameraNames.FirstFree(Marina)" @bind="_name" @bind:event="oninput" />
         </div>
-        <div class="vm-row"><button class="vm-btn vm-btn--primary" @onclick="Save">@Strings.CameraSave</button></div>
+        <div class="vm-row"><button class="vm-btn vm-btn--primary" @onclick="SaveAsync">@Strings.CameraSave</button></div>
         <div class="vm-hint">@Strings.CameraSaveHint</div>
     </div>
 
     <div class="vm-card">
-        <div class="vm-card__title">@Strings.CardCameraAutomatic</div>
+        <h3 class="vm-card__title">@Strings.CardCameraAutomatic</h3>
         @{ var automatic = Marina.CameraPresets.Where(p => p.IsBuiltIn).ToList(); }
         @if (automatic.Count == 0)
         {
@@ -28,18 +32,19 @@
             @foreach (var preset in automatic)
             {
                 var name = preset.Name;
+                var key = preset.Key ?? name;
                 <div class="vm-camera-row">
                     <label class="vm-check vm-camera-row__name" title="@(preset.Description ?? name)">
-                        <input type="checkbox" checked="@preset.IsEnabled" @onchange="e => SetEnabled(name, e.Value is true)" /> @name
+                        <input type="checkbox" checked="@preset.IsEnabled" @onchange="e => SetEnabled(key, name, e.Value is true)" /> @name
                     </label>
-                    <button class="vm-btn vm-icon-btn" title="@Strings.CameraGoToTip" @onclick="() => GoToBuiltIn(name)">@Strings.CameraGoToGlyph</button>
+                    <button class="vm-btn vm-icon-btn" title="@Strings.CameraGoToTip" aria-label="@($"{Strings.CameraGoToTip}: {name}")" @onclick="() => GoToBuiltIn(key)">@Strings.CameraGoToGlyph</button>
                 </div>
             }
         }
     </div>
 
     <div class="vm-card">
-        <div class="vm-card__title">@Strings.CardCameraSaved</div>
+        <h3 class="vm-card__title">@Strings.CardCameraSaved</h3>
         @{ var saved = Marina.CameraPresets.Where(p => !p.IsBuiltIn).ToList(); }
         @if (saved.Count == 0)
         {
@@ -52,8 +57,8 @@
                 var name = preset.Name;
                 <div class="vm-camera-row">
                     <span class="vm-camera-row__name" title="@(preset.Description ?? name)">@name</span>
-                    <button class="vm-btn vm-icon-btn" title="@Strings.CameraGoToTip" @onclick="() => GoTo(name)">@Strings.CameraGoToGlyph</button>
-                    <button class="vm-btn vm-icon-btn vm-btn--danger" title="@Strings.CameraDeleteTip" @onclick="() => Delete(name)">@Strings.CameraDeleteGlyph</button>
+                    <button class="vm-btn vm-icon-btn" title="@Strings.CameraGoToTip" aria-label="@($"{Strings.CameraGoToTip}: {name}")" @onclick="() => GoTo(name)">@Strings.CameraGoToGlyph</button>
+                    <button class="vm-btn vm-icon-btn vm-btn--danger" title="@Strings.CameraDeleteTip" aria-label="@($"{Strings.CameraDeleteTip}: {name}")" @onclick="() => DeleteAsync(name)">@Strings.CameraDeleteGlyph</button>
                 </div>
             }
         }
@@ -70,14 +75,28 @@
     /// <summary>Where to note what happened, for the activity log.</summary>
     [Parameter] public EventCallback<string> Log { get; set; }
 
+    /// <summary>Raised when a view is saved, removed or switched on or off: all of it is saved with the design.</summary>
+    [Parameter] public EventCallback ViewsChanged { get; set; }
+
+    /// <summary>Asks before a saved view is replaced or removed. Required.</summary>
+    [Parameter, EditorRequired] public IDesignerDialogs Dialogs { get; set; } = default!;
+
+    /// <summary>Takes the parameters without redrawing when the marina is the one it has; see Appearance.</summary>
+    public override Task SetParametersAsync(ParameterView parameters)
+    {
+        var previous = Marina;
+        parameters.SetParameterProperties(this);
+        if (_subscribed is not null && ReferenceEquals(previous, Marina)) return Task.CompletedTask;
+        return base.SetParametersAsync(ParameterView.Empty);
+    }
+
     protected override void OnParametersSet()
     {
         if (Marina is null) throw new InvalidOperationException($"{nameof(Cameras)} requires the {nameof(Marina)} parameter.");
         if (ReferenceEquals(_subscribed, Marina)) return;
         Unsubscribe();
         _subscribed = Marina;
-        Marina.LayoutChanged += OnChanged;
-        Marina.Designer.StateChanged += OnChanged;
+        Marina.CameraPresetsChanged += OnChanged;
     }
 
     /// <summary>Redraws the panel, e.g. after New or Open replaced the marina under it.</summary>
@@ -88,42 +107,48 @@
     private void Unsubscribe()
     {
         if (_subscribed is null) return;
-        _subscribed.LayoutChanged -= OnChanged;
-        _subscribed.Designer.StateChanged -= OnChanged;
+        _subscribed.CameraPresetsChanged -= OnChanged;
         _subscribed = null;
     }
 
     private void OnChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
 
-    private async Task Save()
+    /// <summary>
+    /// Saves where the camera is now, under the typed name or the first free "View N". A typed name a saved view
+    /// already has replaces that view, so it is asked about first.
+    /// </summary>
+    private async Task SaveAsync()
     {
         var wanted = _name.Trim();
-        if (wanted.Length == 0)
-        {
-            var taken = Marina.CameraPresets.Count(preset => !preset.IsBuiltIn);
-            wanted = Strings.Format(Strings.CameraDefaultName, taken + 1);
-        }
+        if (wanted.Length == 0) wanted = CameraNames.FirstFree(Marina);
+        else if (CameraNames.IsSaved(Marina, wanted) && !await Dialogs.ConfirmAsync(Strings.CameraOverwriteTitle, Strings.Format(Strings.CameraOverwrite, wanted))) return;
 
         Marina.SaveCameraPreset(wanted);
         _name = string.Empty;
+        await ViewsChanged.InvokeAsync();
         await Log.InvokeAsync(Strings.Format(Strings.LogCameraSaved, wanted));
         StateHasChanged();
     }
 
-    private async Task SetEnabled(string name, bool enabled)
+    /// <summary>Switches an automatic view on or off by its key, which unlike its name stays put across languages.</summary>
+    private async Task SetEnabled(string key, string name, bool enabled)
     {
-        Marina.SetCameraPresetEnabled(name, enabled);
+        if (!Marina.SetCameraPresetEnabled(key, enabled)) return;
+        await ViewsChanged.InvokeAsync();
         await Log.InvokeAsync(Strings.Format(enabled ? Strings.LogCameraEnabled : Strings.LogCameraDisabled, name));
         StateHasChanged();
     }
 
     private void GoTo(string name) => Marina.ApplyCameraPreset(name);
 
-    private void GoToBuiltIn(string name) => Marina.ApplyBuiltInCameraPreset(name);
+    private void GoToBuiltIn(string key) => Marina.ApplyBuiltInCameraPreset(key);
 
-    private async Task Delete(string name)
+    private async Task DeleteAsync(string name)
     {
+        // A saved view is not part of the undo history, so removing one by mistake would lose it for good.
+        if (!await Dialogs.ConfirmAsync(Strings.CameraDeleteConfirmTitle, Strings.Format(Strings.CameraDeleteConfirm, name))) return;
         if (!Marina.RemoveCameraPreset(name)) return;
+        await ViewsChanged.InvokeAsync();
         await Log.InvokeAsync(Strings.Format(Strings.LogCameraDeleted, name));
         StateHasChanged();
     }

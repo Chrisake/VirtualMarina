@@ -1,0 +1,16 @@
+{
+  "format": "virtualmarina.marina",
+  "formatVersion": "1.0",
+  "layout": {
+    "docks": [ { "id": "A", "start": [0, 0], "headingDegrees": 0, "length": 40, "width": 3 } ],
+    "slips": [
+      { "id": "A-1", "dockId": "A", "center": [6, 10], "headingDegrees": -90, "length": 12, "width": 5 },
+      { "id": "A-2", "dockId": "A", "center": [6, 16], "headingDegrees": -90, "length": 12, "width": 5 }
+    ],
+    "dividers": [ { "id": "A-D1", "dockId": "A", "start": [1.5, 8], "headingDegrees": 90, "length": 9 } ],
+    "berths": [ { "id": "VIP", "slipIds": ["A-1", "A-2"], "style": "BowIn", "status": "Occupied",
+                  "boat": { "id": "B-1", "name": "Aurora", "type": "MotorYacht" } } ]
+  },
+  "presentation": { "slipLabels": "All" },
+  "designer": { "dockWidth": 4, "slipWidth": 6.5 }
+}

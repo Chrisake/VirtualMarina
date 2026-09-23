@@ -17,7 +17,7 @@
 
   <ItemGroup>
     <!-- Serves the WebAssembly client's _framework files and static assets from this host. -->
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.31" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
   </ItemGroup>
 
   <ItemGroup>

@@ -75,6 +75,16 @@
   <data name="NothingToUndo">
     <value>Nothing to undo</value>
   </data>
+  <data name="UndoLastPoint">
+    <value>The last point placed</value>
+    <comment>Next to Undo while a drawing is in progress: what Undo would take back.</comment>
+  </data>
+  <data name="Redo">
+    <value>Redo (Ctrl+Y)</value>
+  </data>
+  <data name="NothingToRedo">
+    <value>Nothing to redo</value>
+  </data>
   <data name="TurnOnDesignMode">
     <value>Turn on design mode to draw land areas, piers and berths.</value>
   </data>
@@ -203,6 +213,10 @@
     <value>Close (Esc)</value>
     <comment>Hint shown while the pointer is over the popup’s close button.</comment>
   </data>
+  <data name="AccessibleActionPress">
+    <value>Press</value>
+    <comment>What a screen reader says it will do to one of the popup’s actions or its close button (their accessible default action).</comment>
+  </data>
   <!-- View control -->
   <data name="FileDialogFilterImages">
     <value>Images (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff)</value>
@@ -220,5 +234,9 @@
   </data>
   <data name="RendererNotInitialized">
     <value>OpenGL (not initialized)</value>
+  </data>
+  <data name="RenderFailedTitle">
+    <value>Rendering failed</value>
+    <comment>Title of the placeholder the 3D view shows when OpenGL could not start or a frame failed to draw; the error follows below it.</comment>
   </data>
 </root>

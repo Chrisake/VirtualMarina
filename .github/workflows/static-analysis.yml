@@ -1,10 +1,16 @@
-# Build, test and analyse every push to main and every pull request.
+# SonarQube Cloud analysis of every push to main and every pull request that can reach the token.
 #
 # Two analysers run over the same build: the .NET and SonarAnalyzer rules compiled in by
-# Directory.Build.props, whose warnings appear in the job log, and SonarQube Cloud, which takes the
-# same findings plus its own server-side rules and the coverage report. See Docs/19-static-analysis.md.
+# Directory.Build.props, which already fail the ordinary build in ci.yml, and SonarQube Cloud, which takes
+# the same findings plus its own server-side rules and the coverage report. See Docs/19-static-analysis.md.
 #
-# Requires one repository secret, SONAR_TOKEN, from sonarcloud.io -> My Account -> Security.
+# Requires one repository secret, SONAR_TOKEN, from sonarcloud.io -> My Account -> Security. Without it (a
+# fork's pull request, or a clone that has not set one up) the analysis is skipped rather than failed: the
+# build and the tests that gate a change live in ci.yml and need no secret. A Sonar outage likewise fails only
+# this workflow.
+#
+# The job runs tools/sonar-scan.ps1, the same script used locally, so the scanner settings (project key,
+# coverage exclusions) are written in one place.
 name: Static analysis
 
 on:
@@ -14,25 +20,56 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: sonar-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
+  # A job's own `if` cannot see secrets, so this one looks and says.
+  token:
+    name: Is the Sonar token available?
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      available: ${{ steps.check.outputs.available }}
+    steps:
+      - id: check
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SONAR_TOKEN is not available to this run (a fork's pull request, or not configured); skipping the SonarQube analysis."
+          fi
+
   analyse:
     name: Build, test and analyse
-    # The marina renders through WinForms and OpenGL, so parts of the solution target net8.0-windows.
-    # The analysis only covers them if the whole solution builds, which means building on Windows.
+    needs: token
+    if: needs.token.outputs.available == 'true'
+    # The marina renders through WinForms and OpenGL, so parts of the solution target net8.0-windows. The
+    # analysis only covers them if the whole solution builds and its tests run, which means Windows.
     runs-on: windows-latest
+    timeout-minutes: 45
 
     steps:
       - name: Check out the full history
         uses: actions/checkout@v7
         with:
-          # Sonar dates each issue from the commit that introduced it, which needs the real history,
-          # not the single commit a shallow clone would give it.
+          # Sonar dates each issue from the commit that introduced it, which needs the real history, not the
+          # single commit a shallow clone would give it. MinVer needs the tags as well.
           fetch-depth: 0
 
+      # global.json pins the build to the .NET 8 SDK band (rollForward latestFeature); this installs the newest
+      # 8.0 SDK, which is the one global.json then selects.
       - name: Set up the .NET SDK
         uses: actions/setup-dotnet@v6
         with:
@@ -44,47 +81,24 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # The analysis cache changes on every run, and a cache entry cannot be overwritten: each run saves its
+      # own, and restores the most recent one before it.
       - name: Cache the SonarQube analysis cache
         uses: actions/cache@v6
         with:
-          path: ~\.sonar\cache
-          key: ${{ runner.os }}-sonar-cache
-          restore-keys: ${{ runner.os }}-sonar-cache
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar-cache-${{ github.run_id }}
+          restore-keys: ${{ runner.os }}-sonar-cache-
 
       - name: Cache NuGet packages
         uses: actions/cache@v6
         with:
-          path: ~\.nuget\packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '**/Directory.Build.props', 'global.json') }}
           restore-keys: ${{ runner.os }}-nuget-
 
-      - name: Restore the scanner and the solution
-        run: |
-          dotnet tool restore
-          dotnet restore VirtualMarina.sln
-
-      - name: Begin the SonarQube analysis
+      - name: Build, test and analyse
+        shell: pwsh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: >
-          dotnet tool run dotnet-sonarscanner begin
-          /k:"Chrisake_VirtualMarina"
-          /o:"chrisake"
-          /d:sonar.token="$env:SONAR_TOKEN"
-          /d:sonar.host.url="https://sonarcloud.io"
-          /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
-          /d:sonar.coverage.exclusions="apps/VirtualMarina.Designer/**/*,samples/VirtualMarina.TestHost.*/**/*,src/VirtualMarina.WinForms/**/*,src/VirtualMarina.Rendering.OpenGL/**/*,src/VirtualMarina.Blazor/**/*,**/wwwroot/**/*,**/Resources/Strings.*,**/*.Designer.cs"
-          /d:sonar.scanner.scanAll=false
-
-      - name: Build
-        run: dotnet build VirtualMarina.sln --configuration Release --no-restore
-
-      - name: Test with coverage
-        run: >
-          dotnet test VirtualMarina.sln --configuration Release --no-build
-          --collect:"XPlat Code Coverage;Format=opencover"
-
-      - name: End the SonarQube analysis
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: dotnet tool run dotnet-sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"
+        run: ./tools/sonar-scan.ps1 -Configuration Release

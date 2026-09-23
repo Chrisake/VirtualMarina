@@ -1,0 +1,55 @@
+@namespace VirtualMarina.Designer.Blazor.Components
+@implements IDisposable
+
+@*
+    The activity log. It listens to the log itself, so a new line redraws this list and nothing else; the shell's own
+    renders pass it by.
+*@
+<section class="vm-log" aria-label="@Strings.LogHeader">
+    <div class="vm-log__header">@Strings.LogHeader</div>
+    <ul class="vm-log__list" aria-live="polite">
+        @foreach (var entry in Log.Entries)
+        {
+            <li>@entry.Text</li>
+        }
+    </ul>
+</section>
+
+@code {
+    /// <summary>The log to show. Required.</summary>
+    [Parameter, EditorRequired] public ActivityLog Log { get; set; } = default!;
+
+    private ActivityLog? _subscribed;
+    private bool _changed = true;
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(_subscribed, Log)) return;
+        Unsubscribe();
+        _subscribed = Log;
+        _changed = true;
+        Log.Added += OnAdded;
+    }
+
+    protected override bool ShouldRender()
+    {
+        var changed = _changed;
+        _changed = false;
+        return changed;
+    }
+
+    public void Dispose() => Unsubscribe();
+
+    private void Unsubscribe()
+    {
+        if (_subscribed is null) return;
+        _subscribed.Added -= OnAdded;
+        _subscribed = null;
+    }
+
+    private void OnAdded(object? sender, EventArgs e)
+    {
+        _changed = true;
+        InvokeAsync(StateHasChanged);
+    }
+}

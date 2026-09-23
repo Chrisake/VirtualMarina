@@ -1,0 +1,171 @@
+# Build and test every push to main and every pull request, forks included: nothing here needs a secret.
+#
+#   build-test   the solution on Linux, Windows and macOS, and every test project that runs on that OS
+#                (the WinForms tests need Windows). Test results are uploaded as .trx files.
+#   Linux extra  every GLSL shader compiled by glslangValidator, and the Blazor test host published trimmed
+#                with the trim analysis on, so IL2xxx warnings show up before a user's browser finds them.
+#   Windows extra  Docs/11-api-reference.md regenerated and compared with the committed copy.
+#   javascript   ESLint and the TypeScript checker over the JavaScript shipped to the browser.
+#
+# SonarQube Cloud runs separately (static-analysis.yml), only where its token is available.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # Flip to 'true' once the trim warnings in VirtualMarina's own code are gone, so a new one fails the build.
+  TRIM_WARNINGS_AS_ERRORS: 'false'
+
+jobs:
+  build-test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # MinVer versions the build from the most recent tag, so it needs the history and the tags.
+          fetch-depth: 0
+
+      # global.json pins the 8.0 SDK band (rollForward latestFeature); this installs the newest 8.0 SDK, which
+      # is the one it then selects rather than a newer SDK preinstalled on the runner image.
+      - name: Set up the .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '**/Directory.Build.props', 'global.json') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Restore
+        # EnableWindowsTargeting lets Linux and macOS compile the net8.0-windows projects too (they cannot run them).
+        run: dotnet restore VirtualMarina.sln -p:EnableWindowsTargeting=true
+
+      - name: Build
+        run: dotnet build VirtualMarina.sln --configuration Release --no-restore -p:EnableWindowsTargeting=true
+
+      - name: Test the cross-platform projects
+        # Every test project except the Windows-only WinForms one, so a new test project is picked up without a CI change.
+        shell: bash
+        env:
+          # Writes every shader to disk for the glslang step below; harmless elsewhere.
+          VM_SHADER_DUMP_DIR: ${{ runner.temp }}/shaders
+        run: |
+          set -e
+          for project in tests/*.Tests/*.Tests.csproj; do
+            case "$project" in *WinForms.Tests*) continue ;; esac
+            name=$(basename "$project" .csproj)
+            dotnet test "$project" --configuration Release --no-build \
+              --logger "trx;LogFileName=$name-${{ matrix.os }}.trx" --results-directory TestResults
+          done
+
+      - name: Test the WinForms host
+        if: runner.os == 'Windows'
+        run: >
+          dotnet test tests/VirtualMarina.WinForms.Tests --configuration Release --no-build
+          --logger "trx;LogFileName=winforms-${{ matrix.os }}.trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.os }}
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+      # ---- Linux only -------------------------------------------------------------------------
+
+      - name: Compile every shader with glslangValidator
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq glslang-tools
+          shopt -s nullglob
+          files=("$RUNNER_TEMP"/shaders/*.vert "$RUNNER_TEMP"/shaders/*.frag)
+          if [ ${#files[@]} -eq 0 ]; then echo "::error::No shaders were written to $RUNNER_TEMP/shaders."; exit 1; fi
+          failed=0
+          for f in "${files[@]}"; do
+            if ! out=$(glslangValidator "$f" 2>&1); then
+              echo "::error title=GLSL compile error::$(basename "$f")"
+              echo "$out"
+              failed=1
+            fi
+          done
+          echo "Checked ${#files[@]} shaders."
+          exit $failed
+
+      - name: Publish the Blazor test host trimmed, with trim analysis on
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          # Blazor switches trim analysis off by default; turn it on. Framework assemblies stay collapsed to one
+          # IL2104 each (TrimmerSingleWarn); what is counted is the warnings in VirtualMarina's own code.
+          dotnet publish samples/VirtualMarina.TestHost.Blazor --configuration Release -o "$RUNNER_TEMP/publish" \
+            -p:SuppressTrimAnalysisWarnings=false -p:ILLinkTreatWarningsAsErrors=false | tee "$RUNNER_TEMP/publish.log"
+          ours=$(grep -E "warning IL[0-9]{4}: VirtualMarina\." "$RUNNER_TEMP/publish.log" | sort -u || true)
+          count=$(printf '%s' "$ours" | grep -c . || true)
+          {
+            echo "### Trim analysis"
+            echo "$count trim warning(s) in VirtualMarina code."
+            if [ "$count" -gt 0 ]; then echo '```'; echo "$ours" | sed -E 's/ \[[^]]*\]$//'; echo '```'; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$count" -gt 0 ] && [ "$TRIM_WARNINGS_AS_ERRORS" = "true" ]; then
+            echo "::error::$count trim warning(s) in VirtualMarina code; see the job summary."
+            exit 1
+          fi
+
+      # ---- Windows only -----------------------------------------------------------------------
+
+      - name: Check that Docs/11-api-reference.md is up to date
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          dotnet run --project Docs/tools/ApiDocGen --configuration Release --no-build -- "$RUNNER_TEMP/api-reference.md"
+          if ! git diff --no-index --exit-code --stat Docs/11-api-reference.md "$RUNNER_TEMP/api-reference.md"; then
+            git diff --no-index Docs/11-api-reference.md "$RUNNER_TEMP/api-reference.md" | head -200
+            echo "::error file=Docs/11-api-reference.md::The API reference is out of date. Regenerate it on Windows with: dotnet run --project Docs/tools/ApiDocGen"
+            exit 1
+          fi
+
+  javascript:
+    name: Lint and type-check JavaScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: TypeScript (checkJs)
+        run: npm run typecheck

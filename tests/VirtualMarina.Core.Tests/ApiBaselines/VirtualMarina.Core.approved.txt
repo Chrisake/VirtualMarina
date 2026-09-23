@@ -1,26 +1,26 @@
-sealed class VirtualMarina.Core.Api.BatchUpdateError : IEquatable<VirtualMarina.Core.Api.BatchUpdateError>
+sealed record VirtualMarina.Core.Api.BatchUpdateError : IEquatable<VirtualMarina.Core.Api.BatchUpdateError>
     .ctor(string BerthId, string Message)
-    bool Equals(VirtualMarina.Core.Api.BatchUpdateError other)
-    static bool op_Equality(VirtualMarina.Core.Api.BatchUpdateError left, VirtualMarina.Core.Api.BatchUpdateError right)
-    static bool op_Inequality(VirtualMarina.Core.Api.BatchUpdateError left, VirtualMarina.Core.Api.BatchUpdateError right)
+    bool Equals(VirtualMarina.Core.Api.BatchUpdateError? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Api.BatchUpdateError? left, VirtualMarina.Core.Api.BatchUpdateError? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.BatchUpdateError? left, VirtualMarina.Core.Api.BatchUpdateError? right)
     string BerthId { get; init; }
     string Message { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out string BerthId, out string Message)
 
-sealed class VirtualMarina.Core.Api.BatchUpdateResult : IEquatable<VirtualMarina.Core.Api.BatchUpdateResult>
+sealed record VirtualMarina.Core.Api.BatchUpdateResult : IEquatable<VirtualMarina.Core.Api.BatchUpdateResult>
     .ctor(int AppliedCount, IReadOnlyList<VirtualMarina.Core.Api.BatchUpdateError> Errors)
     IReadOnlyList<VirtualMarina.Core.Api.BatchUpdateError> Errors { get; init; }
-    bool Equals(VirtualMarina.Core.Api.BatchUpdateResult other)
+    bool Equals(VirtualMarina.Core.Api.BatchUpdateResult? other)
     bool Succeeded { get; }
     int AppliedCount { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Api.BatchUpdateResult left, VirtualMarina.Core.Api.BatchUpdateResult right)
-    static bool op_Inequality(VirtualMarina.Core.Api.BatchUpdateResult left, VirtualMarina.Core.Api.BatchUpdateResult right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Api.BatchUpdateResult? left, VirtualMarina.Core.Api.BatchUpdateResult? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.BatchUpdateResult? left, VirtualMarina.Core.Api.BatchUpdateResult? right)
     void Deconstruct(out int AppliedCount, out IReadOnlyList<VirtualMarina.Core.Api.BatchUpdateError> Errors)
 
 sealed class VirtualMarina.Core.Api.BerthAction
@@ -30,17 +30,17 @@ sealed class VirtualMarina.Core.Api.BerthAction
     bool Enabled { get; set; }
     bool KeepOpen { get; set; }
     bool Visible { get; set; }
-    object Tag { get; set; }
+    object? Tag { get; set; }
     string ActionId { get; }
     string Caption { get; set; }
-    string Description { get; set; }
-    string Icon { get; set; }
-    string ShortcutText { get; set; }
+    string? Description { get; set; }
+    string? Icon { get; set; }
+    string? ShortcutText { get; set; }
 
 sealed class VirtualMarina.Core.Api.BerthActionCollection : Collection<VirtualMarina.Core.Api.BerthAction>, ICollection, ICollection<VirtualMarina.Core.Api.BerthAction>, IEnumerable, IEnumerable<VirtualMarina.Core.Api.BerthAction>, IList, IList<VirtualMarina.Core.Api.BerthAction>, IReadOnlyCollection<VirtualMarina.Core.Api.BerthAction>, IReadOnlyList<VirtualMarina.Core.Api.BerthAction>
     .ctor()
-    VirtualMarina.Core.Api.BerthAction Add(string actionId, string caption, bool enabled = true, string icon = null)
-    VirtualMarina.Core.Api.BerthAction Find(string actionId)
+    VirtualMarina.Core.Api.BerthAction Add(string actionId, string caption, bool enabled = true, string? icon = null)
+    VirtualMarina.Core.Api.BerthAction? Find(string actionId)
     bool Remove(string actionId)
 
 sealed class VirtualMarina.Core.Api.BerthActionInvokedEventArgs : EventArgs
@@ -60,21 +60,21 @@ enum VirtualMarina.Core.Api.BerthActionStyle : IComparable, IConvertible, IForma
     Primary = 1
 
 class VirtualMarina.Core.Api.BerthEventArgs : EventArgs
-    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, VirtualMarina.Core.Input.PointerButton button = 0, bool isDoubleClick = false, Vector3? worldPoint = null)
+    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier? pier, VirtualMarina.Core.Input.PointerButton button = 0, bool isDoubleClick = false, Vector3? worldPoint = null)
     Vector3? WorldPoint { get; }
     VirtualMarina.Core.Domain.Berth Berth { get; }
     VirtualMarina.Core.Domain.BerthStatus Status { get; }
-    VirtualMarina.Core.Domain.Boat Boat { get; }
-    VirtualMarina.Core.Domain.LandArea LandArea { get; init; }
+    VirtualMarina.Core.Domain.Boat? Boat { get; }
+    VirtualMarina.Core.Domain.LandArea? LandArea { get; init; }
     VirtualMarina.Core.Domain.MarinaDataBag ExternalData { get; }
-    VirtualMarina.Core.Domain.Pier Pier { get; }
+    VirtualMarina.Core.Domain.Pier? Pier { get; }
     VirtualMarina.Core.Input.PointerButton Button { get; }
     bool IsDoubleClick { get; }
     string BerthId { get; }
 
 sealed class VirtualMarina.Core.Api.BerthHoverEventArgs : EventArgs
-    .ctor(VirtualMarina.Core.Domain.Berth berth)
-    VirtualMarina.Core.Domain.Berth Berth { get; }
+    .ctor(VirtualMarina.Core.Domain.Berth? berth)
+    VirtualMarina.Core.Domain.Berth? Berth { get; }
 
 enum VirtualMarina.Core.Api.BerthLabelMode : IComparable, IConvertible, IFormattable, ISpanFormattable
     All = 3
@@ -96,20 +96,20 @@ sealed class VirtualMarina.Core.Api.BerthPopup
     int Version { get; }
 
 sealed class VirtualMarina.Core.Api.BerthPopupChangedEventArgs : EventArgs
-    .ctor(VirtualMarina.Core.Api.BerthPopup previous, VirtualMarina.Core.Api.BerthPopup current)
-    VirtualMarina.Core.Api.BerthPopup Current { get; }
-    VirtualMarina.Core.Api.BerthPopup Previous { get; }
+    .ctor(VirtualMarina.Core.Api.BerthPopup? previous, VirtualMarina.Core.Api.BerthPopup? current)
+    VirtualMarina.Core.Api.BerthPopup? Current { get; }
+    VirtualMarina.Core.Api.BerthPopup? Previous { get; }
 
 enum VirtualMarina.Core.Api.BerthPopupKind : IComparable, IConvertible, IFormattable, ISpanFormattable
     Actions = 1
     Tooltip = 0
 
 sealed class VirtualMarina.Core.Api.BerthSelectedEventArgs : VirtualMarina.Core.Api.BerthEventArgs
-    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, VirtualMarina.Core.Domain.MultiBerth multiBerth, VirtualMarina.Core.Api.BerthTooltip tooltip, VirtualMarina.Core.Api.BerthActionCollection actions, VirtualMarina.Core.Api.SelectionReason reason, bool isNewSelection, VirtualMarina.Core.Input.PointerButton button = 0, bool isDoubleClick = false, Vector3? worldPoint = null)
+    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier? pier, VirtualMarina.Core.Domain.MultiBerth? multiBerth, VirtualMarina.Core.Api.BerthTooltip tooltip, VirtualMarina.Core.Api.BerthActionCollection actions, VirtualMarina.Core.Api.SelectionReason reason, bool isNewSelection, VirtualMarina.Core.Input.PointerButton button = 0, bool isDoubleClick = false, Vector3? worldPoint = null)
     VirtualMarina.Core.Api.BerthActionCollection Actions { get; }
     VirtualMarina.Core.Api.BerthTooltip Tooltip { get; }
     VirtualMarina.Core.Api.SelectionReason Reason { get; }
-    VirtualMarina.Core.Domain.MultiBerth MultiBerth { get; }
+    VirtualMarina.Core.Domain.MultiBerth? MultiBerth { get; }
     bool IsNewSelection { get; }
     bool OpensActions { get; }
 
@@ -125,45 +125,46 @@ sealed class VirtualMarina.Core.Api.BerthStatusChangedEventArgs : EventArgs
     VirtualMarina.Core.Domain.Berth Previous { get; }
     VirtualMarina.Core.Domain.BerthStatus NewStatus { get; }
     VirtualMarina.Core.Domain.BerthStatus OldStatus { get; }
-    VirtualMarina.Core.Domain.Boat NewBoat { get; }
-    VirtualMarina.Core.Domain.Boat OldBoat { get; }
+    VirtualMarina.Core.Domain.Boat? NewBoat { get; }
+    VirtualMarina.Core.Domain.Boat? OldBoat { get; }
     string BerthId { get; }
 
 sealed class VirtualMarina.Core.Api.BerthTooltip
     .ctor()
     IList<VirtualMarina.Core.Api.BerthTooltipLine> Lines { get; }
-    VirtualMarina.Core.Api.BerthTooltip AddLine(string label, string value, bool emphasize = false)
-    VirtualMarina.Core.Api.BerthTooltip SetLine(string label, string value)
+    VirtualMarina.Core.Api.BerthTooltip AddLine(string label, string? value, bool emphasize = false)
+    VirtualMarina.Core.Api.BerthTooltip SetLine(string label, string? value)
     VirtualMarina.Core.Rendering.ColorRgba? AccentColor { get; set; }
     bool IsVisible { get; set; }
     bool RemoveLine(string label)
-    string Footer { get; set; }
-    string Subtitle { get; set; }
-    string Title { get; set; }
+    string? Footer { get; set; }
+    string? Subtitle { get; set; }
+    string? Title { get; set; }
     void Clear()
 
-sealed class VirtualMarina.Core.Api.BerthTooltipLine : IEquatable<VirtualMarina.Core.Api.BerthTooltipLine>
-    .ctor(string Label, string Value)
-    bool Equals(VirtualMarina.Core.Api.BerthTooltipLine other)
+sealed record VirtualMarina.Core.Api.BerthTooltipLine : IEquatable<VirtualMarina.Core.Api.BerthTooltipLine>
+    .ctor(string Label, string? Value)
+    bool Equals(VirtualMarina.Core.Api.BerthTooltipLine? other)
     bool IsEmphasized { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Api.BerthTooltipLine left, VirtualMarina.Core.Api.BerthTooltipLine right)
-    static bool op_Inequality(VirtualMarina.Core.Api.BerthTooltipLine left, VirtualMarina.Core.Api.BerthTooltipLine right)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Api.BerthTooltipLine? left, VirtualMarina.Core.Api.BerthTooltipLine? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.BerthTooltipLine? left, VirtualMarina.Core.Api.BerthTooltipLine? right)
     string Label { get; init; }
-    string Value { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
-    void Deconstruct(out string Label, out string Value)
+    string? Value { get; init; }
+    void Deconstruct(out string Label, out string? Value)
 
-sealed class VirtualMarina.Core.Api.BerthUpdate : IEquatable<VirtualMarina.Core.Api.BerthUpdate>
+sealed record VirtualMarina.Core.Api.BerthUpdate : IEquatable<VirtualMarina.Core.Api.BerthUpdate>
     .ctor(string BerthId)
-    IReadOnlyDictionary<string, object> ExternalData { get; init; }
-    IReadOnlyDictionary<string, string> Metadata { get; init; }
+    IReadOnlyCollection<string>? ExternalDataRemovals { get; init; }
+    IReadOnlyDictionary<string, object?>? ExternalData { get; init; }
+    IReadOnlyDictionary<string, string>? Metadata { get; init; }
     Vector2? Center { get; init; }
     VirtualMarina.Core.Domain.BerthStatus? Status { get; init; }
-    VirtualMarina.Core.Domain.Boat Boat { get; init; }
+    VirtualMarina.Core.Domain.Boat? Boat { get; init; }
     bool ClearBoat { get; init; }
-    bool Equals(VirtualMarina.Core.Api.BerthUpdate other)
+    bool Equals(VirtualMarina.Core.Api.BerthUpdate? other)
     bool? HasFingerPiers { get; init; }
     bool? IsDisabled { get; init; }
     bool? IsReadOnly { get; init; }
@@ -172,25 +173,25 @@ sealed class VirtualMarina.Core.Api.BerthUpdate : IEquatable<VirtualMarina.Core.
     float? Length { get; init; }
     float? MaxDraft { get; init; }
     float? Width { get; init; }
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Api.BerthUpdate Flags(string berthId, bool? visible = null, bool? disabled = null, bool? readOnly = null)
     static VirtualMarina.Core.Api.BerthUpdate Free(string berthId)
     static VirtualMarina.Core.Api.BerthUpdate Geometry(string berthId, Vector2? center = null, float? headingDegrees = null, float? length = null, float? width = null)
     static VirtualMarina.Core.Api.BerthUpdate Occupy(string berthId, VirtualMarina.Core.Domain.Boat boat)
-    static VirtualMarina.Core.Api.BerthUpdate Reserve(string berthId, VirtualMarina.Core.Domain.Boat expectedBoat = null)
-    static VirtualMarina.Core.Api.BerthUpdate TemporarilyFree(string berthId, VirtualMarina.Core.Domain.Boat boat = null)
-    static bool op_Equality(VirtualMarina.Core.Api.BerthUpdate left, VirtualMarina.Core.Api.BerthUpdate right)
-    static bool op_Inequality(VirtualMarina.Core.Api.BerthUpdate left, VirtualMarina.Core.Api.BerthUpdate right)
+    static VirtualMarina.Core.Api.BerthUpdate Reserve(string berthId, VirtualMarina.Core.Domain.Boat? expectedBoat = null)
+    static VirtualMarina.Core.Api.BerthUpdate TemporarilyFree(string berthId, VirtualMarina.Core.Domain.Boat? boat = null)
+    static bool op_Equality(VirtualMarina.Core.Api.BerthUpdate? left, VirtualMarina.Core.Api.BerthUpdate? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.BerthUpdate? left, VirtualMarina.Core.Api.BerthUpdate? right)
     string BerthId { get; init; }
-    string Label { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    string? Label { get; init; }
     void Deconstruct(out string BerthId)
 
 static class VirtualMarina.Core.Api.DefaultPopupContent
     const int MaxListedBerths = 6
-    static VirtualMarina.Core.Api.BerthTooltip ForBerth(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, VirtualMarina.Core.Domain.MultiBerth multiBerth, VirtualMarina.Core.Api.StatusColorScheme colors, VirtualMarina.Core.Domain.LandArea landArea = null)
-    static VirtualMarina.Core.Api.BerthTooltip ForBerths(IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, Func<string, VirtualMarina.Core.Domain.Pier> pierLookup, VirtualMarina.Core.Api.StatusColorScheme colors, Func<string, VirtualMarina.Core.Domain.LandArea> landLookup = null)
+    static VirtualMarina.Core.Api.BerthTooltip ForBerth(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier? pier, VirtualMarina.Core.Domain.MultiBerth? multiBerth, VirtualMarina.Core.Api.StatusColorScheme colors, VirtualMarina.Core.Domain.LandArea? landArea = null)
+    static VirtualMarina.Core.Api.BerthTooltip ForBerths(IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, Func<string, VirtualMarina.Core.Domain.Pier?> pierLookup, VirtualMarina.Core.Api.StatusColorScheme colors, Func<string, VirtualMarina.Core.Domain.LandArea?>? landLookup = null)
 
 static class VirtualMarina.Core.Api.DisplayNames
     static string GetDisplayName(VirtualMarina.Core.Design.BerthSeparator separator)
@@ -203,129 +204,147 @@ static class VirtualMarina.Core.Api.DisplayNames
     static string GetDisplayName(VirtualMarina.Core.Domain.PierSides sides)
 
 interface VirtualMarina.Core.Api.IMarinaVisualizer
+    IDisposable BeginUpdate()
     IReadOnlyList<VirtualMarina.Core.Camera.CameraPreset> CameraPresets { get; }
+    IReadOnlyList<VirtualMarina.Core.Domain.Berth> GetBerths()
+    IReadOnlyList<VirtualMarina.Core.Domain.Berth> GetBerthsByLandArea(string landAreaId)
+    IReadOnlyList<VirtualMarina.Core.Domain.Berth> GetBerthsByPier(string pierId)
+    IReadOnlyList<VirtualMarina.Core.Domain.Berth> GetBerthsByStatus(VirtualMarina.Core.Domain.BerthStatus status)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> SelectedBerths { get; }
+    IReadOnlyList<VirtualMarina.Core.Domain.Divider> GetDividers()
+    IReadOnlyList<VirtualMarina.Core.Domain.Divider> GetDividersByPier(string pierId)
+    IReadOnlyList<VirtualMarina.Core.Domain.LandArea> GetLandAreas()
+    IReadOnlyList<VirtualMarina.Core.Domain.MultiBerth> GetMultiBerths()
+    IReadOnlyList<VirtualMarina.Core.Domain.Pier> GetPiers()
+    IReadOnlyList<VirtualMarina.Core.Domain.TrafficVessel> GetTrafficVessels()
     IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> TrafficLanes { get; }
+    VirtualMarina.Core.Api.BatchUpdateResult BatchUpdate(IEnumerable<VirtualMarina.Core.Api.BerthUpdate> updates)
+    VirtualMarina.Core.Api.BatchUpdateResult SetBerthFlags(IEnumerable<string> berthIds, bool? visible = null, bool? disabled = null, bool? readOnly = null)
     VirtualMarina.Core.Api.BerthLabelMode BerthLabelMode { get; set; }
-    VirtualMarina.Core.Api.BerthPopup ActivePopup { get; }
+    VirtualMarina.Core.Api.BerthPopup? ActivePopup { get; }
+    VirtualMarina.Core.Api.MarinaStatistics GetStatistics()
+    VirtualMarina.Core.Api.SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, VirtualMarina.Core.Camera.CameraAngle? focusAngle = null)
+    VirtualMarina.Core.Api.SelectionResult SetSelection(params string[] berthIds)
     VirtualMarina.Core.Camera.CameraAngle? DefaultFocusAngle { get; set; }
+    VirtualMarina.Core.Camera.CameraPreset SaveCameraPreset(string name, string? description = null)
     VirtualMarina.Core.Camera.OrbitCamera Camera { get; }
     VirtualMarina.Core.Design.MarinaDesigner Designer { get; }
-    VirtualMarina.Core.Domain.Berth HoveredBerth { get; }
-    VirtualMarina.Core.Domain.Berth SelectedBerth { get; }
+    VirtualMarina.Core.Domain.Berth AddBerth(string berthId, string pierId, Vector2 center, float headingDegrees, float length, float width, string? label = null)
+    VirtualMarina.Core.Domain.Berth AssignBoat(string berthId, VirtualMarina.Core.Domain.Boat boat)
+    VirtualMarina.Core.Domain.Berth MarkTemporarilyFree(string berthId, VirtualMarina.Core.Domain.Boat? boat = null)
+    VirtualMarina.Core.Domain.Berth ReleaseBerth(string berthId)
+    VirtualMarina.Core.Domain.Berth RenameBerth(string berthId, string newBerthId)
+    VirtualMarina.Core.Domain.Berth ReserveBerth(string berthId, VirtualMarina.Core.Domain.Boat? expectedBoat = null)
+    VirtualMarina.Core.Domain.Berth SetBerthDisabled(string berthId, bool disabled)
+    VirtualMarina.Core.Domain.Berth SetBerthReadOnly(string berthId, bool readOnly)
+    VirtualMarina.Core.Domain.Berth SetBerthStatus(string berthId, VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Domain.Boat? boat = null)
+    VirtualMarina.Core.Domain.Berth SetBerthVisible(string berthId, bool visible)
+    VirtualMarina.Core.Domain.Berth UpdateBerth(VirtualMarina.Core.Api.BerthUpdate update)
+    VirtualMarina.Core.Domain.Berth? GetBerth(string berthId)
+    VirtualMarina.Core.Domain.Berth? HoveredBerth { get; }
+    VirtualMarina.Core.Domain.Berth? SelectedBerth { get; }
     VirtualMarina.Core.Domain.BerthStatusFilter StatusFilter { get; }
+    VirtualMarina.Core.Domain.Divider? GetDivider(string dividerId)
+    VirtualMarina.Core.Domain.LandArea? GetLandArea(string landAreaId)
+    VirtualMarina.Core.Domain.MarinaLayout GetLayout()
     VirtualMarina.Core.Domain.MarineTraffic MarineTraffic { get; }
-    VirtualMarina.Core.Domain.Shoreline Shoreline { get; }
+    VirtualMarina.Core.Domain.MultiBerth AssignBoatToBerths(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, VirtualMarina.Core.Domain.MooringStyle style = 0, string? multiBerthId = null)
+    VirtualMarina.Core.Domain.MultiBerth MoorAlongside(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, string? multiBerthId = null)
+    VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(VirtualMarina.Core.Domain.MultiBerth multiBerth)
+    VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(string multiBerthId, VirtualMarina.Core.Domain.Boat? boat = null, VirtualMarina.Core.Domain.BerthStatus? status = null, VirtualMarina.Core.Domain.MooringStyle? style = null, IEnumerable<string>? berthIds = null)
+    VirtualMarina.Core.Domain.MultiBerth? GetMultiBerth(string multiBerthId)
+    VirtualMarina.Core.Domain.MultiBerth? GetMultiBerthFor(string berthId)
+    VirtualMarina.Core.Domain.Pier ChangePierId(string pierId, string newPierId)
+    VirtualMarina.Core.Domain.Pier UpdatePier(VirtualMarina.Core.Api.PierUpdate update)
+    VirtualMarina.Core.Domain.Pier? GetPier(string pierId)
+    VirtualMarina.Core.Domain.Shoreline? Shoreline { get; }
+    VirtualMarina.Core.Picking.BerthHit? HitTest(float x, float y)
+    VirtualMarina.Core.Rendering.ColorRgba GetStatusColor(VirtualMarina.Core.Domain.BerthStatus status)
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; }
     VirtualMarina.Core.Rendering.MarinaStyle Style { get; set; }
     VirtualMarina.Core.Rendering.WaterSettings Water { get; }
-    abstract IDisposable BeginUpdate()
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.Berth> GetBerths()
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.Berth> GetBerthsByLandArea(string landAreaId)
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.Berth> GetBerthsByPier(string pierId)
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.Berth> GetBerthsByStatus(VirtualMarina.Core.Domain.BerthStatus status)
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.Divider> GetDividers()
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.Divider> GetDividersByPier(string pierId)
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.LandArea> GetLandAreas()
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.MultiBerth> GetMultiBerths()
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.Pier> GetPiers()
-    abstract IReadOnlyList<VirtualMarina.Core.Domain.TrafficVessel> GetTrafficVessels()
-    abstract VirtualMarina.Core.Api.BatchUpdateResult BatchUpdate(IEnumerable<VirtualMarina.Core.Api.BerthUpdate> updates)
-    abstract VirtualMarina.Core.Api.BatchUpdateResult SetBerthFlags(IEnumerable<string> berthIds, bool? visible = null, bool? disabled = null, bool? readOnly = null)
-    abstract VirtualMarina.Core.Api.MarinaStatistics GetStatistics()
-    abstract VirtualMarina.Core.Api.SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, VirtualMarina.Core.Camera.CameraAngle? focusAngle = null)
-    abstract VirtualMarina.Core.Api.SelectionResult SetSelection(string[] berthIds)
-    abstract VirtualMarina.Core.Camera.CameraPreset SaveCameraPreset(string name, string description = null)
-    abstract VirtualMarina.Core.Domain.Berth AddBerth(string berthId, string pierId, Vector2 center, float headingDegrees, float length, float width, string label = null)
-    abstract VirtualMarina.Core.Domain.Berth AssignBoat(string berthId, VirtualMarina.Core.Domain.Boat boat)
-    abstract VirtualMarina.Core.Domain.Berth GetBerth(string berthId)
-    abstract VirtualMarina.Core.Domain.Berth MarkTemporarilyFree(string berthId, VirtualMarina.Core.Domain.Boat boat = null)
-    abstract VirtualMarina.Core.Domain.Berth ReleaseBerth(string berthId)
-    abstract VirtualMarina.Core.Domain.Berth RenameBerth(string berthId, string newBerthId)
-    abstract VirtualMarina.Core.Domain.Berth ReserveBerth(string berthId, VirtualMarina.Core.Domain.Boat expectedBoat = null)
-    abstract VirtualMarina.Core.Domain.Berth SetBerthDisabled(string berthId, bool disabled)
-    abstract VirtualMarina.Core.Domain.Berth SetBerthReadOnly(string berthId, bool readOnly)
-    abstract VirtualMarina.Core.Domain.Berth SetBerthStatus(string berthId, VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Domain.Boat boat = null)
-    abstract VirtualMarina.Core.Domain.Berth SetBerthVisible(string berthId, bool visible)
-    abstract VirtualMarina.Core.Domain.Berth UpdateBerth(VirtualMarina.Core.Api.BerthUpdate update)
-    abstract VirtualMarina.Core.Domain.Divider GetDivider(string dividerId)
-    abstract VirtualMarina.Core.Domain.LandArea GetLandArea(string landAreaId)
-    abstract VirtualMarina.Core.Domain.MarinaLayout GetLayout()
-    abstract VirtualMarina.Core.Domain.MultiBerth AssignBoatToBerths(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, VirtualMarina.Core.Domain.MooringStyle style = 0, string multiBerthId = null)
-    abstract VirtualMarina.Core.Domain.MultiBerth GetMultiBerth(string multiBerthId)
-    abstract VirtualMarina.Core.Domain.MultiBerth GetMultiBerthFor(string berthId)
-    abstract VirtualMarina.Core.Domain.MultiBerth MoorAlongside(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, string multiBerthId = null)
-    abstract VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(VirtualMarina.Core.Domain.MultiBerth multiBerth)
-    abstract VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(string multiBerthId, VirtualMarina.Core.Domain.Boat boat = null, VirtualMarina.Core.Domain.BerthStatus? status = null, VirtualMarina.Core.Domain.MooringStyle? style = null, IEnumerable<string> berthIds = null)
-    abstract VirtualMarina.Core.Domain.Pier ChangePierId(string pierId, string newPierId)
-    abstract VirtualMarina.Core.Domain.Pier GetPier(string pierId)
-    abstract VirtualMarina.Core.Domain.Pier UpdatePier(VirtualMarina.Core.Api.PierUpdate update)
-    abstract VirtualMarina.Core.Picking.BerthHit? HitTest(float x, float y)
-    abstract VirtualMarina.Core.Rendering.ColorRgba GetStatusColor(VirtualMarina.Core.Domain.BerthStatus status)
-    abstract bool AddToSelection(string berthId)
-    abstract bool ApplyCameraPreset(string presetName, bool immediate = false)
-    abstract bool FocusBerth(string berthId, VirtualMarina.Core.Camera.CameraAngle angle, bool immediate = false)
-    abstract bool FocusBerth(string berthId, bool immediate = false)
-    abstract bool FocusBerths(IEnumerable<string> berthIds, VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
-    abstract bool FocusPier(string pierId, VirtualMarina.Core.Camera.CameraAngle? angle, bool immediate = false)
-    abstract bool FocusPier(string pierId, bool immediate = false)
-    abstract bool FocusSelection(VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
-    abstract bool InvokeBerthAction(string actionId)
-    abstract bool IsBerthSelected(string berthId)
-    abstract bool IsBerthVisible(string berthId)
-    abstract bool ReleaseMultiBerth(string multiBerthId)
-    abstract bool RemoveBerth(string berthId)
-    abstract bool RemoveDivider(string dividerId)
-    abstract bool RemoveFromSelection(string berthId)
-    abstract bool RemoveLandArea(string landAreaId, bool removeBerths = true)
-    abstract bool RemovePier(string pierId, bool removeBerths = true)
-    abstract bool RemoveShoreline()
-    abstract bool SelectBerth(string berthId, bool focusCamera = false)
-    abstract bool SetCameraPresetEnabled(string presetName, bool enabled)
-    abstract bool ShowActions()
-    abstract bool ShowTooltip()
-    abstract bool TryGetPopupAnchor(out Vector2 screenPoint)
-    abstract int SelectBerths(IEnumerable<string> berthIds)
-    abstract object[] ExportObjects()
-    abstract void AddBerth(VirtualMarina.Core.Domain.Berth berth)
-    abstract void AddBerths(IEnumerable<VirtualMarina.Core.Domain.Berth> berths)
-    abstract void AddCameraPreset(VirtualMarina.Core.Camera.CameraPreset preset)
-    abstract void AddDivider(VirtualMarina.Core.Domain.Divider divider)
-    abstract void AddDividers(IEnumerable<VirtualMarina.Core.Domain.Divider> dividers)
-    abstract void AddLandArea(VirtualMarina.Core.Domain.LandArea landArea)
-    abstract void AddPier(VirtualMarina.Core.Domain.Pier pier)
-    abstract void ApplyCameraPreset(VirtualMarina.Core.Camera.CameraPreset preset, bool immediate = false)
-    abstract void ClearLayout()
-    abstract void ClearSelection()
-    abstract void ClosePopup()
-    abstract void InitializeLayout(VirtualMarina.Core.Domain.MarinaLayout layout)
-    abstract void RefreshPopup()
-    abstract void ResetCamera(bool immediate = false)
-    abstract void ResetStatusColors()
-    abstract void SetMarineTraffic(VirtualMarina.Core.Domain.MarineTraffic traffic)
-    abstract void SetShoreline(VirtualMarina.Core.Domain.Shoreline shoreline)
-    abstract void SetStatusColor(VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Rendering.ColorRgba color)
-    abstract void SetStatusFilter(VirtualMarina.Core.Domain.BerthStatusFilter filter)
-    abstract void ShowAllStatuses()
-    abstract void UpdateBerth(VirtualMarina.Core.Domain.Berth berth)
-    abstract void UpdateDivider(VirtualMarina.Core.Domain.Divider divider)
-    abstract void UpdateLandArea(VirtualMarina.Core.Domain.LandArea landArea)
-    abstract void UpdatePier(VirtualMarina.Core.Domain.Pier pier)
     bool ActionsEnabled { get; set; }
+    bool AddToSelection(string berthId)
+    bool ApplyCameraPreset(string presetName, bool immediate = false)
+    bool FocusBerth(string berthId, VirtualMarina.Core.Camera.CameraAngle angle, bool immediate = false)
+    bool FocusBerth(string berthId, bool immediate = false)
+    bool FocusBerths(IEnumerable<string> berthIds, VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
+    bool FocusPier(string pierId, VirtualMarina.Core.Camera.CameraAngle? angle, bool immediate = false)
+    bool FocusPier(string pierId, bool immediate = false)
+    bool FocusSelection(VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
+    bool InvokeBerthAction(string actionId)
+    bool IsBerthSelected(string berthId)
+    bool IsBerthVisible(string berthId)
     bool MultiSelectEnabled { get; set; }
+    bool ReleaseMultiBerth(string multiBerthId)
+    bool RemoveBerth(string berthId)
+    bool RemoveDivider(string dividerId)
+    bool RemoveFromSelection(string berthId)
+    bool RemoveLandArea(string landAreaId, bool removeBerths = true)
+    bool RemovePier(string pierId, bool removeBerths = true)
+    bool RemoveShoreline()
+    bool SelectBerth(string berthId, bool focusCamera = false)
+    bool SetCameraPresetEnabled(string presetName, bool enabled)
+    bool ShowActions()
+    bool ShowPierCloseUp(string pierId, bool immediate = false)
+    bool ShowTooltip()
     bool ShowTrafficLanes { get; set; }
     bool TooltipsEnabled { get; set; }
-    event EventHandler SelectionCleared
-    event EventHandler<VirtualMarina.Core.Api.BerthActionInvokedEventArgs> BerthActionInvoked
-    event EventHandler<VirtualMarina.Core.Api.BerthEventArgs> BerthClicked
-    event EventHandler<VirtualMarina.Core.Api.BerthHoverEventArgs> BerthHoverChanged
-    event EventHandler<VirtualMarina.Core.Api.BerthPopupChangedEventArgs> PopupChanged
-    event EventHandler<VirtualMarina.Core.Api.BerthSelectedEventArgs> BerthSelected
-    event EventHandler<VirtualMarina.Core.Api.BerthStatusChangedEventArgs> BerthStatusChanged
-    event EventHandler<VirtualMarina.Core.Api.LayoutChangedEventArgs> LayoutChanged
-    event EventHandler<VirtualMarina.Core.Api.MultiBerthSelectedEventArgs> MultiBerthSelected
-    event EventHandler<VirtualMarina.Core.Api.SelectionChangedEventArgs> SelectionChanged
+    bool TryGetPopupAnchor(out Vector2 screenPoint)
+    event EventHandler<VirtualMarina.Core.Api.BerthActionInvokedEventArgs>? BerthActionInvoked
+    event EventHandler<VirtualMarina.Core.Api.BerthEventArgs>? BerthClicked
+    event EventHandler<VirtualMarina.Core.Api.BerthHoverEventArgs>? BerthHoverChanged
+    event EventHandler<VirtualMarina.Core.Api.BerthPopupChangedEventArgs>? PopupChanged
+    event EventHandler<VirtualMarina.Core.Api.BerthSelectedEventArgs>? BerthSelected
+    event EventHandler<VirtualMarina.Core.Api.BerthStatusChangedEventArgs>? BerthStatusChanged
+    event EventHandler<VirtualMarina.Core.Api.LayoutChangedEventArgs>? LayoutChanged
+    event EventHandler<VirtualMarina.Core.Api.MultiBerthSelectedEventArgs>? MultiBerthSelected
+    event EventHandler<VirtualMarina.Core.Api.SelectionChangedEventArgs>? SelectionChanged
+    event EventHandler? CameraPresetsChanged
+    event EventHandler? SelectionCleared
+    int SelectBerths(IEnumerable<string> berthIds)
+    object[] ExportObjects()
     string MarinaName { get; set; }
+    void AddBerth(VirtualMarina.Core.Domain.Berth berth)
+    void AddBerths(IEnumerable<VirtualMarina.Core.Domain.Berth> berths)
+    void AddCameraPreset(VirtualMarina.Core.Camera.CameraPreset preset)
+    void AddDivider(VirtualMarina.Core.Domain.Divider divider)
+    void AddDividers(IEnumerable<VirtualMarina.Core.Domain.Divider> dividers)
+    void AddLandArea(VirtualMarina.Core.Domain.LandArea landArea)
+    void AddPier(VirtualMarina.Core.Domain.Pier pier)
+    void ApplyCameraPreset(VirtualMarina.Core.Camera.CameraPreset preset, bool immediate = false)
+    void ClearLayout()
+    void ClearSelection()
+    void ClosePopup()
+    void InitializeLayout(VirtualMarina.Core.Domain.MarinaLayout layout)
+    void RefreshPopup()
+    void ResetCamera(bool immediate = false)
+    void ResetStatusColors()
+    void SetMarineTraffic(VirtualMarina.Core.Domain.MarineTraffic? traffic)
+    void SetShoreline(VirtualMarina.Core.Domain.Shoreline? shoreline)
+    void SetStatusColor(VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Rendering.ColorRgba color)
+    void SetStatusFilter(VirtualMarina.Core.Domain.BerthStatusFilter filter)
+    void ShowAllStatuses()
+    void UpdateBerth(VirtualMarina.Core.Domain.Berth berth)
+    void UpdateDivider(VirtualMarina.Core.Domain.Divider divider)
+    void UpdateLandArea(VirtualMarina.Core.Domain.LandArea landArea)
+    void UpdatePier(VirtualMarina.Core.Domain.Pier pier)
+
+sealed record VirtualMarina.Core.Api.LayoutChange : IEquatable<VirtualMarina.Core.Api.LayoutChange>
+    .ctor(VirtualMarina.Core.Api.LayoutChangeKind Kind, string? PierId = null, string? BerthId = null, string? DividerId = null, string? MultiBerthId = null, string? LandAreaId = null)
+    VirtualMarina.Core.Api.LayoutChangeKind Kind { get; init; }
+    bool Equals(VirtualMarina.Core.Api.LayoutChange? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Api.LayoutChange? left, VirtualMarina.Core.Api.LayoutChange? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.LayoutChange? left, VirtualMarina.Core.Api.LayoutChange? right)
+    string? BerthId { get; init; }
+    string? DividerId { get; init; }
+    string? LandAreaId { get; init; }
+    string? MultiBerthId { get; init; }
+    string? PierId { get; init; }
+    void Deconstruct(out VirtualMarina.Core.Api.LayoutChangeKind Kind, out string? PierId, out string? BerthId, out string? DividerId, out string? MultiBerthId, out string? LandAreaId)
 
 enum VirtualMarina.Core.Api.LayoutChangeKind : IComparable, IConvertible, IFormattable, ISpanFormattable
     BatchUpdated = 9
@@ -352,32 +371,34 @@ enum VirtualMarina.Core.Api.LayoutChangeKind : IComparable, IConvertible, IForma
     ShorelineChanged = 19
 
 sealed class VirtualMarina.Core.Api.LayoutChangedEventArgs : EventArgs
-    .ctor(VirtualMarina.Core.Api.LayoutChangeKind kind, string pierId = null, string berthId = null, string dividerId = null, string multiBerthId = null, string landAreaId = null)
+    .ctor(IReadOnlyList<VirtualMarina.Core.Api.LayoutChange> changes)
+    .ctor(VirtualMarina.Core.Api.LayoutChangeKind kind, string? pierId = null, string? berthId = null, string? dividerId = null, string? multiBerthId = null, string? landAreaId = null)
+    IReadOnlyList<VirtualMarina.Core.Api.LayoutChange> Changes { get; }
     VirtualMarina.Core.Api.LayoutChangeKind Kind { get; }
-    string BerthId { get; }
-    string DividerId { get; }
-    string LandAreaId { get; }
-    string MultiBerthId { get; }
-    string PierId { get; }
+    string? BerthId { get; }
+    string? DividerId { get; }
+    string? LandAreaId { get; }
+    string? MultiBerthId { get; }
+    string? PierId { get; }
 
 static class VirtualMarina.Core.Api.MarinaLocalization
-    static CultureInfo Culture { get; set; }
+    static CultureInfo? Culture { get; set; }
     static IReadOnlyList<CultureInfo> AvailableCultures()
 
-sealed class VirtualMarina.Core.Api.MarinaStatistics : IEquatable<VirtualMarina.Core.Api.MarinaStatistics>
+sealed record VirtualMarina.Core.Api.MarinaStatistics : IEquatable<VirtualMarina.Core.Api.MarinaStatistics>
     .ctor(int TotalBerths, int Free, int Occupied, int Reserved, int TemporarilyFree = 0)
-    bool Equals(VirtualMarina.Core.Api.MarinaStatistics other)
+    bool Equals(VirtualMarina.Core.Api.MarinaStatistics? other)
     double OccupancyRate { get; }
     int Free { get; init; }
     int Occupied { get; init; }
     int Reserved { get; init; }
     int TemporarilyFree { get; init; }
     int TotalBerths { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Api.MarinaStatistics left, VirtualMarina.Core.Api.MarinaStatistics right)
-    static bool op_Inequality(VirtualMarina.Core.Api.MarinaStatistics left, VirtualMarina.Core.Api.MarinaStatistics right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Api.MarinaStatistics? left, VirtualMarina.Core.Api.MarinaStatistics? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.MarinaStatistics? left, VirtualMarina.Core.Api.MarinaStatistics? right)
     void Deconstruct(out int TotalBerths, out int Free, out int Occupied, out int Reserved, out int TemporarilyFree)
 
 sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IMarinaVisualizer
@@ -402,45 +423,45 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     VirtualMarina.Core.Api.BatchUpdateResult BatchUpdate(IEnumerable<VirtualMarina.Core.Api.BerthUpdate> updates)
     VirtualMarina.Core.Api.BatchUpdateResult SetBerthFlags(IEnumerable<string> berthIds, bool? visible = null, bool? disabled = null, bool? readOnly = null)
     VirtualMarina.Core.Api.BerthLabelMode BerthLabelMode { get; set; }
-    VirtualMarina.Core.Api.BerthPopup ActivePopup { get; }
+    VirtualMarina.Core.Api.BerthPopup? ActivePopup { get; }
     VirtualMarina.Core.Api.MarinaStatistics GetStatistics()
     VirtualMarina.Core.Api.SelectionResult SetSelection(IEnumerable<string> berthIds, bool focusCamera = false, VirtualMarina.Core.Camera.CameraAngle? focusAngle = null)
-    VirtualMarina.Core.Api.SelectionResult SetSelection(string[] berthIds)
+    VirtualMarina.Core.Api.SelectionResult SetSelection(params string[] berthIds)
     VirtualMarina.Core.Api.StatusColorScheme Colors { get; }
     VirtualMarina.Core.Camera.CameraAngle? DefaultFocusAngle { get; set; }
     VirtualMarina.Core.Camera.CameraPose ComputeFocusPose(IReadOnlyCollection<VirtualMarina.Core.Domain.Berth> berths, VirtualMarina.Core.Camera.CameraAngle? angle = null)
-    VirtualMarina.Core.Camera.CameraPreset SaveCameraPreset(string name, string description = null)
+    VirtualMarina.Core.Camera.CameraPreset SaveCameraPreset(string name, string? description = null)
     VirtualMarina.Core.Camera.OrbitCamera Camera { get; }
     VirtualMarina.Core.Design.MarinaDesigner Designer { get; }
-    VirtualMarina.Core.Domain.Berth AddBerth(string berthId, string pierId, Vector2 center, float headingDegrees, float length, float width, string label = null)
+    VirtualMarina.Core.Domain.Berth AddBerth(string berthId, string pierId, Vector2 center, float headingDegrees, float length, float width, string? label = null)
     VirtualMarina.Core.Domain.Berth AssignBoat(string berthId, VirtualMarina.Core.Domain.Boat boat)
-    VirtualMarina.Core.Domain.Berth GetBerth(string berthId)
-    VirtualMarina.Core.Domain.Berth HoveredBerth { get; }
-    VirtualMarina.Core.Domain.Berth MarkTemporarilyFree(string berthId, VirtualMarina.Core.Domain.Boat boat = null)
+    VirtualMarina.Core.Domain.Berth MarkTemporarilyFree(string berthId, VirtualMarina.Core.Domain.Boat? boat = null)
     VirtualMarina.Core.Domain.Berth ReleaseBerth(string berthId)
     VirtualMarina.Core.Domain.Berth RenameBerth(string berthId, string newBerthId)
-    VirtualMarina.Core.Domain.Berth ReserveBerth(string berthId, VirtualMarina.Core.Domain.Boat expectedBoat = null)
-    VirtualMarina.Core.Domain.Berth SelectedBerth { get; }
+    VirtualMarina.Core.Domain.Berth ReserveBerth(string berthId, VirtualMarina.Core.Domain.Boat? expectedBoat = null)
     VirtualMarina.Core.Domain.Berth SetBerthDisabled(string berthId, bool disabled)
     VirtualMarina.Core.Domain.Berth SetBerthReadOnly(string berthId, bool readOnly)
-    VirtualMarina.Core.Domain.Berth SetBerthStatus(string berthId, VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Domain.Boat boat = null)
+    VirtualMarina.Core.Domain.Berth SetBerthStatus(string berthId, VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Domain.Boat? boat = null)
     VirtualMarina.Core.Domain.Berth SetBerthVisible(string berthId, bool visible)
     VirtualMarina.Core.Domain.Berth UpdateBerth(VirtualMarina.Core.Api.BerthUpdate update)
+    VirtualMarina.Core.Domain.Berth? GetBerth(string berthId)
+    VirtualMarina.Core.Domain.Berth? HoveredBerth { get; }
+    VirtualMarina.Core.Domain.Berth? SelectedBerth { get; }
     VirtualMarina.Core.Domain.BerthStatusFilter StatusFilter { get; }
-    VirtualMarina.Core.Domain.Divider GetDivider(string dividerId)
-    VirtualMarina.Core.Domain.LandArea GetLandArea(string landAreaId)
+    VirtualMarina.Core.Domain.Divider? GetDivider(string dividerId)
+    VirtualMarina.Core.Domain.LandArea? GetLandArea(string landAreaId)
     VirtualMarina.Core.Domain.MarinaLayout GetLayout()
     VirtualMarina.Core.Domain.MarineTraffic MarineTraffic { get; }
-    VirtualMarina.Core.Domain.MultiBerth AssignBoatToBerths(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, VirtualMarina.Core.Domain.MooringStyle style = 0, string multiBerthId = null)
-    VirtualMarina.Core.Domain.MultiBerth GetMultiBerth(string multiBerthId)
-    VirtualMarina.Core.Domain.MultiBerth GetMultiBerthFor(string berthId)
-    VirtualMarina.Core.Domain.MultiBerth MoorAlongside(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, string multiBerthId = null)
+    VirtualMarina.Core.Domain.MultiBerth AssignBoatToBerths(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, VirtualMarina.Core.Domain.MooringStyle style = 0, string? multiBerthId = null)
+    VirtualMarina.Core.Domain.MultiBerth MoorAlongside(IEnumerable<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, string? multiBerthId = null)
     VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(VirtualMarina.Core.Domain.MultiBerth multiBerth)
-    VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(string multiBerthId, VirtualMarina.Core.Domain.Boat boat = null, VirtualMarina.Core.Domain.BerthStatus? status = null, VirtualMarina.Core.Domain.MooringStyle? style = null, IEnumerable<string> berthIds = null)
+    VirtualMarina.Core.Domain.MultiBerth UpdateMultiBerth(string multiBerthId, VirtualMarina.Core.Domain.Boat? boat = null, VirtualMarina.Core.Domain.BerthStatus? status = null, VirtualMarina.Core.Domain.MooringStyle? style = null, IEnumerable<string>? berthIds = null)
+    VirtualMarina.Core.Domain.MultiBerth? GetMultiBerth(string multiBerthId)
+    VirtualMarina.Core.Domain.MultiBerth? GetMultiBerthFor(string berthId)
     VirtualMarina.Core.Domain.Pier ChangePierId(string pierId, string newPierId)
-    VirtualMarina.Core.Domain.Pier GetPier(string pierId)
     VirtualMarina.Core.Domain.Pier UpdatePier(VirtualMarina.Core.Api.PierUpdate update)
-    VirtualMarina.Core.Domain.Shoreline Shoreline { get; }
+    VirtualMarina.Core.Domain.Pier? GetPier(string pierId)
+    VirtualMarina.Core.Domain.Shoreline? Shoreline { get; }
     VirtualMarina.Core.Geometry.MeshLibrary Meshes { get; }
     VirtualMarina.Core.Input.MarinaInputController Input { get; }
     VirtualMarina.Core.Picking.BerthHit? HitTest(float x, float y)
@@ -460,10 +481,12 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     bool FocusPier(string pierId, bool immediate = false)
     bool FocusSelection(VirtualMarina.Core.Camera.CameraAngle? angle = null, bool immediate = false)
     bool InvokeBerthAction(string actionId)
+    bool IsAnimating { get; }
     bool IsBerthSelected(string berthId)
     bool IsBerthVisible(string berthId)
     bool IsMultiSelection { get; }
     bool MultiSelectEnabled { get; set; }
+    bool NeedsRedraw { get; }
     bool ReleaseMultiBerth(string multiBerthId)
     bool RemoveBerth(string berthId)
     bool RemoveCameraPreset(string presetName)
@@ -475,6 +498,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     bool SelectBerth(string berthId, bool focusCamera = false)
     bool SetCameraPresetEnabled(string presetName, bool enabled)
     bool ShowActions()
+    bool ShowPierCloseUp(string pierId, bool immediate = false)
     bool ShowTooltip()
     bool ShowTooltipOnApiSelection { get; set; }
     bool ShowTrafficLanes { get; set; }
@@ -484,20 +508,23 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     const string OverviewPresetName = "Overview"
     const string TopDownPresetName = "Top Down"
     double Time { get; }
-    event EventHandler SelectionCleared
-    event EventHandler<VirtualMarina.Core.Api.BerthActionInvokedEventArgs> BerthActionInvoked
-    event EventHandler<VirtualMarina.Core.Api.BerthEventArgs> BerthClicked
-    event EventHandler<VirtualMarina.Core.Api.BerthHoverEventArgs> BerthHoverChanged
-    event EventHandler<VirtualMarina.Core.Api.BerthPopupChangedEventArgs> PopupChanged
-    event EventHandler<VirtualMarina.Core.Api.BerthSelectedEventArgs> BerthSelected
-    event EventHandler<VirtualMarina.Core.Api.BerthStatusChangedEventArgs> BerthStatusChanged
-    event EventHandler<VirtualMarina.Core.Api.LayoutChangedEventArgs> LayoutChanged
-    event EventHandler<VirtualMarina.Core.Api.MultiBerthSelectedEventArgs> MultiBerthSelected
-    event EventHandler<VirtualMarina.Core.Api.SelectionChangedEventArgs> SelectionChanged
+    event EventHandler<VirtualMarina.Core.Api.BerthActionInvokedEventArgs>? BerthActionInvoked
+    event EventHandler<VirtualMarina.Core.Api.BerthEventArgs>? BerthClicked
+    event EventHandler<VirtualMarina.Core.Api.BerthHoverEventArgs>? BerthHoverChanged
+    event EventHandler<VirtualMarina.Core.Api.BerthPopupChangedEventArgs>? PopupChanged
+    event EventHandler<VirtualMarina.Core.Api.BerthSelectedEventArgs>? BerthSelected
+    event EventHandler<VirtualMarina.Core.Api.BerthStatusChangedEventArgs>? BerthStatusChanged
+    event EventHandler<VirtualMarina.Core.Api.LayoutChangedEventArgs>? LayoutChanged
+    event EventHandler<VirtualMarina.Core.Api.MultiBerthSelectedEventArgs>? MultiBerthSelected
+    event EventHandler<VirtualMarina.Core.Api.SelectionChangedEventArgs>? SelectionChanged
+    event EventHandler? CameraPresetsChanged
+    event EventHandler? RedrawRequested
+    event EventHandler? SelectionCleared
     float FocusMargin { get; set; }
     float MinFocusDistance { get; set; }
     int SelectBerths(IEnumerable<string> berthIds)
     object[] ExportObjects()
+    static string PierPresetKey(string pierId)
     string MarinaName { get; set; }
     void AddBerth(VirtualMarina.Core.Domain.Berth berth)
     void AddBerths(IEnumerable<VirtualMarina.Core.Domain.Berth> berths)
@@ -513,18 +540,20 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizer : VirtualMarina.Core.Api.IM
     void InitializeLayout(VirtualMarina.Core.Domain.MarinaLayout layout)
     void InvalidateScene()
     void RefreshPopup()
+    void RequestRedraw()
     void ResetCamera(bool immediate = false)
     void ResetStatusColors()
     void SetDisabledColor(VirtualMarina.Core.Rendering.ColorRgba color)
-    void SetMarineTraffic(VirtualMarina.Core.Domain.MarineTraffic traffic)
+    void SetMarineTraffic(VirtualMarina.Core.Domain.MarineTraffic? traffic)
     void SetOverlayOpacity(float padOpacity, float ghostBoatOpacity)
-    void SetShoreline(VirtualMarina.Core.Domain.Shoreline shoreline)
+    void SetShoreline(VirtualMarina.Core.Domain.Shoreline? shoreline)
     void SetStatusColor(VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Rendering.ColorRgba color)
     void SetStatusFilter(VirtualMarina.Core.Domain.BerthStatusFilter filter)
-    void SetStatusFilter(VirtualMarina.Core.Domain.BerthStatus[] visibleStatuses)
+    void SetStatusFilter(params VirtualMarina.Core.Domain.BerthStatus[] visibleStatuses)
     void SetViewportSize(float width, float height)
     void ShowAllStatuses()
     void Update(double deltaSeconds)
+    void Update(double deltaSeconds, bool animate)
     void UpdateBerth(VirtualMarina.Core.Domain.Berth berth)
     void UpdateDivider(VirtualMarina.Core.Domain.Divider divider)
     void UpdateLandArea(VirtualMarina.Core.Domain.LandArea landArea)
@@ -534,7 +563,7 @@ sealed class VirtualMarina.Core.Api.MarinaVisualizerOptions
     .ctor()
     Vector2 WaterCenter { get; init; }
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; init; }
-    VirtualMarina.Core.Rendering.MarinaStyle Style { get; init; }
+    VirtualMarina.Core.Rendering.MarinaStyle? Style { get; init; }
     VirtualMarina.Core.Rendering.WaterSettings Water { get; init; }
 
 sealed class VirtualMarina.Core.Api.MultiBerthSelectedEventArgs : EventArgs
@@ -550,47 +579,47 @@ sealed class VirtualMarina.Core.Api.MultiBerthSelectedEventArgs : EventArgs
     bool IsNewSelection { get; }
     bool OpensActions { get; }
 
-sealed class VirtualMarina.Core.Api.PierUpdate : IEquatable<VirtualMarina.Core.Api.PierUpdate>
+sealed record VirtualMarina.Core.Api.PierUpdate : IEquatable<VirtualMarina.Core.Api.PierUpdate>
     .ctor(string PierId)
     Vector2? Center { get; init; }
     Vector2? Start { get; init; }
     VirtualMarina.Core.Domain.PierServices? Services { get; init; }
     VirtualMarina.Core.Domain.PierSides? BerthingSides { get; init; }
     VirtualMarina.Core.Domain.PierType? Type { get; init; }
-    bool Equals(VirtualMarina.Core.Api.PierUpdate other)
+    bool Equals(VirtualMarina.Core.Api.PierUpdate? other)
     float? DeckHeight { get; init; }
     float? HeadingDegrees { get; init; }
     float? Length { get; init; }
     float? PilingSpacing { get; init; }
     float? Width { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Api.PierUpdate left, VirtualMarina.Core.Api.PierUpdate right)
-    static bool op_Inequality(VirtualMarina.Core.Api.PierUpdate left, VirtualMarina.Core.Api.PierUpdate right)
-    string Name { get; init; }
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Api.PierUpdate? left, VirtualMarina.Core.Api.PierUpdate? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.PierUpdate? left, VirtualMarina.Core.Api.PierUpdate? right)
     string PierId { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    string? Name { get; init; }
     void Deconstruct(out string PierId)
 
-sealed class VirtualMarina.Core.Api.RejectedBerth : IEquatable<VirtualMarina.Core.Api.RejectedBerth>
+sealed record VirtualMarina.Core.Api.RejectedBerth : IEquatable<VirtualMarina.Core.Api.RejectedBerth>
     .ctor(string BerthId, VirtualMarina.Core.Api.BerthSelectionRejection Reason)
     VirtualMarina.Core.Api.BerthSelectionRejection Reason { get; init; }
-    bool Equals(VirtualMarina.Core.Api.RejectedBerth other)
-    static bool op_Equality(VirtualMarina.Core.Api.RejectedBerth left, VirtualMarina.Core.Api.RejectedBerth right)
-    static bool op_Inequality(VirtualMarina.Core.Api.RejectedBerth left, VirtualMarina.Core.Api.RejectedBerth right)
+    bool Equals(VirtualMarina.Core.Api.RejectedBerth? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Api.RejectedBerth? left, VirtualMarina.Core.Api.RejectedBerth? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.RejectedBerth? left, VirtualMarina.Core.Api.RejectedBerth? right)
     string BerthId { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out string BerthId, out VirtualMarina.Core.Api.BerthSelectionRejection Reason)
 
 sealed class VirtualMarina.Core.Api.SelectionChangedEventArgs : EventArgs
     .ctor(IReadOnlyList<VirtualMarina.Core.Domain.Berth> previousBerths, IReadOnlyList<VirtualMarina.Core.Domain.Berth> currentBerths)
-    .ctor(VirtualMarina.Core.Domain.Berth previous, VirtualMarina.Core.Domain.Berth current)
+    .ctor(VirtualMarina.Core.Domain.Berth? previous, VirtualMarina.Core.Domain.Berth? current)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> CurrentBerths { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> PreviousBerths { get; }
-    VirtualMarina.Core.Domain.Berth Current { get; }
-    VirtualMarina.Core.Domain.Berth Previous { get; }
+    VirtualMarina.Core.Domain.Berth? Current { get; }
+    VirtualMarina.Core.Domain.Berth? Previous { get; }
     bool IsMultiSelection { get; }
 
 enum VirtualMarina.Core.Api.SelectionReason : IComparable, IConvertible, IFormattable, ISpanFormattable
@@ -598,19 +627,19 @@ enum VirtualMarina.Core.Api.SelectionReason : IComparable, IConvertible, IFormat
     Pointer = 0
     Refresh = 2
 
-sealed class VirtualMarina.Core.Api.SelectionResult : IEquatable<VirtualMarina.Core.Api.SelectionResult>
+sealed record VirtualMarina.Core.Api.SelectionResult : IEquatable<VirtualMarina.Core.Api.SelectionResult>
     .ctor(IReadOnlyList<string> SelectedBerthIds, IReadOnlyList<VirtualMarina.Core.Api.RejectedBerth> Rejected, bool Changed)
     IReadOnlyList<VirtualMarina.Core.Api.RejectedBerth> Rejected { get; init; }
     IReadOnlyList<string> SelectedBerthIds { get; init; }
     bool Changed { get; init; }
-    bool Equals(VirtualMarina.Core.Api.SelectionResult other)
+    bool Equals(VirtualMarina.Core.Api.SelectionResult? other)
     bool IsEmpty { get; }
     int Count { get; }
-    static bool op_Equality(VirtualMarina.Core.Api.SelectionResult left, VirtualMarina.Core.Api.SelectionResult right)
-    static bool op_Inequality(VirtualMarina.Core.Api.SelectionResult left, VirtualMarina.Core.Api.SelectionResult right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Api.SelectionResult? left, VirtualMarina.Core.Api.SelectionResult? right)
+    static bool op_Inequality(VirtualMarina.Core.Api.SelectionResult? left, VirtualMarina.Core.Api.SelectionResult? right)
     void Deconstruct(out IReadOnlyList<string> SelectedBerthIds, out IReadOnlyList<VirtualMarina.Core.Api.RejectedBerth> Rejected, out bool Changed)
 
 sealed class VirtualMarina.Core.Api.StatusColorScheme : VirtualMarina.Core.Rendering.StyleSection
@@ -630,27 +659,27 @@ sealed class VirtualMarina.Core.Api.StatusColorScheme : VirtualMarina.Core.Rende
     float ReservedBoatOpacity { get; set; }
     float StatusMarkerScale { get; set; }
     float TemporarilyFreeBoatOpacity { get; set; }
-    static VirtualMarina.Core.Rendering.ColorRgba DefaultDisabled
-    static VirtualMarina.Core.Rendering.ColorRgba DefaultFree
-    static VirtualMarina.Core.Rendering.ColorRgba DefaultOccupied
-    static VirtualMarina.Core.Rendering.ColorRgba DefaultReserved
-    static VirtualMarina.Core.Rendering.ColorRgba DefaultTemporarilyFree
+    static readonly VirtualMarina.Core.Rendering.ColorRgba DefaultDisabled
+    static readonly VirtualMarina.Core.Rendering.ColorRgba DefaultFree
+    static readonly VirtualMarina.Core.Rendering.ColorRgba DefaultOccupied
+    static readonly VirtualMarina.Core.Rendering.ColorRgba DefaultReserved
+    static readonly VirtualMarina.Core.Rendering.ColorRgba DefaultTemporarilyFree
     void Reset()
     void Set(VirtualMarina.Core.Domain.BerthStatus status, VirtualMarina.Core.Rendering.ColorRgba color)
 
-struct VirtualMarina.Core.Camera.CameraAngle : IEquatable<VirtualMarina.Core.Camera.CameraAngle>
+readonly record struct VirtualMarina.Core.Camera.CameraAngle : IEquatable<VirtualMarina.Core.Camera.CameraAngle>
     .ctor(float YawDegrees, float PitchDegrees)
     bool Equals(VirtualMarina.Core.Camera.CameraAngle other)
     float PitchDegrees { get; init; }
     float YawDegrees { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Camera.CameraAngle Of(VirtualMarina.Core.Camera.CameraPose pose)
     static VirtualMarina.Core.Camera.CameraAngle TopDown { get; }
     static VirtualMarina.Core.Camera.CameraAngle TopDownFacing(float yawDegrees)
     static bool op_Equality(VirtualMarina.Core.Camera.CameraAngle left, VirtualMarina.Core.Camera.CameraAngle right)
     static bool op_Inequality(VirtualMarina.Core.Camera.CameraAngle left, VirtualMarina.Core.Camera.CameraAngle right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out float YawDegrees, out float PitchDegrees)
 
 sealed class VirtualMarina.Core.Camera.CameraConstraints
@@ -659,38 +688,41 @@ sealed class VirtualMarina.Core.Camera.CameraConstraints
     Vector2 TargetBoundsMin { get; set; }
     float MaxDistance { get; set; }
     float MaxPitchDegrees { get; set; }
+    float MaxTargetHeight { get; set; }
     float MinDistance { get; set; }
     float MinEyeHeight { get; set; }
     float MinPitchDegrees { get; set; }
+    float MinTargetHeight { get; set; }
 
-struct VirtualMarina.Core.Camera.CameraPose : IEquatable<VirtualMarina.Core.Camera.CameraPose>
+readonly record struct VirtualMarina.Core.Camera.CameraPose : IEquatable<VirtualMarina.Core.Camera.CameraPose>
     .ctor(Vector3 Target, float YawDegrees, float PitchDegrees, float Distance)
     Vector3 Target { get; init; }
     bool Equals(VirtualMarina.Core.Camera.CameraPose other)
     float Distance { get; init; }
     float PitchDegrees { get; init; }
     float YawDegrees { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Camera.CameraPose left, VirtualMarina.Core.Camera.CameraPose right)
     static bool op_Inequality(VirtualMarina.Core.Camera.CameraPose left, VirtualMarina.Core.Camera.CameraPose right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out Vector3 Target, out float YawDegrees, out float PitchDegrees, out float Distance)
 
-sealed class VirtualMarina.Core.Camera.CameraPreset : IEquatable<VirtualMarina.Core.Camera.CameraPreset>
-    .ctor(string Name, VirtualMarina.Core.Camera.CameraPose Pose, string Description = null)
+sealed record VirtualMarina.Core.Camera.CameraPreset : IEquatable<VirtualMarina.Core.Camera.CameraPreset>
+    .ctor(string Name, VirtualMarina.Core.Camera.CameraPose Pose, string? Description = null)
     VirtualMarina.Core.Camera.CameraPose Pose { get; init; }
-    bool Equals(VirtualMarina.Core.Camera.CameraPreset other)
+    bool Equals(VirtualMarina.Core.Camera.CameraPreset? other)
     bool IsBuiltIn { get; init; }
     bool IsEnabled { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Camera.CameraPreset left, VirtualMarina.Core.Camera.CameraPreset right)
-    static bool op_Inequality(VirtualMarina.Core.Camera.CameraPreset left, VirtualMarina.Core.Camera.CameraPreset right)
-    string Description { get; init; }
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Camera.CameraPreset? left, VirtualMarina.Core.Camera.CameraPreset? right)
+    static bool op_Inequality(VirtualMarina.Core.Camera.CameraPreset? left, VirtualMarina.Core.Camera.CameraPreset? right)
     string Name { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
-    void Deconstruct(out string Name, out VirtualMarina.Core.Camera.CameraPose Pose, out string Description)
+    string? Description { get; init; }
+    string? Key { get; init; }
+    void Deconstruct(out string Name, out VirtualMarina.Core.Camera.CameraPose Pose, out string? Description)
 
 sealed class VirtualMarina.Core.Camera.OrbitCamera
     .ctor()
@@ -710,6 +742,7 @@ sealed class VirtualMarina.Core.Camera.OrbitCamera
     float Smoothing { get; set; }
     static Vector3 ComputeEye(VirtualMarina.Core.Camera.CameraPose pose)
     void Orbit(float deltaYawDegrees, float deltaPitchDegrees)
+    void Pan(Vector2 fromPixel, Vector2 toPixel, float viewportWidth, float viewportHeight)
     void Pan(float deltaXPixels, float deltaYPixels, float viewportHeightPixels)
     void PanWorld(float rightMeters, float forwardMeters)
     void SetPose(VirtualMarina.Core.Camera.CameraPose pose, bool immediate = false)
@@ -724,28 +757,28 @@ sealed class VirtualMarina.Core.Design.BerthNamePlan
     string Pattern { get; }
     string PierId { get; }
 
-sealed class VirtualMarina.Core.Design.BerthNamingScheme : IEquatable<VirtualMarina.Core.Design.BerthNamingScheme>
+sealed record VirtualMarina.Core.Design.BerthNamingScheme : IEquatable<VirtualMarina.Core.Design.BerthNamingScheme>
     .ctor()
     IEnumerable<string> Validate()
-    bool Equals(VirtualMarina.Core.Design.BerthNamingScheme other)
+    bool Equals(VirtualMarina.Core.Design.BerthNamingScheme? other)
     int Increment { get; init; }
     int NumberDigits { get; init; }
     int StartNumber { get; init; }
     int? LandIncrement { get; init; }
     int? LandNumberDigits { get; init; }
     int? LandStartNumber { get; init; }
-    static VirtualMarina.Core.Design.BerthNamingScheme Default
-    static bool op_Equality(VirtualMarina.Core.Design.BerthNamingScheme left, VirtualMarina.Core.Design.BerthNamingScheme right)
-    static bool op_Inequality(VirtualMarina.Core.Design.BerthNamingScheme left, VirtualMarina.Core.Design.BerthNamingScheme right)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Design.BerthNamingScheme? left, VirtualMarina.Core.Design.BerthNamingScheme? right)
+    static bool op_Inequality(VirtualMarina.Core.Design.BerthNamingScheme? left, VirtualMarina.Core.Design.BerthNamingScheme? right)
+    static readonly VirtualMarina.Core.Design.BerthNamingScheme Default
     string Format(VirtualMarina.Core.Domain.LandArea landArea, int number)
     string Format(VirtualMarina.Core.Domain.Pier pier, VirtualMarina.Core.Domain.PierSide side, int number)
-    string LandPattern { get; init; }
     string LeftSide { get; init; }
     string Pattern { get; init; }
     string RightSide { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    string? LandPattern { get; init; }
 
 enum VirtualMarina.Core.Design.BerthSeparator : IComparable, IConvertible, IFormattable, ISpanFormattable
     Boom = 4
@@ -755,6 +788,22 @@ enum VirtualMarina.Core.Design.BerthSeparator : IComparable, IConvertible, IForm
     PairedFingerPiers = 6
     Piles = 3
     SinglePile = 5
+
+sealed class VirtualMarina.Core.Design.DesignActionFailedEventArgs : EventArgs
+    .ctor(string description, Exception exception)
+    Exception Exception { get; }
+    string Description { get; }
+
+sealed class VirtualMarina.Core.Design.DesignActionRedoneEventArgs : EventArgs
+    .ctor(string description, int remainingSteps)
+    int RemainingSteps { get; }
+    string Description { get; }
+
+sealed class VirtualMarina.Core.Design.DesignActionScope : IDisposable
+    bool IsCompleted { get; }
+    string? Description { get; }
+    void Complete()
+    void Dispose()
 
 sealed class VirtualMarina.Core.Design.DesignActionUndoneEventArgs : EventArgs
     .ctor(string description, int remainingSteps)
@@ -774,22 +823,22 @@ sealed class VirtualMarina.Core.Design.DesignDraftChangedEventArgs : EventArgs
     VirtualMarina.Core.Design.DesignTool Tool { get; }
 
 sealed class VirtualMarina.Core.Design.DesignElementCreatedEventArgs : EventArgs
-    .ctor(VirtualMarina.Core.Design.DesignTool tool, VirtualMarina.Core.Domain.LandArea landArea, VirtualMarina.Core.Domain.Pier pier, IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, IReadOnlyList<VirtualMarina.Core.Domain.Divider> dividers)
+    .ctor(VirtualMarina.Core.Design.DesignTool tool, VirtualMarina.Core.Domain.LandArea? landArea, VirtualMarina.Core.Domain.Pier? pier, IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, IReadOnlyList<VirtualMarina.Core.Domain.Divider> dividers)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> Berths { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Divider> Dividers { get; }
     VirtualMarina.Core.Design.DesignTool Tool { get; }
-    VirtualMarina.Core.Domain.LandArea LandArea { get; }
-    VirtualMarina.Core.Domain.Pier Pier { get; }
-    VirtualMarina.Core.Domain.Shoreline Shoreline { get; init; }
+    VirtualMarina.Core.Domain.LandArea? LandArea { get; }
+    VirtualMarina.Core.Domain.Pier? Pier { get; }
+    VirtualMarina.Core.Domain.Shoreline? Shoreline { get; init; }
 
 sealed class VirtualMarina.Core.Design.DesignElementCreatingEventArgs : EventArgs
-    .ctor(VirtualMarina.Core.Design.DesignTool tool, VirtualMarina.Core.Domain.LandArea landArea, VirtualMarina.Core.Domain.Pier pier, IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, IReadOnlyList<VirtualMarina.Core.Domain.Divider> dividers)
+    .ctor(VirtualMarina.Core.Design.DesignTool tool, VirtualMarina.Core.Domain.LandArea? landArea, VirtualMarina.Core.Domain.Pier? pier, IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, IReadOnlyList<VirtualMarina.Core.Domain.Divider> dividers)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> Berths { get; set; }
     IReadOnlyList<VirtualMarina.Core.Domain.Divider> Dividers { get; set; }
     VirtualMarina.Core.Design.DesignTool Tool { get; }
-    VirtualMarina.Core.Domain.LandArea LandArea { get; set; }
-    VirtualMarina.Core.Domain.Pier Pier { get; set; }
-    VirtualMarina.Core.Domain.Shoreline Shoreline { get; set; }
+    VirtualMarina.Core.Domain.LandArea? LandArea { get; set; }
+    VirtualMarina.Core.Domain.Pier? Pier { get; set; }
+    VirtualMarina.Core.Domain.Shoreline? Shoreline { get; set; }
     bool Cancel { get; set; }
 
 sealed class VirtualMarina.Core.Design.DesignElementErasedEventArgs : EventArgs
@@ -799,18 +848,18 @@ sealed class VirtualMarina.Core.Design.DesignElementErasedEventArgs : EventArgs
     object Element { get; }
 
 sealed class VirtualMarina.Core.Design.DesignElementRenamingEventArgs : EventArgs
-    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, string currentName)
-    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, string currentName, string berthPattern)
-    .ctor(VirtualMarina.Core.Domain.Berth berth, VirtualMarina.Core.Domain.Pier pier, string currentName, string berthPattern, VirtualMarina.Core.Design.DesignRenameScope scope)
+    .ctor(VirtualMarina.Core.Domain.Berth? berth, VirtualMarina.Core.Domain.Pier? pier, string currentName)
+    .ctor(VirtualMarina.Core.Domain.Berth? berth, VirtualMarina.Core.Domain.Pier? pier, string currentName, string? berthPattern)
+    .ctor(VirtualMarina.Core.Domain.Berth? berth, VirtualMarina.Core.Domain.Pier? pier, string currentName, string? berthPattern, VirtualMarina.Core.Design.DesignRenameScope scope)
     VirtualMarina.Core.Design.DesignRenameScope Scope { get; }
-    VirtualMarina.Core.Domain.Berth Berth { get; }
-    VirtualMarina.Core.Domain.Pier Pier { get; }
+    VirtualMarina.Core.Domain.Berth? Berth { get; }
+    VirtualMarina.Core.Domain.Pier? Pier { get; }
     bool Cancel { get; set; }
-    string BerthPattern { get; }
     string CurrentName { get; }
-    string NewBerthPattern { get; set; }
     string NewName { get; set; }
-    string NewPierId { get; set; }
+    string? BerthPattern { get; }
+    string? NewBerthPattern { get; set; }
+    string? NewPierId { get; set; }
 
 enum VirtualMarina.Core.Design.DesignRenameScope : IComparable, IConvertible, IFormattable, ISpanFormattable
     BerthsOfPier = 1
@@ -841,41 +890,72 @@ sealed class VirtualMarina.Core.Design.DesignTreesPlantedEventArgs : EventArgs
     VirtualMarina.Core.Domain.LandArea LandArea { get; }
     int PreviousCount { get; }
 
-sealed class VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMarina.Core.Design.DesignerSettings>
+static class VirtualMarina.Core.Design.DesignerLimits
+    static VirtualMarina.Core.Design.DesignerSettingRange BerthDepth { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange BerthGap { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange BerthLength { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange BerthWidth { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange FogFactor { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange LandBerthHeading { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange LandHeight { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange PierWidth { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange ReferenceImageMetersPerPixel { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange ReferenceImageOpacity { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange SnapDistancePixels { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange TreeDensity { get; }
+
+readonly record struct VirtualMarina.Core.Design.DesignerSettingRange : IEquatable<VirtualMarina.Core.Design.DesignerSettingRange>
+    .ctor(float Minimum, float Maximum, float Default)
+    bool Contains(float value)
+    bool Equals(VirtualMarina.Core.Design.DesignerSettingRange other)
+    float Clamp(float value)
+    float Default { get; init; }
+    float Maximum { get; init; }
+    float Minimum { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Design.DesignerSettingRange left, VirtualMarina.Core.Design.DesignerSettingRange right)
+    static bool op_Inequality(VirtualMarina.Core.Design.DesignerSettingRange left, VirtualMarina.Core.Design.DesignerSettingRange right)
+    void Deconstruct(out float Minimum, out float Maximum, out float Default)
+
+sealed record VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMarina.Core.Design.DesignerSettings>
     .ctor()
     VirtualMarina.Core.Design.BerthNamingScheme BerthNaming { get; init; }
     VirtualMarina.Core.Design.BerthSeparator BerthSeparators { get; init; }
+    VirtualMarina.Core.Domain.HinterlandScenery Scenery { get; init; }
     VirtualMarina.Core.Domain.LandKind LandKind { get; init; }
     VirtualMarina.Core.Domain.PierServices BerthServices { get; init; }
     VirtualMarina.Core.Domain.PierSides PierBerthingSides { get; init; }
     VirtualMarina.Core.Domain.PierType PierType { get; init; }
     bool AlignBerthsToExisting { get; init; }
-    bool Equals(VirtualMarina.Core.Design.DesignerSettings other)
+    bool Equals(VirtualMarina.Core.Design.DesignerSettings? other)
     float BerthDepth { get; init; }
     float BerthGap { get; init; }
     float BerthLength { get; init; }
     float BerthWidth { get; init; }
+    float FogFactor { get; init; }
     float LandBerthHeading { get; init; }
     float LandHeight { get; init; }
     float PierWidth { get; init; }
     float SnapDistancePixels { get; init; }
     float TreeDensity { get; init; }
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Design.DesignerSettings FromDesigner(VirtualMarina.Core.Design.MarinaDesigner designer)
-    static bool op_Equality(VirtualMarina.Core.Design.DesignerSettings left, VirtualMarina.Core.Design.DesignerSettings right)
-    static bool op_Inequality(VirtualMarina.Core.Design.DesignerSettings left, VirtualMarina.Core.Design.DesignerSettings right)
+    static bool op_Equality(VirtualMarina.Core.Design.DesignerSettings? left, VirtualMarina.Core.Design.DesignerSettings? right)
+    static bool op_Inequality(VirtualMarina.Core.Design.DesignerSettings? left, VirtualMarina.Core.Design.DesignerSettings? right)
     string PierNamePattern { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void ApplyTo(VirtualMarina.Core.Design.MarinaDesigner designer)
 
 sealed class VirtualMarina.Core.Design.MarinaDesigner
     IReadOnlyList<ValueTuple<string, string>> ApplyBerthNames(VirtualMarina.Core.Design.BerthNamePlan plan)
     IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId)
-    IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId, string pattern)
+    IReadOnlyList<ValueTuple<string, string>> RenumberBerths(string pierId, string? pattern)
     IReadOnlyList<Vector2> DraftPoints { get; }
-    IReadOnlyList<Vector2> SelectionQuad { get; }
-    IReadOnlyList<Vector2> ShorelineAwaitingSide { get; }
+    IReadOnlyList<Vector2>? SelectionQuad { get; }
+    IReadOnlyList<Vector2>? ShorelineAwaitingSide { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> CreateBerths(string pierId, VirtualMarina.Core.Domain.PierSide side, float fromAlong, float toAlong)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> SetBerthServices(string berthId, bool wholeSide = false)
     IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)
@@ -886,29 +966,31 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     Vector2 ReferenceImageCenter { get; set; }
     Vector2 ReferenceImageSize { get; }
     Vector2? PointerPosition { get; }
-    VirtualMarina.Core.Design.BerthNamePlan PlanBerthNames(string pierId, string pattern)
+    VirtualMarina.Core.Design.BerthNamePlan PlanBerthNames(string pierId, string? pattern)
     VirtualMarina.Core.Design.BerthNamingScheme BerthNaming { get; set; }
     VirtualMarina.Core.Design.BerthSeparator BerthSeparators { get; set; }
+    VirtualMarina.Core.Design.DesignActionScope BeginAction(string description)
     VirtualMarina.Core.Design.DesignTool Tool { get; set; }
-    VirtualMarina.Core.Design.ReferenceImage ReferenceImage { get; }
-    VirtualMarina.Core.Domain.Berth CreateLandBerth(string landAreaId, Vector2 position, float? headingDegrees = null)
+    VirtualMarina.Core.Design.ReferenceImage? ReferenceImage { get; }
     VirtualMarina.Core.Domain.Berth RenameBerth(string berthId, string newBerthId)
+    VirtualMarina.Core.Domain.Berth? CreateLandBerth(string landAreaId, Vector2 position, float? headingDegrees = null)
     VirtualMarina.Core.Domain.HinterlandScenery Scenery { get; set; }
-    VirtualMarina.Core.Domain.LandArea CreateLandArea(IReadOnlyList<Vector2> outline)
-    VirtualMarina.Core.Domain.LandArea PlantTrees(string landAreaId, float? treesPer1000SquareMeters = null)
-    VirtualMarina.Core.Domain.LandArea RemoveTrees(string landAreaId)
+    VirtualMarina.Core.Domain.LandArea? CreateLandArea(IReadOnlyList<Vector2> outline)
+    VirtualMarina.Core.Domain.LandArea? PlantTrees(string landAreaId, float? treesPer1000SquareMeters = null)
+    VirtualMarina.Core.Domain.LandArea? RemoveTrees(string landAreaId)
     VirtualMarina.Core.Domain.LandKind LandKind { get; set; }
     VirtualMarina.Core.Domain.Pier ChangePierId(string pierId, string newPierId)
-    VirtualMarina.Core.Domain.Pier CreatePier(Vector2 start, Vector2 end)
     VirtualMarina.Core.Domain.Pier RenamePier(string pierId, string name)
+    VirtualMarina.Core.Domain.Pier? CreatePier(Vector2 start, Vector2 end)
     VirtualMarina.Core.Domain.PierServices BerthServices { get; set; }
     VirtualMarina.Core.Domain.PierSides PierBerthingSides { get; set; }
     VirtualMarina.Core.Domain.PierType PierType { get; set; }
-    VirtualMarina.Core.Domain.Shoreline CreateShoreline(IReadOnlyList<Vector2> line, bool landOnLeft)
-    VirtualMarina.Core.Domain.Shoreline PickShorelineSide(Vector2 landSide)
+    VirtualMarina.Core.Domain.Shoreline? CreateShoreline(IReadOnlyList<Vector2> line, bool landOnLeft)
+    VirtualMarina.Core.Domain.Shoreline? PickShorelineSide(Vector2 landSide)
     bool AlignBerthsToExisting { get; set; }
     bool CalibrateReferenceImage(Vector2 start, Vector2 end, float knownLengthMeters)
     bool CalibrateReferenceImage(float knownLengthMeters)
+    bool CanRedo { get; }
     bool CanUndo { get; }
     bool CancelDraft()
     bool ClearScaleLine()
@@ -916,30 +998,36 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     bool DeleteShoreline()
     bool Erase(object element)
     bool EraseBerthsOfPier(string pierId)
+    bool EscapeReturnsToNavigate { get; set; }
     bool FocusReferenceImage(bool immediate = false)
     bool HasDraft { get; }
     bool IsActive { get; set; }
-    bool IsBerthNameAvailable(string berthName, string forBerthId = null)
-    bool IsPierIdAvailable(string pierId, string forPierId = null)
+    bool IsBerthNameAvailable(string? berthName, string? forBerthId = null)
+    bool IsPierIdAvailable(string? pierId, string? forPierId = null)
+    bool Redo()
     bool ReferenceImageAboveScene { get; set; }
     bool ReferenceImageVisible { get; set; }
     bool RemoveLastPoint()
+    bool TryRedo()
+    bool TryUndo()
     bool Undo()
     const float MinimumPierLength = 1
     const float MinimumSeparatorGap = 0.3
     const int MaxUndoSteps = 50
-    event EventHandler ActiveChanged
-    event EventHandler StateChanged
-    event EventHandler<VirtualMarina.Core.Design.DesignActionUndoneEventArgs> ActionUndone
-    event EventHandler<VirtualMarina.Core.Design.DesignDraftChangedEventArgs> DraftChanged
-    event EventHandler<VirtualMarina.Core.Design.DesignElementCreatedEventArgs> ElementCreated
-    event EventHandler<VirtualMarina.Core.Design.DesignElementCreatingEventArgs> ElementCreating
-    event EventHandler<VirtualMarina.Core.Design.DesignElementErasedEventArgs> ElementErased
-    event EventHandler<VirtualMarina.Core.Design.DesignElementRenamingEventArgs> ElementRenaming
-    event EventHandler<VirtualMarina.Core.Design.DesignToolChangedEventArgs> ToolChanged
-    event EventHandler<VirtualMarina.Core.Design.DesignTreesPlantedEventArgs> TreesPlanted
-    event EventHandler<VirtualMarina.Core.Design.ReferenceImageChangedEventArgs> ReferenceImageChanged
-    event EventHandler<VirtualMarina.Core.Design.ScaleLineDrawnEventArgs> ScaleLineDrawn
+    event EventHandler<VirtualMarina.Core.Design.DesignActionFailedEventArgs>? ActionFailed
+    event EventHandler<VirtualMarina.Core.Design.DesignActionRedoneEventArgs>? ActionRedone
+    event EventHandler<VirtualMarina.Core.Design.DesignActionUndoneEventArgs>? ActionUndone
+    event EventHandler<VirtualMarina.Core.Design.DesignDraftChangedEventArgs>? DraftChanged
+    event EventHandler<VirtualMarina.Core.Design.DesignElementCreatedEventArgs>? ElementCreated
+    event EventHandler<VirtualMarina.Core.Design.DesignElementCreatingEventArgs>? ElementCreating
+    event EventHandler<VirtualMarina.Core.Design.DesignElementErasedEventArgs>? ElementErased
+    event EventHandler<VirtualMarina.Core.Design.DesignElementRenamingEventArgs>? ElementRenaming
+    event EventHandler<VirtualMarina.Core.Design.DesignToolChangedEventArgs>? ToolChanged
+    event EventHandler<VirtualMarina.Core.Design.DesignTreesPlantedEventArgs>? TreesPlanted
+    event EventHandler<VirtualMarina.Core.Design.ReferenceImageChangedEventArgs>? ReferenceImageChanged
+    event EventHandler<VirtualMarina.Core.Design.ScaleLineDrawnEventArgs>? ScaleLineDrawn
+    event EventHandler? ActiveChanged
+    event EventHandler? StateChanged
     float BerthDepth { get; set; }
     float BerthGap { get; set; }
     float BerthLength { get; set; }
@@ -952,12 +1040,15 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     float ReferenceImageOpacity { get; set; }
     float SnapDistancePixels { get; set; }
     float TreeDensity { get; set; }
+    int EraseSelectedBerths()
+    int RedoCount { get; }
     int UndoCount { get; }
     string DefaultBerthPattern(string pierId)
     string GeneratedPierName(string pierId)
     string PierNamePattern { get; set; }
     string ToolHint { get; }
-    string UndoDescription { get; }
+    string? RedoDescription { get; }
+    string? UndoDescription { get; }
     void ClearHistory()
     void ClearReferenceImage()
     void SetReferenceImage(VirtualMarina.Core.Design.ReferenceImage image, float? metersPerPixel = null, Vector2? center = null)
@@ -966,29 +1057,29 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
 static class VirtualMarina.Core.Design.PreviewFleet
     static IReadOnlyList<VirtualMarina.Core.Design.PreviewMooring> Plan(IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, int wanted, Random random)
 
-struct VirtualMarina.Core.Design.PreviewMooring : IEquatable<VirtualMarina.Core.Design.PreviewMooring>
+readonly record struct VirtualMarina.Core.Design.PreviewMooring : IEquatable<VirtualMarina.Core.Design.PreviewMooring>
     .ctor(IReadOnlyList<string> BerthIds, VirtualMarina.Core.Domain.Boat Boat, VirtualMarina.Core.Domain.MooringStyle Style)
     IReadOnlyList<string> BerthIds { get; init; }
     VirtualMarina.Core.Domain.Boat Boat { get; init; }
     VirtualMarina.Core.Domain.MooringStyle Style { get; init; }
     bool Equals(VirtualMarina.Core.Design.PreviewMooring other)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Design.PreviewMooring left, VirtualMarina.Core.Design.PreviewMooring right)
     static bool op_Inequality(VirtualMarina.Core.Design.PreviewMooring left, VirtualMarina.Core.Design.PreviewMooring right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out IReadOnlyList<string> BerthIds, out VirtualMarina.Core.Domain.Boat Boat, out VirtualMarina.Core.Domain.MooringStyle Style)
 
 sealed class VirtualMarina.Core.Design.ReferenceImage
-    .ctor(int pixelWidth, int pixelHeight, byte[] rgba, byte[] encodedData = null, string contentType = null)
+    .ctor(int pixelWidth, int pixelHeight, byte[] rgba, byte[]? encodedData = null, string? contentType = null)
     bool CanBeSaved { get; }
-    byte[] EncodedData { get; }
-    byte[] Rgba { get; }
+    byte[]? EncodedData { get; }
+    byte[]? Rgba { get; }
     int Key { get; }
     int PixelHeight { get; }
     int PixelWidth { get; }
     static VirtualMarina.Core.Design.ReferenceImage FromEncoded(byte[] encodedData, int pixelWidth, int pixelHeight, string contentType = "image/png")
-    string ContentType { get; }
+    string? ContentType { get; }
 
 enum VirtualMarina.Core.Design.ReferenceImageChange : IComparable, IConvertible, IFormattable, ISpanFormattable
     AppearanceChanged = 4
@@ -998,9 +1089,9 @@ enum VirtualMarina.Core.Design.ReferenceImageChange : IComparable, IConvertible,
     Set = 0
 
 sealed class VirtualMarina.Core.Design.ReferenceImageChangedEventArgs : EventArgs
-    .ctor(VirtualMarina.Core.Design.ReferenceImageChange change, VirtualMarina.Core.Design.ReferenceImage image, Vector2 center, float metersPerPixel)
+    .ctor(VirtualMarina.Core.Design.ReferenceImageChange change, VirtualMarina.Core.Design.ReferenceImage? image, Vector2 center, float metersPerPixel)
     Vector2 Center { get; }
-    VirtualMarina.Core.Design.ReferenceImage Image { get; }
+    VirtualMarina.Core.Design.ReferenceImage? Image { get; }
     VirtualMarina.Core.Design.ReferenceImageChange Change { get; }
     float MetersPerPixel { get; }
 
@@ -1011,19 +1102,20 @@ sealed class VirtualMarina.Core.Design.ScaleLineDrawnEventArgs : EventArgs
     float MeasuredLength { get; }
     float? KnownLengthMeters { get; set; }
 
-sealed class VirtualMarina.Core.Domain.Berth : IEquatable<VirtualMarina.Core.Domain.Berth>
+sealed record VirtualMarina.Core.Domain.Berth : IEquatable<VirtualMarina.Core.Domain.Berth>
     .ctor(string id, string pierId, Vector2 center, float headingDegrees, float length, float width)
     IReadOnlyDictionary<string, string> Metadata { get; init; }
     Vector2 Center { get; init; }
     Vector2 Forward { get; }
+    Vector2 LocalX { get; }
     Vector2 Right { get; }
     VirtualMarina.Core.Domain.BerthStatus Status { get; init; }
-    VirtualMarina.Core.Domain.Boat Boat { get; init; }
+    VirtualMarina.Core.Domain.Boat? Boat { get; init; }
     VirtualMarina.Core.Domain.MarinaDataBag ExternalData { get; init; }
     VirtualMarina.Core.Domain.OrientedRect Bounds { get; }
     VirtualMarina.Core.Domain.PierServices? Services { get; init; }
     bool AllowsActions { get; }
-    bool Equals(VirtualMarina.Core.Domain.Berth other)
+    bool Equals(VirtualMarina.Core.Domain.Berth? other)
     bool HasFingerPiers { get; init; }
     bool IsDisabled { get; init; }
     bool IsInMultiBerth { get; }
@@ -1035,18 +1127,18 @@ sealed class VirtualMarina.Core.Domain.Berth : IEquatable<VirtualMarina.Core.Dom
     float Length { get; init; }
     float Width { get; init; }
     float? MaxDraft { get; init; }
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Domain.Berth OnLand(string id, string landAreaId, Vector2 position, float headingDegrees = 0, float length = 12, float width = 5)
-    static bool op_Equality(VirtualMarina.Core.Domain.Berth left, VirtualMarina.Core.Domain.Berth right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.Berth left, VirtualMarina.Core.Domain.Berth right)
+    static bool op_Equality(VirtualMarina.Core.Domain.Berth? left, VirtualMarina.Core.Domain.Berth? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.Berth? left, VirtualMarina.Core.Domain.Berth? right)
     string DisplayName { get; }
     string Id { get; init; }
-    string Label { get; init; }
-    string LandAreaId { get; init; }
-    string MultiBerthId { get; }
-    string PierId { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    string? Label { get; init; }
+    string? LandAreaId { get; init; }
+    string? MultiBerthId { get; }
+    string? PierId { get; init; }
 
 static class VirtualMarina.Core.Domain.BerthGenerator
     static IReadOnlyList<VirtualMarina.Core.Domain.Berth> AlongPier(VirtualMarina.Core.Domain.Pier pier, VirtualMarina.Core.Domain.PierSide side, int count, float berthWidth, float berthLength, float startOffset = 2, float gap = 0, int firstNumber = 1)
@@ -1076,35 +1168,37 @@ enum VirtualMarina.Core.Domain.BerthStatusFilter : IComparable, IConvertible, IF
     Reserved = 4
     TemporarilyFree = 8
 
-sealed class VirtualMarina.Core.Domain.Boat : IEquatable<VirtualMarina.Core.Domain.Boat>
+sealed record VirtualMarina.Core.Domain.Boat : IEquatable<VirtualMarina.Core.Domain.Boat>
     .ctor(string id, string name, VirtualMarina.Core.Domain.BoatType type)
     DateTimeOffset? ExpectedArrival { get; init; }
     IReadOnlyDictionary<string, string> Metadata { get; init; }
     VirtualMarina.Core.Domain.BoatType Type { get; init; }
-    bool Equals(VirtualMarina.Core.Domain.Boat other)
+    bool Equals(VirtualMarina.Core.Domain.Boat? other)
+    bool HasCustomBeam { get; }
+    bool HasCustomLength { get; }
     float BeamMeters { get; init; }
     float LengthMeters { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Domain.Boat left, VirtualMarina.Core.Domain.Boat right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.Boat left, VirtualMarina.Core.Domain.Boat right)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Domain.Boat? left, VirtualMarina.Core.Domain.Boat? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.Boat? left, VirtualMarina.Core.Domain.Boat? right)
     string Id { get; init; }
     string Name { get; init; }
-    string OwnerName { get; init; }
-    string RegistrationNumber { get; init; }
     string TypeDisplayName { get; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    string? OwnerName { get; init; }
+    string? RegistrationNumber { get; init; }
 
-struct VirtualMarina.Core.Domain.BoatDimensions : IEquatable<VirtualMarina.Core.Domain.BoatDimensions>
+readonly record struct VirtualMarina.Core.Domain.BoatDimensions : IEquatable<VirtualMarina.Core.Domain.BoatDimensions>
     .ctor(float Length, float Beam)
     bool Equals(VirtualMarina.Core.Domain.BoatDimensions other)
     float Beam { get; init; }
     float Length { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Domain.BoatDimensions left, VirtualMarina.Core.Domain.BoatDimensions right)
     static bool op_Inequality(VirtualMarina.Core.Domain.BoatDimensions left, VirtualMarina.Core.Domain.BoatDimensions right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out float Length, out float Beam)
 
 enum VirtualMarina.Core.Domain.BoatType : IComparable, IConvertible, IFormattable, ISpanFormattable
@@ -1122,29 +1216,30 @@ static class VirtualMarina.Core.Domain.BoatTypeCatalog
     static VirtualMarina.Core.Domain.BoatDimensions GetNominalDimensions(VirtualMarina.Core.Domain.BoatType type)
     static string GetDisplayName(VirtualMarina.Core.Domain.BoatType type)
 
-sealed class VirtualMarina.Core.Domain.Divider : IEquatable<VirtualMarina.Core.Domain.Divider>
+sealed record VirtualMarina.Core.Domain.Divider : IEquatable<VirtualMarina.Core.Domain.Divider>
     .ctor(string id, Vector2 start, float headingDegrees, float length, VirtualMarina.Core.Domain.DividerType type = 0)
     IReadOnlyDictionary<string, string> Metadata { get; init; }
     Vector2 Center { get; }
     Vector2 Direction { get; }
     Vector2 End { get; }
+    Vector2 LocalX { get; }
     Vector2 Right { get; }
     Vector2 Start { get; init; }
     VirtualMarina.Core.Domain.DividerType Type { get; init; }
     VirtualMarina.Core.Domain.OrientedRect Bounds { get; }
-    bool Equals(VirtualMarina.Core.Domain.Divider other)
+    bool Equals(VirtualMarina.Core.Domain.Divider? other)
     float HeadingDegrees { get; init; }
     float Length { get; init; }
     float Spacing { get; init; }
     float Width { get; init; }
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Domain.Divider FromCenter(string id, Vector2 center, float length, float headingDegrees, VirtualMarina.Core.Domain.DividerType type = 0)
-    static bool op_Equality(VirtualMarina.Core.Domain.Divider left, VirtualMarina.Core.Domain.Divider right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.Divider left, VirtualMarina.Core.Domain.Divider right)
+    static bool op_Equality(VirtualMarina.Core.Domain.Divider? left, VirtualMarina.Core.Domain.Divider? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.Divider? left, VirtualMarina.Core.Domain.Divider? right)
     string Id { get; init; }
-    string PierId { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    string? PierId { get; init; }
 
 enum VirtualMarina.Core.Domain.DividerType : IComparable, IConvertible, IFormattable, ISpanFormattable
     Boom = 2
@@ -1158,7 +1253,7 @@ enum VirtualMarina.Core.Domain.HinterlandScenery : IComparable, IConvertible, IF
     None = 0
     Town = 3
 
-sealed class VirtualMarina.Core.Domain.LandArea : IEquatable<VirtualMarina.Core.Domain.LandArea>
+sealed record VirtualMarina.Core.Domain.LandArea : IEquatable<VirtualMarina.Core.Domain.LandArea>
     .ctor(string id, IEnumerable<Vector2> points, float height, VirtualMarina.Core.Domain.LandKind kind = 0)
     .ctor(string id, VirtualMarina.Core.Domain.OrientedRect area, float height, VirtualMarina.Core.Domain.LandKind kind = 0)
     IReadOnlyDictionary<string, string> Metadata { get; init; }
@@ -1167,62 +1262,62 @@ sealed class VirtualMarina.Core.Domain.LandArea : IEquatable<VirtualMarina.Core.
     ValueTuple<Vector2, Vector2> GetAxisAlignedBounds()
     VirtualMarina.Core.Domain.LandKind Kind { get; init; }
     bool Contains(Vector2 point)
-    bool Equals(VirtualMarina.Core.Domain.LandArea other)
+    bool Equals(VirtualMarina.Core.Domain.LandArea? other)
     float Area { get; }
     float Height { get; init; }
-    static IReadOnlyList<VirtualMarina.Core.Domain.LandTree> GenerateTrees(IReadOnlyList<Vector2> outline, float treesPer1000SquareMeters, Random random, IEnumerable<VirtualMarina.Core.Domain.OrientedRect> keepClear = null)
-    static bool op_Equality(VirtualMarina.Core.Domain.LandArea left, VirtualMarina.Core.Domain.LandArea right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.LandArea left, VirtualMarina.Core.Domain.LandArea right)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static IReadOnlyList<VirtualMarina.Core.Domain.LandTree> GenerateTrees(IReadOnlyList<Vector2> outline, float treesPer1000SquareMeters, Random random, IEnumerable<VirtualMarina.Core.Domain.OrientedRect>? keepClear = null)
+    static bool op_Equality(VirtualMarina.Core.Domain.LandArea? left, VirtualMarina.Core.Domain.LandArea? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.LandArea? left, VirtualMarina.Core.Domain.LandArea? right)
     string DisplayName { get; }
     string Id { get; init; }
-    string Name { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    string? Name { get; init; }
 
 sealed class VirtualMarina.Core.Domain.LandAreaBuilder
     VirtualMarina.Core.Domain.LandArea LandArea { get; }
-    VirtualMarina.Core.Domain.LandAreaBuilder AddBerth(string id, Vector2 position, float headingDegrees = 0, float length = 12, float width = 5, Func<VirtualMarina.Core.Domain.Berth, VirtualMarina.Core.Domain.Berth> customize = null)
-    VirtualMarina.Core.Domain.LandAreaBuilder AddBerths(string idPrefix, Vector2 firstPosition, float rowHeadingDegrees, int count, float berthWidth, float berthLength, Func<int, VirtualMarina.Core.Domain.Berth, VirtualMarina.Core.Domain.Berth> customize = null, float gap = 0.5, float? boatHeadingDegrees = null)
+    VirtualMarina.Core.Domain.LandAreaBuilder AddBerth(string id, Vector2 position, float headingDegrees = 0, float length = 12, float width = 5, Func<VirtualMarina.Core.Domain.Berth, VirtualMarina.Core.Domain.Berth>? customize = null)
+    VirtualMarina.Core.Domain.LandAreaBuilder AddBerths(string idPrefix, Vector2 firstPosition, float rowHeadingDegrees, int count, float berthWidth, float berthLength, Func<int, VirtualMarina.Core.Domain.Berth, VirtualMarina.Core.Domain.Berth>? customize = null, float gap = 0.5, float? boatHeadingDegrees = null)
 
 enum VirtualMarina.Core.Domain.LandKind : IComparable, IConvertible, IFormattable, ISpanFormattable
     Breakwater = 1
     Grass = 2
     Quay = 0
 
-struct VirtualMarina.Core.Domain.LandTree : IEquatable<VirtualMarina.Core.Domain.LandTree>
+readonly record struct VirtualMarina.Core.Domain.LandTree : IEquatable<VirtualMarina.Core.Domain.LandTree>
     .ctor(Vector2 Position, float Height, float CrownRadius, VirtualMarina.Core.Domain.TreeShape Shape = 0)
     Vector2 Position { get; init; }
     VirtualMarina.Core.Domain.TreeShape Shape { get; init; }
     bool Equals(VirtualMarina.Core.Domain.LandTree other)
     float CrownRadius { get; init; }
     float Height { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Domain.LandTree left, VirtualMarina.Core.Domain.LandTree right)
     static bool op_Inequality(VirtualMarina.Core.Domain.LandTree left, VirtualMarina.Core.Domain.LandTree right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out Vector2 Position, out float Height, out float CrownRadius, out VirtualMarina.Core.Domain.TreeShape Shape)
 
 sealed class VirtualMarina.Core.Domain.MarinaDataBag : ICollection<KeyValuePair<string, object>>, IDictionary<string, object>, IEnumerable, IEnumerable<KeyValuePair<string, object>>, IReadOnlyCollection<KeyValuePair<string, object>>, IReadOnlyDictionary<string, object>
     .ctor()
-    .ctor(IEnumerable<KeyValuePair<string, object>> items)
-    ICollection<object> Values { get; }
+    .ctor(IEnumerable<KeyValuePair<string, object?>> items)
+    ICollection<object?> Values { get; }
     ICollection<string> Keys { get; }
-    IEnumerator<KeyValuePair<string, object>> GetEnumerator()
+    IEnumerator<KeyValuePair<string, object?>> GetEnumerator()
     T Get<T>(string key)
     T GetOrAdd<T>(string key, Func<T> factory)
     bool ContainsKey(string key)
     bool Remove(string key)
     bool TryGet<T>(string key, out T value)
-    bool TryGetValue(string key, out object value)
+    bool TryGetValue(string key, out object? value)
     int Count { get; }
-    object Item { get; set; }
-    void Add(string key, object value)
+    object? this[string key] { get; set; }
+    void Add(string key, object? value)
     void Clear()
-    void Set(string key, object value)
+    void Set(string key, object? value)
 
-sealed class VirtualMarina.Core.Domain.MarinaLayout : IEquatable<VirtualMarina.Core.Domain.MarinaLayout>
+sealed record VirtualMarina.Core.Domain.MarinaLayout : IEquatable<VirtualMarina.Core.Domain.MarinaLayout>
     .ctor()
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> Berths { get; init; }
     IReadOnlyList<VirtualMarina.Core.Domain.Divider> Dividers { get; init; }
@@ -1231,31 +1326,31 @@ sealed class VirtualMarina.Core.Domain.MarinaLayout : IEquatable<VirtualMarina.C
     IReadOnlyList<VirtualMarina.Core.Domain.Pier> Piers { get; init; }
     IReadOnlyList<string> Validate()
     ValueTuple<Vector2, Vector2> ComputeBounds()
-    VirtualMarina.Core.Domain.MarineTraffic MarineTraffic { get; init; }
-    VirtualMarina.Core.Domain.Shoreline Shoreline { get; init; }
-    bool Equals(VirtualMarina.Core.Domain.MarinaLayout other)
+    VirtualMarina.Core.Domain.MarineTraffic? MarineTraffic { get; init; }
+    VirtualMarina.Core.Domain.Shoreline? Shoreline { get; init; }
+    bool Equals(VirtualMarina.Core.Domain.MarinaLayout? other)
     object[] ToObjects()
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Domain.MarinaLayout Empty { get; }
     static VirtualMarina.Core.Domain.MarinaLayout FromObjects(IEnumerable<object> elements, string name = "Marina")
-    static bool op_Equality(VirtualMarina.Core.Domain.MarinaLayout left, VirtualMarina.Core.Domain.MarinaLayout right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.MarinaLayout left, VirtualMarina.Core.Domain.MarinaLayout right)
+    static bool op_Equality(VirtualMarina.Core.Domain.MarinaLayout? left, VirtualMarina.Core.Domain.MarinaLayout? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.MarinaLayout? left, VirtualMarina.Core.Domain.MarinaLayout? right)
     string Name { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
 
 sealed class VirtualMarina.Core.Domain.MarinaLayoutBuilder
     .ctor(string name = "Marina")
     VirtualMarina.Core.Domain.MarinaLayout Build()
     VirtualMarina.Core.Domain.MarinaLayoutBuilder AddBerth(VirtualMarina.Core.Domain.Berth berth)
     VirtualMarina.Core.Domain.MarinaLayoutBuilder AddDivider(VirtualMarina.Core.Domain.Divider divider)
-    VirtualMarina.Core.Domain.MarinaLayoutBuilder AddLandArea(VirtualMarina.Core.Domain.LandArea landArea, Action<VirtualMarina.Core.Domain.LandAreaBuilder> configure = null)
-    VirtualMarina.Core.Domain.MarinaLayoutBuilder AddLandArea(string id, IEnumerable<Vector2> points, float height, VirtualMarina.Core.Domain.LandKind kind = 0, Action<VirtualMarina.Core.Domain.LandAreaBuilder> configure = null)
+    VirtualMarina.Core.Domain.MarinaLayoutBuilder AddLandArea(VirtualMarina.Core.Domain.LandArea landArea, Action<VirtualMarina.Core.Domain.LandAreaBuilder>? configure = null)
+    VirtualMarina.Core.Domain.MarinaLayoutBuilder AddLandArea(string id, IEnumerable<Vector2> points, float height, VirtualMarina.Core.Domain.LandKind kind = 0, Action<VirtualMarina.Core.Domain.LandAreaBuilder>? configure = null)
     VirtualMarina.Core.Domain.MarinaLayoutBuilder AddMultiBerth(VirtualMarina.Core.Domain.MultiBerth berth)
-    VirtualMarina.Core.Domain.MarinaLayoutBuilder AddPier(VirtualMarina.Core.Domain.Pier pier, Action<VirtualMarina.Core.Domain.PierBuilder> configure = null)
-    VirtualMarina.Core.Domain.MarinaLayoutBuilder AddPier(string id, string name, Vector2 start, float headingDegrees, float length, Action<VirtualMarina.Core.Domain.PierBuilder> configure = null, float width = 2.5, VirtualMarina.Core.Domain.PierType type = 0)
-    VirtualMarina.Core.Domain.MarinaLayoutBuilder WithMarineTraffic(VirtualMarina.Core.Domain.MarineTraffic traffic)
-    VirtualMarina.Core.Domain.MarinaLayoutBuilder WithShoreline(VirtualMarina.Core.Domain.Shoreline shoreline)
+    VirtualMarina.Core.Domain.MarinaLayoutBuilder AddPier(VirtualMarina.Core.Domain.Pier pier, Action<VirtualMarina.Core.Domain.PierBuilder>? configure = null)
+    VirtualMarina.Core.Domain.MarinaLayoutBuilder AddPier(string id, string name, Vector2 start, float headingDegrees, float length, Action<VirtualMarina.Core.Domain.PierBuilder>? configure = null, float width = 2.5, VirtualMarina.Core.Domain.PierType type = 0)
+    VirtualMarina.Core.Domain.MarinaLayoutBuilder WithMarineTraffic(VirtualMarina.Core.Domain.MarineTraffic? traffic)
+    VirtualMarina.Core.Domain.MarinaLayoutBuilder WithShoreline(VirtualMarina.Core.Domain.Shoreline? shoreline)
 
 sealed class VirtualMarina.Core.Domain.MarinaLayoutException : Exception, ISerializable
     .ctor()
@@ -1264,13 +1359,13 @@ sealed class VirtualMarina.Core.Domain.MarinaLayoutException : Exception, ISeria
     .ctor(string message, Exception innerException)
     IReadOnlyList<string> Errors { get; }
 
-sealed class VirtualMarina.Core.Domain.MarineTraffic : IEquatable<VirtualMarina.Core.Domain.MarineTraffic>
+sealed record VirtualMarina.Core.Domain.MarineTraffic : IEquatable<VirtualMarina.Core.Domain.MarineTraffic>
     .ctor()
     IEnumerable<string> Validate()
     IReadOnlyDictionary<string, string> Metadata { get; init; }
     IReadOnlyList<VirtualMarina.Core.Domain.BoatType> EffectiveVessels { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.BoatType> Vessels { get; init; }
-    bool Equals(VirtualMarina.Core.Domain.MarineTraffic other)
+    bool Equals(VirtualMarina.Core.Domain.MarineTraffic? other)
     bool IsEnabled { get; init; }
     const int LaneLimit = 8
     const int VesselLimit = 60
@@ -1286,20 +1381,20 @@ sealed class VirtualMarina.Core.Domain.MarineTraffic : IEquatable<VirtualMarina.
     int MaximumVessels { get; init; }
     int Seed { get; init; }
     int VesselCount { get; }
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
     static IReadOnlyList<VirtualMarina.Core.Domain.BoatType> DefaultVessels { get; }
     static VirtualMarina.Core.Domain.MarineTraffic None { get; }
-    static bool op_Equality(VirtualMarina.Core.Domain.MarineTraffic left, VirtualMarina.Core.Domain.MarineTraffic right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.MarineTraffic left, VirtualMarina.Core.Domain.MarineTraffic right)
+    static bool op_Equality(VirtualMarina.Core.Domain.MarineTraffic? left, VirtualMarina.Core.Domain.MarineTraffic? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.MarineTraffic? left, VirtualMarina.Core.Domain.MarineTraffic? right)
     static float CruisingKnots(VirtualMarina.Core.Domain.BoatType type)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
 
 enum VirtualMarina.Core.Domain.MooringStyle : IComparable, IConvertible, IFormattable, ISpanFormattable
     Alongside = 0
     BowIn = 1
 
-sealed class VirtualMarina.Core.Domain.MultiBerth : IEquatable<VirtualMarina.Core.Domain.MultiBerth>
+sealed record VirtualMarina.Core.Domain.MultiBerth : IEquatable<VirtualMarina.Core.Domain.MultiBerth>
     .ctor(string id, IReadOnlyList<string> berthIds, VirtualMarina.Core.Domain.Boat boat, VirtualMarina.Core.Domain.BerthStatus status = 1, VirtualMarina.Core.Domain.MooringStyle style = 0)
     IReadOnlyDictionary<string, string> Metadata { get; init; }
     IReadOnlyList<string> BerthIds { get; init; }
@@ -1307,20 +1402,21 @@ sealed class VirtualMarina.Core.Domain.MultiBerth : IEquatable<VirtualMarina.Cor
     VirtualMarina.Core.Domain.Boat Boat { get; init; }
     VirtualMarina.Core.Domain.MooringStyle Style { get; init; }
     bool Contains(string berthId)
-    bool Equals(VirtualMarina.Core.Domain.MultiBerth other)
-    static bool op_Equality(VirtualMarina.Core.Domain.MultiBerth left, VirtualMarina.Core.Domain.MultiBerth right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.MultiBerth left, VirtualMarina.Core.Domain.MultiBerth right)
+    bool Equals(VirtualMarina.Core.Domain.MultiBerth? other)
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Domain.MultiBerth? left, VirtualMarina.Core.Domain.MultiBerth? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.MultiBerth? left, VirtualMarina.Core.Domain.MultiBerth? right)
     string Id { get; init; }
     string PrimaryBerthId { get; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
 
-struct VirtualMarina.Core.Domain.OrientedRect : IEquatable<VirtualMarina.Core.Domain.OrientedRect>
+readonly record struct VirtualMarina.Core.Domain.OrientedRect : IEquatable<VirtualMarina.Core.Domain.OrientedRect>
     .ctor(Vector2 Center, Vector2 Size, float HeadingDegrees)
     ValueTuple<Vector2, Vector2> GetAxisAlignedBounds()
     Vector2 Center { get; init; }
     Vector2 Forward { get; }
+    Vector2 LocalX { get; }
     Vector2 Right { get; }
     Vector2 Size { get; init; }
     Vector2[] GetCorners()
@@ -1329,27 +1425,29 @@ struct VirtualMarina.Core.Domain.OrientedRect : IEquatable<VirtualMarina.Core.Do
     float HeadingDegrees { get; init; }
     float Length { get; }
     float Width { get; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Domain.OrientedRect left, VirtualMarina.Core.Domain.OrientedRect right)
     static bool op_Inequality(VirtualMarina.Core.Domain.OrientedRect left, VirtualMarina.Core.Domain.OrientedRect right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out Vector2 Center, out Vector2 Size, out float HeadingDegrees)
 
-sealed class VirtualMarina.Core.Domain.Pier : IEquatable<VirtualMarina.Core.Domain.Pier>
+sealed record VirtualMarina.Core.Domain.Pier : IEquatable<VirtualMarina.Core.Domain.Pier>
     .ctor(string id, string name, Vector2 start, float headingDegrees, float length, float width = 2.5, VirtualMarina.Core.Domain.PierType type = 0)
     IReadOnlyDictionary<string, string> Metadata { get; init; }
     Vector2 Center { get; }
     Vector2 Direction { get; }
     Vector2 End { get; }
+    Vector2 LocalX { get; }
     Vector2 Right { get; }
+    Vector2 SideNormal(VirtualMarina.Core.Domain.PierSide side)
     Vector2 Start { get; init; }
     VirtualMarina.Core.Domain.OrientedRect Bounds { get; }
     VirtualMarina.Core.Domain.Pier WithCenter(Vector2 center)
     VirtualMarina.Core.Domain.PierServices Services { get; init; }
     VirtualMarina.Core.Domain.PierSides BerthingSides { get; init; }
     VirtualMarina.Core.Domain.PierType Type { get; init; }
-    bool Equals(VirtualMarina.Core.Domain.Pier other)
+    bool Equals(VirtualMarina.Core.Domain.Pier? other)
     bool HasBerthsOn(VirtualMarina.Core.Domain.PierSide side)
     bool IsFloating { get; }
     float DeckHeight { get; init; }
@@ -1357,22 +1455,22 @@ sealed class VirtualMarina.Core.Domain.Pier : IEquatable<VirtualMarina.Core.Doma
     float Length { get; init; }
     float PilingSpacing { get; init; }
     float Width { get; init; }
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Domain.Pier FromCenter(string id, string name, Vector2 center, float length, float width, float headingDegrees, VirtualMarina.Core.Domain.PierType type = 0)
-    static bool op_Equality(VirtualMarina.Core.Domain.Pier left, VirtualMarina.Core.Domain.Pier right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.Pier left, VirtualMarina.Core.Domain.Pier right)
+    static bool op_Equality(VirtualMarina.Core.Domain.Pier? left, VirtualMarina.Core.Domain.Pier? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.Pier? left, VirtualMarina.Core.Domain.Pier? right)
     static float GetDefaultDeckHeight(VirtualMarina.Core.Domain.PierType type)
     static string GetDisplayName(VirtualMarina.Core.Domain.PierType type)
     string Id { get; init; }
     string Name { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
 
 sealed class VirtualMarina.Core.Domain.PierBuilder
     VirtualMarina.Core.Domain.Pier Pier { get; }
     VirtualMarina.Core.Domain.PierBuilder AddBerth(VirtualMarina.Core.Domain.Berth berth)
-    VirtualMarina.Core.Domain.PierBuilder AddBerth(string id, VirtualMarina.Core.Domain.PierSide side, float offsetAlong, float berthWidth, float berthLength, Func<VirtualMarina.Core.Domain.Berth, VirtualMarina.Core.Domain.Berth> customize = null)
-    VirtualMarina.Core.Domain.PierBuilder AddBerths(VirtualMarina.Core.Domain.PierSide side, int count, float berthWidth, float berthLength, Func<int, VirtualMarina.Core.Domain.Berth, VirtualMarina.Core.Domain.Berth> customize = null, float startOffset = 2, float gap = 0, VirtualMarina.Core.Domain.DividerType? dividers = null)
+    VirtualMarina.Core.Domain.PierBuilder AddBerth(string id, VirtualMarina.Core.Domain.PierSide side, float offsetAlong, float berthWidth, float berthLength, Func<VirtualMarina.Core.Domain.Berth, VirtualMarina.Core.Domain.Berth>? customize = null)
+    VirtualMarina.Core.Domain.PierBuilder AddBerths(VirtualMarina.Core.Domain.PierSide side, int count, float berthWidth, float berthLength, Func<int, VirtualMarina.Core.Domain.Berth, VirtualMarina.Core.Domain.Berth>? customize = null, float startOffset = 2, float gap = 0, VirtualMarina.Core.Domain.DividerType? dividers = null)
     VirtualMarina.Core.Domain.PierBuilder AddDivider(VirtualMarina.Core.Domain.Divider divider)
 
 enum VirtualMarina.Core.Domain.PierServices : IComparable, IConvertible, IFormattable, ISpanFormattable
@@ -1395,40 +1493,41 @@ enum VirtualMarina.Core.Domain.PierType : IComparable, IConvertible, IFormattabl
     FloatingConcrete = 1
     FloatingWooden = 0
 
-sealed class VirtualMarina.Core.Domain.Shoreline : IEquatable<VirtualMarina.Core.Domain.Shoreline>
+sealed record VirtualMarina.Core.Domain.Shoreline : IEquatable<VirtualMarina.Core.Domain.Shoreline>
     .ctor(IEnumerable<Vector2> points, bool landOnLeft)
     IEnumerable<string> Validate()
     IReadOnlyDictionary<string, string> Metadata { get; init; }
     IReadOnlyList<Vector2> BuildOutline()
     IReadOnlyList<Vector2> Points { get; init; }
     ValueTuple<Vector2, Vector2>? EndsAtTheMapEdge()
+    Vector2 LandSideNormal(int segment)
     VirtualMarina.Core.Domain.HinterlandScenery Scenery { get; init; }
     VirtualMarina.Core.Domain.LandKind Kind { get; init; }
     bool Contains(Vector2 point)
-    bool Equals(VirtualMarina.Core.Domain.Shoreline other)
+    bool Equals(VirtualMarina.Core.Domain.Shoreline? other)
     bool LandOnLeft { get; init; }
     const float Reach = 12000
     float DistanceToShore(Vector2 point)
     float Height { get; init; }
     int ScenerySeed { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Domain.Shoreline left, VirtualMarina.Core.Domain.Shoreline right)
-    static bool op_Inequality(VirtualMarina.Core.Domain.Shoreline left, VirtualMarina.Core.Domain.Shoreline right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Domain.Shoreline? left, VirtualMarina.Core.Domain.Shoreline? right)
+    static bool op_Inequality(VirtualMarina.Core.Domain.Shoreline? left, VirtualMarina.Core.Domain.Shoreline? right)
 
-struct VirtualMarina.Core.Domain.TrafficVessel : IEquatable<VirtualMarina.Core.Domain.TrafficVessel>
+readonly record struct VirtualMarina.Core.Domain.TrafficVessel : IEquatable<VirtualMarina.Core.Domain.TrafficVessel>
     .ctor(VirtualMarina.Core.Domain.BoatType Type, Vector2 Position, float HeadingDegrees, float Opacity)
     Vector2 Position { get; init; }
     VirtualMarina.Core.Domain.BoatType Type { get; init; }
     bool Equals(VirtualMarina.Core.Domain.TrafficVessel other)
     float HeadingDegrees { get; init; }
     float Opacity { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Domain.TrafficVessel left, VirtualMarina.Core.Domain.TrafficVessel right)
     static bool op_Inequality(VirtualMarina.Core.Domain.TrafficVessel left, VirtualMarina.Core.Domain.TrafficVessel right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out VirtualMarina.Core.Domain.BoatType Type, out Vector2 Position, out float HeadingDegrees, out float Opacity)
 
 enum VirtualMarina.Core.Domain.TreeShape : IComparable, IConvertible, IFormattable, ISpanFormattable
@@ -1441,7 +1540,7 @@ enum VirtualMarina.Core.Domain.TreeShape : IComparable, IConvertible, IFormattab
 static class VirtualMarina.Core.Geometry.BoatMeshFactory
     static VirtualMarina.Core.Geometry.MeshData Create(VirtualMarina.Core.Domain.BoatType type, int meshId)
 
-struct VirtualMarina.Core.Geometry.BoundingBox : IEquatable<VirtualMarina.Core.Geometry.BoundingBox>
+readonly record struct VirtualMarina.Core.Geometry.BoundingBox : IEquatable<VirtualMarina.Core.Geometry.BoundingBox>
     .ctor(Vector3 Min, Vector3 Max)
     Vector3 Center { get; }
     Vector3 Max { get; init; }
@@ -1449,12 +1548,12 @@ struct VirtualMarina.Core.Geometry.BoundingBox : IEquatable<VirtualMarina.Core.G
     Vector3 Size { get; }
     bool Equals(VirtualMarina.Core.Geometry.BoundingBox other)
     bool IntersectRay(Vector3 origin, Vector3 direction, out float distance)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Geometry.BoundingBox FromVertices(float[] vertices, int stride)
     static bool op_Equality(VirtualMarina.Core.Geometry.BoundingBox left, VirtualMarina.Core.Geometry.BoundingBox right)
     static bool op_Inequality(VirtualMarina.Core.Geometry.BoundingBox left, VirtualMarina.Core.Geometry.BoundingBox right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out Vector3 Min, out Vector3 Max)
 
 static class VirtualMarina.Core.Geometry.GlyphFont
@@ -1488,20 +1587,20 @@ sealed class VirtualMarina.Core.Geometry.LabelFontDefinition
     const int GlyphLimit = 512
     float AdvanceOf(char character)
     float MeasureWidth(string text)
-    static VirtualMarina.Core.Geometry.LabelFontDefinition Decode(string name, IEnumerable<string> lines, bool isBold = false)
+    static VirtualMarina.Core.Geometry.LabelFontDefinition? Decode(string? name, IEnumerable<string>? lines, bool isBold = false)
     string Name { get; }
 
-sealed class VirtualMarina.Core.Geometry.LabelGlyph : IEquatable<VirtualMarina.Core.Geometry.LabelGlyph>
+sealed record VirtualMarina.Core.Geometry.LabelGlyph : IEquatable<VirtualMarina.Core.Geometry.LabelGlyph>
     .ctor(char Character, float Advance, IReadOnlyList<IReadOnlyList<Vector2>> Contours)
     IReadOnlyList<IReadOnlyList<Vector2>> Contours { get; init; }
-    bool Equals(VirtualMarina.Core.Geometry.LabelGlyph other)
+    bool Equals(VirtualMarina.Core.Geometry.LabelGlyph? other)
     char Character { get; init; }
     float Advance { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Geometry.LabelGlyph left, VirtualMarina.Core.Geometry.LabelGlyph right)
-    static bool op_Inequality(VirtualMarina.Core.Geometry.LabelGlyph left, VirtualMarina.Core.Geometry.LabelGlyph right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Geometry.LabelGlyph? left, VirtualMarina.Core.Geometry.LabelGlyph? right)
+    static bool op_Inequality(VirtualMarina.Core.Geometry.LabelGlyph? left, VirtualMarina.Core.Geometry.LabelGlyph? right)
     void Deconstruct(out char Character, out float Advance, out IReadOnlyList<IReadOnlyList<Vector2>> Contours)
 
 enum VirtualMarina.Core.Geometry.LabelTypeface : IComparable, IConvertible, IFormattable, ISpanFormattable
@@ -1511,14 +1610,14 @@ enum VirtualMarina.Core.Geometry.LabelTypeface : IComparable, IConvertible, IFor
 
 static class VirtualMarina.Core.Geometry.LandMeshFactory
     const float WallDepth = 3
-    static VirtualMarina.Core.Geometry.MeshData Create(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
-    static VirtualMarina.Core.Geometry.MeshData CreateGround(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
-    static VirtualMarina.Core.Geometry.MeshData CreateRockPile(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
-    static VirtualMarina.Core.Geometry.MeshData CreateShoreline(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle style = null)
-    static VirtualMarina.Core.Geometry.MeshData CreateShorelineGround(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle style = null)
-    static VirtualMarina.Core.Geometry.MeshData CreateShorelineScenery(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle style = null)
-    static VirtualMarina.Core.Geometry.MeshData CreateSlab(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
-    static VirtualMarina.Core.Geometry.MeshData CreateTrees(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle style = null)
+    static VirtualMarina.Core.Geometry.MeshData Create(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle? style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateGround(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle? style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateRockPile(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle? style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateShoreline(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle? style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateShorelineGround(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle? style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateShorelineScenery(int id, VirtualMarina.Core.Domain.Shoreline shoreline, VirtualMarina.Core.Rendering.LandStyle? style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateSlab(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle? style = null)
+    static VirtualMarina.Core.Geometry.MeshData CreateTrees(int id, VirtualMarina.Core.Domain.LandArea area, VirtualMarina.Core.Rendering.LandStyle? style = null)
     static float ShorelineGroundHeight(VirtualMarina.Core.Domain.Shoreline shoreline)
 
 static class VirtualMarina.Core.Geometry.MarinaMeshFactory
@@ -1539,7 +1638,7 @@ sealed class VirtualMarina.Core.Geometry.MarineTrafficField
     void Advance(double seconds)
 
 static class VirtualMarina.Core.Geometry.MarineTrafficPlanner
-    static IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> Plan(VirtualMarina.Core.Domain.MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, VirtualMarina.Core.Domain.Shoreline shoreline)
+    static IReadOnlyList<VirtualMarina.Core.Geometry.TrafficLane> Plan(VirtualMarina.Core.Domain.MarineTraffic traffic, ValueTuple<Vector2, Vector2> marina, VirtualMarina.Core.Domain.Shoreline? shoreline)
 
 sealed class VirtualMarina.Core.Geometry.MeshBuilder
     .ctor()
@@ -1579,6 +1678,7 @@ static class VirtualMarina.Core.Geometry.MeshIds
     const int GlyphBase = 300
     const int LandBase = 10000
     const int LandTreesBase = 20000
+    const int MaxLandSlots = 10000
     const int Piling = 3
     const int SelectionMarker = 5
     const int Shoreline = 9000
@@ -1630,12 +1730,16 @@ sealed class VirtualMarina.Core.Input.MarinaInputController
     bool HoverEnabled { get; set; }
     bool IsDragging { get; }
     bool KeyDown(VirtualMarina.Core.Input.MarinaKey key, VirtualMarina.Core.Input.InputModifiers modifiers = 0)
+    bool KeyboardPanScalesWithDistance { get; set; }
     bool ModifiersChanged(VirtualMarina.Core.Input.InputModifiers modifiers)
+    bool WantsKey(VirtualMarina.Core.Input.MarinaKey key, VirtualMarina.Core.Input.InputModifiers modifiers = 0)
+    const float KeyboardPanReferenceDistance = 100
     float ClickTolerancePixels { get; set; }
     float KeyboardOrbitDegrees { get; set; }
     float KeyboardPanMeters { get; set; }
     float OrbitDegreesPerPixel { get; set; }
     float ZoomStepFactor { get; set; }
+    void CancelPointer()
     void DoubleClick(float x, float y, VirtualMarina.Core.Input.PointerButton button, VirtualMarina.Core.Input.InputModifiers modifiers = 0)
     void PointerDown(float x, float y, VirtualMarina.Core.Input.PointerButton button, VirtualMarina.Core.Input.InputModifiers modifiers = 0)
     void PointerLeave()
@@ -1653,11 +1757,17 @@ enum VirtualMarina.Core.Input.MarinaKey : IComparable, IConvertible, IFormattabl
     Left = 0
     PageDown = 5
     PageUp = 4
+    Redo = 14
     Right = 1
     Undo = 13
     Up = 2
     ZoomIn = 6
     ZoomOut = 7
+
+static class VirtualMarina.Core.Input.MarinaKeyMap
+    static VirtualMarina.Core.Input.MarinaKey? FromDomKey(string? code, string? key, VirtualMarina.Core.Input.InputModifiers modifiers)
+    static VirtualMarina.Core.Input.MarinaKey? FromVirtualKey(int virtualKey, VirtualMarina.Core.Input.InputModifiers modifiers)
+    static bool IsChord(VirtualMarina.Core.Input.InputModifiers modifiers)
 
 enum VirtualMarina.Core.Input.PointerButton : IComparable, IConvertible, IFormattable, ISpanFormattable
     Left = 1
@@ -1680,43 +1790,47 @@ static class VirtualMarina.Core.Mathematics.MarinaMath
     static float StableHash01(string value)
 
 static class VirtualMarina.Core.Mathematics.PolygonMath
+    const float PointTolerance = 0.01
+    const float TouchTolerance = 0.001
     static IReadOnlyList<ValueTuple<int, int, int>> Triangulate(IReadOnlyList<Vector2> points)
+    static IReadOnlyList<Vector2> RemoveRepeatedPoints(IReadOnlyList<Vector2> points, bool closed, float tolerance = 0.01)
     static ValueTuple<IReadOnlyList<Vector2>, IReadOnlyList<ValueTuple<int, int, int>>> TriangulateWithHoles(IReadOnlyList<Vector2> outer, IReadOnlyList<IReadOnlyList<Vector2>> holes)
     static ValueTuple<Vector2, Vector2> GetBounds(IReadOnlyList<Vector2> points)
+    static Vector2 ClosestPointOnSegment(Vector2 point, Vector2 a, Vector2 b)
     static bool Contains(IReadOnlyList<Vector2> points, Vector2 point)
     static bool IsSimple(IReadOnlyList<Vector2> points)
     static float DistanceToBoundary(IReadOnlyList<Vector2> points, Vector2 point)
     static float SignedArea(IReadOnlyList<Vector2> points)
 
-struct VirtualMarina.Core.Picking.BerthHit : IEquatable<VirtualMarina.Core.Picking.BerthHit>
+readonly record struct VirtualMarina.Core.Picking.BerthHit : IEquatable<VirtualMarina.Core.Picking.BerthHit>
     .ctor(string BerthId, float Distance, Vector3 WorldPoint, bool HitBoat)
     Vector3 WorldPoint { get; init; }
     bool Equals(VirtualMarina.Core.Picking.BerthHit other)
     bool HitBoat { get; init; }
     float Distance { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Picking.BerthHit left, VirtualMarina.Core.Picking.BerthHit right)
     static bool op_Inequality(VirtualMarina.Core.Picking.BerthHit left, VirtualMarina.Core.Picking.BerthHit right)
     string BerthId { get; init; }
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out string BerthId, out float Distance, out Vector3 WorldPoint, out bool HitBoat)
 
-struct VirtualMarina.Core.Picking.Ray : IEquatable<VirtualMarina.Core.Picking.Ray>
+readonly record struct VirtualMarina.Core.Picking.Ray : IEquatable<VirtualMarina.Core.Picking.Ray>
     .ctor(Vector3 Origin, Vector3 Direction)
     Vector3 Direction { get; init; }
     Vector3 GetPoint(float distance)
     Vector3 Origin { get; init; }
     bool Equals(VirtualMarina.Core.Picking.Ray other)
     bool IntersectHorizontalPlane(float height, out float distance)
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Picking.Ray left, VirtualMarina.Core.Picking.Ray right)
     static bool op_Inequality(VirtualMarina.Core.Picking.Ray left, VirtualMarina.Core.Picking.Ray right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out Vector3 Origin, out Vector3 Direction)
 
-struct VirtualMarina.Core.Rendering.ColorRgba : IEquatable<VirtualMarina.Core.Rendering.ColorRgba>
+readonly record struct VirtualMarina.Core.Rendering.ColorRgba : IEquatable<VirtualMarina.Core.Rendering.ColorRgba>
     .ctor(float R, float G, float B, float A = 1)
     Vector3 ToVector3()
     Vector4 ToVector4()
@@ -1727,27 +1841,88 @@ struct VirtualMarina.Core.Rendering.ColorRgba : IEquatable<VirtualMarina.Core.Re
     float B { get; init; }
     float G { get; init; }
     float R { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static VirtualMarina.Core.Rendering.ColorRgba FromBytes(byte r, byte g, byte b, byte a = 255)
     static VirtualMarina.Core.Rendering.ColorRgba FromHex(string hex)
     static bool op_Equality(VirtualMarina.Core.Rendering.ColorRgba left, VirtualMarina.Core.Rendering.ColorRgba right)
     static bool op_Inequality(VirtualMarina.Core.Rendering.ColorRgba left, VirtualMarina.Core.Rendering.ColorRgba right)
     string ToHex()
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out float R, out float G, out float B, out float A)
 
+readonly record struct VirtualMarina.Core.Rendering.FrameLighting : IEquatable<VirtualMarina.Core.Rendering.FrameLighting>
+    .ctor(Vector3 SunDirection, Vector3 SunColor, Vector3 AmbientColor, float SpecularStrength, float Shininess, Vector3 SkyColor, Vector3 FogColor, float FogDensity)
+    Vector3 AmbientColor { get; init; }
+    Vector3 FogColor { get; init; }
+    Vector3 SkyColor { get; init; }
+    Vector3 SunColor { get; init; }
+    Vector3 SunDirection { get; init; }
+    bool Equals(VirtualMarina.Core.Rendering.FrameLighting other)
+    float FogDensity { get; init; }
+    float Shininess { get; init; }
+    float SpecularStrength { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static VirtualMarina.Core.Rendering.FrameLighting FromLightingSettings(VirtualMarina.Core.Rendering.LightingSettings settings)
+    static VirtualMarina.Core.Rendering.FrameLighting op_Implicit(VirtualMarina.Core.Rendering.LightingSettings settings)
+    static bool op_Equality(VirtualMarina.Core.Rendering.FrameLighting left, VirtualMarina.Core.Rendering.FrameLighting right)
+    static bool op_Inequality(VirtualMarina.Core.Rendering.FrameLighting left, VirtualMarina.Core.Rendering.FrameLighting right)
+    void Deconstruct(out Vector3 SunDirection, out Vector3 SunColor, out Vector3 AmbientColor, out float SpecularStrength, out float Shininess, out Vector3 SkyColor, out Vector3 FogColor, out float FogDensity)
+
+readonly record struct VirtualMarina.Core.Rendering.FrameWater : IEquatable<VirtualMarina.Core.Rendering.FrameWater>
+    .ctor(Vector3 DeepColor, Vector3 ShallowColor, float WaveAmplitude, float WaveFrequency, float WaveSpeed, float SkyReflection, float Ripples, float SunGlints, float BoatMotion)
+    Vector3 DeepColor { get; init; }
+    Vector3 ShallowColor { get; init; }
+    bool Equals(VirtualMarina.Core.Rendering.FrameWater other)
+    bool IsMoving { get; }
+    float BoatMotion { get; init; }
+    float Ripples { get; init; }
+    float SkyReflection { get; init; }
+    float SunGlints { get; init; }
+    float WaveAmplitude { get; init; }
+    float WaveFrequency { get; init; }
+    float WaveSpeed { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static VirtualMarina.Core.Rendering.FrameWater FromWaterSettings(VirtualMarina.Core.Rendering.WaterSettings settings)
+    static VirtualMarina.Core.Rendering.FrameWater op_Implicit(VirtualMarina.Core.Rendering.WaterSettings settings)
+    static bool op_Equality(VirtualMarina.Core.Rendering.FrameWater left, VirtualMarina.Core.Rendering.FrameWater right)
+    static bool op_Inequality(VirtualMarina.Core.Rendering.FrameWater left, VirtualMarina.Core.Rendering.FrameWater right)
+    void Deconstruct(out Vector3 DeepColor, out Vector3 ShallowColor, out float WaveAmplitude, out float WaveFrequency, out float WaveSpeed, out float SkyReflection, out float Ripples, out float SunGlints, out float BoatMotion)
+
 interface VirtualMarina.Core.Rendering.ISceneRenderer : IDisposable
-    abstract void Initialize()
-    abstract void Render(VirtualMarina.Core.Rendering.RenderFrame frame)
-    abstract void Resize(int pixelWidth, int pixelHeight)
     string BackendName { get; }
-    string DeviceDescription { get; }
+    string? DeviceDescription { get; }
+    void Initialize()
+    void Render(VirtualMarina.Core.Rendering.RenderFrame frame)
+    void Resize(int pixelWidth, int pixelHeight)
+
+static class VirtualMarina.Core.Rendering.InstanceData
+    const int AttributeCount = 5
+    const int FirstAttributeLocation = 3
+    const int Stride = 20
+    const int StrideBytes = 80
+    static void Pack(ReadOnlySpan<VirtualMarina.Core.Rendering.RenderObject> objects, Span<float> destination)
+
+readonly record struct VirtualMarina.Core.Rendering.InstanceRange : IEquatable<VirtualMarina.Core.Rendering.InstanceRange>
+    .ctor(int Start, int Count)
+    bool Equals(VirtualMarina.Core.Rendering.InstanceRange other)
+    int Count { get; init; }
+    int Start { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Rendering.InstanceRange left, VirtualMarina.Core.Rendering.InstanceRange right)
+    static bool op_Inequality(VirtualMarina.Core.Rendering.InstanceRange left, VirtualMarina.Core.Rendering.InstanceRange right)
+    void Deconstruct(out int Start, out int Count)
 
 sealed class VirtualMarina.Core.Rendering.LabelStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
     VirtualMarina.Core.Geometry.LabelFont FontFamily { get; set; }
-    VirtualMarina.Core.Geometry.LabelFontDefinition Font { get; set; }
+    VirtualMarina.Core.Geometry.LabelFontDefinition? Font { get; set; }
     VirtualMarina.Core.Geometry.LabelTypeface Typeface { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba AshoreColor { get; set; }
     VirtualMarina.Core.Rendering.ColorRgba Color { get; set; }
@@ -1771,7 +1946,19 @@ sealed class VirtualMarina.Core.Rendering.LandStyle : VirtualMarina.Core.Renderi
     bool ShowTrees { get; set; }
     float RockColorVariation { get; set; }
 
-sealed class VirtualMarina.Core.Rendering.LightingSettings
+enum VirtualMarina.Core.Rendering.LayerUpload : IComparable, IConvertible, IFormattable, ISpanFormattable
+    Changes = 1
+    Full = 2
+    None = 0
+
+sealed class VirtualMarina.Core.Rendering.LayerUploadTracker
+    .ctor()
+    IReadOnlyList<VirtualMarina.Core.Rendering.RenderLayerKind> RemoveMissing(IReadOnlyList<VirtualMarina.Core.Rendering.RenderLayer> layers)
+    VirtualMarina.Core.Rendering.LayerUpload Check(VirtualMarina.Core.Rendering.RenderLayer layer, ICollection<VirtualMarina.Core.Rendering.InstanceRange> changes)
+    void Clear()
+    void Uploaded(VirtualMarina.Core.Rendering.RenderLayer layer)
+
+sealed class VirtualMarina.Core.Rendering.LightingSettings : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
     Vector3 AmbientColor { get; set; }
     Vector3 FogColor { get; set; }
@@ -1789,6 +1976,7 @@ sealed class VirtualMarina.Core.Rendering.MarinaStyle
     VirtualMarina.Core.Rendering.LabelStyle Labels { get; init; }
     VirtualMarina.Core.Rendering.LandStyle Land { get; init; }
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; init; }
+    VirtualMarina.Core.Rendering.MarinaStyle Clone()
     VirtualMarina.Core.Rendering.SelectionStyle Selection { get; init; }
     VirtualMarina.Core.Rendering.ShadowStyle Shadows { get; init; }
     VirtualMarina.Core.Rendering.StructureStyle Piers { get; init; }
@@ -1796,20 +1984,20 @@ sealed class VirtualMarina.Core.Rendering.MarinaStyle
     VirtualMarina.Core.Rendering.WaterSettings Water { get; init; }
     static VirtualMarina.Core.Rendering.MarinaStyle CreateDefault()
 
-sealed class VirtualMarina.Core.Rendering.ReferenceImageLayer : IEquatable<VirtualMarina.Core.Rendering.ReferenceImageLayer>
+sealed record VirtualMarina.Core.Rendering.ReferenceImageLayer : IEquatable<VirtualMarina.Core.Rendering.ReferenceImageLayer>
     .ctor(VirtualMarina.Core.Design.ReferenceImage Image, Vector2 Min, Vector2 Max, float Height, float Opacity, bool AboveScene)
     Vector2 Max { get; init; }
     Vector2 Min { get; init; }
     VirtualMarina.Core.Design.ReferenceImage Image { get; init; }
     bool AboveScene { get; init; }
-    bool Equals(VirtualMarina.Core.Rendering.ReferenceImageLayer other)
+    bool Equals(VirtualMarina.Core.Rendering.ReferenceImageLayer? other)
     float Height { get; init; }
     float Opacity { get; init; }
-    static bool op_Equality(VirtualMarina.Core.Rendering.ReferenceImageLayer left, VirtualMarina.Core.Rendering.ReferenceImageLayer right)
-    static bool op_Inequality(VirtualMarina.Core.Rendering.ReferenceImageLayer left, VirtualMarina.Core.Rendering.ReferenceImageLayer right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Rendering.ReferenceImageLayer? left, VirtualMarina.Core.Rendering.ReferenceImageLayer? right)
+    static bool op_Inequality(VirtualMarina.Core.Rendering.ReferenceImageLayer? left, VirtualMarina.Core.Rendering.ReferenceImageLayer? right)
     void Deconstruct(out VirtualMarina.Core.Design.ReferenceImage Image, out Vector2 Min, out Vector2 Max, out float Height, out float Opacity, out bool AboveScene)
 
 enum VirtualMarina.Core.Rendering.RenderAnimation : IComparable, IConvertible, IFormattable, ISpanFormattable
@@ -1818,25 +2006,61 @@ enum VirtualMarina.Core.Rendering.RenderAnimation : IComparable, IConvertible, I
     None = 0
     Pulse = 4
     SpinAndBob = 2
+    Unlit = 16
+
+readonly record struct VirtualMarina.Core.Rendering.RenderBatch : IEquatable<VirtualMarina.Core.Rendering.RenderBatch>
+    .ctor(int MeshId, VirtualMarina.Core.Rendering.RenderPass Pass, int Start, int Count)
+    VirtualMarina.Core.Rendering.RenderPass Pass { get; init; }
+    bool Equals(VirtualMarina.Core.Rendering.RenderBatch other)
+    int Count { get; init; }
+    int MeshId { get; init; }
+    int Start { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
+    static bool op_Equality(VirtualMarina.Core.Rendering.RenderBatch left, VirtualMarina.Core.Rendering.RenderBatch right)
+    static bool op_Inequality(VirtualMarina.Core.Rendering.RenderBatch left, VirtualMarina.Core.Rendering.RenderBatch right)
+    void Deconstruct(out int MeshId, out VirtualMarina.Core.Rendering.RenderPass Pass, out int Start, out int Count)
 
 sealed class VirtualMarina.Core.Rendering.RenderFrame
     .ctor()
+    IReadOnlyList<VirtualMarina.Core.Rendering.RenderLayer> Layers { get; init; }
     IReadOnlyList<VirtualMarina.Core.Rendering.RenderObject> Objects { get; init; }
-    Matrix4x4 Projection { get; init; }
-    Matrix4x4 View { get; init; }
     Vector2 MarinaCenter { get; init; }
     Vector2 WaterCenter { get; init; }
-    Vector3 CameraPosition { get; init; }
-    VirtualMarina.Core.Geometry.MeshLibrary Meshes { get; init; }
-    VirtualMarina.Core.Rendering.LightingSettings Lighting { get; init; }
-    VirtualMarina.Core.Rendering.ReferenceImageLayer ReferenceImage { get; init; }
-    VirtualMarina.Core.Rendering.WaterSettings Water { get; init; }
-    float Time { get; init; }
+    VirtualMarina.Core.Rendering.ReferenceImageLayer? ReferenceImage { get; init; }
     float WaterDetailRadius { get; init; }
     int MeshLibraryVersion { get; }
     int SceneVersion { get; init; }
+    required Matrix4x4 Projection { get; init; }
+    required Matrix4x4 View { get; init; }
+    required Vector3 CameraPosition { get; init; }
+    required VirtualMarina.Core.Geometry.MeshLibrary Meshes { get; init; }
+    required VirtualMarina.Core.Rendering.FrameLighting Lighting { get; init; }
+    required VirtualMarina.Core.Rendering.FrameWater Water { get; init; }
+    required float Time { get; init; }
 
-struct VirtualMarina.Core.Rendering.RenderObject : IEquatable<VirtualMarina.Core.Rendering.RenderObject>
+sealed class VirtualMarina.Core.Rendering.RenderLayer
+    IReadOnlyList<VirtualMarina.Core.Rendering.RenderBatch> Batches { get; }
+    ReadOnlyMemory<VirtualMarina.Core.Rendering.RenderObject> Instances { get; }
+    VirtualMarina.Core.Rendering.RenderLayerKind Kind { get; }
+    bool TryGetChangesSince(int version, ICollection<VirtualMarina.Core.Rendering.InstanceRange> changes)
+    int Count { get; }
+    int LayoutVersion { get; }
+    int Version { get; }
+    static VirtualMarina.Core.Rendering.RenderLayer FromObjects(VirtualMarina.Core.Rendering.RenderLayerKind kind, IEnumerable<VirtualMarina.Core.Rendering.RenderObject> objects, int version)
+
+enum VirtualMarina.Core.Rendering.RenderLayerKind : IComparable, IConvertible, IFormattable, ISpanFormattable
+    BerthShadows = 3
+    Berths = 4
+    Highlight = 5
+    Overlay = 6
+    Scene = 0
+    Structure = 1
+    StructureShadows = 2
+    Traffic = 7
+
+readonly record struct VirtualMarina.Core.Rendering.RenderObject : IEquatable<VirtualMarina.Core.Rendering.RenderObject>
     .ctor(int MeshId, Matrix4x4 World, Vector4 Tint, float Emissive = 0, VirtualMarina.Core.Rendering.RenderAnimation Animation = 0, float Phase = 0, float Desaturation = 0)
     Matrix4x4 World { get; init; }
     Vector4 Tint { get; init; }
@@ -1847,12 +2071,17 @@ struct VirtualMarina.Core.Rendering.RenderObject : IEquatable<VirtualMarina.Core
     float Emissive { get; init; }
     float Phase { get; init; }
     int MeshId { get; init; }
+    override bool Equals(object obj)
+    override int GetHashCode()
+    override string ToString()
     static bool op_Equality(VirtualMarina.Core.Rendering.RenderObject left, VirtualMarina.Core.Rendering.RenderObject right)
     static bool op_Inequality(VirtualMarina.Core.Rendering.RenderObject left, VirtualMarina.Core.Rendering.RenderObject right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
     void Deconstruct(out int MeshId, out Matrix4x4 World, out Vector4 Tint, out float Emissive, out VirtualMarina.Core.Rendering.RenderAnimation Animation, out float Phase, out float Desaturation)
+
+enum VirtualMarina.Core.Rendering.RenderPass : IComparable, IConvertible, IFormattable, ISpanFormattable
+    Opaque = 0
+    Shadow = 1
+    Transparent = 2
 
 sealed class VirtualMarina.Core.Rendering.SelectionStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
@@ -1869,9 +2098,11 @@ enum VirtualMarina.Core.Rendering.ShaderDialect : IComparable, IConvertible, IFo
 
 static class VirtualMarina.Core.Rendering.ShaderSources
     static float MaxWaveHeightFactor { get; }
-    static float[] ImageQuadCorners
+    static readonly float[] ImageQuadCorners
     static string ImageFragment(VirtualMarina.Core.Rendering.ShaderDialect dialect)
     static string ImageVertex(VirtualMarina.Core.Rendering.ShaderDialect dialect)
+    static string InstancedModelFragment(VirtualMarina.Core.Rendering.ShaderDialect dialect)
+    static string InstancedModelVertex(VirtualMarina.Core.Rendering.ShaderDialect dialect)
     static string ModelFragment(VirtualMarina.Core.Rendering.ShaderDialect dialect)
     static string ModelVertex(VirtualMarina.Core.Rendering.ShaderDialect dialect)
     static string WaterFragment(VirtualMarina.Core.Rendering.ShaderDialect dialect)
@@ -1897,18 +2128,24 @@ sealed class VirtualMarina.Core.Rendering.StructureStyle : VirtualMarina.Core.Re
     VirtualMarina.Core.Rendering.ColorRgba WoodColor { get; set; }
 
 abstract class VirtualMarina.Core.Rendering.StyleSection
+    event EventHandler? Changed
+    protected .ctor()
+    protected static float Clamp(float value, float min, float max)
+    protected void OnChanged()
+    protected void SetField<T>(ref T field, T value)
+
+sealed class VirtualMarina.Core.Rendering.TransparentSorter
     .ctor()
-    event EventHandler Changed
-    static float Clamp(float value, float min, float max)
-    void OnChanged()
-    void SetField<T>(ref T field, T value)
+    IReadOnlyList<VirtualMarina.Core.Rendering.RenderBatch> Runs { get; }
+    ReadOnlySpan<VirtualMarina.Core.Rendering.RenderObject> Sorted { get; }
+    bool Sort(IReadOnlyList<VirtualMarina.Core.Rendering.RenderLayer> layers, Vector3 camera, int sceneVersion)
 
 sealed class VirtualMarina.Core.Rendering.ViewStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
     float CameraSmoothing { get; set; }
     float FieldOfViewDegrees { get; set; }
 
-sealed class VirtualMarina.Core.Rendering.WaterSettings
+sealed class VirtualMarina.Core.Rendering.WaterSettings : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
     Vector3 DeepColor { get; set; }
     Vector3 ShallowColor { get; set; }
@@ -1930,28 +2167,35 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     IReadOnlyList<string> DisabledCameraPresets { get; set; }
     IReadOnlyList<string> Validate()
     T GetExtension<T>(string key)
+    T GetExtension<T>(string key, JsonTypeInfo<T> typeInfo)
+    Task SaveAsync(Stream utf8Json, bool indented = true, CancellationToken cancellationToken = null)
     Version Version { get; }
     VirtualMarina.Core.Api.BerthLabelMode BerthLabels { get; set; }
     VirtualMarina.Core.Camera.CameraPose? Camera { get; set; }
-    VirtualMarina.Core.Design.DesignerSettings Designer { get; set; }
+    VirtualMarina.Core.Design.DesignerSettings? Designer { get; set; }
     VirtualMarina.Core.Domain.MarinaLayout Layout { get; set; }
     VirtualMarina.Core.Rendering.MarinaStyle Style { get; set; }
-    VirtualMarina.Core.Serialization.ReferenceImageRecord ReferenceImage { get; set; }
+    VirtualMarina.Core.Serialization.ReferenceImageRecord? ReferenceImage { get; set; }
     bool IsFromNewerVersion { get; }
+    byte[] ToUtf8Bytes(bool indented = true)
     const string FileDialogFilter = "Marina design (*.marina.json)|*.marina.json|JSON files (*.json)|*.json|All files (*.*)|*.*"
     const string FileExtension = ".marina.json"
     const string FormatName = "virtualmarina.marina"
+    static Task<VirtualMarina.Core.Serialization.MarinaDocument> LoadAsync(Stream utf8Json, bool allowNewerVersion = false, CancellationToken cancellationToken = null)
     static Version CurrentVersion { get; }
-    static VirtualMarina.Core.Serialization.MarinaDocument FromVisualizer(VirtualMarina.Core.Api.MarinaVisualizer marina, string generator = null, bool includeCamera = true, bool includeDesignerSettings = true, bool includeReferenceImage = true)
+    static VirtualMarina.Core.Serialization.MarinaDocument FromVisualizer(VirtualMarina.Core.Api.MarinaVisualizer marina, string? generator = null, bool includeCamera = true, bool includeDesignerSettings = true, bool includeReferenceImage = true)
     static VirtualMarina.Core.Serialization.MarinaDocument Load(string path, bool allowNewerVersion = false)
+    static VirtualMarina.Core.Serialization.MarinaDocument Parse(ReadOnlySpan<byte> utf8Json, bool allowNewerVersion = false)
     static VirtualMarina.Core.Serialization.MarinaDocument Parse(string json, bool allowNewerVersion = false)
-    string Description { get; set; }
-    string Generator { get; set; }
     string Name { get; set; }
     string ToJson(bool indented = true)
+    string? Description { get; set; }
+    string? Generator { get; set; }
     void ApplyTo(VirtualMarina.Core.Api.MarinaVisualizer marina, bool applyStyle = true, bool applyCamera = true, bool applyDesignerSettings = true, bool applyReferenceImage = true)
     void Save(string path, bool indented = true)
     void SetExtension<T>(string key, T value)
+    void SetExtension<T>(string key, T value, JsonTypeInfo<T> typeInfo)
+    void UpdateFrom(VirtualMarina.Core.Api.MarinaVisualizer marina, string? generator = null, bool includeCamera = true, bool includeDesignerSettings = true, bool includeReferenceImage = true)
 
 sealed class VirtualMarina.Core.Serialization.MarinaFormatException : Exception, ISerializable
     .ctor()
@@ -1960,21 +2204,22 @@ sealed class VirtualMarina.Core.Serialization.MarinaFormatException : Exception,
 
 static class VirtualMarina.Core.Serialization.MarinaJson
     static JsonSerializerOptions CompactOptions { get; }
+    static JsonSerializerOptions CreateOptions(IJsonTypeInfoResolver? typeInfoResolver = null, bool indented = true)
     static JsonSerializerOptions Options { get; }
 
-sealed class VirtualMarina.Core.Serialization.ReferenceImageRecord : IEquatable<VirtualMarina.Core.Serialization.ReferenceImageRecord>
+sealed record VirtualMarina.Core.Serialization.ReferenceImageRecord : IEquatable<VirtualMarina.Core.Serialization.ReferenceImageRecord>
     .ctor()
     Vector2 Center { get; init; }
-    VirtualMarina.Core.Design.ReferenceImage Image { get; init; }
     bool AboveScene { get; init; }
-    bool Equals(VirtualMarina.Core.Serialization.ReferenceImageRecord other)
+    bool Equals(VirtualMarina.Core.Serialization.ReferenceImageRecord? other)
     bool Visible { get; init; }
     float MetersPerPixel { get; init; }
     float Opacity { get; init; }
-    static VirtualMarina.Core.Serialization.ReferenceImageRecord FromDesigner(VirtualMarina.Core.Design.MarinaDesigner designer)
-    static bool op_Equality(VirtualMarina.Core.Serialization.ReferenceImageRecord left, VirtualMarina.Core.Serialization.ReferenceImageRecord right)
-    static bool op_Inequality(VirtualMarina.Core.Serialization.ReferenceImageRecord left, VirtualMarina.Core.Serialization.ReferenceImageRecord right)
-    virtual bool Equals(object obj)
-    virtual int GetHashCode()
-    virtual string ToString()
+    override bool Equals(object? obj)
+    override int GetHashCode()
+    override string ToString()
+    required VirtualMarina.Core.Design.ReferenceImage Image { get; init; }
+    static VirtualMarina.Core.Serialization.ReferenceImageRecord? FromDesigner(VirtualMarina.Core.Design.MarinaDesigner designer)
+    static bool op_Equality(VirtualMarina.Core.Serialization.ReferenceImageRecord? left, VirtualMarina.Core.Serialization.ReferenceImageRecord? right)
+    static bool op_Inequality(VirtualMarina.Core.Serialization.ReferenceImageRecord? left, VirtualMarina.Core.Serialization.ReferenceImageRecord? right)
     void ApplyTo(VirtualMarina.Core.Design.MarinaDesigner designer)

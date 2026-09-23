@@ -23,6 +23,14 @@ internal sealed class AppearancePanel : SidePanel
 
     private readonly MarinaVisualizer _marina;
     private readonly Action<string> _log;
+    private readonly Action _changed;
+    private readonly Func<string, string, bool> _confirm;
+
+    /// <summary>
+    /// Fonts already captured this session, by family and weight. Capturing reads every glyph's outline, which takes a
+    /// noticeable moment, so going back to a font chosen before costs nothing.
+    /// </summary>
+    private readonly Dictionary<(string Family, bool Bold), LabelFontDefinition?> _capturedFonts = [];
 
     private readonly TrackBar _fill = new() { Minimum = 0, Maximum = 100, Value = 60 };
     private readonly Label _fillValue = new();
@@ -35,16 +43,17 @@ internal sealed class AppearancePanel : SidePanel
     /// <summary>True while values are being read back, so the controls do not write what they are being given.</summary>
     private bool _updating;
 
-
-
-
     /// <summary>Creates the panel over a visualizer.</summary>
     /// <param name="marina">The marina whose look is being changed.</param>
     /// <param name="log">Where to note what happened, for the activity log.</param>
-    public AppearancePanel(MarinaVisualizer marina, Action<string> log)
+    /// <param name="changed">Called after every change to what the design saves: the style, the traffic, the label font.</param>
+    /// <param name="confirm">Asks a yes-or-no question (title, message); true for yes.</param>
+    public AppearancePanel(MarinaVisualizer marina, Action<string> log, Action changed, Func<string, string, bool> confirm)
     {
         _marina = marina;
         _log = log;
+        _changed = changed;
+        _confirm = confirm;
         BackColor = Theme.Background;
         Dock = DockStyle.Fill;
 
@@ -59,7 +68,7 @@ internal sealed class AppearancePanel : SidePanel
         };
         SetHeader(header);
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        header.Controls.Add(new Label { Text = Strings.TitleLook, Font = new Font("Segoe UI Semibold", 13f), ForeColor = Theme.Text, AutoSize = true, Dock = DockStyle.Fill }, 0, 0);
+        header.Controls.Add(new Label { Text = Strings.TitleLook, Font = Theme.PanelTitle, ForeColor = Theme.Text, AutoSize = true, Dock = DockStyle.Fill }, 0, 0);
         header.Controls.Add(new Label { Text = Strings.LookHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
 
         Stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
@@ -220,7 +229,8 @@ internal sealed class AppearancePanel : SidePanel
         Percent(table, Strings.TrafficSpawnDelay, 1, 180, () => Traffic.SpawnDelaySeconds,
             v => SetTraffic(t => t with { SpawnDelaySeconds = v }), MarineTraffic.None.SpawnDelaySeconds, v => Strings.Format(Strings.ValueSeconds, v), Strings.TrafficSpawnDelayTip);
 
-        Check(table, Strings.TrafficShowLanes, () => _marina.ShowTrafficLanes, v => Changed(() => _marina.ShowTrafficLanes = v), Strings.TrafficShowLanesTip);
+        // Drawing the lanes is a designer aid, not part of the design, so it does not count as a change to save.
+        Check(table, Strings.TrafficShowLanes, () => _marina.ShowTrafficLanes, v => Changed(() => _marina.ShowTrafficLanes = v, saved: false), Strings.TrafficShowLanesTip);
 
         Theme.FullRow(table, Theme.Hint(Strings.TrafficHint));
         Theme.FullRow(table, where);
@@ -271,7 +281,7 @@ internal sealed class AppearancePanel : SidePanel
             var family = font.SelectedIndex <= 0 ? null : font.Items[font.SelectedIndex] as string;
             Changed(() =>
             {
-                Labels.Font = family is null ? null : FontCapture.Capture(family, bold.Checked);
+                Labels.Font = family is null ? null : CaptureFont(family, bold.Checked);
                 Labels.FontFamily = bold.Checked ? LabelFont.Bold : LabelFont.Regular;
                 if (family is not null && Labels.Font is null) font.SelectedIndex = 0;
             });
@@ -285,11 +295,18 @@ internal sealed class AppearancePanel : SidePanel
         }
 
         ShowFont();
-        font.SelectedIndexChanged += (_, _) => UseFont();
+
+        // Only a choice the user settles on is captured: not every entry the arrow keys or the wheel pass over while
+        // the list is being browsed. A choice made by the reset button below is committed the same way.
+        font.SelectionChangeCommitted += (_, _) => UseFont();
         bold.CheckedChanged += (_, _) => UseFont();
         _refresh.Add(ShowFont);
 
-        Theme.Row(table, Strings.LabelFont, font, (_, _) => font.SelectedIndex = 0, Strings.LabelFontTip);
+        Theme.Row(table, Strings.LabelFont, font, (_, _) =>
+        {
+            font.SelectedIndex = 0;
+            UseFont();
+        }, Strings.LabelFontTip);
         Theme.FullRow(table, bold);
         Theme.Tips.SetToolTip(bold, Strings.LabelBoldTip);
 
@@ -298,6 +315,18 @@ internal sealed class AppearancePanel : SidePanel
         Color(table, Strings.LabelColorHighlight, () => Labels.HighlightColor, c => Labels.HighlightColor = c, Defaults.Labels.HighlightColor);
         Color(table, Strings.LabelColorDisabled, () => Labels.DisabledColor, c => Labels.DisabledColor = c, Defaults.Labels.DisabledColor);
         return card;
+    }
+
+    /// <summary>A font's outlines, captured the first time it is asked for and remembered after that.</summary>
+    private LabelFontDefinition? CaptureFont(string family, bool bold)
+    {
+        if (_capturedFonts.TryGetValue((family, bold), out var known)) return known;
+        using (new CursorScope())
+        {
+            var captured = FontCapture.Capture(family, bold);
+            _capturedFonts[(family, bold)] = captured;
+            return captured;
+        }
     }
 
     /// <summary>The family a captured font came from, without the "Bold" the capture adds to its name.</summary>
@@ -322,10 +351,12 @@ internal sealed class AppearancePanel : SidePanel
         var card = Theme.Card(Strings.AppearanceReset, out var table);
         Theme.FullRow(table, Theme.Action(Strings.AppearanceReset, (_, _) =>
         {
+            // Every colour, the water, the light and the traffic at once, with no undo: worth a question.
+            if (!_confirm(Strings.ConfirmResetAppearanceTitle, Strings.ConfirmResetAppearance)) return;
             _marina.Style = new MarinaStyle();
             _marina.SetMarineTraffic(MarineTraffic.None);
             Sync();
-            _marina.InvalidateScene();
+            _changed();
         }));
 
         return card;
@@ -438,12 +469,17 @@ internal sealed class AppearancePanel : SidePanel
         }, tooltip);
     }
 
-    /// <summary>Applies a change and redraws, so the effect shows the moment the slider moves.</summary>
-    private void Changed(Action change)
+    /// <summary>
+    /// Applies a change and reports it so the design counts as changed. The marina notices a change to any part of
+    /// its style by itself, so the effect shows the moment the slider moves without anything being redrawn here.
+    /// </summary>
+    /// <param name="change">The change.</param>
+    /// <param name="saved">False for a setting the design file does not keep.</param>
+    private void Changed(Action change, bool saved = true)
     {
         if (_updating) return;
         change();
-        _marina.InvalidateScene();
+        if (saved) _changed();
     }
 
     /// <summary>
@@ -482,4 +518,18 @@ internal sealed class AppearancePanel : SidePanel
     private static ColorRgba Vector(System.Numerics.Vector3 color) => new(color.X, color.Y, color.Z);
 
     private static System.Numerics.Vector3 Value(ColorRgba color) => new(color.R, color.G, color.B);
+
+    /// <summary>Shows the wait cursor while something slow runs, and puts the old one back after.</summary>
+    private readonly struct CursorScope : IDisposable
+    {
+        private readonly Cursor? _previous;
+
+        public CursorScope()
+        {
+            _previous = Cursor.Current;
+            Cursor.Current = Cursors.WaitCursor;
+        }
+
+        public void Dispose() => Cursor.Current = _previous ?? Cursors.Default;
+    }
 }

@@ -6,6 +6,8 @@
     <title>VirtualMarina – Blazor WebAssembly Test Host</title>
     <base href="/" />
     <link rel="stylesheet" href="css/app.css" />
+    <!-- The components' own styles (MarinaDesignerPanel's among them), bundled by the build. -->
+    <link rel="stylesheet" href="VirtualMarina.TestHost.Blazor.styles.css" />
 </head>
 <body>
     <div id="app">
@@ -25,8 +27,14 @@
             const link = document.createElement("a");
             link.href = url;
             link.download = name;
+            link.style.display = "none";
+
+            // Some browsers only follow a link that is in the document, and the download starts after click() returns,
+            // so the link is added for the click and the URL kept alive a while rather than revoked on the spot.
+            document.body.appendChild(link);
             link.click();
-            URL.revokeObjectURL(url);
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
         };
     </script>
 </body>

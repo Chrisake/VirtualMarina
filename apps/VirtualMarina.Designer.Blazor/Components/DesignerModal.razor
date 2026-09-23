@@ -1,0 +1,93 @@
+@namespace VirtualMarina.Designer.Blazor.Components
+@inject IJSRuntime JS
+@implements IDisposable
+
+@*
+    The one modal of the designer: Save first?, yes-or-no questions, text prompts (renaming, the marina's name) and
+    messages. A native <dialog> opened with showModal(), so the browser keeps the focus inside it and the rest of the page
+    inert; Esc cancels it. The page's own shortcuts stand aside while it is open.
+*@
+@if (Dialogs.Current is { } request)
+{
+    <dialog @ref="_element" class="vm-modal" aria-labelledby="vm-modal-title" aria-describedby="@(request.Message.Length > 0 ? "vm-modal-message" : null)"
+            @onkeydown="e => OnKey(e, request)">
+        <form @onsubmit="() => request.Resolve(ModalButton.Accept)">
+            <h2 id="vm-modal-title" class="vm-modal__title">@request.Title</h2>
+            @if (request.Message.Length > 0)
+            {
+                <p id="vm-modal-message" class="vm-modal__message @(request.Tone == DesignerMessageKind.Warning ? "vm-modal__message--warning" : null) @(request.Preformatted ? "vm-modal__message--pre" : null)">@request.Message</p>
+            }
+
+            @for (var i = 0; i < request.Fields.Count; i++)
+            {
+                var index = i;
+                var field = request.Fields[index];
+                var id = $"vm-modal-field-{index}";
+                <label class="vm-modal__label" for="@id">@field.Label</label>
+                <input id="@id" type="text" autocomplete="off" spellcheck="false" value="@request.Values[index]"
+                       aria-describedby="@(field.Hint is null ? null : id + "-hint")"
+                       @oninput="e => request.Values[index] = e.Value?.ToString() ?? string.Empty" />
+                @if (field.Hint is not null)
+                {
+                    <div id="@(id + "-hint")" class="vm-modal__hint">@field.Hint</div>
+                }
+            }
+
+            <div class="vm-modal__buttons">
+                @switch (request.Kind)
+                {
+                    case ModalKind.SaveChanges:
+                        <button type="submit" class="vm-btn vm-btn--primary">@DesignerText.StripMnemonic(Strings.MenuSave)</button>
+                        <button type="button" class="vm-btn" @onclick="() => request.Resolve(ModalButton.Decline)">@Strings.ConfirmDiscardButton</button>
+                        <button type="button" class="vm-btn" @onclick="() => request.Resolve(ModalButton.Cancel)">@Strings.DialogCancel</button>
+                        break;
+                    case ModalKind.Confirm:
+                        <button type="submit" class="vm-btn vm-btn--primary">@Strings.DialogYes</button>
+                        <button type="button" class="vm-btn" @onclick="() => request.Resolve(ModalButton.Decline)">@Strings.DialogNo</button>
+                        break;
+                    case ModalKind.Prompt:
+                        <button type="submit" class="vm-btn vm-btn--primary">@Strings.DialogOk</button>
+                        <button type="button" class="vm-btn" @onclick="() => request.Resolve(ModalButton.Cancel)">@Strings.DialogCancel</button>
+                        break;
+                    default:
+                        <button type="submit" class="vm-btn vm-btn--primary">@Strings.DialogOk</button>
+                        break;
+                }
+            </div>
+        </form>
+    </dialog>
+}
+
+@code {
+    private ElementReference _element;
+    private ModalRequest? _shown;
+
+    /// <summary>The dialogs whose current question this shows. Required.</summary>
+    [Parameter, EditorRequired] public BlazorDialogs Dialogs { get; set; } = default!;
+
+    protected override void OnInitialized() => Dialogs.Changed += OnChanged;
+
+    public void Dispose() => Dialogs.Changed -= OnChanged;
+
+    private void OnChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var current = Dialogs.Current;
+        if (ReferenceEquals(current, _shown)) return;
+        var closed = _shown is not null && current is null;
+        _shown = current;
+
+        // A new question: open it as a modal, with the first field (or the default button) focused. The last question
+        // gone: give the focus back to wherever it was before.
+        if (current is not null) await JS.InvokeVoidAsync("vmDesigner.showModal", _element);
+        else if (closed) await JS.InvokeVoidAsync("vmDesigner.modalClosed");
+    }
+
+    /// <summary>Esc cancels: a question is answered the safe way, a message is simply dismissed.</summary>
+    private static void OnKey(KeyboardEventArgs e, ModalRequest request)
+    {
+        if (e.Key != "Escape") return;
+        request.Resolve(request.Kind == ModalKind.Alert ? ModalButton.Accept : ModalButton.Cancel);
+    }
+}

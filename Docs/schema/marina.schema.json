@@ -1,0 +1,415 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virtualmarina.example/schema/marina.schema.json",
+  "title": "VirtualMarina marina file (.marina.json), format 2.0",
+  "description": "What MarinaDocument writes. Readers are more forgiving than this schema: every property is optional, unknown properties are kept, unknown enum names fall back to the default, numbers may be quoted, and files from format 1.x are migrated. See Docs/13-marina-file-format.md. Kept in step with the code by MarinaSchemaTests.",
+  "type": "object",
+  "properties": {
+    "format": { "const": "virtualmarina.marina" },
+    "formatVersion": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$", "description": "major.minor; this schema describes 2.0." },
+    "generator": { "type": "string", "description": "What wrote the file." },
+    "savedUtc": { "type": "string", "format": "date-time" },
+    "marina": { "$ref": "#/$defs/marina" },
+    "layout": { "$ref": "#/$defs/layout" },
+    "presentation": { "$ref": "#/$defs/presentation" },
+    "camera": { "$ref": "#/$defs/camera" },
+    "designer": { "$ref": "#/$defs/designer" },
+    "referenceImage": { "$ref": "#/$defs/referenceImage" },
+    "cameraPresets": { "type": "array", "items": { "$ref": "#/$defs/cameraPreset" } },
+    "disabledCameraPresets": { "type": "array", "items": { "type": "string" }, "description": "Names of the built-in views switched off." }
+  },
+  "additionalProperties": { "description": "Host extensions (MarinaDocument.Extensions) and sections written by newer versions; kept as they are." },
+  "$defs": {
+    "vector2": {
+      "description": "A point or offset in plan coordinates, meters: [x, y] with x east and y south (world Z).",
+      "type": "array", "prefixItems": [ { "type": "number" }, { "type": "number" } ], "minItems": 2, "maxItems": 2
+    },
+    "vector2List": { "type": "array", "items": { "$ref": "#/$defs/vector2" } },
+    "vector3": {
+      "description": "A world point, direction or linear RGB light color: [x, y, z] (world +Y up, +X east, +Z south).",
+      "type": "array", "prefixItems": [ { "type": "number" }, { "type": "number" }, { "type": "number" } ], "minItems": 3, "maxItems": 3
+    },
+    "color": {
+      "description": "An sRGB color, #RRGGBB, or #RRGGBBAA when it is see-through.",
+      "type": "string", "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+    },
+    "metadata": { "type": "object", "additionalProperties": { "type": "string" }, "description": "Host-owned strings; never read by the library." },
+    "landKind": { "enum": [ "Quay", "Breakwater", "Grass" ] },
+    "hinterlandScenery": { "enum": [ "None", "Countryside", "Fields", "Town" ] },
+    "treeShape": { "enum": [ "Broadleaf", "Conifer", "Palm", "Cypress", "Cherry" ] },
+    "pierType": { "enum": [ "FloatingWooden", "FloatingConcrete", "Concrete" ] },
+    "pierSides": { "enum": [ "Left", "Right", "Both" ] },
+    "pierServices": { "enum": [ "None", "Power", "Water", "PowerAndWater" ] },
+    "dividerType": { "enum": [ "FingerPier", "Piles", "Boom", "SinglePile" ] },
+    "berthStatus": { "enum": [ "Free", "Occupied", "Reserved", "TemporarilyFree" ] },
+    "boatType": { "enum": [ "MonohullSailboat", "CatamaranSailboat", "DayMotorBoat", "CatamaranMotorboat", "MotorYacht", "FishingBoat", "JetSki", "Ferry" ] },
+    "mooringStyle": { "enum": [ "Alongside", "BowIn" ] },
+    "berthSeparator": { "enum": [ "FingerPiers", "None", "FingerPier", "Piles", "Boom", "SinglePile", "PairedFingerPiers" ] },
+    "berthLabelMode": { "enum": [ "None", "OnlyFree", "NonOccupied", "All" ] },
+    "labelFont": { "enum": [ "Regular", "Bold", "Condensed", "Wide" ] },
+    "labelTypeface": { "enum": [ "Sans", "Serif", "Slab" ] },
+
+    "marina": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "shoreline": { "$ref": "#/$defs/shoreline" },
+        "marineTraffic": { "$ref": "#/$defs/marineTraffic" },
+        "landAreas": { "type": "array", "items": { "$ref": "#/$defs/landArea" } },
+        "piers": { "type": "array", "items": { "$ref": "#/$defs/pier" } },
+        "dividers": { "type": "array", "items": { "$ref": "#/$defs/divider" } },
+        "berths": { "type": "array", "items": { "$ref": "#/$defs/berth" } },
+        "multiBerths": { "type": "array", "items": { "$ref": "#/$defs/multiBerth" } }
+      }
+    },
+    "shoreline": {
+      "type": "object",
+      "description": "The mainland: an open line whose end segments run on without end. Only the drawn line is stored.",
+      "properties": {
+        "line": { "$ref": "#/$defs/vector2List", "minItems": 2 },
+        "landOnLeft": { "type": "boolean", "description": "Land on the plan-coordinate left of the line walked first to last (toward +Z for a line running +X): the walker's right seen from above." },
+        "height": { "type": "number" },
+        "kind": { "$ref": "#/$defs/landKind" },
+        "scenery": { "$ref": "#/$defs/hinterlandScenery" },
+        "scenerySeed": { "type": "integer" },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "marineTraffic": {
+      "type": "object",
+      "description": "Only the settings; the lanes and vessels are worked out on load. Written only when enabled.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "clearance": { "type": "number" },
+        "edgeClearance": { "type": "number" },
+        "speedPercent": { "type": "number" },
+        "spawnDelaySeconds": { "type": "number" },
+        "reach": { "type": "number" },
+        "maximumVessels": { "type": "integer" },
+        "laneCount": { "type": "integer" },
+        "laneSpacing": { "type": "number" },
+        "seed": { "type": "integer" },
+        "vessels": { "type": "array", "items": { "$ref": "#/$defs/boatType" } },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "landArea": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "kind": { "$ref": "#/$defs/landKind" },
+        "height": { "type": "number" },
+        "outline": { "$ref": "#/$defs/vector2List" },
+        "trees": { "type": "array", "items": { "$ref": "#/$defs/tree" } },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "tree": {
+      "type": "object",
+      "properties": {
+        "position": { "$ref": "#/$defs/vector2" },
+        "height": { "type": "number" },
+        "crownRadius": { "type": "number" },
+        "shape": { "$ref": "#/$defs/treeShape" }
+      }
+    },
+    "pier": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "start": { "$ref": "#/$defs/vector2" },
+        "headingDegrees": { "type": "number", "description": "0 = +Z (south), 90 = +X (east)." },
+        "length": { "type": "number" },
+        "width": { "type": "number" },
+        "type": { "$ref": "#/$defs/pierType" },
+        "deckHeight": { "type": "number", "description": "Written only when the pier has a height of its own; missing means its type's default." },
+        "pilingSpacing": { "type": "number" },
+        "berthingSides": { "$ref": "#/$defs/pierSides" },
+        "services": { "$ref": "#/$defs/pierServices" },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "divider": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "pierId": { "type": "string" },
+        "start": { "$ref": "#/$defs/vector2" },
+        "headingDegrees": { "type": "number" },
+        "length": { "type": "number" },
+        "width": { "type": "number" },
+        "type": { "$ref": "#/$defs/dividerType" },
+        "spacing": { "type": "number" },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "berth": {
+      "type": "object",
+      "description": "A water berth (pierId) or land berth (landAreaId). Occupancy and the interaction flags are runtime state and not written; they are still read from older files.",
+      "properties": {
+        "id": { "type": "string" },
+        "pierId": { "type": "string" },
+        "landAreaId": { "type": "string" },
+        "label": { "type": "string" },
+        "center": { "$ref": "#/$defs/vector2" },
+        "headingDegrees": { "type": "number", "description": "The direction a moored boat's bow points." },
+        "length": { "type": "number" },
+        "width": { "type": "number" },
+        "maxDraft": { "type": "number" },
+        "status": { "$ref": "#/$defs/berthStatus", "description": "Read only, from older files." },
+        "boat": { "$ref": "#/$defs/boat", "description": "Read only, from older files." },
+        "hasFingerPiers": { "type": "boolean" },
+        "services": { "$ref": "#/$defs/pierServices" },
+        "isVisible": { "type": "boolean", "description": "Read only, from older files." },
+        "isDisabled": { "type": "boolean", "description": "Read only, from older files." },
+        "isReadOnly": { "type": "boolean", "description": "Read only, from older files." },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "boat": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "$ref": "#/$defs/boatType" },
+        "lengthMeters": { "type": "number", "description": "Written only when the boat has a length of its own." },
+        "beamMeters": { "type": "number", "description": "Written only when the boat has a beam of its own." },
+        "ownerName": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "expectedArrival": { "type": "string", "format": "date-time" },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+    "multiBerth": {
+      "type": "object",
+      "description": "One boat across several berths. Its boat and status are written: a multi-berth cannot exist without them.",
+      "properties": {
+        "id": { "type": "string" },
+        "berthIds": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+        "boat": { "$ref": "#/$defs/boat" },
+        "status": { "$ref": "#/$defs/berthStatus" },
+        "style": { "$ref": "#/$defs/mooringStyle" },
+        "metadata": { "$ref": "#/$defs/metadata" }
+      }
+    },
+
+    "presentation": {
+      "type": "object",
+      "properties": {
+        "water": { "$ref": "#/$defs/water" },
+        "lighting": { "$ref": "#/$defs/lighting" },
+        "status": { "$ref": "#/$defs/status" },
+        "land": { "$ref": "#/$defs/landStyle" },
+        "structures": { "$ref": "#/$defs/structures" },
+        "labels": { "$ref": "#/$defs/labels" },
+        "selection": { "$ref": "#/$defs/selection" },
+        "view": { "$ref": "#/$defs/view" },
+        "shadows": { "$ref": "#/$defs/shadows" },
+        "berthLabels": { "$ref": "#/$defs/berthLabelMode" }
+      }
+    },
+    "water": {
+      "type": "object",
+      "properties": {
+        "size": { "type": "number" },
+        "gridResolution": { "type": "number" },
+        "deepColor": { "$ref": "#/$defs/vector3" },
+        "shallowColor": { "$ref": "#/$defs/vector3" },
+        "waveAmplitude": { "type": "number" },
+        "waveFrequency": { "type": "number" },
+        "waveSpeed": { "type": "number" },
+        "skyReflection": { "type": "number" },
+        "ripples": { "type": "number" },
+        "sunGlints": { "type": "number" },
+        "boatMotion": { "type": "number" }
+      }
+    },
+    "lighting": {
+      "type": "object",
+      "properties": {
+        "sunDirection": { "$ref": "#/$defs/vector3" },
+        "sunColor": { "$ref": "#/$defs/vector3" },
+        "ambientColor": { "$ref": "#/$defs/vector3" },
+        "specularStrength": { "type": "number" },
+        "shininess": { "type": "number" },
+        "skyColor": { "$ref": "#/$defs/vector3" },
+        "fogColor": { "$ref": "#/$defs/vector3" },
+        "fogDensity": { "type": "number" }
+      }
+    },
+    "status": {
+      "type": "object",
+      "properties": {
+        "free": { "$ref": "#/$defs/color" },
+        "occupied": { "$ref": "#/$defs/color" },
+        "reserved": { "$ref": "#/$defs/color" },
+        "temporarilyFree": { "$ref": "#/$defs/color" },
+        "disabled": { "$ref": "#/$defs/color" },
+        "padOpacity": { "type": "number" },
+        "occupiedBoatOpacity": { "type": "number" },
+        "reservedBoatOpacity": { "type": "number" },
+        "temporarilyFreeBoatOpacity": { "type": "number" },
+        "ghostBoatTint": { "type": "number" },
+        "showStatusMarkers": { "type": "boolean" },
+        "statusMarkerScale": { "type": "number" }
+      }
+    },
+    "landStyle": {
+      "type": "object",
+      "properties": {
+        "quay": { "$ref": "#/$defs/color" },
+        "quayWall": { "$ref": "#/$defs/color" },
+        "grass": { "$ref": "#/$defs/color" },
+        "grassBank": { "$ref": "#/$defs/color" },
+        "rock": { "$ref": "#/$defs/color" },
+        "rockColorVariation": { "type": "number" },
+        "foliage": { "$ref": "#/$defs/color" },
+        "conifer": { "$ref": "#/$defs/color" },
+        "trunk": { "$ref": "#/$defs/color" },
+        "palm": { "$ref": "#/$defs/color" },
+        "blossom": { "$ref": "#/$defs/color" },
+        "building": { "$ref": "#/$defs/color", "description": "Walls of the buildings of a Town hinterland." },
+        "roof": { "$ref": "#/$defs/color", "description": "Their roofs." },
+        "showTrees": { "type": "boolean" }
+      }
+    },
+    "structures": {
+      "type": "object",
+      "properties": {
+        "wood": { "$ref": "#/$defs/color" },
+        "concrete": { "$ref": "#/$defs/color" },
+        "float": { "$ref": "#/$defs/color" },
+        "fender": { "$ref": "#/$defs/color" },
+        "bollard": { "$ref": "#/$defs/color" },
+        "steel": { "$ref": "#/$defs/color" },
+        "boomFloat": { "$ref": "#/$defs/color" },
+        "boomEnd": { "$ref": "#/$defs/color" },
+        "pedestal": { "$ref": "#/$defs/color" },
+        "power": { "$ref": "#/$defs/color" },
+        "water": { "$ref": "#/$defs/color" }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "properties": {
+        "color": { "$ref": "#/$defs/color" },
+        "ashore": { "$ref": "#/$defs/color" },
+        "highlight": { "$ref": "#/$defs/color" },
+        "disabled": { "$ref": "#/$defs/color" },
+        "fontFamily": { "$ref": "#/$defs/labelFont" },
+        "typeface": { "$ref": "#/$defs/labelTypeface" },
+        "fontName": { "type": "string", "description": "Name of the captured font, when the design carries one." },
+        "fontBold": { "type": "boolean" },
+        "fontGlyphs": { "type": "array", "items": { "type": "string" }, "description": "The captured font's outlines, one line per character." }
+      }
+    },
+    "selection": {
+      "type": "object",
+      "properties": {
+        "showMarker": { "type": "boolean" },
+        "markerTint": { "$ref": "#/$defs/color" },
+        "markerScale": { "type": "number" },
+        "selectedGlow": { "type": "number" },
+        "hoverGlow": { "type": "number" },
+        "pulse": { "type": "boolean" }
+      }
+    },
+    "view": {
+      "type": "object",
+      "properties": {
+        "fieldOfViewDegrees": { "type": "number" },
+        "cameraSmoothing": { "type": "number" }
+      }
+    },
+    "shadows": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "strength": { "type": "number" }
+      }
+    },
+
+    "camera": {
+      "type": "object",
+      "properties": {
+        "target": { "$ref": "#/$defs/vector3" },
+        "yawDegrees": { "type": "number", "description": "Where the camera stands around the target: 0 = on the +Z (south) side." },
+        "pitchDegrees": { "type": "number" },
+        "distance": { "type": "number" }
+      }
+    },
+    "cameraPreset": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "target": { "$ref": "#/$defs/vector3" },
+        "yawDegrees": { "type": "number" },
+        "pitchDegrees": { "type": "number" },
+        "distance": { "type": "number" }
+      }
+    },
+    "designer": {
+      "type": "object",
+      "properties": {
+        "landKind": { "$ref": "#/$defs/landKind" },
+        "landHeight": { "type": "number" },
+        "treeDensity": { "type": "number" },
+        "scenery": { "$ref": "#/$defs/hinterlandScenery" },
+        "fogFactor": { "type": "number" },
+        "pierType": { "$ref": "#/$defs/pierType" },
+        "pierWidth": { "type": "number" },
+        "pierBerthingSides": { "$ref": "#/$defs/pierSides" },
+        "berthWidth": { "type": "number" },
+        "berthLength": { "type": "number" },
+        "berthDepth": { "type": "number" },
+        "berthSeparators": { "$ref": "#/$defs/berthSeparator" },
+        "berthGap": { "type": "number" },
+        "alignBerthsToExisting": { "type": "boolean" },
+        "berthServices": { "$ref": "#/$defs/pierServices" },
+        "landBerthHeading": { "type": "number" },
+        "snapDistancePixels": { "type": "number" },
+        "pierNamePattern": { "type": "string" },
+        "berthNaming": { "$ref": "#/$defs/berthNaming" }
+      }
+    },
+    "berthNaming": {
+      "type": "object",
+      "properties": {
+        "pattern": { "type": "string" },
+        "landPattern": { "type": "string" },
+        "landStartNumber": { "type": "integer" },
+        "landIncrement": { "type": "integer" },
+        "landNumberDigits": { "type": "integer" },
+        "startNumber": { "type": "integer" },
+        "increment": { "type": "integer" },
+        "numberDigits": { "type": "integer" },
+        "leftSide": { "type": "string" },
+        "rightSide": { "type": "string" }
+      }
+    },
+    "referenceImage": {
+      "type": "object",
+      "description": "The picture the marina was traced on: the original PNG/JPEG file, and where it sits.",
+      "properties": {
+        "data": { "type": "string", "contentEncoding": "base64", "description": "The original image file, base64." },
+        "contentType": { "type": "string" },
+        "pixelWidth": { "type": "integer" },
+        "pixelHeight": { "type": "integer" },
+        "center": { "$ref": "#/$defs/vector2" },
+        "metersPerPixel": { "type": "number" },
+        "opacity": { "type": "number" },
+        "visible": { "type": "boolean" },
+        "aboveScene": { "type": "boolean" }
+      }
+    }
+  }
+}

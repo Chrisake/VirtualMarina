@@ -180,18 +180,22 @@ public class ShadowTests
         marina.Lighting.SetSunAngles(0f, 40f);
         Assert.NotEmpty(marina.GetLandArea("lawn")!.Trees);
 
-        // The trees are a mesh of their own, drawn over the ground rather than baked into it.
+        // The trees are instances of shared meshes, drawn over the ground rather than baked into it: a trunk and a crown each.
+        var trees = marina.GetLandArea("lawn")!.Trees.Count;
         var objects = marina.BuildRenderFrame().Objects;
-        Assert.Contains(objects, o => o.MeshId == MeshIds.ForLandTrees(0));
+        Assert.Equal(trees, objects.Count(o => o.MeshId == MeshIds.TreeTrunk && !o.IsTransparent));
 
-        var treeShadow = Shadows(marina).SingleOrDefault(o => o.MeshId == MeshIds.ForLandTrees(0));
-        Assert.True(treeShadow != default, "the trees cast no shadow");
-        Assert.Equal(0f, treeShadow.World.M22, 4);
-        Assert.InRange(treeShadow.World.Translation.Y, lawnHeight, lawnHeight + 0.5f);
+        var treeShadows = Shadows(marina).Where(o => o.MeshId == MeshIds.TreeTrunk).ToList();
+        Assert.Equal(trees, treeShadows.Count);
+        Assert.All(treeShadows, shadow =>
+        {
+            Assert.Equal(0f, shadow.World.M22, 4);
+            Assert.InRange(shadow.World.Translation.Y, lawnHeight, lawnHeight + 0.5f);
+        });
 
         // Hiding the trees takes their shadow with them.
         marina.Style.Land.ShowTrees = false;
-        Assert.DoesNotContain(marina.BuildRenderFrame().Objects, o => o.MeshId == MeshIds.ForLandTrees(0));
+        Assert.DoesNotContain(marina.BuildRenderFrame().Objects, o => o.MeshId == MeshIds.TreeTrunk);
     }
 
     [Fact]
@@ -208,7 +212,7 @@ public class ShadowTests
         Assert.Contains(MeshIds.Piling, cast);                        // piles
         Assert.Contains(MeshIds.Cylinder, cast);                      // bollards and cleats
         Assert.Contains(MeshIds.ForBoat(BoatType.MotorYacht), cast);  // boats
-        Assert.Contains(cast, id => id >= MeshIds.LandTreesBase);     // trees on the land areas
+        Assert.Contains(MeshIds.TreeTrunk, cast);                     // trees on the land areas
 
         // The ground itself does not shadow itself, and neither do the labels or the markers.
         Assert.DoesNotContain(MeshIds.Water, cast);

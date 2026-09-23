@@ -194,8 +194,9 @@ public class MarinaVisualizerTests
         marina.ReserveBerth("A-L01");
         var v3 = marina.BuildRenderFrame().SceneVersion;
 
+        // Versions come from one counter for every layer in the process, so only the direction is certain.
         Assert.Equal(v1, v2);
-        Assert.Equal(v1 + 1, v3);
+        Assert.True(v3 > v1, "a reserved berth did not change the scene version");
     }
 
     [Fact]

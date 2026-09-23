@@ -1,12 +1,16 @@
-﻿using System.Collections.ObjectModel;
-using System.Numerics;
+﻿using System.Numerics;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Domain;
 
 /// <summary>One vessel of the passing traffic, where it is at a moment in time.</summary>
 /// <param name="Type">What kind of vessel it is.</param>
 /// <param name="Position">Where it is, in plan coordinates.</param>
-/// <param name="HeadingDegrees">Which way its bow points, in the usual compass sense.</param>
+/// <param name="HeadingDegrees">
+/// Which way its bow points, in the library's heading convention (see <c>MarinaMath.HeadingToDirection</c>): 0° = +Z (south),
+/// 90° = +X (east), 180° = −Z (north), 270° = −X (west). This is <em>not</em> a compass bearing, where 0° is north; a compass
+/// bearing <c>b</c> is the heading <c>180 − b</c>.
+/// </param>
 /// <param name="Opacity">0–1. Vessels fade in where they appear and out again where they leave.</param>
 public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, float HeadingDegrees, float Opacity);
 
@@ -31,9 +35,10 @@ public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, flo
 /// lanes run opposite ways, as a traffic separation scheme does; beyond that the directions are drawn at random.
 /// </para>
 /// <para>
-/// <b>How many there are.</b> A random number of vessels, up to <see cref="MaximumVessels"/>, is out there to begin
-/// with. As each one leaves the map another appears after about <see cref="SpawnDelaySeconds"/> — on a lane of its
-/// own, of a different kind, at its own speed and its own offset within the lane.
+/// <b>How many there are.</b> The full <see cref="MaximumVessels"/> is out there to begin with, scattered at random
+/// along the lanes, so the sea is busy from the first frame. As each one leaves the map another appears after about
+/// <see cref="SpawnDelaySeconds"/> — on a lane of its own, of a different kind, at its own speed and its own offset
+/// within the lane.
 /// </para>
 /// </remarks>
 /// <example>
@@ -43,6 +48,9 @@ public readonly record struct TrafficVessel(BoatType Type, Vector2 Position, flo
 /// </example>
 public sealed record MarineTraffic
 {
+    private readonly ValueList<BoatType> _vessels = ValueList<BoatType>.Empty;
+    private readonly ValueDictionary _metadata = ValueDictionary.Empty;
+
     /// <summary>The most vessels <see cref="MaximumVessels"/> may be set to.</summary>
     public const int VesselLimit = 60;
 
@@ -60,7 +68,7 @@ public sealed record MarineTraffic
     public static MarineTraffic None { get; } = new();
 
     /// <summary>The mix used when <see cref="Vessels"/> is left empty: what is plausibly passing a marina offshore.</summary>
-    public static IReadOnlyList<BoatType> DefaultVessels { get; } = new[]
+    public static IReadOnlyList<BoatType> DefaultVessels { get; } = ValueList<BoatType>.From(new[]
     {
         BoatType.MonohullSailboat,
         BoatType.MonohullSailboat,
@@ -71,7 +79,7 @@ public sealed record MarineTraffic
         BoatType.MotorYacht,
         BoatType.Ferry,
         BoatType.JetSki,
-    };
+    });
 
     /// <summary>
     /// How fast a kind of vessel actually travels, in knots, before <see cref="SpeedPercent"/> is applied: a fishing
@@ -158,12 +166,12 @@ public sealed record MarineTraffic
 
     /// <summary>
     /// The kinds of vessel out there, drawn from at random. Repeat a type to make it more common. Empty means
-    /// <see cref="DefaultVessels"/>.
+    /// <see cref="DefaultVessels"/>, and so does null. The record keeps its own copy.
     /// </summary>
-    public IReadOnlyList<BoatType> Vessels { get; init; } = Array.Empty<BoatType>();
+    public IReadOnlyList<BoatType> Vessels { get => _vessels; init => _vessels = ValueList<BoatType>.From(value); }
 
     /// <summary>Read-only string attributes the host application attaches to the traffic. Saved with the design.</summary>
-    public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
+    public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ValueDictionary.From(value); }
 
     /// <summary>How many lanes this actually lays out; 0 when it is switched off.</summary>
     public int EffectiveLanes => IsEnabled ? Math.Clamp(LaneCount, 1, LaneLimit) : 0;
@@ -184,20 +192,20 @@ public sealed record MarineTraffic
     {
         if (MaximumVessels < 1 || MaximumVessels > VesselLimit)
         {
-            yield return $"Marine traffic can show between 1 and {VesselLimit} vessels at once.";
+            yield return Strings.Format(Strings.ErrorTrafficVessels, VesselLimit);
         }
 
-        if (LaneCount < 1 || LaneCount > LaneLimit) yield return $"Marine traffic can run between 1 and {LaneLimit} lanes.";
-        if (!float.IsFinite(LaneSpacing) || LaneSpacing <= 0f) yield return "Marine traffic lane spacing must be a positive distance.";
-        if (!float.IsFinite(Clearance) || Clearance < 0f) yield return "Marine traffic clearance must not be negative.";
-        if (!float.IsFinite(EdgeClearance) || EdgeClearance < 0f) yield return "Marine traffic edge clearance must not be negative.";
-        if (!float.IsFinite(SpeedPercent) || SpeedPercent <= 0f) yield return "Marine traffic speed must be a positive percentage.";
-        if (!float.IsFinite(SpawnDelaySeconds) || SpawnDelaySeconds < 0f) yield return "Marine traffic spawn delay must not be negative.";
-        if (!float.IsFinite(Reach) || Reach <= 0f) yield return "Marine traffic reach must be a positive distance.";
+        if (LaneCount < 1 || LaneCount > LaneLimit) yield return Strings.Format(Strings.ErrorTrafficLanes, LaneLimit);
+        if (!float.IsFinite(LaneSpacing) || LaneSpacing <= 0f) yield return Strings.ErrorTrafficLaneSpacing;
+        if (!float.IsFinite(Clearance) || Clearance < 0f) yield return Strings.ErrorTrafficClearance;
+        if (!float.IsFinite(EdgeClearance) || EdgeClearance < 0f) yield return Strings.ErrorTrafficEdgeClearance;
+        if (!float.IsFinite(SpeedPercent) || SpeedPercent <= 0f) yield return Strings.ErrorTrafficSpeed;
+        if (!float.IsFinite(SpawnDelaySeconds) || SpawnDelaySeconds < 0f) yield return Strings.ErrorTrafficSpawnDelay;
+        if (!float.IsFinite(Reach) || Reach <= 0f) yield return Strings.ErrorTrafficReach;
 
         foreach (var vessel in Vessels.Where(vessel => !Enum.IsDefined(vessel)).Distinct())
         {
-            yield return $"Marine traffic lists an unknown vessel type '{vessel}'.";
+            yield return Strings.Format(Strings.ErrorTrafficUnknownVessel, vessel);
         }
     }
 }

@@ -12,20 +12,20 @@ internal sealed class SceneState
 {
     public required IEnumerable<Pier> Piers { get; init; }
 
-    public required IEnumerable<Berth> Berths { get; init; }
+    public required IReadOnlyList<Berth> Berths { get; init; }
 
     public required IEnumerable<Divider> Dividers { get; init; }
-
-    /// <summary>Adds preview objects (the designer's drawing) to the transparent pass.</summary>
-    public Action<List<RenderObject>>? Overlay { get; init; }
 
     /// <summary>Land areas in layout order, each drawn with the mesh <see cref="LandMeshId"/> returns.</summary>
     public required IEnumerable<LandArea> Land { get; init; }
 
     public required Func<LandArea, int> LandMeshId { get; init; }
 
-    /// <summary>The trees of a land area, drawn over its ground and squashed onto it for a shadow.</summary>
-    public required Func<LandArea, int> LandTreesMeshId { get; init; }
+    /// <summary>What stands on a land area — its trees, or a breakwater's rocks — as instances drawn over its ground.</summary>
+    public required Func<LandArea, IReadOnlyList<RenderObject>> LandScenery { get; init; }
+
+    /// <summary>What stands on the mainland: trees, fields, a town.</summary>
+    public IReadOnlyList<RenderObject> ShorelineScenery { get; init; } = [];
 
     /// <summary>World Y of the mainland's surface, which its scenery casts its shadow on.</summary>
     public float ShorelineGroundHeight { get; init; }
@@ -59,7 +59,53 @@ internal sealed class SceneState
     public required MeshLibrary Meshes { get; init; }
 }
 
-/// <summary>Turns domain state into a flat, backend-neutral list of render objects.</summary>
+/// <summary>Something that casts a shadow, and the height of the ground the shadow lands on.</summary>
+internal readonly record struct ShadowCaster(RenderObject Caster, float Ground);
+
+/// <summary>
+/// The berths layer as built: its objects in the order they were made, and which of them belong to which berth or boat,
+/// so a change of hover or selection can rewrite just those in place.
+/// </summary>
+internal sealed class BerthLayerContent
+{
+    public List<RenderObject> Objects { get; } = [];
+
+    /// <summary>One entry per berth or boat: where its objects start in <see cref="Objects"/> and how many there are.</summary>
+    public List<(int Start, int Count, Berth? Berth, BoatInstance? Boat)> Units { get; } = [];
+
+    /// <summary>For each berth, the units drawn differently when it is hovered or selected: its own, and its boat's.</summary>
+    public Dictionary<string, List<int>> UnitsByBerth { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>World Y of the top of each berth's boat, which the selection marker stands above.</summary>
+    public Dictionary<string, float> BoatTops { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public void Clear()
+    {
+        Objects.Clear();
+        Units.Clear();
+        UnitsByBerth.Clear();
+        BoatTops.Clear();
+    }
+
+    public void AddUnit(int start, Berth? berth, BoatInstance? boat, IEnumerable<Berth> members)
+    {
+        var unit = Units.Count;
+        Units.Add((start, Objects.Count - start, berth, boat));
+        foreach (var member in members)
+        {
+            if (!UnitsByBerth.TryGetValue(member.Id, out var list)) UnitsByBerth[member.Id] = list = [];
+            list.Add(unit);
+        }
+    }
+}
+
+/// <summary>
+/// Turns domain state into backend-neutral render objects, one layer at a time (see <see cref="RenderLayerKind"/>).
+/// </summary>
+/// <remarks>
+/// The colors of one build come from its style, through a <see cref="Palette"/> handed down explicitly, so building on
+/// several threads, or for several visualizers, never mixes their colors.
+/// </remarks>
 internal static class SceneBuilder
 {
     private static readonly Vector4 White = Vector4.One;
@@ -68,31 +114,6 @@ internal static class SceneBuilder
     /// <summary>Sides (−1 left, +1 right) where boats berth and mooring points are drawn.</summary>
     private static IEnumerable<float> BerthSides(Pier pier) => Sides.Where(side => pier.HasBerthsOn(side < 0f ? PierSide.Left : PierSide.Right));
 
-    // Pier and label colors come from the style (MarinaStyle.Piers / Labels); Build sets the palette for the current thread.
-    [ThreadStatic]
-    private static Palette? t_palette;
-
-    private static Palette Colors => t_palette ??= new Palette(new MarinaStyle());
-
-    private static Vector4 WoodDeck => Colors.WoodDeck;
-    private static Vector4 WoodSeam => Colors.WoodSeam;
-    private static Vector4 WoodWaler => Colors.WoodWaler;
-    private static Vector4 WoodFinger => Colors.WoodFinger;
-    private static Vector4 PontoonFloat => Colors.PontoonFloat;
-    private static Vector4 ConcreteDeck => Colors.ConcreteDeck;
-    private static Vector4 ConcreteCurb => Colors.ConcreteCurb;
-    private static Vector4 ConcreteColumn => Colors.ConcreteColumn;
-    private static Vector4 PontoonBody => Colors.PontoonBody;
-    private static Vector4 PontoonTop => Colors.PontoonTop;
-    private static Vector4 JointLine => Colors.JointLine;
-    private static Vector4 Rubber => Colors.Rubber;
-    private static Vector4 Steel => Colors.Steel;
-    private static Vector4 Bollard => Colors.Bollard;
-    private static Vector4 BoomFloat => Colors.BoomFloat;
-    private static Vector4 BoomEnd => Colors.BoomEnd;
-    private static Vector4 Pedestal => Colors.Pedestal;
-    private static Vector4 PowerTop => Colors.PowerTop;
-    private static Vector4 WaterTop => Colors.WaterTop;
     private static readonly Vector4 BoomLine = new(0.25f, 0.25f, 0.27f, 1f);
 
     // Land berths
@@ -130,24 +151,55 @@ internal static class SceneBuilder
     /// </summary>
     private const float ShadowLift = 0.03f;
 
+    /// <summary>True when shadows are drawn at all for this style and sun.</summary>
+    public static bool CastsShadows(MarinaStyle style) =>
+        style.Shadows.IsEnabled && style.Shadows.Strength > 0.004f && ShadowProjection.CanCast(style.Lighting.SunDirection);
+
     /// <summary>
-    /// Adds the shadows of everything added to <paramref name="source"/> since <paramref name="from"/>: the same
-    /// geometry squashed onto the ground along the sun's rays and drawn dark.
+    /// The shadows of <paramref name="casters"/>: the same geometry squashed onto the ground along the sun's rays and drawn
+    /// dark and unlit.
     /// </summary>
     /// <remarks>
-    /// The animation is carried over, so a boat's shadow rides the same wave the boat does instead of staying flat
+    /// The floating animation is carried over, so a boat's shadow rides the same wave the boat does instead of staying flat
     /// while the water under it moves.
     /// </remarks>
-    private static void CastShadows(List<RenderObject> shadows, List<RenderObject> source, int from, float groundHeight, Vector3 sun, float strength)
+    public static void CastShadows(List<RenderObject> output, IReadOnlyList<ShadowCaster> casters, Vector3 sun, float strength)
     {
-        var flatten = ShadowProjection.OntoPlane(sun, groundHeight + ShadowLift);
+        output.Clear();
         var tint = new Vector4(0f, 0f, 0f, strength);
-        for (var i = from; i < source.Count; i++)
+        var flatten = default(Matrix4x4);
+        var flattenGround = float.NaN;
+        foreach (var (caster, ground) in casters)
         {
-            var caster = source[i];
-            shadows.Add(caster with { World = caster.World * flatten, Tint = tint, Emissive = 0f, Desaturation = 0f });
+            // Most casters stand on one of a few grounds (the water, a quay), so the projection is worked out once per run.
+            if (ground != flattenGround)
+            {
+                flatten = ShadowProjection.OntoPlane(sun, ground + ShadowLift);
+                flattenGround = ground;
+            }
+
+            output.Add(caster with
+            {
+                World = caster.World * flatten,
+                Tint = tint,
+                Emissive = 0f,
+                Desaturation = 0f,
+                Animation = (caster.Animation & ~RenderAnimation.Pulse) | RenderAnimation.Unlit,
+            });
         }
     }
+
+    /// <summary>
+    /// True when replacing <paramref name="before"/> with <paramref name="after"/> changes the structure layer (fingers,
+    /// pedestals) and not only what the berths layer shows: its place, size, visibility, fingers, services or multi-berth.
+    /// </summary>
+    public static bool ShapesStructure(Berth before, Berth after) =>
+        !string.Equals(before.PierId, after.PierId, StringComparison.OrdinalIgnoreCase) ||
+        !string.Equals(before.LandAreaId, after.LandAreaId, StringComparison.OrdinalIgnoreCase) ||
+        !string.Equals(before.MultiBerthId, after.MultiBerthId, StringComparison.OrdinalIgnoreCase) ||
+        before.Center != after.Center || before.HeadingDegrees != after.HeadingDegrees ||
+        before.Length != after.Length || before.Width != after.Width ||
+        before.HasFingerPiers != after.HasFingerPiers || before.IsVisible != after.IsVisible || before.Services != after.Services;
 
     /// <summary>True when a mesh is registered under this id and has anything in it to draw.</summary>
     private static bool HasGeometry(MeshLibrary meshes, int id) =>
@@ -157,154 +209,205 @@ internal static class SceneBuilder
     public static float? GroundHeight(Berth berth, Func<string, LandArea?> landLookup) =>
         berth.LandAreaId is { } id && landLookup(id) is { } land ? land.Height : null;
 
-    public static void Build(List<RenderObject> output, SceneState state)
+    // ---- Structure ----------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The layout itself: mainland, land areas and what stands on them, piers with their pedestals, dividers and finger
+    /// piers. Everything that casts a shadow is added to <paramref name="casters"/>.
+    /// </summary>
+    public static void BuildStructure(List<RenderObject> output, List<ShadowCaster> casters, SceneState state)
     {
         output.Clear();
-        var transparent = new List<RenderObject>();
-        var colors = state.Colors;
-        var selection = state.Style.Selection;
-        t_palette = new Palette(state.Style);
-
-        var berths = state.Berths as IReadOnlyCollection<Berth> ?? state.Berths.ToList();
-
-        // Shadows are flat and blended, so they go in with the other transparent things, after the water they lie on.
-        var shadowStyle = state.Style.Shadows;
-        var sun = state.Style.Lighting.SunDirection;
-        var casting = shadowStyle.IsEnabled && shadowStyle.Strength > 0.004f && ShadowProjection.CanCast(sun);
-        var shadows = new List<RenderObject>();
+        casters.Clear();
+        var palette = new Palette(state.Style);
 
         // The mainland goes down first, so the land areas traced along the shore sit on top of it.
         if (state.HasShoreline)
         {
             output.Add(new RenderObject(MeshIds.Shoreline, Matrix4x4.Identity, White));
-
-            if (HasGeometry(state.Meshes, MeshIds.ShorelineScenery))
+            foreach (var scenery in state.ShorelineScenery)
             {
-                var sceneryFrom = output.Count;
-                output.Add(new RenderObject(MeshIds.ShorelineScenery, Matrix4x4.Identity, White));
-                if (casting) CastShadows(shadows, output, sceneryFrom, state.ShorelineGroundHeight, sun, shadowStyle.Strength);
+                output.Add(scenery);
+                casters.Add(new ShadowCaster(scenery, state.ShorelineGroundHeight));
             }
         }
 
         foreach (var land in state.Land)
         {
-            output.Add(new RenderObject(state.LandMeshId(land), Matrix4x4.Identity, White));
+            var ground = state.LandMeshId(land);
+            if (HasGeometry(state.Meshes, ground)) output.Add(new RenderObject(ground, Matrix4x4.Identity, White));
 
-            // Trees stand on their land area, so that is the ground their shadow falls on.
-            var trees = state.LandTreesMeshId(land);
-            if (!HasGeometry(state.Meshes, trees)) continue;
-
-            var treesFrom = output.Count;
-            output.Add(new RenderObject(trees, Matrix4x4.Identity, White));
-            if (casting) CastShadows(shadows, output, treesFrom, land.Height, sun, shadowStyle.Strength);
+            // Trees and rocks stand on their land area, so that is the ground their shadow falls on.
+            foreach (var scenery in state.LandScenery(land))
+            {
+                output.Add(scenery);
+                casters.Add(new ShadowCaster(scenery, land.Height));
+            }
         }
+
+        // The berths of each pier, gathered once rather than searched for pier by pier.
+        var byPier = new Dictionary<string, List<Berth>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var berth in state.Berths)
+        {
+            if (!berth.IsVisible || berth.PierId is not { } pierId) continue;
+            if (!byPier.TryGetValue(pierId, out var list)) byPier[pierId] = list = [];
+            list.Add(berth);
+        }
+
+        // Piers and what stands on them are over water, so their shadows land on it.
         var structureFrom = output.Count;
         foreach (var pier in state.Piers)
         {
-            AddPier(output, pier);
-            if (pier.Services != PierServices.None || berths.Any(berth => berth.Services is { } own && own != PierServices.None))
+            AddPier(output, pier, palette);
+            var berths = byPier.TryGetValue(pier.Id, out var onPier) ? onPier : [];
+            if (pier.Services != PierServices.None || berths.Exists(berth => berth.Services is { } own && own != PierServices.None))
             {
-                AddServicePedestals(output, pier, berths);
+                AddServicePedestals(output, pier, berths, palette);
             }
         }
 
-        foreach (var divider in state.Dividers) AddDivider(output, divider, divider.PierId is null ? null : state.PierLookup(divider.PierId));
+        foreach (var divider in state.Dividers) AddDivider(output, divider, divider.PierId is null ? null : state.PierLookup(divider.PierId), palette);
 
-        // Piers and what stands on them are over water, so their shadows land on it.
-        if (casting) CastShadows(shadows, output, structureFrom, 0f, sun, shadowStyle.Strength);
+        foreach (var berth in state.Berths)
+        {
+            // Hidden berths draw nothing at all, not even their physical structure; the status filter hides status
+            // visuals and boats, but not structure.
+            if (!berth.IsVisible || !berth.HasFingerPiers || berth.IsOnLand) continue;
+            AddFingerPiers(output, berth, berth.PierId is null ? null : state.PierLookup(berth.PierId), state, palette);
+        }
+
+        for (var i = structureFrom; i < output.Count; i++) casters.Add(new ShadowCaster(output[i], 0f));
+    }
+
+    // ---- Berths -------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// What the berths' statuses show: boats (with the cradles of boats ashore), status pads, buoys or posts, and labels.
+    /// The boats are added to <paramref name="casters"/>.
+    /// </summary>
+    public static void BuildBerths(BerthLayerContent content, List<ShadowCaster> casters, SceneState state)
+    {
+        content.Clear();
+        casters.Clear();
+        var palette = new Palette(state.Style);
+        Func<Berth, float?> ground = berth => GroundHeight(berth, state.LandLookup);
 
         // Boats first, so the selection marker can sit above them.
-        Func<Berth, float?> ground = berth => GroundHeight(berth, state.LandLookup);
-        var boatTops = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
-        foreach (var boat in BerthPlacement.EnumerateBoats(berths, state.BerthLookup, state.MultiBerthLookup, state.Filter, ground, state.Meshes))
+        foreach (var boat in BerthPlacement.EnumerateBoats(state.Berths, state.BerthLookup, state.MultiBerthLookup, state.Filter, ground, state.Meshes))
         {
             var top = BerthPlacement.BoatTopHeight(boat.Boat, state.Meshes, boat.Ground);
-            foreach (var member in boat.Berths) boatTops[member.Id] = top;
+            foreach (var member in boat.Berths) content.BoatTops[member.Id] = top;
 
-            var boatFrom = output.Count;
-            AddBoat(output, transparent, boat, state);
+            var start = content.Objects.Count;
+            AddBoat(content.Objects, boat, state);
+            content.AddUnit(start, null, boat, boat.Berths);
 
-            // A boat ashore throws its shadow on the yard it stands in, not on the water below it.
-            if (casting) CastShadows(shadows, output, boatFrom, boat.Ground ?? 0f, sun, shadowStyle.Strength);
+            // A boat ashore throws its shadow on the yard it stands in, not on the water below it. Only what is drawn
+            // solid casts one.
+            for (var i = start; i < content.Objects.Count; i++)
+            {
+                if (!content.Objects[i].IsTransparent) casters.Add(new ShadowCaster(content.Objects[i], boat.Ground ?? 0f));
+            }
         }
 
-        foreach (var berth in berths)
+        foreach (var berth in state.Berths)
         {
-            // Hidden berths draw nothing at all, not even their physical structure.
-            if (!berth.IsVisible) continue;
+            if (!berth.IsVisible || !state.Filter.Includes(berth.Status)) continue;
+            var start = content.Objects.Count;
+            AddBerthStatus(content.Objects, berth, state, palette);
+            content.AddUnit(start, berth, null, [berth]);
+        }
+    }
 
-            var berthGround = ground(berth);
-            if (berth.HasFingerPiers && !berth.IsOnLand)
-            {
-                var fingersFrom = output.Count;
-                AddFingerPiers(output, berth, berth.PierId is null ? null : state.PierLookup(berth.PierId), state);
-                if (casting) CastShadows(shadows, output, fingersFrom, 0f, sun, shadowStyle.Strength);
-            }
+    /// <summary>Draws one unit of the berths layer again, as <see cref="BuildBerths"/> would now.</summary>
+    public static void RebuildUnit(List<RenderObject> output, Berth? berth, BoatInstance? boat, SceneState state)
+    {
+        output.Clear();
+        if (boat is { } instance) AddBoat(output, instance, state);
+        else if (berth is not null) AddBerthStatus(output, berth, state, new Palette(state.Style));
+    }
 
-            // The status filter hides status visuals and boats, but not structure.
-            if (!state.Filter.Includes(berth.Status)) continue;
+    /// <summary>True when the berth is drawn selected, and when (not being selected) it is drawn hovered.</summary>
+    private static (bool Selected, bool Hovered) HighlightOf(Berth berth, SceneState state)
+    {
+        var isSelected = state.Selected.Contains(berth.Id);
+        return (isSelected, !isSelected && berth.IsInteractive && string.Equals(berth.Id, state.HoveredBerthId, StringComparison.OrdinalIgnoreCase));
+    }
 
-            var isSelected = state.Selected.Contains(berth.Id);
-            var isHovered = !isSelected && berth.IsInteractive && string.Equals(berth.Id, state.HoveredBerthId, StringComparison.OrdinalIgnoreCase);
-            var statusColor = berth.IsDisabled ? colors.DisabledColor : colors.Get(berth.Status);
-            var phase = BerthPlacement.AnimationPhase(berth.Id);
-            var desaturation = berth.IsDisabled ? 1f : 0f;
+    /// <summary>A berth's status pad, its buoy or post, and its label.</summary>
+    private static void AddBerthStatus(List<RenderObject> output, Berth berth, SceneState state, Palette palette)
+    {
+        var colors = state.Colors;
+        var selection = state.Style.Selection;
+        var berthGround = GroundHeight(berth, state.LandLookup);
+        var (isSelected, isHovered) = HighlightOf(berth, state);
+        var statusColor = berth.IsDisabled ? colors.DisabledColor : colors.Get(berth.Status);
+        var phase = BerthPlacement.AnimationPhase(berth.Id);
+        var desaturation = berth.IsDisabled ? 1f : 0f;
 
-            // Status pad on the water.
-            var padAlpha = isSelected ? MathF.Max(colors.PadOpacity, 0.72f) : isHovered ? MathF.Max(colors.PadOpacity, 0.6f) : berth.IsDisabled ? colors.PadOpacity * 0.75f : colors.PadOpacity;
-            var padEmissive = isSelected ? selection.SelectedGlow : isHovered ? selection.HoverGlow : 0.05f;
-            if (padAlpha > 0.005f)
-            {
-                transparent.Add(new RenderObject(
-                    MeshIds.BerthPad, BerthPlacement.PadWorld(berth, berthGround), statusColor.WithAlpha(padAlpha).ToVector4(), padEmissive,
-                    isSelected && selection.Pulse ? RenderAnimation.Pulse : RenderAnimation.None, phase, desaturation));
-            }
-
-            var markerScale = colors.StatusMarkerScale;
-            if (!colors.ShowStatusMarkers)
-            {
-                // No buoy or post.
-            }
-            else if (berthGround is { } landHeight)
-            {
-                // Status post at the rear of a land berth, visible from far away.
-                var post = BerthPlacement.StatusPostPosition(berth);
-                output.Add(Cylinder(post, landHeight, new Vector3(0.12f * markerScale, BerthPlacement.StatusPostHeight * markerScale, 0.12f * markerScale), PostGray) with { Desaturation = desaturation });
-                output.Add(new RenderObject(
-                    MeshIds.Buoy,
-                    Matrix4x4.CreateScale(0.7f * markerScale) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(post, landHeight + (BerthPlacement.StatusPostHeight + 0.3f) * markerScale)),
-                    statusColor.WithAlpha(1f).ToVector4(), berth.IsDisabled ? 0.05f : 0.35f, RenderAnimation.None, phase, desaturation));
-            }
-            else
-            {
-                // Status buoy, visible from far away.
-                output.Add(new RenderObject(
-                    MeshIds.Buoy,
-                    Matrix4x4.CreateScale(0.9f * markerScale) * Matrix4x4.CreateTranslation(BerthPlacement.BuoyPosition(berth)),
-                    statusColor.WithAlpha(1f).ToVector4(), berth.IsDisabled ? 0.05f : 0.35f, RenderAnimation.FloatOnWater, phase, desaturation));
-            }
-
-            if (state.LabelMode.Includes(berth.Status)) AddLabel(output, berth, isSelected || isHovered, phase, berthGround);
-
-            if (isSelected && selection.ShowMarker)
-            {
-                var isPrimary = string.Equals(berth.Id, state.PrimarySelectedId, StringComparison.OrdinalIgnoreCase);
-                var baseGround = berthGround ?? 0f;
-                var boatTop = boatTops.TryGetValue(berth.Id, out var t) ? t : baseGround + 3f;
-                var markerPosition = MarinaMath.ToWorld(berth.Center, MarkerBaseHeight(boatTop, baseGround));
-                output.Add(new RenderObject(
-                    MeshIds.SelectionMarker,
-                    Matrix4x4.CreateScale((isPrimary ? 2.4f : 1.7f) * selection.MarkerScale) * Matrix4x4.CreateTranslation(markerPosition),
-                    selection.MarkerTint.WithAlpha(1f).ToVector4(), 0.45f, RenderAnimation.SpinAndBob, isPrimary ? 0f : phase));
-            }
+        // Status pad on the water. A berth that can be hovered or selected keeps its pad even when the style hides pads,
+        // drawn fully transparent, so that highlighting it rewrites the pad in place rather than adding one.
+        var padAlpha = isSelected ? MathF.Max(colors.PadOpacity, 0.72f) : isHovered ? MathF.Max(colors.PadOpacity, 0.6f) : berth.IsDisabled ? colors.PadOpacity * 0.75f : colors.PadOpacity;
+        var padEmissive = isSelected ? selection.SelectedGlow : isHovered ? selection.HoverGlow : 0.05f;
+        if (padAlpha > 0.005f || berth.IsInteractive)
+        {
+            output.Add(new RenderObject(
+                MeshIds.BerthPad, BerthPlacement.PadWorld(berth, berthGround), statusColor.WithAlpha(padAlpha > 0.005f ? padAlpha : 0f).ToVector4(), padEmissive,
+                isSelected && selection.Pulse ? RenderAnimation.Pulse : RenderAnimation.None, phase, desaturation));
         }
 
-        state.Overlay?.Invoke(transparent);
+        var markerScale = colors.StatusMarkerScale;
+        if (!colors.ShowStatusMarkers)
+        {
+            // No buoy or post.
+        }
+        else if (berthGround is { } landHeight)
+        {
+            // Status post at the rear of a land berth, visible from far away.
+            var post = BerthPlacement.StatusPostPosition(berth);
+            output.Add(Cylinder(post, landHeight, new Vector3(0.12f * markerScale, BerthPlacement.StatusPostHeight * markerScale, 0.12f * markerScale), PostGray) with { Desaturation = desaturation });
+            output.Add(new RenderObject(
+                MeshIds.Buoy,
+                Matrix4x4.CreateScale(0.7f * markerScale) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(post, landHeight + (BerthPlacement.StatusPostHeight + 0.3f) * markerScale)),
+                statusColor.WithAlpha(1f).ToVector4(), berth.IsDisabled ? 0.05f : 0.35f, RenderAnimation.None, phase, desaturation));
+        }
+        else
+        {
+            // Status buoy, visible from far away.
+            output.Add(new RenderObject(
+                MeshIds.Buoy,
+                Matrix4x4.CreateScale(0.9f * markerScale) * Matrix4x4.CreateTranslation(BerthPlacement.BuoyPosition(berth)),
+                statusColor.WithAlpha(1f).ToVector4(), berth.IsDisabled ? 0.05f : 0.35f, RenderAnimation.FloatOnWater, phase, desaturation));
+        }
 
-        // Shadows first of the transparent things: the status pads, labels and the designer's drawing all belong on
-        // top of them rather than under them.
-        output.AddRange(shadows);
-        output.AddRange(transparent);
+        if (state.LabelMode.Includes(berth.Status)) AddLabel(output, berth, isSelected || isHovered, phase, berthGround, palette);
+    }
+
+    // ---- Highlight ----------------------------------------------------------------------------------
+
+    /// <summary>The selection markers, standing above the tallest thing in each selected berth.</summary>
+    /// <param name="output">Receives the markers.</param>
+    /// <param name="state">The scene.</param>
+    /// <param name="boatTops">Tops of the boats, from the berths layer.</param>
+    public static void BuildHighlight(List<RenderObject> output, SceneState state, IReadOnlyDictionary<string, float> boatTops)
+    {
+        output.Clear();
+        var selection = state.Style.Selection;
+        if (!selection.ShowMarker || state.Selected.Count == 0) return;
+
+        foreach (var berth in state.Berths)
+        {
+            if (!berth.IsVisible || !state.Filter.Includes(berth.Status) || !state.Selected.Contains(berth.Id)) continue;
+
+            var isPrimary = string.Equals(berth.Id, state.PrimarySelectedId, StringComparison.OrdinalIgnoreCase);
+            var baseGround = GroundHeight(berth, state.LandLookup) ?? 0f;
+            var boatTop = boatTops.TryGetValue(berth.Id, out var t) ? t : baseGround + 3f;
+            var markerPosition = MarinaMath.ToWorld(berth.Center, MarkerBaseHeight(boatTop, baseGround));
+            output.Add(new RenderObject(
+                MeshIds.SelectionMarker,
+                Matrix4x4.CreateScale((isPrimary ? 2.4f : 1.7f) * selection.MarkerScale) * Matrix4x4.CreateTranslation(markerPosition),
+                selection.MarkerTint.WithAlpha(1f).ToVector4(), 0.45f, RenderAnimation.SpinAndBob, isPrimary ? 0f : BerthPlacement.AnimationPhase(berth.Id)));
+        }
     }
 
     /// <summary>
@@ -312,18 +415,18 @@ internal static class SceneBuilder
     /// above the highest wave the water can reach (see <see cref="RenderAnimation.AboveWaves"/>), so waves never hide them.
     /// Land berths get their name on the ground, just above their pad.
     /// </summary>
-    private static void AddLabel(List<RenderObject> output, Berth berth, bool highlighted, float phase, float? ground)
+    private static void AddLabel(List<RenderObject> output, Berth berth, bool highlighted, float phase, float? ground, Palette palette)
     {
         var text = berth.DisplayName.Trim();
         if (text.Length == 0) return;
 
-        var font = t_palette?.LabelFontFamily ?? LabelFont.Regular;
-        var typeface = t_palette?.LabelTypeface ?? LabelTypeface.Sans;
-        var captured = t_palette?.LabelFont;
+        var font = palette.LabelFontFamily;
+        var typeface = palette.LabelTypeface;
+        var captured = palette.LabelFont;
 
         // How far the pen moves for each character. The built-in lettering is the same width throughout; a captured
         // font is not, so the line is laid out character by character either way.
-        var advances = new float[text.Length];
+        Span<float> advances = text.Length <= 64 ? stackalloc float[text.Length] : new float[text.Length];
         var total = 0f;
         for (var i = 0; i < text.Length; i++)
         {
@@ -336,10 +439,10 @@ internal static class SceneBuilder
         var (center, height, upHeading, reading) = BerthPlacement.LabelPlacementForWidth(berth, total);
         // A name ashore is read against quay concrete or grass, not against the sea, so it gets its own
         // colour. Highlight and disabled still win: those say something about the berth, wherever it is.
-        var tint = berth.IsDisabled ? Colors.LabelDisabled
-            : highlighted ? Colors.LabelHighlight
-            : berth.IsOnLand ? Colors.LabelAshore
-            : Colors.Label;
+        var tint = berth.IsDisabled ? palette.LabelDisabled
+            : highlighted ? palette.LabelHighlight
+            : berth.IsOnLand ? palette.LabelAshore
+            : palette.Label;
         var scale = new Vector3(height, 1f, height);
         var pen = total * -0.5f;
 
@@ -362,7 +465,7 @@ internal static class SceneBuilder
         }
     }
 
-    private static void AddBoat(List<RenderObject> output, List<RenderObject> transparent, BoatInstance boat, SceneState state)
+    private static void AddBoat(List<RenderObject> output, BoatInstance boat, SceneState state)
     {
         var colors = state.Colors;
         var selection = state.Style.Selection;
@@ -381,14 +484,14 @@ internal static class SceneBuilder
         {
             if (boat.Ground is { } ground) AddCradle(output, boat, ground, state.Meshes, disabled ? 1f : 0f);
             var tint = (disabled ? new Vector4(0.92f, 0.92f, 0.92f, 1f) : White) with { W = opacity };
-            (opacity >= 0.999f ? output : transparent).Add(new RenderObject(meshId, boat.World, tint, emissive, animation, phase, disabled ? 1f : 0f));
+            output.Add(new RenderObject(meshId, boat.World, tint, emissive, animation, phase, disabled ? 1f : 0f));
             return;
         }
 
         // Reserved / temporarily free: a "ghost" of the boat, tinted toward the status color.
         var statusColor = disabled ? colors.DisabledColor : colors.Get(boat.Status);
         var ghost = new ColorRgba(1f, 1f, 1f).Lerp(statusColor, colors.GhostBoatTint).WithAlpha(opacity);
-        (opacity >= 0.999f ? output : transparent).Add(new RenderObject(
+        output.Add(new RenderObject(
             meshId, boat.World, ghost.ToVector4(), disabled ? emissive : MathF.Max(emissive, 0.25f), animation, phase, disabled ? 1f : 0f));
     }
 
@@ -431,22 +534,22 @@ internal static class SceneBuilder
 
     // ---- Piers --------------------------------------------------------------------------------------
 
-    private static void AddPier(List<RenderObject> output, Pier pier)
+    private static void AddPier(List<RenderObject> output, Pier pier, Palette p)
     {
         switch (pier.Type)
         {
-            case PierType.Concrete: AddConcretePier(output, pier); break;
-            case PierType.FloatingConcrete: AddFloatingConcretePier(output, pier); break;
-            default: AddFloatingWoodenPier(output, pier); break;
+            case PierType.Concrete: AddConcretePier(output, pier, p); break;
+            case PierType.FloatingConcrete: AddFloatingConcretePier(output, pier, p); break;
+            default: AddFloatingWoodenPier(output, pier, p); break;
         }
     }
 
     /// <summary>Fixed pier: thick slab on square columns, curbs along the edges, bollards.</summary>
-    private static void AddConcretePier(List<RenderObject> output, Pier pier)
+    private static void AddConcretePier(List<RenderObject> output, Pier pier, Palette p)
     {
         const float slab = 0.45f;
         var top = pier.DeckHeight;
-        output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width, slab, pier.Length), top - slab * 0.5f, ConcreteDeck));
+        output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width, slab, pier.Length), top - slab * 0.5f, p.ConcreteDeck));
 
         // Only the sides boats come alongside get a kerb: a pier against the quay has nothing to edge its back.
         var singleSided = pier.BerthingSides is PierSides.Left or PierSides.Right;
@@ -454,7 +557,7 @@ internal static class SceneBuilder
         {
             var height = singleSided ? 0.34f : 0.16f;
             var curbOffset = pier.Right * side * (pier.Width * 0.5f - 0.14f);
-            output.Add(Box(pier, pier.Center + curbOffset, 0f, new Vector3(0.28f, height, pier.Length), top + height * 0.5f, ConcreteCurb));
+            output.Add(Box(pier, pier.Center + curbOffset, 0f, new Vector3(0.28f, height, pier.Length), top + height * 0.5f, p.ConcreteCurb));
         }
 
         var count = Math.Max(2, (int)MathF.Floor(pier.Length / pier.PilingSpacing) + 1);
@@ -465,59 +568,59 @@ internal static class SceneBuilder
             {
                 var column = pier.Start + pier.Direction * along + pier.Right * side * (pier.Width * 0.5f - 0.35f);
                 var height = top - slab + PilingDepth;
-                output.Add(Box(pier, column, 0f, new Vector3(0.5f, height, 0.5f), top - slab - height * 0.5f, ConcreteColumn));
+                output.Add(Box(pier, column, 0f, new Vector3(0.5f, height, 0.5f), top - slab - height * 0.5f, p.ConcreteColumn));
 
                 if (i % 2 == 1 && pier.HasBerthsOn(side < 0f ? PierSide.Left : PierSide.Right))
                 {
                     var bollard = pier.Start + pier.Direction * along + pier.Right * side * (pier.Width * 0.5f - 0.55f);
-                    output.Add(Cylinder(bollard, top, new Vector3(0.32f, 0.38f, 0.32f), Bollard));
+                    output.Add(Cylinder(bollard, top, new Vector3(0.32f, 0.38f, 0.32f), p.Bollard));
                 }
             }
         }
     }
 
     /// <summary>Plank deck with walers on dark pontoon floats.</summary>
-    private static void AddFloatingWoodenPier(List<RenderObject> output, Pier pier)
+    private static void AddFloatingWoodenPier(List<RenderObject> output, Pier pier, Palette p)
     {
         const float deck = 0.14f;
         var top = pier.DeckHeight;
-        output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width, deck, pier.Length), top - deck * 0.5f, WoodDeck));
+        output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width, deck, pier.Length), top - deck * 0.5f, p.WoodDeck));
 
         // Plank seams.
         const float plankPitch = 1.2f;
         for (var along = plankPitch; along < pier.Length - 0.1f; along += plankPitch)
         {
-            output.Add(Box(pier, pier.Start + pier.Direction * along, 0f, new Vector3(pier.Width, 0.012f, 0.05f), top + 0.004f, WoodSeam));
+            output.Add(Box(pier, pier.Start + pier.Direction * along, 0f, new Vector3(pier.Width, 0.012f, 0.05f), top + 0.004f, p.WoodSeam));
         }
 
         foreach (var side in BerthSides(pier))
         {
             var waler = pier.Right * side * (pier.Width * 0.5f + 0.09f);
-            output.Add(Box(pier, pier.Center + waler, 0f, new Vector3(0.18f, 0.3f, pier.Length), top - 0.17f, WoodWaler));
+            output.Add(Box(pier, pier.Center + waler, 0f, new Vector3(0.18f, 0.3f, pier.Length), top - 0.17f, p.WoodWaler));
         }
 
-        AddPontoonFloats(output, pier, top - deck);
+        AddPontoonFloats(output, pier, top - deck, p);
     }
 
     /// <summary>Monolithic concrete pontoon with rubber fenders, section joints and cleats.</summary>
-    private static void AddFloatingConcretePier(List<RenderObject> output, Pier pier)
+    private static void AddFloatingConcretePier(List<RenderObject> output, Pier pier, Palette p)
     {
         const float bottom = -0.35f;
         var top = pier.DeckHeight;
         var height = top - bottom;
-        output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width, height - 0.04f, pier.Length), bottom + (height - 0.04f) * 0.5f, PontoonBody));
-        output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width - 0.16f, 0.04f, pier.Length - 0.16f), top - 0.02f, PontoonTop));
+        output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width, height - 0.04f, pier.Length), bottom + (height - 0.04f) * 0.5f, p.PontoonBody));
+        output.Add(Box(pier, pier.Center, 0f, new Vector3(pier.Width - 0.16f, 0.04f, pier.Length - 0.16f), top - 0.02f, p.PontoonTop));
 
         foreach (var side in BerthSides(pier))
         {
             var fender = pier.Right * side * (pier.Width * 0.5f + 0.06f);
-            output.Add(Box(pier, pier.Center + fender, 0f, new Vector3(0.12f, 0.22f, pier.Length), top - 0.16f, Rubber));
+            output.Add(Box(pier, pier.Center + fender, 0f, new Vector3(0.12f, 0.22f, pier.Length), top - 0.16f, p.Rubber));
         }
 
         const float sectionLength = 12f;
         for (var along = sectionLength; along < pier.Length - 0.5f; along += sectionLength)
         {
-            output.Add(Box(pier, pier.Start + pier.Direction * along, 0f, new Vector3(pier.Width - 0.1f, 0.012f, 0.04f), top + 0.004f, JointLine));
+            output.Add(Box(pier, pier.Start + pier.Direction * along, 0f, new Vector3(pier.Width - 0.1f, 0.012f, 0.04f), top + 0.004f, p.JointLine));
         }
 
         var cleats = Math.Max(2, (int)MathF.Floor(pier.Length / pier.PilingSpacing) + 1);
@@ -526,7 +629,7 @@ internal static class SceneBuilder
             var along = 0.6f + (pier.Length - 1.2f) * i / (cleats - 1);
             foreach (var side in BerthSides(pier))
             {
-                output.Add(Cylinder(pier.Start + pier.Direction * along + pier.Right * side * (pier.Width * 0.5f - 0.3f), top, new Vector3(0.22f, 0.22f, 0.22f), Bollard));
+                output.Add(Cylinder(pier.Start + pier.Direction * along + pier.Right * side * (pier.Width * 0.5f - 0.3f), top, new Vector3(0.22f, 0.22f, 0.22f), p.Bollard));
             }
         }
 
@@ -537,7 +640,7 @@ internal static class SceneBuilder
     /// so each berth has exactly one within reach. A lone berth gets one at the middle of its frontage, and a stretch of pier without
     /// berths gets none.
     /// </summary>
-    private static void AddServicePedestals(List<RenderObject> output, Pier pier, IEnumerable<Berth> berths)
+    private static void AddServicePedestals(List<RenderObject> output, Pier pier, IEnumerable<Berth> berths, Palette p)
     {
         const float postHeight = 0.95f;
         var top = pier.DeckHeight;
@@ -557,11 +660,11 @@ internal static class SceneBuilder
                 var along = i + 1 < row.Count ? (row[i].Max + row[i + 1].Min) * 0.5f : (row[i].Min + row[i].Max) * 0.5f;
                 var at = pier.Start + pier.Direction * Math.Clamp(along, 0.25f, MathF.Max(0.25f, pier.Length - 0.25f)) + offset;
                 var power = (services & PierServices.Power) != 0;
-                output.Add(Box(pier, at, 0f, new Vector3(0.28f, postHeight, 0.28f), top + postHeight * 0.5f, Pedestal));
-                output.Add(Box(pier, at, 0f, new Vector3(0.34f, 0.1f, 0.34f), top + postHeight + 0.05f, power ? PowerTop : WaterTop));
+                output.Add(Box(pier, at, 0f, new Vector3(0.28f, postHeight, 0.28f), top + postHeight * 0.5f, p.Pedestal));
+                output.Add(Box(pier, at, 0f, new Vector3(0.34f, 0.1f, 0.34f), top + postHeight + 0.05f, power ? p.PowerTop : p.WaterTop));
                 if (services == PierServices.PowerAndWater)
                 {
-                    output.Add(Box(pier, at, 0f, new Vector3(0.3f, 0.14f, 0.3f), top + postHeight * 0.45f, WaterTop));
+                    output.Add(Box(pier, at, 0f, new Vector3(0.3f, 0.14f, 0.3f), top + postHeight * 0.45f, p.WaterTop));
                 }
             }
         }
@@ -594,7 +697,7 @@ internal static class SceneBuilder
         return row;
     }
 
-    private static void AddPontoonFloats(List<RenderObject> output, Pier pier, float underside)
+    private static void AddPontoonFloats(List<RenderObject> output, Pier pier, float underside, Palette p)
     {
         const float bottom = -0.35f;
         const float segment = 4f;
@@ -608,13 +711,13 @@ internal static class SceneBuilder
         for (var i = 0; i < count; i++)
         {
             var along = start + i * pitch + segment * 0.5f;
-            output.Add(Box(pier, pier.Start + pier.Direction * along, 0f, new Vector3(pier.Width * 0.85f, height, segment), bottom + height * 0.5f, PontoonFloat));
+            output.Add(Box(pier, pier.Start + pier.Direction * along, 0f, new Vector3(pier.Width * 0.85f, height, segment), bottom + height * 0.5f, p.PontoonFloat));
         }
     }
 
     // ---- Finger piers and dividers ----------------------------------------------------------------
 
-    private static void AddFingerPiers(List<RenderObject> output, Berth berth, Pier? pier, SceneState state)
+    private static void AddFingerPiers(List<RenderObject> output, Berth berth, Pier? pier, SceneState state, Palette p)
     {
         var deckHeight = pier?.DeckHeight ?? 0.6f;
         var pierType = pier?.Type ?? PierType.FloatingWooden;
@@ -632,10 +735,10 @@ internal static class SceneBuilder
             output.Add(new RenderObject(
                 MeshIds.UnitBox,
                 MarinaMath.CreatePlacement(new Vector3(FingerWidth, FingerThickness, fingerLength), berth.HeadingDegrees, MarinaMath.ToWorld(center, y)),
-                pierType == PierType.FloatingWooden ? WoodFinger : PontoonTop));
+                pierType == PierType.FloatingWooden ? p.WoodFinger : p.PontoonTop));
 
             var outerEnd = edge + berth.Forward * (berth.Length * 0.5f - fingerLength);
-            output.Add(pierType == PierType.FloatingWooden ? Piling(outerEnd, y + 1.2f, 0.32f) : SteelPile(outerEnd, y + 1.4f, 0.36f));
+            output.Add(pierType == PierType.FloatingWooden ? Piling(outerEnd, y + 1.2f, 0.32f) : SteelPile(outerEnd, y + 1.4f, 0.36f, p));
         }
     }
 
@@ -651,7 +754,7 @@ internal static class SceneBuilder
         return false;
     }
 
-    private static void AddDivider(List<RenderObject> output, Divider divider, Pier? pier)
+    private static void AddDivider(List<RenderObject> output, Divider divider, Pier? pier, Palette p)
     {
         var deckHeight = pier?.DeckHeight ?? 0.5f;
         switch (divider.Type)
@@ -663,7 +766,7 @@ internal static class SceneBuilder
                     for (var i = 0; i < count; i++)
                     {
                         var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
-                        output.Add(steel ? SteelPile(position, deckHeight + 1.4f, divider.Width) : Piling(position, deckHeight + 1.4f, divider.Width));
+                        output.Add(steel ? SteelPile(position, deckHeight + 1.4f, divider.Width, p) : Piling(position, deckHeight + 1.4f, divider.Width));
                     }
 
                     break;
@@ -685,7 +788,7 @@ internal static class SceneBuilder
                         output.Add(new RenderObject(
                             MeshIds.Buoy,
                             Matrix4x4.CreateScale(size) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(position, y)),
-                            isEnd ? BoomEnd : BoomFloat, 0.1f, RenderAnimation.FloatOnWater, MarinaMath.StableHash01(divider.Id) * MathF.Tau + i * 0.7f));
+                            isEnd ? p.BoomEnd : p.BoomFloat, 0.1f, RenderAnimation.FloatOnWater, MarinaMath.StableHash01(divider.Id) * MathF.Tau + i * 0.7f));
                     }
 
                     break;
@@ -695,7 +798,7 @@ internal static class SceneBuilder
                 {
                     // Mediterranean mooring: one pile at the outer end of the boundary, nothing in between.
                     var steel = pier is { Type: not PierType.FloatingWooden };
-                    output.Add(steel ? SteelPile(divider.End, deckHeight + 1.6f, divider.Width) : Piling(divider.End, deckHeight + 1.4f, divider.Width));
+                    output.Add(steel ? SteelPile(divider.End, deckHeight + 1.6f, divider.Width, p) : Piling(divider.End, deckHeight + 1.4f, divider.Width));
                     break;
                 }
 
@@ -706,8 +809,8 @@ internal static class SceneBuilder
                     output.Add(new RenderObject(
                         MeshIds.UnitBox,
                         MarinaMath.CreatePlacement(new Vector3(divider.Width, FingerThickness, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
-                        wooden ? WoodFinger : PontoonTop));
-                    output.Add(wooden ? Piling(divider.End, y + 1.2f, 0.34f) : SteelPile(divider.End, y + 1.4f, 0.38f));
+                        wooden ? p.WoodFinger : p.PontoonTop));
+                    output.Add(wooden ? Piling(divider.End, y + 1.2f, 0.34f) : SteelPile(divider.End, y + 1.4f, 0.38f, p));
                     break;
                 }
         }
@@ -798,9 +901,9 @@ internal static class SceneBuilder
         private static Vector4 Opaque(Vector3 color) => new(Vector3.Clamp(color, Vector3.Zero, Vector3.One), 1f);
     }
 
-    private static RenderObject SteelPile(Vector2 position, float topHeight, float diameter) =>
+    private static RenderObject SteelPile(Vector2 position, float topHeight, float diameter, Palette p) =>
         new(MeshIds.Cylinder,
             Matrix4x4.CreateScale(diameter, topHeight + PilingDepth, diameter) *
             Matrix4x4.CreateTranslation(MarinaMath.ToWorld(position, -PilingDepth)),
-            Steel);
+            p.Steel);
 }

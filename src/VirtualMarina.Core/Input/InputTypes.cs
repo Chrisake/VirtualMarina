@@ -63,7 +63,10 @@ public enum MarinaKey
     /// <summary>Reset the camera to the overview.</summary>
     Home = 8,
 
-    /// <summary>Close the popup; pressed again, clear the selection. In the designer: cancel the drawing, then return to navigation.</summary>
+    /// <summary>
+    /// Close the popup; pressed again, clear the selection. In the designer: cancel a drag or the drawing, then return to
+    /// navigation (unless <c>MarinaDesigner.EscapeReturnsToNavigate</c> is off).
+    /// </summary>
     Escape = 9,
 
     /// <summary>Designer: finish the drawing in progress.</summary>
@@ -72,11 +75,17 @@ public enum MarinaKey
     /// <summary>Designer: remove the last placed point.</summary>
     Backspace = 11,
 
-    /// <summary>Designer: with the erase tool, remove the element under the pointer.</summary>
+    /// <summary>Designer: with the erase tool, remove the element under the pointer; with the area tool, remove the berths selected.</summary>
     Delete = 12,
 
-    /// <summary>Designer: undo the last change (<c>MarinaDesigner.Undo</c>). Hosts map Ctrl+Z.</summary>
+    /// <summary>
+    /// Designer: undo the last change (<c>MarinaDesigner.Undo</c>), or take back the last point while a drawing is in progress.
+    /// Hosts map Ctrl+Z.
+    /// </summary>
     Undo = 13,
+
+    /// <summary>Designer: make the last undone change again (<c>MarinaDesigner.Redo</c>). Hosts map Ctrl+Shift+Z and Ctrl+Y.</summary>
+    Redo = 14,
 }
 
 /// <summary>What dragging with a mouse button does. Configure with <see cref="MarinaInputController.LeftDragAction"/> and related properties.</summary>

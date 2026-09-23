@@ -10,12 +10,16 @@ namespace VirtualMarina.Designer;
 /// </summary>
 /// <remarks>
 /// The automatic views are rebuilt whenever the layout changes, so this panel rebuilds its rows from
-/// <see cref="IMarinaVisualizer.CameraPresets"/> rather than holding on to them.
+/// <see cref="IMarinaVisualizer.CameraPresets"/> rather than holding on to them, and is synced on
+/// <see cref="IMarinaVisualizer.CameraPresetsChanged"/>. An automatic view is asked for by its
+/// <see cref="CameraPreset.Key"/>, which stays the same whatever the language or the pier's name.
 /// </remarks>
 internal sealed class CamerasPanel : SidePanel
 {
     private readonly MarinaVisualizer _marina;
     private readonly Action<string> _log;
+    private readonly Action _changed;
+    private readonly Func<string, string, bool> _confirm;
 
     private readonly TextBox _name = Theme.Field();
     private readonly TableLayoutPanel _automatic;
@@ -36,16 +40,17 @@ internal sealed class CamerasPanel : SidePanel
     /// <summary>True when a sync actually added or removed a row, so only then is a layout worth doing.</summary>
     private bool _rowsChanged;
 
-
-
-
     /// <summary>Creates the panel over a visualizer.</summary>
     /// <param name="marina">The marina whose views are being managed.</param>
     /// <param name="log">Where to note what happened, for the activity log.</param>
-    public CamerasPanel(MarinaVisualizer marina, Action<string> log)
+    /// <param name="changed">Called when a view is saved, removed or switched on or off: all of it is saved with the design.</param>
+    /// <param name="confirm">Asks a yes-or-no question (title, message); true for yes.</param>
+    public CamerasPanel(MarinaVisualizer marina, Action<string> log, Action changed, Func<string, string, bool> confirm)
     {
         _marina = marina;
         _log = log;
+        _changed = changed;
+        _confirm = confirm;
         BackColor = Theme.Background;
         Dock = DockStyle.Fill;
 
@@ -60,7 +65,7 @@ internal sealed class CamerasPanel : SidePanel
         };
         SetHeader(header);
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        header.Controls.Add(new Label { Text = Strings.TitleCameras, Font = new Font("Segoe UI Semibold", 13f), ForeColor = Theme.Text, AutoSize = true, Dock = DockStyle.Fill }, 0, 0);
+        header.Controls.Add(new Label { Text = Strings.TitleCameras, Font = Theme.PanelTitle, ForeColor = Theme.Text, AutoSize = true, Dock = DockStyle.Fill }, 0, 0);
         header.Controls.Add(new Label { Text = Strings.CamerasHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
 
         var saveCard = Theme.Card(Strings.CardCameraSave, out var saveTable);
@@ -196,11 +201,12 @@ internal sealed class CamerasPanel : SidePanel
             row.Tag = preset.Name;
 
             var name = preset.Name;
+            var key = preset.Key ?? name;
             if (automatic)
             {
                 var tick = Theme.Check(name);
                 tick.Checked = preset.IsEnabled;
-                tick.CheckedChanged += (_, _) => SetEnabled(name, tick.Checked);
+                tick.CheckedChanged += (_, _) => SetEnabled(key, name, tick.Checked);
                 Theme.Tips.SetToolTip(tick, preset.Description ?? name);
                 row.Controls.Add(tick, 0, 0);
                 _ticks[name] = tick;
@@ -213,13 +219,13 @@ internal sealed class CamerasPanel : SidePanel
             }
 
             var buttons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = Padding.Empty, WrapContents = false };
-            // The row asks for the view by name when it is pressed rather than carrying the one it was built from.
-            // Automatic views are worked out afresh from the layout every time it changes, so a row built for an
+            // The row asks for the view by key or name when it is pressed rather than carrying the one it was built
+            // from. Automatic views are worked out afresh from the layout every time it changes, so a row built for an
             // earlier layout that still holds its own copy sends the camera to where the marina used to be. Asking
-            // for it by name also keeps a saved view named after an automatic one distinct from it: a row in the
-            // automatic list asks for the automatic one, a row in the saved list gets the saved one first.
+            // this way also keeps a saved view named after an automatic one distinct from it: a row in the automatic
+            // list asks for the automatic one by its key, a row in the saved list gets the saved one first.
             var goTo = automatic
-                ? new EventHandler((_, _) => _marina.ApplyBuiltInCameraPreset(name))
+                ? new EventHandler((_, _) => _marina.ApplyBuiltInCameraPreset(key))
                 : new EventHandler((_, _) => _marina.ApplyCameraPreset(name));
             buttons.Controls.Add(Theme.Icon(Strings.CameraGoToGlyph, Strings.CameraGoToTip, goTo));
             if (!automatic)
@@ -268,32 +274,37 @@ internal sealed class CamerasPanel : SidePanel
         }
     }
 
-    private void SetEnabled(string name, bool enabled)
+    private void SetEnabled(string key, string name, bool enabled)
     {
         if (_updating) return;
-        _marina.SetCameraPresetEnabled(name, enabled);
+        if (!_marina.SetCameraPresetEnabled(key, enabled)) return;
+        _changed();
         _log(Strings.Format(enabled ? Strings.LogCameraEnabled : Strings.LogCameraDisabled, name));
     }
 
-    /// <summary>Saves where the camera is now, under the typed name or a made-up one.</summary>
+    /// <summary>
+    /// Saves where the camera is now, under the typed name or the first free "View N". A typed name some saved view
+    /// already has replaces that view, so it is asked about first.
+    /// </summary>
     private void Save()
     {
         var wanted = _name.Text.Trim();
-        if (wanted.Length == 0)
-        {
-            var taken = _marina.CameraPresets.Count(preset => !preset.IsBuiltIn);
-            wanted = Strings.Format(Strings.CameraDefaultName, taken + 1);
-        }
+        if (wanted.Length == 0) wanted = CameraNames.FirstFree(_marina);
+        else if (CameraNames.IsSaved(_marina, wanted) && !_confirm(Strings.CameraOverwriteTitle, Strings.Format(Strings.CameraOverwrite, wanted))) return;
 
         _marina.SaveCameraPreset(wanted);
         _name.Text = string.Empty;
+        _changed();
         _log(Strings.Format(Strings.LogCameraSaved, wanted));
         Sync();
     }
 
     private void Delete(string name)
     {
+        // A saved view is not part of the undo history, so removing one by mistake would lose it for good.
+        if (!_confirm(Strings.CameraDeleteConfirmTitle, Strings.Format(Strings.CameraDeleteConfirm, name))) return;
         if (!_marina.RemoveCameraPreset(name)) return;
+        _changed();
         _log(Strings.Format(Strings.LogCameraDeleted, name));
         Sync();
     }

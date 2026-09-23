@@ -1,21 +1,23 @@
 ﻿# Designer: drawing a marina
 
-`MarinaVisualizer.Designer` (a `MarinaDesigner`) lets users build a layout directly in the 3D view. They draw land areas as polygons, draw piers, add berths along piers, put boats ashore on land berths, plant trees and erase elements, and step back through it all with undo. A top-down aerial image of the real marina can be shown underneath and scaled to real size, so the drawing matches reality.
+`MarinaVisualizer.Designer` (a `MarinaDesigner`) lets users build a layout directly in the 3D view. They draw land areas as polygons, draw piers, add berths along piers, put boats ashore on land berths, plant trees and erase elements, and step back and forth through it all with undo and redo. A top-down aerial image of the real marina can be shown underneath and scaled to real size, so the drawing matches reality.
 
 Everything the designer creates goes through the normal API (`AddLandArea`, `AddPier`, `AddBerths`, `AddDividers`, `RemoveBerth`, ...), so `LayoutChanged` is raised as usual, on top of the designer's own events.
 
 ## Ready-made panels
 
-Both hosts include a tool panel. It has the design mode switch, tool buttons, the undo button, land / pier / berth settings (including the tree coverage slider, berth spacing, separators and pedestals) and the reference image controls.
+Both hosts include a tool panel. It has the design mode switch, a button for every tool (Navigate, Select, Coast, land, pier, berths, land berths, trees, Pedestals, Rename, erase, and the reference image's move and scale-line tools), Undo and Redo buttons, land / pier / berth settings (including the tree coverage slider, berth spacing, separators and pedestals) and the reference image controls. Undo there works like Ctrl+Z in the view (see [Undo and redo](#undo-and-redo)).
 
 **WinForms**
 
 ```csharp
-var panel = new MarinaDesignerPanel { Dock = DockStyle.Right, Width = 330, Marina = marinaView.Marina };
+var panel = new MarinaDesignerPanel { Dock = DockStyle.Right, Width = 330, View = marinaView };
 Controls.Add(panel);
 ```
 
-"Load image…" decodes PNG, JPEG, BMP, GIF or TIFF with GDI+ (`ReferenceImageLoader`). `MarinaViewControl.LoadReferenceImage(path)` does the same from code.
+`View` can be set in the Windows Forms designer as well as in code, and the panel follows it when the view is given another marina; setting `Marina` instead connects the panel to a marina without a view. The panel is laid out for 96 DPI and scales with the monitor it is on.
+
+"Load image…" decodes PNG, JPEG, BMP, GIF or TIFF with GDI+ (`ReferenceImageLoader`), recognising the kind of image from its bytes rather than the file extension. A photo with an EXIF orientation is turned the right way up, and one wider or taller than `ReferenceImageLoader.MaxDimension` (8192 px) is scaled down to stay within common GPU texture limits; either way the design stores the corrected copy, not the original file. `MarinaViewControl.LoadReferenceImage(path)` does the same from code, and a picture that arrives undecoded from a marina file is decoded by the view automatically.
 
 **Blazor WebAssembly**
 
@@ -24,7 +26,15 @@ Controls.Add(panel);
 <MarinaDesignerPanel Marina="_marina" View="_view" />
 ```
 
-The image file comes from an `<InputFile>` and the browser decodes it. `MarinaView.LoadReferenceImageAsync(bytes, contentType)` does the same from code. The panel's classes start with `vm-designer` so you can restyle them.
+The image file (PNG, JPEG or WebP, at most `MaxImageFileSize`, 25 MB by default) comes from an `<InputFile>` and the browser decodes it. `MarinaView.LoadReferenceImageAsync(bytes, contentType)` does the same from code.
+
+The panel's look is in `MarinaDesignerPanel.razor.css`, a scoped stylesheet that reaches the page through the application's CSS bundle, so the host page must link it:
+
+```html
+<link rel="stylesheet" href="MyApp.styles.css" />   <!-- {AssemblyName}.styles.css -->
+```
+
+Every rule there is a single class of weight and the classes start with `vm-designer`, so any rule of the host's own that names one of those classes wins. `CssClass` adds classes to the outer element.
 
 Both test hosts have a **Designer** tab with the panel, "New empty marina", "Load sample marina" and "Export objects".
 
@@ -36,7 +46,7 @@ designer.IsActive = true;               // closes the popup, clears the selectio
 designer.Tool = DesignTool.DrawLandArea;
 ```
 
-While `IsActive` is true, clicks go to the designer instead of selecting berths. Left-drag pans, right-drag orbits and the wheel zooms, the same as outside design mode. `ToolHint` holds a one-line instruction for the current state, for a status bar.
+While `IsActive` is true, clicks go to the designer instead of selecting berths. Left-drag pans, right-drag orbits, the wheel zooms and the keyboard moves the camera, the same as outside design mode. `ToolHint` holds a one-line instruction for the current state, for a status bar, in the current UI language ([localization](15-localization.md)).
 
 | `DesignTool` | Mouse | Keys |
 |---|---|---|
@@ -46,23 +56,29 @@ While `IsActive` is true, clicks go to the designer instead of selecting berths.
 | `AddBerths` | Click beside a pier where the row starts, then where it ends. Clicking the same spot twice adds one berth | Esc cancels |
 | `AddLandBerths` | Click a land area where the boat should stand, then click where its bow should point (Shift snaps to 15°; the same spot twice uses `LandBerthHeading`) | Esc cancels |
 | `PlantTrees` | Click a lawn to scatter trees on it, replacing the ones it has. Ctrl+click or right-click removes them | |
-| `Erase` | Click a berth, pier or land area to remove it (piers and land areas take their berths with them, berths take their own dividers) | Delete removes the element under the pointer |
+| `Erase` | Click a berth, pier or land area to remove it (piers and land areas take their berths with them, berths take their own dividers). Alt+click on a berth clears every berth off its pier, leaving the pier | Delete removes the element under the pointer |
 | `Rename` | Click a berth or a pier to give it another name; the designer asks the host for it through `ElementRenaming` | |
-| `SelectArea` | Drag a box over the water to select the berths inside it; Shift or Ctrl adds to the selection. The box follows the camera, so it selects what it looked like it covered | |
+| `EditServices` | Click a berth to give it the pedestals in `BerthServices`; Alt or Ctrl changes every berth down that side of the pier. The berths about to change are highlighted | |
+| `SelectArea` | Drag a box over the water to select the berths inside it; Shift or Ctrl adds to the selection. The box follows the camera, so it selects what it looked like it covered | Delete removes the selected berths (`EraseSelectedBerths`) |
 | `DrawShoreline` | Click along the coast of the mainland (two points make a straight one), then click the side that is land | Enter settles the line, Backspace takes it back to the points, Esc cancels |
 | `MoveReferenceImage` | Drag the image with the left button | |
 | `MeasureScale` | Click both ends of the image's scale bar | |
 
-Ctrl+Z undoes the last change, with any tool (see [Undo](#undo)). When there's nothing to cancel, Esc switches back to `Navigate`. Corners and pier ends snap to existing land corners, pier ends and land edges within `SnapDistancePixels` (default 12). Holding Alt turns snapping off.
+Ctrl+Z undoes the last change and Ctrl+Shift+Z or Ctrl+Y makes it again, with any tool (see [Undo and redo](#undo-and-redo)); while a drawing is in progress, Ctrl+Z takes back its last point instead. When there's nothing to cancel, Esc puts the tool down and switches back to `Navigate` — unless `EscapeReturnsToNavigate` is false, in which case that Esc is left to the host (to close a panel or leave design mode on the first press); Esc still abandons a drag or a drawing first either way.
+
+**Snapping.** Land corners and pier ends snap, within `SnapDistancePixels` (default 12) on screen, to existing land corners, pier ends, points of the coast, berth corners and the drawing's own points; failing those, to the nearest point of a land edge or the coast. Each candidate is judged where it is actually drawn — a quay's corner at the quay's height — not where it would be on the water. Holding Alt turns snapping off. The point under the pointer (`PointerPosition`) is picked on the plane the drawing is shown on — the new land's height for an outline, the deck for a pier, the land for a berth ashore — so a drawing seen at an angle stays under the pointer rather than drifting to where the ray meets the water.
+
+**Keys and the host.** The view gives the designer only unmodified keys (Esc, Enter, Backspace, Delete) plus Ctrl+Z and Ctrl+Shift+Z/Ctrl+Y, and only claims one when it would do something right now; everything else, and any accelerator the host has for the same keys, goes to the host first ([hosting](10-hosting-and-custom-views.md)). A host with its own Undo and Redo commands therefore calls `TryUndo()` and `TryRedo()` itself: they behave exactly like the keys in the view (taking back the last point while drawing, and reporting a refused step through `ActionFailed` rather than throwing).
 
 **Modifiers show at once.** What Alt and Shift are about to do appears in the preview the moment the key goes down
 — the eraser sweeping a whole row, a point that has stopped snapping — and goes back when it is released. Modifiers
 otherwise arrive only with a pointer event, so a host that can see keys go down and up calls
-`marina.Input.ModifiersChanged(modifiers)`; `MarinaViewControl` does this already.
+`marina.Input.ModifiersChanged(modifiers)`; `MarinaViewControl` does this already. The Blazor `<MarinaView>` does not,
+so there the preview catches up with the next pointer move.
 
 **Piers square up.** A pier being drawn takes a direction at right angles to what is already there: the piers in the marina, and the land edges within 40 m of its shore end — the quay it springs from. A direction within 6° of square is corrected; anything further is left as drawn, so a deliberately angled pier still works. The preview marks a squared-up direction with a short line back along the pier. Alt draws exactly what the pointer says, and Shift asks for 15° steps instead.
 
-While drawing, the view shows a preview on top of everything: outline and rubber band, the ghost pier with its length, the berths a click would add, and the element the eraser would remove. Invalid drawings (a crossing outline, a closed pier side) are shown in red.
+While drawing, the view shows a preview on top of everything: outline and rubber band, the ghost pier with its length, the berths a click would add, and the element the eraser would remove. Invalid drawings (a crossing outline, a closed pier side) are shown in red. The measurements written beside the pointer ("12.5 M", "4 BERTHS", "LAND THIS SIDE") come from the core resources like every other text, so they are translated with it; the overlay's stroke font has capitals only.
 
 ### Settings
 
@@ -84,7 +100,10 @@ While drawing, the view shows a preview on top of everything: outline and rubber
 | `BerthNaming` (a `BerthNamingScheme`) | `AddBerths`, `AddLandBerths` | `A-L01`, `A-R01`, ... |
 | `PierNamePattern` | `DrawPier` | `Pier {pier}` |
 | `SnapDistancePixels` | drawing tools | 12 |
-| `FogFactor` (fog multiplier while designing) | rendering | 0.15 |
+| `Scenery` (a `HinterlandScenery`) | `DrawShoreline` | `Countryside` |
+| `FogFactor` (fog multiplier while designing, 0–1; 1 keeps the normal fog) | rendering | 0.15 |
+
+Numeric settings are checked against the ranges in `DesignerDefaults` (for example `PierWidth` 0.5–30 m, `BerthWidth` 1–50 m, `BerthLength` 1–150 m, `SnapDistancePixels` 0–100); a value outside its range throws `ArgumentOutOfRangeException`. `DesignerSettings.FromDesigner(designer)` and `settings.ApplyTo(designer)` copy the whole set, which is how a marina file keeps them.
 
 ### How berths are placed
 
@@ -240,7 +259,7 @@ The mainland is drawn **beneath** the land areas placed by hand, so a quay trace
 the two read as one piece of ground. There is only ever one: drawing another replaces it, and `DeleteShoreline()` (the
 "Remove the mainland" button) takes it away. Ctrl+Z undoes any of that.
 
-`Scenery` picks what covers the land — `Countryside`, `Fields`, `Town` or `None` — scattered in a band along the coast
+`designer.Scenery` picks what covers the land — `Countryside`, `Fields`, `Town` or `None` — scattered in a band along the coast
 and thinning inland. It is generated from a seed rather than stored, so it costs nothing in the file and stays put
 between sessions. From code: `CreateShoreline(line, landOnLeft)`, or `marina.SetShoreline(...)` for full control of
 its height, surface and scenery.
@@ -286,24 +305,51 @@ Slots ashore have a numbering of their own: `LandStartNumber`, `LandIncrement` a
 
 `PierNamePattern` does the same, more simply, for a pier's display name: `{pier}` stands for its generated id, so `"Pontoon {pier}"` gives "Pontoon A". Both settings are part of `DesignerSettings`, so a marina file reopens with the naming it was saved with.
 
-## Undo
+## Undo and redo
 
-Every change the designer makes is recorded, and `Undo()` reverts the last one — the panels have an **Undo** button and Ctrl+Z works in the view.
+Every change the designer makes is recorded, and `Undo()` reverts the last one; `Redo()` makes an undone change again, exactly as it was made. Both throw when a step can no longer be done (`MarinaLayoutException`) or an action from `BeginAction` is still open (`InvalidOperationException`). `TryUndo()` and `TryRedo()` are what the keys, the panels' **Undo** and **Redo** buttons and the Designer apps' commands use: while a drawing is in progress `TryUndo()` takes back its last point instead of undoing, and a step that cannot be done raises `ActionFailed` and returns false instead of throwing. In the view Ctrl+Z undoes, and Ctrl+Shift+Z or Ctrl+Y (Cmd+Shift+Z on a Mac browser) redoes.
 
 ```csharp
 if (designer.CanUndo) Console.WriteLine(designer.UndoDescription);   // "Add 4 berths"
 designer.Undo();
+if (designer.CanRedo) designer.Redo();
 ```
 
 | Member | Meaning |
 |---|---|
 | `Undo()` | Reverts the last change; false when there is nothing to undo |
-| `CanUndo`, `UndoCount`, `UndoDescription` | State for a toolbar button |
-| `ClearHistory()` | Forgets everything recorded |
+| `Redo()` | Makes the last undone change again; false when there is nothing to redo. Any new change empties the redo list |
+| `TryUndo()`, `TryRedo()` | What Ctrl+Z and Ctrl+Y do in the view, for a host's own Undo and Redo commands: `TryUndo()` takes back the last point while drawing, and either one reports a step that cannot be done through `ActionFailed` instead of throwing |
+| `CanUndo`, `UndoCount`, `UndoDescription` | State for an Undo button or menu item |
+| `CanRedo`, `RedoCount`, `RedoDescription` | The same for Redo |
+| `BeginAction(description)` | Groups several changes into one step (see below) |
+| `ClearHistory()` | Forgets everything recorded, undone steps included |
 | `MaxUndoSteps` | How many steps are kept (50; older ones are dropped) |
-| `ActionUndone` | Raised after an undo, with the `Description` and `RemainingSteps` |
+| `ActionUndone`, `ActionRedone` | Raised after an undo or a redo, with the `Description` and `RemainingSteps` |
+| `ActionFailed` | Something asked for in the view (a click, Enter, Ctrl+Z) could not be done; nothing was changed |
 
-A drawn land area, pier, berth row or land berth is removed again; erased elements come back with their dividers; planted or removed trees and switched-on pedestals are restored. Only the designer's own changes are recorded — anything the host changed through the normal API in between stays as it is — and loading or clearing a layout empties the history. A berth restored by undo is no longer part of a multi-berth.
+A drawn land area, pier, berth row or land berth is removed again; erased elements come back with their dividers; planted or removed trees, names and switched-on pedestals are put back. Only what the designer changed is put back — the trees it planted, not the rest of the lawn — so anything the host changed through the normal API in between stays as it is. Loading or clearing a layout empties the history. A berth restored by undo is no longer part of a multi-berth.
+
+**When the host got there first.** A change the host has since built on or changed again itself — a berth added to the pier the undo would take away, trees replaced since — is not overwritten. The undo (or redo) is refused as a whole and the step stays where it was. Called from code, `Undo()` and `Redo()` throw `MarinaLayoutException` for this; from the keyboard in the view there is nobody to throw to, so the designer raises `ActionFailed` instead, with a localized message and the exception:
+
+```csharp
+designer.ActionFailed += (s, e) => statusBar.Text = e.Exception.Message;   // also: e.Description
+```
+
+`ActionFailed` is raised for every refusal that starts in the view: a name typed for a berth that is already taken, an outline that is not valid, an undo blocked by a later change.
+
+**One step from several changes.** `BeginAction` opens a scope that everything the designer changes goes into, until it is disposed. Call `Complete()` when the whole change is made; disposing the scope without that takes every change made inside it back, so an exception half way leaves nothing behind:
+
+```csharp
+using (var action = designer.BeginAction("Rebuild pier A"))
+{
+    designer.EraseBerthsOfPier("A");
+    designer.CreateBerths("A", PierSide.Left, 0f, 60f);
+    action.Complete();
+}   // one Undo takes both back
+```
+
+Scopes nest — an inner one adds its changes to the outer one, and rolling back the inner one only takes back its own — and must be closed in the reverse order they were opened, as `using` does. `StateChanged` is raised once, when the outermost scope closes. `Undo()` and `Redo()` throw `InvalidOperationException` while a scope is open.
 
 ## Reference image
 
@@ -311,7 +357,7 @@ Load a top-down picture of the marina, such as a Google Maps satellite screensho
 
 ```csharp
 designer.SetReferenceImage(new ReferenceImage(width, height, rgbaBytes));   // decoded pixels, top row first
-designer.SetReferenceImage(ReferenceImage.FromEncoded(pngBytes, width, height, "image/png")); // browser decodes (WebGL only)
+designer.SetReferenceImage(ReferenceImage.FromEncoded(pngBytes, width, height, "image/png")); // file bytes, decoded by the view
 designer.FocusReferenceImage();
 ```
 
@@ -326,6 +372,11 @@ The image is scaled about the line's first end, so the bar ends up exactly that 
 ```csharp
 designer.ScaleLineDrawn += (s, e) => e.KnownLengthMeters = PromptForLength(e.MeasuredLength);
 ```
+
+An image made with `FromEncoded` carries only the file: the browser decodes it for WebGL, and `MarinaViewControl` decodes it
+with `ReferenceImageLoader` before handing it to OpenGL, so an image loaded from a marina file shows on either. An image
+with `EncodedData` (`CanBeSaved`) is written into the marina file when the design is saved; one made from raw pixels alone
+is not.
 
 If the pixel size is already known, set `ReferenceImageMetersPerPixel` directly or pass `metersPerPixel` to `SetReferenceImage`. Move the image with `MoveReferenceImage` or `ReferenceImageCenter`.
 
@@ -346,12 +397,14 @@ The camera limits and the water surface grow to cover the image.
 | `ActiveChanged` | `IsActive` changed | |
 | `ToolChanged` | `Tool` changed | `Previous`, `Current` |
 | `DraftChanged` | A point was placed or removed, or a drawing was finished or abandoned | `Tool`, `Change` (`PointAdded`, `PointRemoved`, `Completed`, `Canceled`), `Points` |
-| `ElementCreating` | A drawing is complete and about to be added | `LandArea`, `Pier`, `Berths`, `Dividers` (all settable), `Cancel` |
-| `ElementCreated` | The element was added | `LandArea`, `Pier`, `Berths`, `Dividers` |
-| `ElementErased` | Something was removed with the eraser (or `Erase(element)`) | `Element`, `RemovedBerths`, `RemovedDividers` |
+| `ElementCreating` | A drawing is complete and about to be added | `Tool`, `LandArea`, `Pier`, `Berths`, `Dividers`, `Shoreline` (all settable), `Cancel` |
+| `ElementCreated` | The element was added | `Tool`, `LandArea`, `Pier`, `Berths`, `Dividers`, `Shoreline` |
+| `ElementErased` | Something was removed with the eraser (or `Erase`, `EraseBerthsOfPier`, `EraseSelectedBerths`); once per berth for a selection | `Element`, `RemovedBerths`, `RemovedDividers` |
 | `ElementRenaming` | A berth or pier was clicked with `DesignTool.Rename` | `Scope`, `Berth`, `Pier`, `CurrentName`, `BerthPattern`, settable `NewName`, `NewPierId`, `NewBerthPattern`, `Cancel` |
 | `TreesPlanted` | Trees were scattered or removed | `LandArea`, `PreviousCount` |
 | `ActionUndone` | `Undo()` reverted a change | `Description`, `RemainingSteps` |
+| `ActionRedone` | `Redo()` made an undone change again | `Description`, `RemainingSteps` (steps left to redo) |
+| `ActionFailed` | Something asked for in the view could not be done; nothing changed | `Description`, `Exception` |
 | `ScaleLineDrawn` | A scale line was drawn | `Start`, `End`, `MeasuredLength`, settable `KnownLengthMeters` |
 | `ReferenceImageChanged` | The image was set, cleared, moved, scaled or restyled | `Change`, `Image`, `Center`, `MetersPerPixel` |
 | `StateChanged` | Any of the above, or a setting changed (for refreshing a UI) | |
@@ -378,11 +431,18 @@ designer.CreateBerths(pier!.Id, PierSide.Right, fromAlong: 2, toAlong: 50);
 designer.CreateLandBerth(lawn!.Id, new Vector2(-20, -30), headingDegrees: 90);
 designer.PlantTrees(lawn.Id, treesPer1000SquareMeters: 12);
 designer.RemoveTrees(lawn.Id);
+designer.SetBerthServices(berthId, wholeSide: true);   // pedestals, as the EditServices tool does
+designer.EraseBerthsOfPier(pier.Id);                   // the berths, not the pier
+designer.EraseSelectedBerths();                        // whatever marina.SelectedBerths holds
 designer.Erase(pier);
 designer.Undo();
+designer.Redo();
 ```
 
-`CompleteDraft()`, `CancelDraft()` and `RemoveLastPoint()` act on the drawing in progress.
+`CompleteDraft()`, `CancelDraft()` and `RemoveLastPoint()` act on the drawing in progress. The creating methods throw
+where the tools in the view would raise `ActionFailed` — `MarinaLayoutException` for an outline whose edges cross,
+`KeyNotFoundException` for an unknown pier or land area, and so on, as documented on each one — and return null when an
+`ElementCreating` handler cancels.
 
 ## Exporting the marina
 
@@ -395,7 +455,7 @@ MarinaDocument.FromVisualizer(marina, generator: "My Designer 1.0").Save(path);
 MarinaDocument.Load(path).ApplyTo(marina);
 ```
 
-`ExportObjects()` is the alternative for an ERP that keeps its own tables: the whole marina as a flat array of its immutable records, in dependency order: land areas, piers, dividers, berths, then multi-berths.
+`ExportObjects()` is the alternative for an ERP that keeps its own tables: the whole marina as a flat array of its immutable records, in dependency order: the shoreline (when there is one), the passing-traffic settings (`MarineTraffic`, even when switched off), land areas, piers, dividers, berths, then multi-berths. Everything in the layout but its name is there; the style, camera views and reference image are not (a [marina file](13-marina-file-format.md) holds those).
 
 ```csharp
 foreach (var element in marina.ExportObjects())
@@ -425,3 +485,29 @@ The designer uses these, and they work without it too:
 | `UpdateLandArea(land)` | Replaces it by id and rebuilds only its mesh (`LandAreaUpdated`) |
 | `RemoveLandArea(id, removeBerths = true)` | Removes it and its land berths (`LandAreaRemoved`) |
 | `UpdateLandArea(land with { Trees = ... })` | Replaces its trees (`LandArea.GenerateTrees` scatters them) |
+
+## How the designer is put together
+
+For contributors: `MarinaDesigner` is one public class split across partial files in `src/VirtualMarina.Core/Design`,
+each holding one concern, with the work itself in internal helpers beside them.
+
+| File | What it holds |
+|---|---|
+| `MarinaDesigner.cs` | Events, `IsActive`, `Tool`, the drawing in progress, and the tool handlers table |
+| `MarinaDesigner.Settings.cs` | The settings the tools draw with; ranges and defaults from `DesignerDefaults` |
+| `MarinaDesigner.Elements.cs` | Creating, changing and erasing elements, from the tools or from code |
+| `MarinaDesigner.Naming.cs` | Renaming berths and piers, naming patterns (with `DesignNaming`, `BerthNamingScheme`) |
+| `MarinaDesigner.History.cs` | Undo, redo and `BeginAction` (with `DesignHistory`, `DesignActionScope` and the `IDesignCommand`s in `DesignCommands.cs`) |
+| `MarinaDesigner.Input.cs` | Pointer and key input forwarded by `MarinaInputController`, snapping, area selection |
+| `MarinaDesigner.Image.cs` | The reference image (state in `ReferenceImageController`) and the top-down views |
+| `MarinaDesigner.Rendering.cs` | What the designer adds to the scene: the image and the previews (`DesignOverlay`) |
+
+Each `DesignTool` has a handler in `Design/Tools` — `OutlineTools.cs` (land, pier, coast, scale line),
+`BerthTools.cs` (berths and land berths) and `PickTools.cs` (navigate, erase, rename, pedestals, trees, area selection,
+moving the image) — derived from `DesignToolHandler`. A handler keeps everything its tool needs to remember, says which
+plane the pointer is picked on (`PointerPlane`), whether it snaps and which keys it wants, and draws its own preview;
+the designer hands every input to the handler of the tool in hand and forgets its state when the tool is put down.
+`DesignPicker` finds what is under the pointer and does the snapping, and `BerthPlanner` works out where a row of
+berths and its separators go. A new tool is a new `DesignTool` value, a handler, and its entry in the handlers table.
+Every change a tool makes is recorded as an `IDesignCommand` that can undo and redo itself, which is what keeps redo
+exact.

@@ -3,7 +3,11 @@ using OpenTK.Graphics.OpenGL4;
 
 namespace VirtualMarina.Rendering.OpenGL;
 
-/// <summary>Compiled and linked GLSL program with cached uniform locations.</summary>
+/// <summary>Compiled and linked GLSL program with every uniform location looked up once, at link time.</summary>
+/// <remarks>
+/// Look a location up with <see cref="Location"/> when setting up, keep the int, and set values through it: nothing is
+/// looked up by name while drawing.
+/// </remarks>
 internal sealed class GlShaderProgram : IDisposable
 {
     private readonly Dictionary<string, int> _locations = new(StringComparer.Ordinal);
@@ -13,7 +17,16 @@ internal sealed class GlShaderProgram : IDisposable
     public GlShaderProgram(string name, string vertexSource, string fragmentSource)
     {
         var vertex = Compile(name, ShaderType.VertexShader, vertexSource);
-        var fragment = Compile(name, ShaderType.FragmentShader, fragmentSource);
+        int fragment;
+        try
+        {
+            fragment = Compile(name, ShaderType.FragmentShader, fragmentSource);
+        }
+        catch (InvalidOperationException)
+        {
+            GL.DeleteShader(vertex);
+            throw;
+        }
 
         Handle = GL.CreateProgram();
         GL.AttachShader(Handle, vertex);
@@ -31,39 +44,44 @@ internal sealed class GlShaderProgram : IDisposable
             GL.DeleteProgram(Handle);
             throw new InvalidOperationException($"Linking shader program '{name}' failed: {log}");
         }
+
+        GL.GetProgram(Handle, GetProgramParameterName.ActiveUniforms, out var count);
+        for (var i = 0; i < count; i++)
+        {
+            var uniform = GL.GetActiveUniform(Handle, i, out _, out _);
+            _locations[uniform] = GL.GetUniformLocation(Handle, uniform);
+        }
     }
 
     public int Handle { get; }
 
     public void Use() => GL.UseProgram(Handle);
 
-    public void Set(string name, float value)
+    /// <summary>The location of an active uniform, or -1 when the program has none by that name (setting -1 does nothing).</summary>
+    public int Location(string name) => _locations.TryGetValue(name, out var location) ? location : -1;
+
+    public static void Set(int location, float value)
     {
-        var location = Location(name);
         if (location >= 0) GL.Uniform1(location, value);
     }
 
-    public void Set(string name, int value)
+    public static void Set(int location, int value)
     {
-        var location = Location(name);
         if (location >= 0) GL.Uniform1(location, value);
     }
 
-    public void Set(string name, Vector2 value)
+    public static void Set(int location, Vector2 value)
     {
-        var location = Location(name);
         if (location >= 0) GL.Uniform2(location, value.X, value.Y);
     }
 
-    public void Set(string name, Vector3 value)
+    public static void Set(int location, Vector3 value)
     {
-        var location = Location(name);
         if (location >= 0) GL.Uniform3(location, value.X, value.Y, value.Z);
     }
 
-    public void Set(string name, Vector4 value)
+    public static void Set(int location, Vector4 value)
     {
-        var location = Location(name);
         if (location >= 0) GL.Uniform4(location, value.X, value.Y, value.Z, value.W);
     }
 
@@ -71,9 +89,8 @@ internal sealed class GlShaderProgram : IDisposable
     /// Uploads a System.Numerics matrix. Row-major M11..M44 order read as column-major is exactly the
     /// transpose GLSL's column-vector convention needs, so no transpose flag is required.
     /// </summary>
-    public void Set(string name, in Matrix4x4 m)
+    public void Set(int location, in Matrix4x4 m)
     {
-        var location = Location(name);
         if (location < 0) return;
 
         _matrix[0] = m.M11; _matrix[1] = m.M12; _matrix[2] = m.M13; _matrix[3] = m.M14;
@@ -88,17 +105,6 @@ internal sealed class GlShaderProgram : IDisposable
         if (_disposed) return;
         _disposed = true;
         GL.DeleteProgram(Handle);
-    }
-
-    private int Location(string name)
-    {
-        if (!_locations.TryGetValue(name, out var location))
-        {
-            location = GL.GetUniformLocation(Handle, name);
-            _locations[name] = location;
-        }
-
-        return location;
     }
 
     private static int Compile(string programName, ShaderType type, string source)

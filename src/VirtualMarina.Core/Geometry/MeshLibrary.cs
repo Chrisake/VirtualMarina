@@ -49,17 +49,39 @@ public static class MeshIds
     /// <summary>First id of the per-land-area tree meshes (see <see cref="ForLandTrees"/>).</summary>
     public const int LandTreesBase = 20_000;
 
+    /// <summary>How many land areas can have a mesh slot at the same time: the slots between <see cref="LandBase"/> and <see cref="LandTreesBase"/>.</summary>
+    public const int MaxLandSlots = LandTreesBase - LandBase;
+
     private const int BoatBase = 100;
+
+    /// <summary>The shared tree trunk: a tapering 1 m cylinder, scaled per tree.</summary>
+    internal const int TreeTrunk = 20;
+
+    /// <summary>How many crowns each <see cref="TreeShape"/> has, so a forest is not one tree repeated.</summary>
+    internal const int TreeVariants = 4;
+
+    /// <summary>How many rock meshes breakwaters pick from.</summary>
+    internal const int RockVariants = 6;
+
+    private const int TreeCrownBase = 24;
+    private const int RockBase = 60;
+
+    /// <summary>A crown of the given shape, one of <see cref="TreeVariants"/>.</summary>
+    internal static int TreeCrown(TreeShape shape, int variant) => TreeCrownBase + ((int)shape * TreeVariants) + variant;
+
+    /// <summary>One of the <see cref="RockVariants"/> shared rocks.</summary>
+    internal static int Rock(int variant) => RockBase + variant;
 
     /// <summary>
     /// Mesh id of a land area's mesh slot (world-space geometry built by <see cref="LandMeshFactory"/>). Loading a layout assigns
-    /// slots 0, 1, ... in layout order; land areas added later get the next free slot.
+    /// slots 0, 1, ... in layout order; a land area added later gets the lowest slot no other land area holds, so the ids
+    /// never run into <see cref="LandTreesBase"/> however many land areas come and go (at most <see cref="MaxLandSlots"/> at once).
     /// </summary>
     public static int ForLand(int slot) => LandBase + slot;
 
     /// <summary>
-    /// Mesh id of the trees standing on a land area. They are a mesh of their own rather than part of the ground, so
-    /// that they can be squashed onto it to cast a shadow.
+    /// Mesh id reserved for the trees of a land area baked into one mesh (<see cref="LandMeshFactory.CreateTrees"/>). A
+    /// visualizer does not register it: it draws trees as instances of a few shared meshes instead.
     /// </summary>
     /// <param name="slot">The same slot the land area's ground uses (see <see cref="ForLand"/>).</param>
     public static int ForLandTrees(int slot) => LandTreesBase + slot;
@@ -72,6 +94,10 @@ public static class MeshIds
 /// The set of meshes a scene can reference. Renderers upload each mesh once, keyed by id,
 /// and pick up meshes added later on the next frame.
 /// </summary>
+/// <remarks>
+/// A renderer tells a changed mesh by its object: to change one, register a new <see cref="MeshData"/> under the id rather
+/// than editing the arrays of the one already registered, which would never be uploaded again.
+/// </remarks>
 public sealed class MeshLibrary
 {
     private readonly Dictionary<int, MeshData> _meshes = [];
@@ -97,6 +123,7 @@ public sealed class MeshLibrary
         library.Register(MarinaMeshFactory.CreateBuoy(MeshIds.Buoy));
         library.Register(MarinaMeshFactory.CreateCylinder(MeshIds.Cylinder));
         foreach (var glyph in GlyphFont.CreateAll()) library.Register(glyph);
+        foreach (var scenery in LandMeshFactory.CreateSceneryMeshes()) library.Register(scenery);
         foreach (var type in BoatTypeCatalog.All)
         {
             library.Register(BoatMeshFactory.Create(type, MeshIds.ForBoat(type)));

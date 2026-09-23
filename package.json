@@ -1,0 +1,21 @@
+{
+  "name": "virtualmarina-js-checks",
+  "private": true,
+  "description": "Lint and type-check for the browser JavaScript shipped with VirtualMarina (the WebGL renderer and the Blazor designer's helpers). Not a package: nothing here is published.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "eslint",
+    "typecheck": "tsc -p jsconfig.json",
+    "check": "npm run lint && npm run typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "typescript": "^5.9.3"
+  }
+}

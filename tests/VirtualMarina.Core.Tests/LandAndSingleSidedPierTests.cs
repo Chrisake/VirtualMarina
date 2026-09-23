@@ -80,15 +80,24 @@ public class LandAndSingleSidedPierTests
     {
         var marina = CreateMarinaWithBoatyard();
         var yard = marina.Meshes.Get(MeshIds.ForLand(0));
-        var rocks = marina.Meshes.Get(MeshIds.ForLand(1));
 
         Assert.Equal(1.5f, yard.Bounds.Max.Y, 3);
         Assert.Equal(-LandMeshFactory.WallDepth, yard.Bounds.Min.Y, 3);
-        // Hundreds of rocks rather than a box, reaching about the crest height.
-        Assert.True(rocks.TriangleCount > 2000, $"only {rocks.TriangleCount} triangles");
-        Assert.InRange(rocks.Bounds.Max.Y, 1.8f, 3.2f);
 
+        // Dozens of rocks rather than a box, reaching about the crest height: instances of a few shared rock meshes
+        // standing on the breakwater's core, rather than one mesh with every rock baked in.
         var objects = marina.BuildRenderFrame().Objects;
+        var rockIds = Enumerable.Range(0, MeshIds.RockVariants).Select(MeshIds.Rock).ToHashSet();
+        var rocks = objects.Where(o => rockIds.Contains(o.MeshId) && !o.IsTransparent).ToList();
+        Assert.True(rocks.Count > 50, $"only {rocks.Count} rocks");
+        var crest = rocks.Max(rock => marina.Meshes.Get(rock.MeshId).Bounds.Max.Y * rock.World.M22 + rock.World.M42);
+        Assert.InRange(crest, 1.8f, 3.2f);
+
+        // Baked into one mesh, as LandMeshFactory.CreateGround still offers, it is the same pile.
+        var baked = LandMeshFactory.CreateGround(1, marina.GetLandArea("rocks")!);
+        Assert.True(baked.TriangleCount > 2000, $"only {baked.TriangleCount} triangles");
+        Assert.InRange(baked.Bounds.Max.Y, 1.8f, 3.2f);
+
         Assert.Contains(objects, o => o.MeshId == MeshIds.ForLand(0) && o.World == Matrix4x4.Identity);
         Assert.Contains(objects, o => o.MeshId == MeshIds.ForLand(1));
 

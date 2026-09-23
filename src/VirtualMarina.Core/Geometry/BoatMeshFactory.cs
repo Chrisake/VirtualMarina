@@ -152,10 +152,6 @@ public static class BoatMeshFactory
         b.AddCylinder(new(-0.35f, 1.05f, 0.15f), new(0.35f, 1.05f, 0.15f), 0.035f, 0.035f, 5, Dark); // handlebar
     }
 
-    /// <summary>
-    /// A tapered hull: a narrow keel loop lofted to a wider deck outline with a pointed bow.
-    /// The lower band uses the stripe (antifouling/boot-top) color.
-    /// </summary>
     /// <summary>A small coastal ferry: a long hull, two decks of superstructure with a window band, and a funnel.</summary>
     private static void BuildFerry(MeshBuilder b)
     {
@@ -182,6 +178,10 @@ public static class BoatMeshFactory
         b.AddBox(new(0f, 3.5f, -length * 0.36f), new(beam * 0.9f, 0.25f, length * 0.2f), Charcoal);
     }
 
+    /// <summary>
+    /// A tapered hull: a narrow keel loop lofted to a wider deck outline with a pointed bow.
+    /// The lower band uses the stripe (antifouling/boot-top) color.
+    /// </summary>
     private static void AddHull(
         MeshBuilder b, float centerX, float length, float beam, float freeboard, float draft,
         Vector3 hullColor, Vector3 deckColor, Vector3 stripeColor)

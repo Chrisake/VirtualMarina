@@ -1,35 +1,26 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- The test framework, runner and coverage come from tests/Directory.Build.props. -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <!-- Line coverage for the SonarQube report; see Docs/19-static-analysis.md. -->
-    <PackageReference Include="coverlet.collector" Version="6.0.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="Xunit" />
+    <!-- Property-based tests: random inputs, shrunk to the smallest failing case. -->
+    <PackageReference Include="CsCheck" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\VirtualMarina.Core\VirtualMarina.Core.csproj" />
-    <!-- Referenced so the published surface of every cross-platform library is covered by PublicApiTests. -->
-    <ProjectReference Include="..\..\src\VirtualMarina.Blazor\VirtualMarina.Blazor.csproj" />
+    <!-- Referenced so the published surface of the OpenGL renderer is covered by PublicApiTests. -->
     <ProjectReference Include="..\..\src\VirtualMarina.Rendering.OpenGL\VirtualMarina.Rendering.OpenGL.csproj" />
     <ProjectReference Include="..\..\samples\VirtualMarina.SampleData\VirtualMarina.SampleData.csproj" />
+    <ProjectReference Include="..\VirtualMarina.TestSupport\VirtualMarina.TestSupport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Golden files: saved designs of every format version, which must keep loading. -->
+    <None Include="Fixtures\**\*.marina.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

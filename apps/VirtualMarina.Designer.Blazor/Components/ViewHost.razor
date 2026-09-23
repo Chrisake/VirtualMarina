@@ -1,0 +1,25 @@
+@namespace VirtualMarina.Designer.Blazor.Components
+
+@*
+    Holds the MarinaView and keeps it out of the shell's renders. The view draws itself from the marina on its own
+    schedule; the shell re-rendering for a new tool hint or a ticked menu item has nothing to tell it.
+*@
+<MarinaView @ref="_view" Marina="Marina" Style="position:absolute;inset:0" OnRendererReady="OnRendererReady" OnRendererError="OnRendererError" />
+
+@code {
+    private MarinaView? _view;
+
+    /// <summary>The marina to show. Required, and fixed for the life of the component.</summary>
+    [Parameter, EditorRequired] public MarinaVisualizer Marina { get; set; } = default!;
+
+    /// <summary>The renderer started; the text describes it (for the About box).</summary>
+    [Parameter] public EventCallback<string> OnRendererReady { get; set; }
+
+    /// <summary>The renderer failed; the text says why.</summary>
+    [Parameter] public EventCallback<string> OnRendererError { get; set; }
+
+    /// <summary>The view itself, for loading a reference image through it.</summary>
+    public MarinaView? View => _view;
+
+    protected override bool ShouldRender() => false;
+}

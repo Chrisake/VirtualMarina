@@ -10,10 +10,10 @@ namespace VirtualMarina.Core.Geometry;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Unlike the lanes, this changes as time passes. A random number of vessels is out there to begin with, scattered
-/// along the lanes; each runs its lane once, from the edge of the map to the far edge, and is gone. A little while
-/// after one leaves another appears, on a lane of its own choosing, of its own kind, at its own speed and its own
-/// offset within the lane — so the sea never repeats itself and never empties.
+/// Unlike the lanes, this changes as time passes. The full <see cref="MarineTraffic.VesselCount"/> is out there to
+/// begin with, scattered at random along the lanes; each runs its lane once, from the edge of the map to the far edge,
+/// and is gone. A little while after one leaves another appears, on a lane of its own choosing, of its own kind, at
+/// its own speed and its own offset within the lane — so the sea never repeats itself and never empties.
 /// </para>
 /// <para>
 /// This replaced a fixed set of vessels going round and round their lane forever, where the only thing that changed
@@ -48,7 +48,10 @@ public sealed class MarineTrafficField
     private readonly List<double> _due = [];
     private readonly Random _random;
 
-    /// <summary>Puts a random amount of traffic out on the lanes, ready to move.</summary>
+    /// <summary>
+    /// Puts the full complement of traffic (<see cref="MarineTraffic.VesselCount"/>) out on the lanes, scattered at
+    /// random along them, ready to move.
+    /// </summary>
     /// <param name="settings">The traffic settings.</param>
     /// <param name="lanes">The lanes from <see cref="MarineTrafficPlanner.Plan"/>.</param>
     public MarineTrafficField(MarineTraffic settings, IReadOnlyList<TrafficLane> lanes)
@@ -72,13 +75,39 @@ public sealed class MarineTrafficField
         Refresh();
     }
 
+    /// <summary>
+    /// The same traffic carried over onto lanes planned again (the marina's layout changed under it): every vessel keeps
+    /// its lane, its kind, its speed, its offset and how far along it has got, and the ones due to appear still will. Only a
+    /// vessel whose lane is gone moves to one that is left.
+    /// </summary>
+    /// <param name="previous">The traffic out on the water until now, on the same settings.</param>
+    /// <param name="lanes">The lanes planned again.</param>
+    internal MarineTrafficField(MarineTrafficField previous, IReadOnlyList<TrafficLane> lanes)
+    {
+        Settings = previous.Settings;
+        Lanes = lanes;
+        _random = previous._random;
+        _due.AddRange(previous._due);
+        if (Lanes.Count == 0) return;
+
+        foreach (var sailing in previous._sailings)
+        {
+            _sailings.Add(sailing.Lane < Lanes.Count ? sailing : sailing with { Lane = sailing.Lane % Lanes.Count });
+        }
+
+        Refresh();
+    }
+
     /// <summary>The settings this traffic was laid on.</summary>
     public MarineTraffic Settings { get; }
 
     /// <summary>The lanes it runs along, nearest the marina first.</summary>
     public IReadOnlyList<TrafficLane> Lanes { get; }
 
-    /// <summary>Where every vessel is now. A snapshot: they have moved on by the next <see cref="Advance"/>.</summary>
+    /// <summary>
+    /// Where every vessel is now. A live view rather than a copy: it is rewritten by the next <see cref="Advance"/>, so copy
+    /// it (<c>Vessels.ToArray()</c>) to keep it past that.
+    /// </summary>
     public IReadOnlyList<TrafficVessel> Vessels => _vessels;
 
     /// <summary>
@@ -178,7 +207,7 @@ public sealed class MarineTrafficField
     }
 
     /// <summary>One vessel's run down one lane.</summary>
-    private struct Sailing
+    private record struct Sailing
     {
         /// <summary>Which lane it is on.</summary>
         public int Lane;

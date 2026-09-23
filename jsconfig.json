@@ -1,0 +1,25 @@
+{
+  // Type-checks the shipped JavaScript with TypeScript's checker (checkJs) against the DOM and WebGL 2 typings.
+  // Deliberately loose (no strict, implicit any allowed): the files carry no JSDoc types, so this catches misspelt
+  // DOM/WebGL members, wrong argument counts and undefined names rather than demanding annotations.
+  // Run with `npm run typecheck`.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": [
+    "src/VirtualMarina.Blazor/wwwroot/**/*.js",
+    "apps/*/wwwroot/**/*.js",
+    "tools/js/globals.d.ts"
+  ],
+  "exclude": ["**/bin/**", "**/obj/**", "**/node_modules/**", "**/_framework/**"]
+}

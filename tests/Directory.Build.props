@@ -1,0 +1,24 @@
+<Project>
+  <!--
+    Shared settings for everything under tests/. A project whose name ends in ".Tests" is a test project and gets
+    the test framework, the runner and coverage without listing them; any other project here (a test-support
+    library) gets none of it. A new test project therefore needs only its TargetFramework and its references.
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject Condition="'$(IsTestProject)' == '' and $(MSBuildProjectName.EndsWith('.Tests'))">true</IsTestProject>
+  </PropertyGroup>
+
+  <!-- Item conditions are evaluated after every property, so a project that sets IsTestProject itself is honoured. -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <!-- Line coverage for the SonarQube report; see Docs/19-static-analysis.md. -->
+    <PackageReference Include="coverlet.collector" PrivateAssets="all" />
+
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

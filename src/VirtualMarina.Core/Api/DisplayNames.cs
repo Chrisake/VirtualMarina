@@ -30,6 +30,7 @@ public static class DisplayNames
         DesignTool.SelectArea => Strings.ToolSelectArea,
         DesignTool.MoveReferenceImage => Strings.ToolMoveReferenceImage,
         DesignTool.MeasureScale => Strings.ToolMeasureScale,
+        DesignTool.DrawShoreline => Strings.ToolDrawShoreline,
         _ => tool.ToString(),
     };
 

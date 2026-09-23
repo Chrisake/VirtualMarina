@@ -8,10 +8,11 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VirtualMarina.Rendering.OpenGL</RootNamespace>
+    <Description>Desktop OpenGL 3.3 core-profile scene renderer for VirtualMarina, via OpenTK. Independent of any windowing toolkit.</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenTK.Graphics" Version="4.9.4" />
+    <PackageReference Include="OpenTK.Graphics" />
   </ItemGroup>
 
   <ItemGroup>

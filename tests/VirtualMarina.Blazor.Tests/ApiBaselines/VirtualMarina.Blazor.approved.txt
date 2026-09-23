@@ -1,30 +1,36 @@
 class VirtualMarina.Blazor.MarinaDesignerPanel : ComponentBase, IComponent, IDisposable, IHandleAfterRender, IHandleEvent
     .ctor()
-    VirtualMarina.Blazor.MarinaView View { get; set; }
+    VirtualMarina.Blazor.MarinaView? View { get; set; }
     VirtualMarina.Core.Api.MarinaVisualizer Marina { get; set; }
     long MaxImageFileSize { get; set; }
-    string CssClass { get; set; }
-    virtual void BuildRenderTree(RenderTreeBuilder __builder)
-    virtual void OnParametersSet()
+    protected override void BuildRenderTree(RenderTreeBuilder __builder)
+    protected override void OnParametersSet()
+    string? CssClass { get; set; }
     void Dispose()
 
 class VirtualMarina.Blazor.MarinaView : ComponentBase, IAsyncDisposable, IComponent, IHandleAfterRender, IHandleEvent
     .ctor()
     EventCallback<string> OnRendererError { get; set; }
     EventCallback<string> OnRendererReady { get; set; }
-    Task<VirtualMarina.Core.Design.ReferenceImage> LoadReferenceImageAsync(byte[] data, string contentType, float? metersPerPixel = null)
+    Task OnRenderLoopFailed(string message)
+    Task<VirtualMarina.Core.Design.ReferenceImage?> LoadReferenceImageAsync(byte[] data, string contentType, float? metersPerPixel = null)
     ValueTask DisposeAsync()
     VirtualMarina.Core.Api.MarinaVisualizer Marina { get; set; }
-    VirtualMarina.Core.Rendering.MarinaStyle MarinaStyle { get; set; }
-    bool OnKeyDown(string key, int modifiers)
-    double[] OnAnimationFrame(double timestampMs, double cssWidth, double cssHeight)
-    string CssClass { get; set; }
+    VirtualMarina.Core.Rendering.MarinaStyle? MarinaStyle { get; set; }
+    bool Animate { get; set; }
+    bool ContinuousRendering { get; set; }
+    bool NeedsFrame()
+    bool OnAnimationFrame(double timestampMs, double cssWidth, double cssHeight)
+    bool OnKeyDown(string? code, string? key, int modifiers)
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override void BuildRenderTree(RenderTreeBuilder __builder)
+    protected override void OnAfterRender(bool firstRender)
+    protected override void OnParametersSet()
     string OnPointerMove(double x, double y, int modifiers)
-    string RendererDescription { get; }
-    string Style { get; set; }
-    virtual Task OnAfterRenderAsync(bool firstRender)
-    virtual void BuildRenderTree(RenderTreeBuilder __builder)
-    virtual void OnParametersSet()
+    string? AriaLabel { get; set; }
+    string? CssClass { get; set; }
+    string? RendererDescription { get; }
+    string? Style { get; set; }
     void OnDoubleClick(double x, double y, int button, int modifiers)
     void OnPointerDown(double x, double y, int button, int modifiers)
     void OnPointerLeave()
@@ -33,12 +39,8 @@ class VirtualMarina.Blazor.MarinaView : ComponentBase, IAsyncDisposable, ICompon
 
 sealed class VirtualMarina.Blazor.WebGlSceneRenderer : IDisposable, VirtualMarina.Core.Rendering.ISceneRenderer
     string BackendName { get; }
-    string DeviceDescription { get; }
+    string? DeviceDescription { get; }
     void Dispose()
     void Initialize()
     void Render(VirtualMarina.Core.Rendering.RenderFrame frame)
     void Resize(int pixelWidth, int pixelHeight)
-
-class VirtualMarina.Blazor._Imports
-    .ctor()
-    void Execute()

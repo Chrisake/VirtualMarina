@@ -5,10 +5,16 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>VirtualMarina.WinForms</RootNamespace>
+    <Description>Windows Forms host for VirtualMarina: the MarinaViewControl and MarinaDesignerPanel controls on an OpenGL surface.</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenTK.GLControl" Version="4.0.2" />
+    <!-- The control's tests reach its internals directly rather than through reflection. -->
+    <InternalsVisibleTo Include="VirtualMarina.WinForms.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTK.GLControl" />
   </ItemGroup>
 
   <ItemGroup>

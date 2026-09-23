@@ -18,14 +18,17 @@ public static class LandMeshFactory
     /// <param name="id">Mesh id (see <see cref="MeshIds.ForLand"/>).</param>
     /// <param name="area">The land area. Vertices are in world space, so the mesh is drawn with an identity transform.</param>
     /// <param name="style">Colors and tree visibility; the defaults when null.</param>
+    /// <remarks>
+    /// A visualizer does not draw land this way: it draws the ground alone and puts the rocks and trees on it as instances
+    /// of a few shared meshes, which is far less to build and upload. This bakes the same instances into one mesh.
+    /// </remarks>
     public static MeshData Create(int id, LandArea area, LandStyle? style = null)
     {
         ArgumentNullException.ThrowIfNull(area);
         style ??= new LandStyle();
         var b = new MeshBuilder();
-        if (area.Kind == LandKind.Breakwater) AddRockPile(b, area, style);
-        else AddSlab(b, area, style);
-        if (style.ShowTrees) AddTrees(b, area, style);
+        AddGroundBase(b, area, style);
+        Bake(b, CreateSceneryInstances(area, style));
         return b.Build(id, $"{(area.Kind == LandKind.Breakwater ? "Breakwater" : "Land")}:{area.Id}");
     }
 
@@ -41,8 +44,8 @@ public static class LandMeshFactory
         ArgumentNullException.ThrowIfNull(area);
         style ??= new LandStyle();
         var b = new MeshBuilder();
-        if (area.Kind == LandKind.Breakwater) AddRockPile(b, area, style);
-        else AddSlab(b, area, style);
+        AddGroundBase(b, area, style);
+        if (area.Kind == LandKind.Breakwater) Bake(b, CreateRockInstances(area, style));
         return b.Build(id, $"{(area.Kind == LandKind.Breakwater ? "Breakwater" : "Land")}:{area.Id}");
     }
 
@@ -58,7 +61,13 @@ public static class LandMeshFactory
         ArgumentNullException.ThrowIfNull(area);
         style ??= new LandStyle();
         var b = new MeshBuilder();
-        if (style.ShowTrees) AddTrees(b, area, style);
+        if (style.ShowTrees)
+        {
+            var trees = new List<RenderObject>();
+            AddTreeInstances(trees, area.Trees, area.Height, style);
+            Bake(b, trees);
+        }
+
         return b.Build(id, $"Trees:{area.Id}");
     }
 
@@ -69,6 +78,40 @@ public static class LandMeshFactory
         var b = new MeshBuilder();
         AddSlab(b, area, style ?? new LandStyle());
         return b.Build(id, $"Land:{area.Id}");
+    }
+
+    /// <summary>
+    /// What a visualizer draws as a land area's own mesh: the slab, or for a breakwater the dark core its rocks stand on.
+    /// The rocks and trees come from <see cref="CreateSceneryInstances"/>.
+    /// </summary>
+    internal static MeshData CreateGroundBase(int id, LandArea area, LandStyle style)
+    {
+        var b = new MeshBuilder();
+        AddGroundBase(b, area, style);
+        return b.Build(id, $"{(area.Kind == LandKind.Breakwater ? "Breakwater" : "Land")}:{area.Id}");
+    }
+
+    /// <summary>What stands on a land area, as instances of the shared scenery meshes: a breakwater's rocks and the trees.</summary>
+    internal static RenderObject[] CreateSceneryInstances(LandArea area, LandStyle style)
+    {
+        var output = new List<RenderObject>();
+        if (area.Kind == LandKind.Breakwater) output.AddRange(CreateRockInstances(area, style));
+        if (style.ShowTrees) AddTreeInstances(output, area.Trees, area.Height, style);
+        return output.ToArray();
+    }
+
+    private static void AddGroundBase(MeshBuilder b, LandArea area, LandStyle style)
+    {
+        if (area.Kind == LandKind.Breakwater)
+        {
+            // Core, kept below the rocks so it only shows through the gaps.
+            var core = style.RockColor.ToVector3() * 0.5f;
+            AddPrism(b, area.Points, -WallDepth, MathF.Max(-0.2f, RockPileEdgeHeight(area) - 0.35f), core, core);
+        }
+        else
+        {
+            AddSlab(b, area, style);
+        }
     }
 
     private static void AddSlab(MeshBuilder b, LandArea area, LandStyle style)
@@ -84,26 +127,30 @@ public static class LandMeshFactory
     public static MeshData CreateRockPile(int id, LandArea area, LandStyle? style = null)
     {
         ArgumentNullException.ThrowIfNull(area);
+        style ??= new LandStyle();
         var b = new MeshBuilder();
-        AddRockPile(b, area, style ?? new LandStyle());
+        var core = style.RockColor.ToVector3() * 0.5f;
+        AddPrism(b, area.Points, -WallDepth, MathF.Max(-0.2f, RockPileEdgeHeight(area) - 0.35f), core, core);
+        Bake(b, CreateRockInstances(area, style));
         return b.Build(id, $"Breakwater:{area.Id}");
     }
 
-    private static void AddRockPile(MeshBuilder b, LandArea area, LandStyle style)
+    /// <summary>Height of a rock pile along its outline, where it meets the water.</summary>
+    private static float RockPileEdgeHeight(LandArea area) => MathF.Max(0.1f, MathF.Max(area.Height, 0.3f) * 0.3f);
+
+    /// <summary>The rocks of a breakwater, each one of the shared rock meshes stretched, turned and tinted.</summary>
+    private static List<RenderObject> CreateRockInstances(LandArea area, LandStyle style)
     {
+        var output = new List<RenderObject>();
         var points = area.Points;
         var rock = style.RockColor.ToVector3();
         var rockDark = rock * (1f - style.RockColorVariation);
         var rockLight = rock * (1f + style.RockColorVariation);
-        var core = rock * 0.5f;
         var random = new Random((int)(MarinaMath.StableHash01(area.Id) * int.MaxValue));
 
         var height = MathF.Max(area.Height, 0.3f);
         var spacing = Math.Clamp(height * 0.8f, 1.4f, 2.4f);
-        var edgeHeight = MathF.Max(0.1f, height * 0.3f);
-
-        // Core, kept below the rocks so it only shows through the gaps.
-        AddPrism(b, points, -WallDepth, MathF.Max(-0.2f, edgeHeight - 0.35f), core, core);
+        var edgeHeight = RockPileEdgeHeight(area);
 
         // Deepest point inside the outline sets how far the slope runs in.
         var (min, max) = PolygonMath.GetBounds(points);
@@ -131,7 +178,7 @@ public static class LandMeshFactory
             var top = edgeHeight + (height - edgeHeight) * t;
             var radius = spacing * Lerp(0.5f, 0.68f, (float)random.NextDouble());
             // The second (offset) layer sits a little lower, filling the gaps of the first.
-            AddRock(b, random, MarinaMath.ToWorld(position, top - radius * (lower ? 0.9f : 0.55f)), radius, rockDark, rockLight);
+            output.Add(Rock(random, MarinaMath.ToWorld(position, top - radius * (lower ? 0.9f : 0.55f)), radius, rockDark, rockLight));
         }
 
         // A ring of rocks along the outline, at the waterline, covering the core's walls.
@@ -145,17 +192,37 @@ public static class LandMeshFactory
             {
                 var along = Vector2.Lerp(a, c, (k + (float)random.NextDouble() * 0.5f) / count);
                 var radius = spacing * Lerp(0.5f, 0.7f, (float)random.NextDouble());
-                AddRock(b, random, MarinaMath.ToWorld(along, edgeHeight - radius * 0.6f), radius, rockDark, rockLight);
+                output.Add(Rock(random, MarinaMath.ToWorld(along, edgeHeight - radius * 0.6f), radius, rockDark, rockLight));
             }
         }
+
+        return output;
     }
 
-    /// <summary>Trunks and crowns of the area's trees, standing on its surface. Colors vary slightly per tree (from its position).</summary>
-    private static void AddTrees(MeshBuilder b, LandArea area, LandStyle style) => AddTrees(b, area.Trees, area.Height, style);
-
-    /// <summary>The same, for trees standing on any flat ground — the mainland behind the shore has no land area.</summary>
-    private static void AddTrees(MeshBuilder b, IEnumerable<LandTree> trees, float groundHeight, LandStyle style)
+    /// <summary>One rock: a shared rock mesh squashed, stretched, turned and tinted somewhere between dark and light.</summary>
+    private static RenderObject Rock(Random random, Vector3 center, float radius, Vector3 dark, Vector3 light)
     {
+        var radii = new Vector3(
+            radius * Lerp(0.9f, 1.25f, (float)random.NextDouble()),
+            radius * Lerp(0.6f, 0.85f, (float)random.NextDouble()),
+            radius * Lerp(0.9f, 1.25f, (float)random.NextDouble()));
+        var yaw = (float)random.NextDouble() * MathF.Tau;
+        var color = Vector3.Lerp(dark, light, (float)random.NextDouble()) *
+            new Vector3(1f, 1f, Lerp(0.94f, 1.02f, (float)random.NextDouble()));
+        var variant = random.Next(MeshIds.RockVariants);
+        return new RenderObject(
+            MeshIds.Rock(variant),
+            Matrix4x4.CreateScale(radii) * Matrix4x4.CreateRotationY(yaw) * Matrix4x4.CreateTranslation(center),
+            new Vector4(color, 1f));
+    }
+
+    /// <summary>
+    /// Trunks and crowns of trees standing on flat ground, as instances of the shared tree meshes (one trunk, a few crowns
+    /// per <see cref="TreeShape"/>). Colors vary slightly per tree (from its position).
+    /// </summary>
+    internal static void AddTreeInstances(List<RenderObject> output, IEnumerable<LandTree> trees, float groundHeight, LandStyle style)
+    {
+        var trunkColor = new Vector4(style.TrunkColor.ToVector3(), 1f);
         foreach (var tree in trees)
         {
             var hash = MarinaMath.StableHash01(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{tree.Position.X:0.00},{tree.Position.Y:0.00}"));
@@ -168,55 +235,134 @@ public static class LandMeshFactory
                 _ => tree.Height * 0.4f,
             };
 
+            // The trunk: from a little below the ground to just inside the crown, tapering to 70 %.
             var trunkRadius = MathF.Max(0.1f, tree.CrownRadius * (tree.Shape == TreeShape.Palm ? 0.08f : 0.12f));
-            b.AddCylinder(ground - Vector3.UnitY * 0.2f, ground + Vector3.UnitY * (trunkHeight + tree.CrownRadius * 0.3f), trunkRadius, trunkRadius * 0.7f, 6, style.TrunkColor.ToVector3());
+            var trunkLength = trunkHeight + tree.CrownRadius * 0.3f + 0.2f;
+            output.Add(new RenderObject(
+                MeshIds.TreeTrunk,
+                Matrix4x4.CreateScale(trunkRadius, trunkLength, trunkRadius) * Matrix4x4.CreateTranslation(ground - Vector3.UnitY * 0.2f),
+                trunkColor));
 
-            if (tree.Shape == TreeShape.Cypress)
+            // Which of the shape's crowns, and which way it faces: fixed per tree, so the forest does not reshuffle.
+            var variant = (int)(hash * 977f) % MeshIds.TreeVariants;
+            var yaw = hash * 131f % 1f * MathF.Tau;
+            var r = tree.CrownRadius;
+            var (crown, color) = tree.Shape switch
             {
                 // One tall narrow cone: the Mediterranean exclamation mark.
-                var color = style.ConiferColor.ToVector3() * shade * 0.95f;
-                b.AddCylinder(ground + Vector3.UnitY * trunkHeight, ground + Vector3.UnitY * tree.Height, tree.CrownRadius, tree.CrownRadius * 0.15f, 7, color);
-            }
-            else if (tree.Shape == TreeShape.Palm)
-            {
-                // A spray of fronds: flattened blobs leaning out from the top of the trunk.
-                var color = style.PalmColor.ToVector3() * shade;
-                var crown = ground + Vector3.UnitY * trunkHeight;
-                var random = new Random((int)(hash * int.MaxValue));
-                for (var frond = 0; frond < 6; frond++)
-                {
-                    var angle = (frond + (float)random.NextDouble() * 0.4f) / 6f * MathF.Tau;
-                    var reach = new Vector3(MathF.Cos(angle), 0f, MathF.Sin(angle)) * tree.CrownRadius * 0.85f;
-                    b.AddCylinder(crown, crown + reach - Vector3.UnitY * tree.CrownRadius * 0.3f, tree.CrownRadius * 0.16f, 0f, 5, color);
-                }
-            }
-            else if (tree.Shape == TreeShape.Cherry)
-            {
-                // Blossom rather than leaves, and a wider, lower crown.
-                var color = style.BlossomColor.ToVector3() * (0.92f + hash * 0.16f);
-                var center = ground + Vector3.UnitY * (tree.Height - tree.CrownRadius * 0.8f);
-                var random = new Random((int)(hash * int.MaxValue));
-                AddRock(b, random, center, tree.CrownRadius, color * 0.95f, color, flatten: false);
-                var offset = new Vector3((float)random.NextDouble() - 0.5f, 0f, (float)random.NextDouble() - 0.5f) * tree.CrownRadius * 1.1f;
-                AddRock(b, random, center + offset - Vector3.UnitY * tree.CrownRadius * 0.2f, tree.CrownRadius * 0.72f, color, color * 1.06f, flatten: false);
-            }
-            else if (tree.Shape == TreeShape.Conifer)
-            {
-                var color = style.ConiferColor.ToVector3() * shade;
-                var crownHeight = tree.Height - trunkHeight;
+                TreeShape.Cypress => (
+                    Matrix4x4.CreateScale(r, tree.Height - trunkHeight, r) * Matrix4x4.CreateTranslation(ground + Vector3.UnitY * trunkHeight),
+                    style.ConiferColor.ToVector3() * shade * 0.95f),
+
                 // Two stacked cones.
-                b.AddCylinder(ground + Vector3.UnitY * trunkHeight, ground + Vector3.UnitY * (trunkHeight + crownHeight * 0.65f), tree.CrownRadius, tree.CrownRadius * 0.35f, 7, color);
-                b.AddCylinder(ground + Vector3.UnitY * (trunkHeight + crownHeight * 0.4f), ground + Vector3.UnitY * tree.Height, tree.CrownRadius * 0.75f, 0f, 7, color * 1.05f);
-            }
-            else
+                TreeShape.Conifer => (
+                    Matrix4x4.CreateScale(r, tree.Height - trunkHeight, r) * Matrix4x4.CreateTranslation(ground + Vector3.UnitY * trunkHeight),
+                    style.ConiferColor.ToVector3() * shade),
+
+                // A spray of fronds leaning out from the top of the trunk.
+                TreeShape.Palm => (
+                    Matrix4x4.CreateScale(r) * Matrix4x4.CreateRotationY(yaw) * Matrix4x4.CreateTranslation(ground + Vector3.UnitY * trunkHeight),
+                    style.PalmColor.ToVector3() * shade),
+
+                // Blossom rather than leaves, and a wider, lower crown.
+                TreeShape.Cherry => (
+                    Matrix4x4.CreateScale(r) * Matrix4x4.CreateRotationY(yaw) * Matrix4x4.CreateTranslation(ground + Vector3.UnitY * (tree.Height - r * 0.8f)),
+                    style.BlossomColor.ToVector3() * (0.92f + hash * 0.16f)),
+
+                _ => (
+                    Matrix4x4.CreateScale(r) * Matrix4x4.CreateRotationY(yaw) * Matrix4x4.CreateTranslation(ground + Vector3.UnitY * (tree.Height - r)),
+                    style.FoliageColor.ToVector3() * shade),
+            };
+
+            output.Add(new RenderObject(MeshIds.TreeCrown(tree.Shape, variant), crown, new Vector4(color, 1f)));
+        }
+    }
+
+    /// <summary>
+    /// The meshes scenery is drawn with: one trunk, <see cref="MeshIds.TreeVariants"/> crowns per <see cref="TreeShape"/>
+    /// and <see cref="MeshIds.RockVariants"/> rocks. White or near-white, sized to one meter, tinted per instance.
+    /// </summary>
+    internal static IEnumerable<MeshData> CreateSceneryMeshes()
+    {
+        var white = Vector3.One;
+        var trunk = new MeshBuilder();
+        trunk.AddCylinder(Vector3.Zero, Vector3.UnitY, 1f, 0.7f, 6, white);
+        yield return trunk.Build(MeshIds.TreeTrunk, "TreeTrunk");
+
+        foreach (var shape in Enum.GetValues<TreeShape>())
+        {
+            for (var variant = 0; variant < MeshIds.TreeVariants; variant++)
             {
-                var color = style.FoliageColor.ToVector3() * shade;
-                var center = ground + Vector3.UnitY * (tree.Height - tree.CrownRadius);
-                var random = new Random((int)(hash * int.MaxValue));
-                AddRock(b, random, center, tree.CrownRadius, color, color * 1.12f, flatten: false);
-                var offset = new Vector3((float)random.NextDouble() - 0.5f, 0f, (float)random.NextDouble() - 0.5f) * tree.CrownRadius;
-                AddRock(b, random, center + offset - Vector3.UnitY * tree.CrownRadius * 0.25f, tree.CrownRadius * 0.7f, color * 0.9f, color, flatten: false);
+                var random = new Random(7919 * ((int)shape + 1) + variant);
+                var b = new MeshBuilder();
+                switch (shape)
+                {
+                    case TreeShape.Cypress:
+                        // Scaled by the crown radius across and the crown height up.
+                        b.AddCylinder(Vector3.Zero, Vector3.UnitY, 1f, 0.15f, 7, white);
+                        break;
+
+                    case TreeShape.Conifer:
+                        b.AddCylinder(Vector3.Zero, Vector3.UnitY * 0.65f, 1f, 0.35f, 7, white);
+                        b.AddCylinder(Vector3.UnitY * 0.4f, Vector3.UnitY, 0.75f, 0f, 7, white * 1.05f);
+                        break;
+
+                    case TreeShape.Palm:
+                        // Crown radius 1, fronds leaning out and down from the top of the trunk.
+                        for (var frond = 0; frond < 6; frond++)
+                        {
+                            var angle = (frond + (float)random.NextDouble() * 0.4f) / 6f * MathF.Tau;
+                            var reach = new Vector3(MathF.Cos(angle), 0f, MathF.Sin(angle)) * 0.85f;
+                            b.AddCylinder(Vector3.Zero, reach - Vector3.UnitY * 0.3f, 0.16f, 0f, 5, white);
+                        }
+
+                        break;
+
+                    case TreeShape.Cherry:
+                        {
+                            AddRock(b, random, Vector3.Zero, 1f, white * 0.95f, white, flatten: false);
+                            var offset = new Vector3((float)random.NextDouble() - 0.5f, 0f, (float)random.NextDouble() - 0.5f) * 1.1f;
+                            AddRock(b, random, offset - Vector3.UnitY * 0.2f, 0.72f, white, white * 1.06f, flatten: false);
+                            break;
+                        }
+
+                    default:
+                        {
+                            AddRock(b, random, Vector3.Zero, 1f, white, white * 1.12f, flatten: false);
+                            var offset = new Vector3((float)random.NextDouble() - 0.5f, 0f, (float)random.NextDouble() - 0.5f);
+                            AddRock(b, random, offset - Vector3.UnitY * 0.25f, 0.7f, white * 0.9f, white, flatten: false);
+                            break;
+                        }
+                }
+
+                yield return b.Build(MeshIds.TreeCrown(shape, variant), $"TreeCrown:{shape}:{variant}");
             }
+        }
+
+        for (var variant = 0; variant < MeshIds.RockVariants; variant++)
+        {
+            // Round and white: each rock instance gives it its proportions, its turn and its color.
+            var b = new MeshBuilder();
+            AddRockShape(b, new Random(104_729 + variant), Vector3.Zero, Vector3.One, 0f, white);
+            yield return b.Build(MeshIds.Rock(variant), $"Rock:{variant}");
+        }
+    }
+
+    /// <summary>The scenery meshes by id, for baking instances into one mesh.</summary>
+    private static readonly Lazy<Dictionary<int, MeshData>> BakeMeshes = new(() =>
+    {
+        var meshes = CreateSceneryMeshes().ToDictionary(mesh => mesh.Id);
+        meshes[MeshIds.UnitBox] = MarinaMeshFactory.CreateUnitBox(MeshIds.UnitBox);
+        meshes[MeshIds.BerthPad] = MarinaMeshFactory.CreateBerthPad(MeshIds.BerthPad);
+        return meshes;
+    });
+
+    /// <summary>Adds instances of the scenery meshes to a mesh, transformed and tinted.</summary>
+    private static void Bake(MeshBuilder b, IEnumerable<RenderObject> instances)
+    {
+        foreach (var instance in instances)
+        {
+            if (BakeMeshes.Value.TryGetValue(instance.MeshId, out var mesh)) b.AddTransformed(mesh, instance.World, new Vector3(instance.Tint.X, instance.Tint.Y, instance.Tint.Z));
         }
     }
 
@@ -254,7 +400,7 @@ public static class LandMeshFactory
         if (outline.Count < 3) return b.Build(id, "Shoreline");
 
         AddShorelineGround(b, shoreline, outline, style);
-        AddScenery(b, shoreline, style, ShorelineGroundHeight(shoreline));
+        Bake(b, CreateShorelineSceneryInstances(shoreline, outline, style));
         return b.Build(id, "Shoreline");
     }
 
@@ -282,11 +428,8 @@ public static class LandMeshFactory
     {
         ArgumentNullException.ThrowIfNull(shoreline);
         var b = new MeshBuilder();
-        if (shoreline.BuildOutline().Count >= 3)
-        {
-            AddScenery(b, shoreline, style ?? new LandStyle(), ShorelineGroundHeight(shoreline));
-        }
-
+        var outline = shoreline.BuildOutline();
+        if (outline.Count >= 3) Bake(b, CreateShorelineSceneryInstances(shoreline, outline, style ?? new LandStyle()));
         return b.Build(id, "ShorelineScenery");
     }
 
@@ -303,33 +446,53 @@ public static class LandMeshFactory
         AddPrism(b, outline, -WallDepth, ShorelineGroundHeight(shoreline), top.ToVector3(), wall.ToVector3());
     }
 
-    /// <summary>Whatever stands on the mainland: trees, crops or a town, in a band along the coast.</summary>
-    private static void AddScenery(MeshBuilder b, Shoreline shoreline, LandStyle style, float ground)
+    /// <summary>
+    /// Whatever stands on the mainland — trees, crops or a town, in a band along the coast — as instances of the shared
+    /// scenery meshes, standing on <see cref="ShorelineGroundHeight"/>. Empty when the shoreline has no outline.
+    /// </summary>
+    internal static RenderObject[] CreateShorelineSceneryInstances(Shoreline shoreline, LandStyle style)
     {
+        var outline = shoreline.BuildOutline();
+        return outline.Count >= 3 ? CreateShorelineSceneryInstances(shoreline, outline, style) : [];
+    }
+
+    private static RenderObject[] CreateShorelineSceneryInstances(Shoreline shoreline, IReadOnlyList<Vector2> outline, LandStyle style)
+    {
+        var output = new List<RenderObject>();
+        var ground = ShorelineGroundHeight(shoreline);
         var random = new Random(shoreline.ScenerySeed);
         switch (shoreline.Scenery)
         {
             case HinterlandScenery.Countryside:
-                if (style.ShowTrees) AddHinterlandTrees(b, shoreline, style, random, ground, 340, 10f, SceneryDepth);
+                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, 340, 10f, SceneryDepth);
                 break;
 
             case HinterlandScenery.Fields:
-                AddFields(b, shoreline, style, random, ground);
-                if (style.ShowTrees) AddHinterlandTrees(b, shoreline, style, random, ground, 60, 12f, SceneryDepth);
+                AddFields(output, shoreline, outline, style, random, ground);
+                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, 60, 12f, SceneryDepth);
                 break;
 
             case HinterlandScenery.Town:
-                AddTown(b, shoreline, style, random, ground);
-                if (style.ShowTrees) AddHinterlandTrees(b, shoreline, style, random, ground, 70, 18f, SceneryDepth * 0.8f);
+                AddTown(output, shoreline, outline, style, random, ground);
+                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, 70, 18f, SceneryDepth * 0.8f);
                 break;
         }
+
+        return output.ToArray();
     }
 
     /// <summary>Trees of the same mix as a land area's, standing on the mainland rather than inside an outline.</summary>
-    private static void AddHinterlandTrees(MeshBuilder b, Shoreline shoreline, LandStyle style, Random random, float ground, int count, float near, float depth)
+    private static void AddHinterlandTrees(
+        List<RenderObject> output, Shoreline shoreline, IReadOnlyList<Vector2> outline, LandStyle style, Random random, float ground, int count, float near, float depth)
     {
         var trees = new List<LandTree>(count);
-        foreach (var (position, _, _) in ScatterInland(shoreline, random, count, near, depth))
+
+        // The trees placed so far, bucketed by position, so keeping new ones clear of them looks at a few neighbours
+        // rather than at every tree.
+        const float cell = 8f;
+        var grid = new Dictionary<(int, int), List<LandTree>>();
+        var largest = 0f;
+        foreach (var (position, _, _) in ScatterInland(shoreline, outline, random, count, near, depth))
         {
             var shape = LandArea.PickShape(random);
             var height = shape switch
@@ -349,19 +512,44 @@ public static class LandMeshFactory
                 _ => height * 0.34f,
             };
 
-            // Far enough apart to read as separate trees, and cheap to check at these counts.
-            if (trees.Any(t => Vector2.Distance(t.Position, position) < (t.CrownRadius + radius) * 0.9f)) continue;
-            trees.Add(new LandTree(position, height, radius, shape));
+            // Far enough apart to read as separate trees.
+            var reach = (int)MathF.Ceiling((largest + radius) * 0.9f / cell);
+            var (cx, cy) = ((int)MathF.Floor(position.X / cell), (int)MathF.Floor(position.Y / cell));
+            if (TooClose(grid, cx, cy, reach, position, radius)) continue;
+
+            var tree = new LandTree(position, height, radius, shape);
+            trees.Add(tree);
+            if (!grid.TryGetValue((cx, cy), out var bucket)) grid[(cx, cy)] = bucket = [];
+            bucket.Add(tree);
+            largest = MathF.Max(largest, radius);
         }
 
-        AddTrees(b, trees, ground, style);
+        AddTreeInstances(output, trees, ground, style);
+    }
+
+    /// <summary>True when a tree of <paramref name="radius"/> at <paramref name="position"/> would crowd one already placed.</summary>
+    private static bool TooClose(Dictionary<(int, int), List<LandTree>> grid, int cx, int cy, int reach, Vector2 position, float radius)
+    {
+        for (var x = cx - reach; x <= cx + reach; x++)
+        {
+            for (var y = cy - reach; y <= cy + reach; y++)
+            {
+                if (grid.TryGetValue((x, y), out var bucket) &&
+                    bucket.Exists(t => Vector2.Distance(t.Position, position) < (t.CrownRadius + radius) * 0.9f))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Crops seen from the air: flat blocks of colour lying on the ground, lined up with the coast.</summary>
-    private static void AddFields(MeshBuilder b, Shoreline shoreline, LandStyle style, Random random, float ground)
+    private static void AddFields(List<RenderObject> output, Shoreline shoreline, IReadOnlyList<Vector2> outline, LandStyle style, Random random, float ground)
     {
         var grass = style.GrassColor.ToVector3();
-        foreach (var (position, _, along) in ScatterInland(shoreline, random, 80, 20f, SceneryDepth))
+        foreach (var (position, _, along) in ScatterInland(shoreline, outline, random, 80, 20f, SceneryDepth))
         {
             var across = new Vector2(-along.Y, along.X);
             var half = new Vector2(30f + (float)random.NextDouble() * 50f, 22f + (float)random.NextDouble() * 34f);
@@ -369,42 +557,44 @@ public static class LandMeshFactory
             var ripeness = (float)random.NextDouble();
             var color = Vector3.Lerp(grass * 0.82f, new Vector3(0.78f, 0.70f, 0.42f), ripeness * ripeness);
 
-            var side = along * half.X;
-            var deep = across * half.Y;
-            // A hair above the ground, so the field shows rather than fighting the surface for the same pixels.
+            // The unit pad stretched along the coast and inland, a hair above the ground so the field shows rather
+            // than fighting the surface for the same pixels.
             var level = ground + 0.03f;
-            b.AddQuadUp(
-                MarinaMath.ToWorld(position - side - deep, level),
-                MarinaMath.ToWorld(position + side - deep, level),
-                MarinaMath.ToWorld(position + side + deep, level),
-                MarinaMath.ToWorld(position - side + deep, level),
-                color);
+            var world = new Matrix4x4(
+                along.X * half.X * 2f, 0f, along.Y * half.X * 2f, 0f,
+                0f, 1f, 0f, 0f,
+                across.X * half.Y * 2f, 0f, across.Y * half.Y * 2f, 0f,
+                position.X, level, position.Y, 1f);
+            output.Add(new RenderObject(MeshIds.BerthPad, world, new Vector4(color, 1f)));
         }
     }
 
     /// <summary>A town: plain blocks with roofs, standing thickest and tallest near the water.</summary>
-    private static void AddTown(MeshBuilder b, Shoreline shoreline, LandStyle style, Random random, float ground)
+    private static void AddTown(List<RenderObject> output, Shoreline shoreline, IReadOnlyList<Vector2> outline, LandStyle style, Random random, float ground)
     {
         const float depth = SceneryDepth * 0.7f;
         var walls = style.BuildingColor.ToVector3();
         var roofs = style.RoofColor.ToVector3();
         var placed = new List<(Vector2 Center, float Radius)>(140);
 
-        foreach (var (position, inland, _) in ScatterInland(shoreline, random, 140, 25f, depth))
+        foreach (var (position, inland, _) in ScatterInland(shoreline, outline, random, 140, 25f, depth))
         {
             var seafront = 1f - Math.Clamp(inland / depth, 0f, 1f);
             var footprint = new Vector2(9f + (float)random.NextDouble() * 9f, 9f + (float)random.NextDouble() * 9f);
             var radius = MathF.Max(footprint.X, footprint.Y) * 0.5f;
-            if (placed.Any(other => Vector2.Distance(other.Center, position) < other.Radius + radius + 6f)) continue;
+            if (placed.Exists(other => Vector2.Distance(other.Center, position) < other.Radius + radius + 6f)) continue;
             placed.Add((position, radius));
 
             var height = 5f + (float)random.NextDouble() * (5f + seafront * 14f);
             var shade = Lerp(0.86f, 1.12f, (float)random.NextDouble());
-            b.AddBox(MarinaMath.ToWorld(position, ground + height * 0.5f), new Vector3(footprint.X, height, footprint.Y), walls * shade);
-            b.AddBox(
-                MarinaMath.ToWorld(position, ground + height + 0.6f),
-                new Vector3(footprint.X * 1.12f, 1.2f, footprint.Y * 1.12f),
-                roofs * Lerp(0.9f, 1.1f, (float)random.NextDouble()));
+            output.Add(new RenderObject(
+                MeshIds.UnitBox,
+                Matrix4x4.CreateScale(footprint.X, height, footprint.Y) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(position, ground + height * 0.5f)),
+                new Vector4(walls * shade, 1f)));
+            output.Add(new RenderObject(
+                MeshIds.UnitBox,
+                Matrix4x4.CreateScale(footprint.X * 1.12f, 1.2f, footprint.Y * 1.12f) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(position, ground + height + 0.6f)),
+                new Vector4(roofs * Lerp(0.9f, 1.1f, (float)random.NextDouble()), 1f)));
         }
     }
 
@@ -416,9 +606,15 @@ public static class LandMeshFactory
     /// designer stopped clicking. Places that come out over water — inside a bay the line cuts back into — are
     /// dropped, which is what keeps the scenery on the land side without any extra work.
     /// </remarks>
+    /// <param name="shoreline">The coast.</param>
+    /// <param name="outline">The shoreline's built outline (<see cref="Shoreline.BuildOutline"/>), worked out once by the caller.</param>
+    /// <param name="random">Where the places come from.</param>
+    /// <param name="count">How many places at most.</param>
+    /// <param name="near">How far inland the band starts.</param>
+    /// <param name="depth">How deep the band is.</param>
     /// <returns>For each place: where it is, how far inland it fell, and the direction of the coast beside it.</returns>
     private static IEnumerable<(Vector2 Position, float Inland, Vector2 Along)> ScatterInland(
-        Shoreline shoreline, Random random, int count, float near, float depth)
+        Shoreline shoreline, IReadOnlyList<Vector2> outline, Random random, int count, float near, float depth)
     {
         var line = ExtendedLine(shoreline);
         var lengths = new float[line.Count - 1];
@@ -448,7 +644,7 @@ public static class LandMeshFactory
             var reach = (float)random.NextDouble();
             var inland = near + depth * reach * reach;
             var position = line[segment] + direction * along + inward * inland;
-            if (!shoreline.Contains(position)) continue;
+            if (!PolygonMath.Contains(outline, position)) continue;
 
             placed++;
             yield return (position, inland, direction);
@@ -498,16 +694,13 @@ public static class LandMeshFactory
             var a1 = MarinaMath.ToWorld(a, top);
             var c0 = MarinaMath.ToWorld(c, bottom);
             var c1 = MarinaMath.ToWorld(c, top);
-            b.AddTriangleFacingAway(a0, c0, c1, wallColor, inside);
-            b.AddTriangleFacingAway(a0, c1, a1, wallColor, inside);
+            b.AddFace(new[] { a0, c0, c1, a1 }, wallColor, inside);
         }
     }
 
     /// <summary>An irregular, flattened low-poly ball.</summary>
     private static void AddRock(MeshBuilder b, Random random, Vector3 center, float radius, Vector3 dark, Vector3 light, bool flatten = true)
     {
-        const int segments = 6;
-        const int rings = 3;
         var radii = new Vector3(
             radius * Lerp(0.9f, 1.25f, (float)random.NextDouble()),
             radius * (flatten ? Lerp(0.6f, 0.85f, (float)random.NextDouble()) : Lerp(0.85f, 1.05f, (float)random.NextDouble())),
@@ -515,7 +708,14 @@ public static class LandMeshFactory
         var yaw = (float)random.NextDouble() * MathF.Tau;
         var color = Vector3.Lerp(dark, light, (float)random.NextDouble()) *
             new Vector3(1f, 1f, Lerp(0.94f, 1.02f, (float)random.NextDouble()));
+        AddRockShape(b, random, center, radii, yaw, color);
+    }
 
+    /// <summary>A low-poly ball with these radii, its middle rings pushed in and out at random.</summary>
+    private static void AddRockShape(MeshBuilder b, Random random, Vector3 center, Vector3 radii, float yaw, Vector3 color)
+    {
+        const int segments = 6;
+        const int rings = 3;
         Vector3[]? previous = null;
         for (var r = 0; r <= rings; r++)
         {

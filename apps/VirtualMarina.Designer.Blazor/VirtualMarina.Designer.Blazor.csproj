@@ -6,6 +6,10 @@
     MarinaVisualizer in VirtualMarina.Core, driven through the reusable <MarinaView> of
     VirtualMarina.Blazor; only the shell, panels and dialogs are re-hosted here as Razor components.
   -->
+  <!--
+    Not compiled ahead of time: AOT needs the wasm-tools workload, which the build machines do not have. The app runs
+    on the interpreter, which is fast enough for the panels; the drawing is WebGL's either way.
+  -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VirtualMarina.Designer.Blazor</RootNamespace>
@@ -22,27 +26,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.31" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.31" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\VirtualMarina.Blazor\VirtualMarina.Blazor.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- One copy of the resource lookup, compiled into each assembly that shows text. See shared/ResourceText.cs. -->
-    <Compile Include="..\..\shared\ResourceText.cs" Link="Resources\ResourceText.cs" />
-
-    <!--
-      The Designer's displayed text lives once, in the WinForms app's resources, and is shared here rather
-      than copied: the same Strings class and the same .resx, linked in. The logical name pins the embedded
-      resource to the base name Strings passes to its ResourceManager, whatever assembly it lands in.
-    -->
-    <Compile Include="..\VirtualMarina.Designer\Resources\Strings.cs" Link="Resources\Strings.cs" />
-    <EmbeddedResource Include="..\VirtualMarina.Designer\Resources\Strings.resx" Link="Resources\Strings.resx">
-      <LogicalName>VirtualMarina.Designer.Resources.Strings.resources</LogicalName>
-    </EmbeddedResource>
+    <!-- The file workflow, rename questions, activity log, command table and displayed text, shared with the WinForms designer. -->
+    <ProjectReference Include="..\VirtualMarina.Designer.Common\VirtualMarina.Designer.Common.csproj" />
   </ItemGroup>
 
 </Project>

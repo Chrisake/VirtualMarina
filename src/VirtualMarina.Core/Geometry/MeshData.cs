@@ -6,8 +6,15 @@ namespace VirtualMarina.Core.Geometry;
 /// CPU-side triangle mesh in a backend-neutral format. Each renderer uploads it to its own GPU API.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Interleaved vertex layout (<see cref="VertexStride"/> floats per vertex):
 /// position (xyz), normal (xyz), color (rgb). Indices are 32-bit triangle lists.
+/// </para>
+/// <para>
+/// Treat a mesh as immutable once it is made. <see cref="Bounds"/> is worked out from the vertices when the mesh is
+/// created, and renderers upload a mesh once per object (they compare by reference): changing the contents of
+/// <see cref="Vertices"/> or <see cref="Indices"/> afterwards leaves both stale. To change a mesh, register a new one.
+/// </para>
 /// </remarks>
 public sealed class MeshData
 {
@@ -53,10 +60,10 @@ public sealed class MeshData
     /// <summary>Name for diagnostics.</summary>
     public string Name { get; }
 
-    /// <summary>Interleaved vertex data (position, normal, color).</summary>
+    /// <summary>Interleaved vertex data (position, normal, color). Do not change it once the mesh is registered.</summary>
     public float[] Vertices { get; }
 
-    /// <summary>Triangle list indices into <see cref="Vertices"/>.</summary>
+    /// <summary>Triangle list indices into <see cref="Vertices"/>. Do not change them once the mesh is registered.</summary>
     public uint[] Indices { get; }
 
     /// <summary>The water grid is drawn by the water pass instead of the object pass.</summary>

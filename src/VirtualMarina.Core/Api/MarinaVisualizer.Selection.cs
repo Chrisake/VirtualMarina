@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Input;
@@ -9,6 +9,12 @@ public sealed partial class MarinaVisualizer
 {
     /// <summary>Selected berth ids in selection order; the last one is the primary berth.</summary>
     private readonly List<string> _selection = [];
+
+    /// <summary>The same ids as <see cref="_selection"/>, for asking whether a berth is selected without walking the list.</summary>
+    private readonly HashSet<string> _selectedIds = new(IdComparer);
+
+    /// <summary>What <see cref="SelectedBerths"/> hands out, built once per change of the selection or of a selected berth.</summary>
+    private IReadOnlyList<Berth>? _selectedSnapshot;
 
     private BerthPopup? _popup;
     private int _popupVersion;
@@ -35,13 +41,14 @@ public sealed partial class MarinaVisualizer
     public Berth? SelectedBerth => _selection.Count > 0 ? GetBerth(_selection[^1]) : null;
 
     /// <summary>All selected berths in selection order; the last one is <see cref="SelectedBerth"/>.</summary>
-    public IReadOnlyList<Berth> SelectedBerths => _selection.Select(GetBerth).OfType<Berth>().ToArray();
+    /// <remarks>A read-only snapshot, made once per change rather than on every read.</remarks>
+    public IReadOnlyList<Berth> SelectedBerths => _selectedSnapshot ??= Array.AsReadOnly(_selection.Select(GetBerth).OfType<Berth>().ToArray());
 
     /// <summary>True when two or more berths are selected.</summary>
     public bool IsMultiSelection => _selection.Count > 1;
 
     /// <inheritdoc/>
-    public bool IsBerthSelected(string berthId) => berthId is not null && _selection.Contains(berthId, IdComparer);
+    public bool IsBerthSelected(string berthId) => berthId is not null && _selectedIds.Contains(berthId);
 
     /// <summary>
     /// Makes <paramref name="berthId"/> the only selected berth and raises <see cref="BerthSelected"/>.
@@ -78,6 +85,7 @@ public sealed partial class MarinaVisualizer
     {
         ArgumentNullException.ThrowIfNull(berthIds);
         var selected = new List<string>();
+        var seen = new HashSet<string>(IdComparer);
         var rejected = new List<RejectedBerth>();
         foreach (var id in berthIds)
         {
@@ -91,7 +99,7 @@ public sealed partial class MarinaVisualizer
             if (berth.IsDisabled) rejected.Add(new RejectedBerth(id, BerthSelectionRejection.Disabled));
             else if (!berth.IsVisible) rejected.Add(new RejectedBerth(id, BerthSelectionRejection.Hidden));
             else if (!_statusFilter.Includes(berth.Status)) rejected.Add(new RejectedBerth(id, BerthSelectionRejection.FilteredOut));
-            else if (!selected.Contains(berth.Id, IdComparer)) selected.Add(berth.Id);
+            else if (seen.Add(berth.Id)) selected.Add(berth.Id);
         }
 
         var changed = SetSelectionCore(selected);
@@ -281,7 +289,10 @@ public sealed partial class MarinaVisualizer
         var previous = SelectedBerths;
         _selection.Clear();
         _selection.AddRange(ids);
-        MarkSceneDirty();
+        _selectedIds.Clear();
+        _selectedIds.UnionWith(ids);
+        _selectedSnapshot = null;
+        MarkHighlightDirty();
 
         if (_selection.Count == 0) ClosePopup();
 
@@ -293,9 +304,28 @@ public sealed partial class MarinaVisualizer
     /// <summary>Removes berths that can no longer be selected; refreshes the popup for what remains.</summary>
     private void RemoveFromSelectionCore(params string[] berthIds)
     {
-        var remaining = _selection.Where(id => !berthIds.Contains(id, IdComparer)).ToArray();
+        if (!berthIds.Any(_selectedIds.Contains)) return;
+        var removing = new HashSet<string>(berthIds, IdComparer);
+        var remaining = _selection.Where(id => !removing.Contains(id)).ToArray();
         if (!SetSelectionCore(remaining)) return;
         if (remaining.Length > 0) RequestPopupRefresh();
+    }
+
+    /// <summary>Follows berths given new ids, keeping their places in the selection (no event: the same berths stay selected).</summary>
+    private void RenameInSelection(Dictionary<string, string> map)
+    {
+        var changed = false;
+        for (var i = 0; i < _selection.Count; i++)
+        {
+            if (!map.TryGetValue(_selection[i], out var to)) continue;
+            _selection[i] = to;
+            changed = true;
+        }
+
+        if (!changed) return;
+        _selectedIds.Clear();
+        _selectedIds.UnionWith(_selection);
+        _selectedSnapshot = null;
     }
 
     /// <summary>

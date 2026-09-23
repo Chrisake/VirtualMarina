@@ -422,6 +422,16 @@ public enum LayoutChangeKind
     MarineTrafficChanged = 20,
 }
 
+/// <summary>One change to the layout: what kind, and the ids it concerns (those that apply to the kind are set).</summary>
+/// <param name="Kind">What changed.</param>
+/// <param name="PierId">The affected pier (for pier, berth and divider changes), or null.</param>
+/// <param name="BerthId">The affected berth, or null.</param>
+/// <param name="DividerId">The affected divider, or null.</param>
+/// <param name="MultiBerthId">The affected multi-berth, or null.</param>
+/// <param name="LandAreaId">The affected land area (for land area changes and land berth changes), or null.</param>
+public sealed record LayoutChange(
+    LayoutChangeKind Kind, string? PierId = null, string? BerthId = null, string? DividerId = null, string? MultiBerthId = null, string? LandAreaId = null);
+
 /// <summary>Data for <see cref="IMarinaVisualizer.LayoutChanged"/>. The id properties that apply to <see cref="Kind"/> are set.</summary>
 public sealed class LayoutChangedEventArgs : EventArgs
 {
@@ -440,7 +450,24 @@ public sealed class LayoutChangedEventArgs : EventArgs
         DividerId = dividerId;
         MultiBerthId = multiBerthId;
         LandAreaId = landAreaId;
+        Changes = new[] { new LayoutChange(kind, pierId, berthId, dividerId, multiBerthId, landAreaId) };
     }
+
+    /// <summary>Creates the data of a <see cref="LayoutChangeKind.BatchUpdated"/> notification.</summary>
+    /// <param name="changes">The changes made inside the batch, in the order they were made.</param>
+    public LayoutChangedEventArgs(IReadOnlyList<LayoutChange> changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        Kind = LayoutChangeKind.BatchUpdated;
+        Changes = changes;
+    }
+
+    /// <summary>
+    /// What changed, one entry per change. For <see cref="LayoutChangeKind.BatchUpdated"/> these are the changes made
+    /// inside the batch, in the order they were made (a berth changed twice appears twice), so a listener can update
+    /// just what they touched; for any other kind, the one change this notification is about.
+    /// </summary>
+    public IReadOnlyList<LayoutChange> Changes { get; }
 
     /// <summary>What changed.</summary>
     public LayoutChangeKind Kind { get; }

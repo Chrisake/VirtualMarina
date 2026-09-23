@@ -1,6 +1,6 @@
 ﻿# Events reference
 
-- **When:** all events are raised synchronously on the calling (UI) thread, after the state change has been applied.
+- **When:** all events are raised synchronously on the calling (UI) thread, after the state change has been applied. Inside `BeginUpdate` or `BatchUpdate`, `LayoutChanged` and `CameraPresetsChanged` wait for the end of the scope, and so does refreshing an open popup (with its `BerthSelected`/`MultiBerthSelected` and `PopupChanged`); the other events are raised at once.
 - **Data:** event data carries immutable snapshots, plus the berth's shared `ExternalData`.
 - **Re-entrancy:** handlers may call back into the API.
 
@@ -14,15 +14,18 @@
 | `BerthActionInvoked` | `BerthActionInvokedEventArgs` | An enabled action was clicked in the actions window, or `InvokeBerthAction` was called |
 | `PopupChanged` | `BerthPopupChangedEventArgs` | The tooltip/actions popup opened, closed or changed content |
 | `BerthHoverChanged` | `BerthHoverEventArgs` | The berth under the pointer changed (null when leaving all berths). Disabled berths are never hovered. |
-| `BerthStatusChanged` | `BerthStatusChangedEventArgs` | A berth's status or boat changed through any API; once per berth |
-| `LayoutChanged` | `LayoutChangedEventArgs` | Piers, berths, dividers or berths changed. Coalesced into one `BatchUpdated` inside `BeginUpdate`/`BatchUpdate`. |
+| `BerthStatusChanged` | `BerthStatusChangedEventArgs` | A berth's status or boat changed through any API; once per berth. Raised **at once**, as each berth changes, even inside `BeginUpdate` or `BatchUpdate`: a handler may see one berth of a batch changed while later changes of the same batch are still to come. |
+| `LayoutChanged` | `LayoutChangedEventArgs` | Piers, berths, dividers, multi-berths, land areas, the shoreline or the passing traffic changed, or the layout was initialized or cleared. Coalesced into one `BatchUpdated` inside `BeginUpdate`/`BatchUpdate`, whose `Changes` lists each change. |
+| `CameraPresetsChanged` | `EventArgs` | `CameraPresets` may have changed: a saved view added or removed, a view switched on or off, or the layout or the view's size changed. Raised once, then not again until `CameraPresets` has been read (see [Camera](07-camera-and-focus.md#presets)). |
+| `RedrawRequested` | `EventArgs` | (`MarinaVisualizer` only, not on the interface.) Something the view draws changed. Raised once until the next frame is built; for views that stop drawing while nothing changes (see [the frame loop](10-hosting-and-custom-views.md#the-frame-loop-custom-views)). |
 
 ## `BerthEventArgs`
 
 | Property | Meaning |
 |---|---|
 | `Berth`, `BerthId`, `Status`, `Boat` | The berth snapshot and shortcuts |
-| `Pier` | The berth's pier |
+| `Pier` | The berth's pier; null for a land berth |
+| `LandArea` | The land area of a land berth; null for a water berth |
 | `ExternalData` | The berth's host data bag (shared, mutable) |
 | `Button` | `Left`, `Right`, `Middle`, or `None` for API calls |
 | `IsDoubleClick` | Double-click |
@@ -34,7 +37,7 @@
 |---|---|
 | `Tooltip` | Pre-filled `BerthTooltip`; edit to change the popup |
 | `Actions` | Empty `BerthActionCollection`; add the actions available for this berth |
-| `Berth` | The berth's `MultiBerth`, if any |
+| `MultiBerth` | The berth's `MultiBerth`, if any |
 | `Reason` | `Pointer`, `Api` or `Refresh` |
 | `IsNewSelection` | False when the berth was already selected |
 | `OpensActions` | True for right-click (the actions window will open) |
@@ -84,10 +87,21 @@
 
 `Kind` (`LayoutChangeKind`) and the ids that apply: `PierId`, `BerthId`, `DividerId`, `MultiBerthId`, `LandAreaId`.
 
+`Changes` is a list of `LayoutChange` records (`Kind` and the same ids). For `BatchUpdated` it holds every change made inside the batch, in the order it was made (a berth changed twice appears twice), so a listener can update just what was touched instead of reloading everything; for any other kind it holds the one change the notification is about.
+
+```csharp
+marina.LayoutChanged += (_, e) =>
+{
+    foreach (var change in e.Changes)
+        if (change.BerthId is { } id) grid.RefreshRow(id);
+};
+```
+
 | `LayoutChangeKind` | Ids set |
 |---|---|
-| `Initialized`, `Cleared`, `BatchUpdated` | none |
-| `PierAdded`, `PierUpdated`, `PierRemoved` | `PierId` |
+| `Initialized`, `Cleared`, `ShorelineChanged`, `MarineTrafficChanged` | none |
+| `BatchUpdated` | none on the event itself; see `Changes` |
+| `PierAdded`, `PierUpdated`, `PierRemoved`, `PierRenamed` | `PierId` (the new one after a rename) |
 | `BerthAdded`, `BerthUpdated`, `BerthRemoved`, `BerthRenamed` | `BerthId` (the new one after a rename), and `PierId` or `LandAreaId` (land berths) |
 | `DividerAdded`, `DividerUpdated`, `DividerRemoved` | `DividerId`, `PierId` (if the divider has one) |
 | `MultiBerthAdded`, `MultiBerthUpdated`, `MultiBerthRemoved` | `MultiBerthId` |
@@ -95,7 +109,20 @@
 
 ## Designer events
 
-`MarinaDesigner` (`marina.Designer`) raises `ActiveChanged`, `ToolChanged`, `DraftChanged`, `ElementCreating`, `ElementCreated`, `ElementErased`, `ElementRenaming`, `TreesPlanted`, `ActionUndone`, `ScaleLineDrawn`, `ReferenceImageChanged` and `StateChanged` while the user draws. See [Designer](12-designer.md#events).
+`MarinaDesigner` (`marina.Designer`) raises `ActiveChanged`, `ToolChanged`, `DraftChanged`, `ElementCreating`, `ElementCreated`, `ElementErased`, `ElementRenaming`, `TreesPlanted`, `ActionUndone`, `ActionRedone`, `ActionFailed`, `ScaleLineDrawn`, `ReferenceImageChanged` and `StateChanged` while the user draws. `ActionFailed` reports something asked for in the view (a click, Enter, Ctrl+Z) that could not be done; nothing was changed. See [Designer](12-designer.md#events).
+
+## View events
+
+| Where | Event | Raised when |
+|---|---|---|
+| `MarinaViewControl` (WinForms) | The visualizer's events above, except `CameraPresetsChanged` | Forwarded from `Marina` with the control as sender, so they can be wired in the Visual Studio designer |
+| | `RenderError` | OpenGL could not be started or a frame failed to draw; the view shows a placeholder until `RetryRendering()` |
+| | `MarinaChanged` | The `Marina` property was given a different visualizer |
+| `MarinaDesignerPanel` (WinForms) | `ImageLoadFailed` | Loading a reference image file failed (without a handler, a message box) |
+| `<MarinaView>` (Blazor) | `OnRendererReady` | WebGL is running (with a description of the GPU) |
+| | `OnRendererError` | WebGL could not be started, or drawing kept failing and the view stopped |
+
+Each `StyleSection` of `marina.Style` also raises `Changed` when one of its properties changes; the visualizer listens to redraw.
 
 ## Typical wiring
 
@@ -105,6 +132,6 @@ marina.BerthSelected      += (_, e) => FillBerthPopup(e);
 marina.MultiBerthSelected += (_, e) => FillMultiPopup(e);
 marina.BerthActionInvoked += (_, e) => RunAction(e);
 marina.BerthStatusChanged += (_, e) => audit.Log(e.BerthId, e.OldStatus, e.NewStatus);
-marina.LayoutChanged     += (_, _) => dashboard.Update(marina.GetStatistics());
+marina.LayoutChanged      += (_, _) => dashboard.Update(marina.GetStatistics());
 marina.BerthHoverChanged  += (_, e) => statusBar.Text = e.Berth?.DisplayName ?? "";
 ```

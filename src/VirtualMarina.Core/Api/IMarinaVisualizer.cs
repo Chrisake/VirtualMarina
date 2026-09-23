@@ -26,13 +26,19 @@ namespace VirtualMarina.Core.Api;
 /// <see cref="MultiBerth"/> are immutable records. Getters and events return snapshots; change state only through
 /// this API. The exception is <see cref="Berth.ExternalData"/>, a mutable bag for host data shared by all snapshots of a berth.
 /// </para>
-/// <para><b>Ids</b> of piers, berths, dividers and berths are compared case-insensitively.</para>
+/// <para><b>Ids</b> of piers, berths, dividers, multi-berths and land areas are compared case-insensitively.</para>
 /// <para>
 /// <b>Implementing this interface</b> is not supported: it describes what <see cref="MarinaVisualizer"/> offers, and
 /// members are added to it in feature releases, which would break an outside implementation. Depend on it to keep host
 /// code testable — a mocking library fills in new members by itself — but let <see cref="MarinaVisualizer"/> be the only
 /// real implementation. <see cref="Rendering.ISceneRenderer"/> is the interface meant to be implemented outside the
 /// library; anything added to that one comes with a default implementation. See <c>Docs/16-compatibility.md</c>.
+/// </para>
+/// <para>
+/// <b>Custom views.</b> This interface is what a host application uses. A view of its own — one that draws the marina
+/// and forwards input — works with the concrete <see cref="MarinaVisualizer"/> instead, for
+/// <see cref="MarinaVisualizer.Input"/>, <see cref="MarinaVisualizer.Update(double)"/>,
+/// <see cref="MarinaVisualizer.BuildRenderFrame"/> and <see cref="MarinaVisualizer.SetViewportSize"/>.
 /// </para>
 /// </remarks>
 /// <example>
@@ -89,17 +95,28 @@ public interface IMarinaVisualizer
     event EventHandler<BerthHoverEventArgs>? BerthHoverChanged;
 
     /// <summary>
-    /// A berth's status or assigned boat changed, through any API (single updates, batches, berths). Raised once per berth,
+    /// A berth's status or assigned boat changed, through any API (single updates, batches, multi-berths). Raised once per berth,
     /// with the previous and current snapshots.
     /// </summary>
+    /// <remarks>
+    /// Raised at once, as each berth changes, even inside <see cref="BeginUpdate"/> or <see cref="BatchUpdate"/>: unlike
+    /// <see cref="LayoutChanged"/> it is not held back to the end of the batch, so a handler may see a berth changed
+    /// while later changes of the same batch are still to come.
+    /// </remarks>
     event EventHandler<BerthStatusChangedEventArgs>? BerthStatusChanged;
 
     /// <summary>
-    /// Piers, berths, dividers, berths or land areas were added, updated or removed, or the layout was initialized or cleared.
+    /// Piers, berths, dividers, multi-berths or land areas were added, updated or removed, or the layout was initialized or cleared.
     /// Inside <see cref="BeginUpdate"/> or <see cref="BatchUpdate"/> the notifications are coalesced into one
-    /// <see cref="LayoutChangeKind.BatchUpdated"/>.
+    /// <see cref="LayoutChangeKind.BatchUpdated"/>, whose <see cref="LayoutChangedEventArgs.Changes"/> lists each change.
     /// </summary>
     event EventHandler<LayoutChangedEventArgs>? LayoutChanged;
+
+    /// <summary>
+    /// <see cref="CameraPresets"/> may have changed: a view was saved, removed, switched on or off, or the layout or the
+    /// view's size changed so the automatic views have to be worked out again. Raised once until the list is read again.
+    /// </summary>
+    event EventHandler? CameraPresetsChanged;
 
     // ---- Layout -----------------------------------------------------------------------------
 
@@ -124,9 +141,14 @@ public interface IMarinaVisualizer
     MarinaLayout GetLayout();
 
     /// <summary>
-    /// The whole marina as a flat array of its immutable records, in dependency order: <see cref="LandArea"/>s, <see cref="Pier"/>s,
-    /// <see cref="Divider"/>s, <see cref="Berth"/>s, then <see cref="MultiBerth"/>s (see <see cref="MarinaLayout.ToObjects"/>).
-    /// Rebuild a layout with <see cref="MarinaLayout.FromObjects"/>.
+    /// The whole layout as a flat array of its immutable records (<see cref="MarinaLayout.ToObjects"/> of
+    /// <see cref="GetLayout"/>), in dependency order: the <see cref="Domain.Shoreline"/> when there is one, the
+    /// <see cref="Domain.MarineTraffic"/> settings (always, <see cref="Domain.MarineTraffic.None"/> or switched off when there is no
+    /// passing traffic), then <see cref="LandArea"/>s, <see cref="Pier"/>s,
+    /// <see cref="Divider"/>s, <see cref="Berth"/>s (water and land berths, with their status and boats), then
+    /// <see cref="MultiBerth"/>s. The marina's name is not in it, and neither is anything outside the layout: the style,
+    /// the camera views, or the designer's reference image and settings (see <c>MarinaDocument</c> for all of that).
+    /// Rebuild the layout with <see cref="MarinaLayout.FromObjects"/>, passing the name.
     /// </summary>
     /// <example>
     /// <code>
@@ -143,7 +165,10 @@ public interface IMarinaVisualizer
     /// </example>
     object[] ExportObjects();
 
-    /// <summary>Removes everything (piers, berths, dividers, berths, land) and clears the selection.</summary>
+    /// <summary>
+    /// Removes everything (piers, berths, dividers, multi-berths, land areas and the shoreline), switches the passing traffic
+    /// off and clears the selection.
+    /// </summary>
     void ClearLayout();
 
     // ---- Piers --------------------------------------------------------------------------------
@@ -232,7 +257,7 @@ public interface IMarinaVisualizer
 
     /// <summary>
     /// Replaces a berth definition (matched by id). The berth keeps its <see cref="Berth.ExternalData"/> instance (entries from a
-    /// different dictionary are merged in). A status or boat change on a member of a multi-berth changes the whole berth.
+    /// different dictionary are merged in). A status or boat change on a member of a multi-berth changes the whole multi-berth.
     /// </summary>
     /// <exception cref="KeyNotFoundException">No berth has this id.</exception>
     /// <exception cref="MarinaLayoutException">The new definition is invalid.</exception>
@@ -240,14 +265,15 @@ public interface IMarinaVisualizer
 
     /// <summary>
     /// Applies a partial update (only the members set on <paramref name="update"/>) and returns the resulting berth.
-    /// A status or boat change on a member of a multi-berth changes the whole berth; setting it Free releases the berth.
+    /// A status or boat change on a member of a multi-berth changes the whole multi-berth; setting it Free releases the
+    /// multi-berth.
     /// </summary>
     /// <exception cref="KeyNotFoundException">No berth has this id.</exception>
     /// <exception cref="MarinaLayoutException">The resulting berth is invalid.</exception>
     Berth UpdateBerth(BerthUpdate update);
 
     /// <summary>
-    /// Removes a berth, dropping it from the selection. If it belongs to a multi-berth the berth shrinks, or dissolves
+    /// Removes a berth, dropping it from the selection. If it belongs to a multi-berth the multi-berth shrinks, or dissolves
     /// when fewer than two berths remain (the last one keeps the boat). Returns false when no berth has this id.
     /// </summary>
     bool RemoveBerth(string berthId);
@@ -410,7 +436,9 @@ public interface IMarinaVisualizer
     /// <summary>Marks the berth Reserved (blue), optionally for a known incoming boat (drawn as a translucent ghost).</summary>
     Berth ReserveBerth(string berthId, Boat? expectedBoat = null);
 
-    /// <summary>Marks the berth Free (green) and removes its boat. On a berth member this releases the whole berth.</summary>
+    /// <summary>
+    /// Marks the berth Free (green) and removes its boat. On a member of a multi-berth this releases the whole multi-berth.
+    /// </summary>
     Berth ReleaseBerth(string berthId);
 
     /// <summary>
@@ -446,8 +474,8 @@ public interface IMarinaVisualizer
     /// <param name="berthIds">Member berths (any number, at least two). The first berth's orientation places the boat.</param>
     /// <param name="boat">The boat.</param>
     /// <param name="status">Occupied, Reserved or TemporarilyFree.</param>
-    /// <param name="multiBerthId">Id for the berth; generated from the first berth id when null.</param>
-    /// <exception cref="InvalidOperationException">A berth already belongs to another berth, or the berth id is taken.</exception>
+    /// <param name="multiBerthId">Id for the multi-berth; generated from the first berth id when null.</param>
+    /// <exception cref="InvalidOperationException">A berth already belongs to another multi-berth, or the multi-berth id is taken.</exception>
     /// <exception cref="MarinaLayoutException">Fewer than two berths, unknown berths, or an invalid boat or status.</exception>
     MultiBerth MoorAlongside(IEnumerable<string> berthIds, Boat boat, BerthStatus status = BerthStatus.Occupied, string? multiBerthId = null);
 
@@ -459,29 +487,29 @@ public interface IMarinaVisualizer
     /// <param name="boat">The boat.</param>
     /// <param name="status">Occupied, Reserved or TemporarilyFree.</param>
     /// <param name="style">Alongside (parallel to the pier) or bow-in (centered across the berths).</param>
-    /// <param name="multiBerthId">Id for the berth; generated when null.</param>
-    /// <exception cref="InvalidOperationException">A berth already belongs to another berth, or the berth id is taken.</exception>
+    /// <param name="multiBerthId">Id for the multi-berth; generated when null.</param>
+    /// <exception cref="InvalidOperationException">A berth already belongs to another multi-berth, or the multi-berth id is taken.</exception>
     /// <exception cref="MarinaLayoutException">Fewer than two berths, unknown berths, or an invalid boat or status.</exception>
     MultiBerth AssignBoatToBerths(IEnumerable<string> berthIds, Boat boat, BerthStatus status = BerthStatus.Occupied, MooringStyle style = MooringStyle.Alongside, string? multiBerthId = null);
 
-    /// <summary>Replaces a berth's boat, status, style and/or member berths. Berths no longer listed become Free.</summary>
-    /// <exception cref="KeyNotFoundException">No berth has this id.</exception>
+    /// <summary>Replaces a multi-berth's boat, status, style and/or member berths. Berths no longer listed become Free.</summary>
+    /// <exception cref="KeyNotFoundException">No multi-berth has this id.</exception>
     MultiBerth UpdateMultiBerth(MultiBerth multiBerth);
 
-    /// <summary>Partial update of a berth; null arguments leave values unchanged. Berths no longer listed become Free.</summary>
-    /// <exception cref="KeyNotFoundException">No berth has this id.</exception>
+    /// <summary>Partial update of a multi-berth; null arguments leave values unchanged. Berths no longer listed become Free.</summary>
+    /// <exception cref="KeyNotFoundException">No multi-berth has this id.</exception>
     MultiBerth UpdateMultiBerth(string multiBerthId, Boat? boat = null, BerthStatus? status = null, MooringStyle? style = null, IEnumerable<string>? berthIds = null);
 
-    /// <summary>Removes the berth and sets all its berths Free. Returns false when no berth has this id.</summary>
+    /// <summary>Removes the multi-berth and sets all its berths Free. Returns false when no multi-berth has this id.</summary>
     bool ReleaseMultiBerth(string multiBerthId);
 
-    /// <summary>The berth with this id, or null.</summary>
+    /// <summary>The multi-berth with this id, or null.</summary>
     MultiBerth? GetMultiBerth(string multiBerthId);
 
     /// <summary>All multi-berths.</summary>
     IReadOnlyList<MultiBerth> GetMultiBerths();
 
-    /// <summary>The berth a berth belongs to, or null.</summary>
+    /// <summary>The multi-berth a berth belongs to, or null.</summary>
     MultiBerth? GetMultiBerthFor(string berthId);
 
     // ---- Selection ----------------------------------------------------------------------------
@@ -689,13 +717,25 @@ public interface IMarinaVisualizer
     /// <param name="immediate">Jump instead of animating.</param>
     /// <returns>False when no pier has this id.</returns>
     /// <remarks>
-    /// This fits the pier and its berths in the view. The parameterless <see cref="FocusPier(string, bool)"/> is
-    /// the tighter close-up from the pier's shore end instead.
+    /// This fits the pier and its berths in the view. <see cref="ShowPierCloseUp"/> is the tighter close-up from the
+    /// pier's shore end instead.
     /// </remarks>
     bool FocusPier(string pierId, CameraAngle? angle, bool immediate = false);
 
     /// <summary>Moves the camera to the pier's close-up view. False when the pier doesn't exist.</summary>
+#pragma warning disable S1133 // Kept, deprecated, until the next major version: removing it would break callers.
+    [Obsolete("Use ShowPierCloseUp for the close-up from the pier's shore end, or FocusPier(pierId, angle) to fit the whole pier.")]
     bool FocusPier(string pierId, bool immediate = false);
+#pragma warning restore S1133
+
+    /// <summary>
+    /// Moves the camera to the pier's close-up view: standing off the pier's shore end and looking down it (the pier's
+    /// automatic view in <see cref="CameraPresets"/>). False when the pier doesn't exist.
+    /// </summary>
+    /// <remarks><see cref="FocusPier(string, CameraAngle?, bool)"/> fits the whole pier from a chosen angle instead.</remarks>
+    /// <param name="pierId">The pier.</param>
+    /// <param name="immediate">Jump instead of animating.</param>
+    bool ShowPierCloseUp(string pierId, bool immediate = false);
 
     /// <summary>Sun, ambient light, specular and fog. Changes apply on the next frame.</summary>
     LightingSettings Lighting { get; }

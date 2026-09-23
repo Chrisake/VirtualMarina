@@ -1,0 +1,40 @@
+# Weekly dependency updates, grouped so a week's changes arrive as one pull request per ecosystem rather than
+# one per package. NuGet versions all live in Directory.Packages.props (Central Package Management).
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # The ASP.NET Core 8 packages share one version (AspNetCoreVersion) and must move together; they stay on
+      # the 8.0 servicing band the rest of the solution targets.
+      aspnetcore:
+        patterns: ["Microsoft.AspNetCore.*"]
+      test:
+        patterns: ["Microsoft.NET.Test.Sdk", "xunit*", "coverlet.*", "CsCheck"]
+      build:
+        patterns: ["SonarAnalyzer.CSharp", "MinVer"]
+      other:
+        patterns: ["*"]
+    ignore:
+      # A new major of ASP.NET Core means a new target framework, which is a deliberate move, not an update.
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      js-tooling:
+        patterns: ["*"]

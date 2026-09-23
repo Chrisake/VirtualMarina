@@ -1,11 +1,8 @@
-﻿using System.Globalization;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Camera;
 using VirtualMarina.Core.Design;
-using VirtualMarina.Core.Domain;
-using VirtualMarina.Core.Serialization;
+using VirtualMarina.Core.Input;
 using VirtualMarina.Designer.Resources;
 using VirtualMarina.WinForms;
 
@@ -15,16 +12,37 @@ namespace VirtualMarina.Designer;
 /// The designer window: a fixed toolbar of drawing tools at the top, the 3D marina filling the window, and a panel beside it that
 /// only ever shows the settings of the tool in hand. Designs are saved as <c>.marina.json</c> files the host application loads.
 /// </summary>
+/// <remarks>
+/// Everything that is not drawing — the file, whether it is saved, the title, the log, the rename questions — is the
+/// <see cref="DesignerSession"/> the Blazor designer runs on too; this window supplies its dialogs and its controls. The
+/// menus and their keys come from <see cref="DesignerCommands"/>, the one table both designers share.
+/// </remarks>
 internal sealed class MainForm : Form
 {
-    private static string AppName => Strings.AppName;
+    /// <summary>Who to credit in the About box.</summary>
+    private const string Author = "Christoforos Sakellaris";
+
+    /// <summary>
+    /// Narrowest the settings panel may be dragged, at 96 DPI: below this its rows stop fitting. A slider row is the
+    /// tightest of them: the row label, the reset button and the value text all take their width before the track
+    /// gets what remains.
+    /// </summary>
+    private const int MinInspectorWidth = 380;
+
+    /// <summary>Widest it may be dragged, at 96 DPI: past this it takes room from the marina without gaining anything.</summary>
+    private const int MaxInspectorWidth = 560;
+
+    /// <summary>Least width left for the marina view, at 96 DPI.</summary>
+    private const int MinViewWidth = 360;
+
+    /// <summary>How long a notice stays in the status bar.</summary>
+    private const int NoticeMilliseconds = 8000;
 
     private readonly MarinaViewControl _view = new() { Dock = DockStyle.Fill };
+    private readonly DesignerSession _session;
     private readonly InspectorPanel _inspector;
     private readonly AppearancePanel _appearance;
     private readonly CamerasPanel _cameras;
-    private ToolStripButton _lookButton = null!;
-    private ToolStripButton _camerasButton = null!;
 
     /// <summary>
     /// Holds the tool settings and whichever of Look or Cameras is open, as one column with one scrollbar. Scrolling
@@ -36,82 +54,155 @@ internal sealed class MainForm : Form
         Dock = DockStyle.Fill,
         BackColor = Theme.Background,
     };
+
     private readonly ToolStrip _toolbar = new();
     private readonly Dictionary<DesignTool, ToolStripButton> _toolButtons = [];
+    private readonly Dictionary<DesignerCommandId, Action> _commands = [];
+    private readonly Dictionary<DesignerCommandId, ToolStripMenuItem> _menuItems = [];
     private readonly StatusStrip _status = new();
     private readonly ToolStripStatusLabel _statusHint = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
+    private readonly ToolStripStatusLabel _statusNotice = new() { AutoSize = true, ForeColor = Theme.Danger, Visible = false };
     private readonly ToolStripStatusLabel _statusPointer = new() { AutoSize = true, TextAlign = ContentAlignment.MiddleRight };
     private readonly ToolStripStatusLabel _statusCamera = new() { AutoSize = true, TextAlign = ContentAlignment.MiddleRight };
-    private readonly ListBox _log = new() { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, Font = new Font("Consolas", 8.5f), IntegralHeight = false };
+    private readonly ListBox _log = new() { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, Font = Theme.Mono, IntegralHeight = false };
     private readonly Panel _logPanel = new() { Dock = DockStyle.Bottom, Height = 150, Visible = false, Padding = new Padding(8, 6, 8, 8), BackColor = Theme.Surface };
-    private readonly ToolStripMenuItem _logMenuItem = new(Strings.MenuShowLog) { CheckOnClick = true };
+    private readonly SplitContainer _split = new();
 
-    private string? _filePath;
-    private bool _dirty;
+    /// <summary>Refreshes the camera readout ten times a second, and only when the camera has actually moved.</summary>
+    private readonly System.Windows.Forms.Timer _cameraTimer = new() { Interval = 100 };
+
+    /// <summary>Clears a notice from the status bar once it has been there long enough to read.</summary>
+    private readonly System.Windows.Forms.Timer _noticeTimer = new() { Interval = NoticeMilliseconds };
+
+    private ToolStripButton _lookButton = null!;
+    private ToolStripButton _camerasButton = null!;
+    private ToolStripButton _undoButton = null!;
+    private ToolStripButton _redoButton = null!;
+    private CameraPose _shownPose;
+    private bool _refreshPending;
+    private bool _closeConfirmed;
 
     public MainForm()
     {
-        Text = AppName;
+        // Every size below is written for 96 DPI and scaled from there, when the window opens and whenever it moves to
+        // a monitor with another scale.
+        AutoScaleDimensions = new SizeF(96f, 96f);
+        AutoScaleMode = AutoScaleMode.Dpi;
+
+        Text = Strings.AppName;
         MinimumSize = new Size(1080, 720);
         StartPosition = FormStartPosition.CenterScreen;
         WindowState = FormWindowState.Maximized;
         BackColor = Theme.Background;
         Font = Theme.Body;
-        KeyPreview = true;
 
-        Marina.Designer.IsActive = true;
-        Marina.Designer.Tool = DesignTool.Navigate;
-        _inspector = new InspectorPanel(Marina, LoadReferenceImage);
-        _appearance = new AppearancePanel(Marina, Log);
-        _cameras = new CamerasPanel(Marina, Log);
+        var dialogs = new WinFormsDialogs(this);
+        _session = new DesignerSession(Marina, dialogs, DesignerText.Generator(typeof(MainForm)));
+        _inspector = new InspectorPanel(_session, () => Run(DesignerCommandId.LoadImage));
+        _appearance = new AppearancePanel(Marina, _session.Log.Add, _session.MarkDirty, Confirm);
+        _cameras = new CamerasPanel(Marina, _session.Log.Add, _session.MarkDirty, Confirm);
 
+        RegisterCommands();
         BuildMenu();
         BuildToolbar();
         BuildStatusBar();
         BuildLayout();
         WireEvents();
 
-        NewMarina(askToSave: false);
+        _ = _session.NewAsync(askToSave: false);
     }
 
     private MarinaVisualizer Marina => _view.Marina;
 
     private MarinaDesigner Designer => Marina.Designer;
 
-    /// <summary>
-    /// How much of the scene's haze is drawn while the marina is being drawn. Damped, so distant shapes being traced
-    /// stay crisp; the look settings put it back to full while they are open.
-    /// </summary>
-    private const float DesigningFogFactor = 0.15f;
+    // ---- Commands ------------------------------------------------------------------------------
+
+    /// <summary>What each command in the table does in this window.</summary>
+    private void RegisterCommands()
+    {
+        _commands[DesignerCommandId.New] = () => _ = _session.NewAsync();
+        _commands[DesignerCommandId.Open] = () => _ = _session.OpenAsync();
+        _commands[DesignerCommandId.Save] = () => _ = _session.SaveAsync();
+        _commands[DesignerCommandId.SaveAs] = () => _ = _session.SaveAsync(saveAs: true);
+        _commands[DesignerCommandId.LoadImage] = LoadReferenceImage;
+        _commands[DesignerCommandId.Exit] = Close;
+        _commands[DesignerCommandId.Undo] = () => _session.Undo();
+        _commands[DesignerCommandId.Redo] = () => _session.Redo();
+        _commands[DesignerCommandId.CancelDraft] = () => Designer.CancelDraft();
+        _commands[DesignerCommandId.Rename] = () => SelectTool(DesignTool.Rename);
+        _commands[DesignerCommandId.MarinaProperties] = () => _ = _session.EditMarinaPropertiesAsync();
+        _commands[DesignerCommandId.TopView] = _session.ViewTopDown;
+        _commands[DesignerCommandId.FitMarina] = () => Marina.ResetCamera();
+        _commands[DesignerCommandId.FitImage] = () => Designer.FocusReferenceImage();
+        _commands[DesignerCommandId.ShowLog] = () => _logPanel.Visible = !_logPanel.Visible;
+        _commands[DesignerCommandId.Appearance] = () => _session.ToggleSidePanel(DesignerSidePanel.Look);
+        _commands[DesignerCommandId.Cameras] = () => _session.ToggleSidePanel(DesignerSidePanel.Cameras);
+        _commands[DesignerCommandId.BerthLabels] = _session.ToggleBerthLabels;
+        _commands[DesignerCommandId.Shortcuts] = ShowShortcuts;
+        _commands[DesignerCommandId.About] = ShowAbout;
+        _commands[DesignerCommandId.Escape] = () => Marina.Input.KeyDown(MarinaKey.Escape);
+    }
 
     /// <summary>
-    /// Narrowest the settings panel may be dragged: below this its rows stop fitting. A slider row is the tightest
-    /// of them, and has the least room left over: the row label, the reset button and the value text all take their
-    /// width before the track gets what remains.
+    /// Runs a command, after a number field being typed in has handed its value over: Ctrl+S straight after typing a
+    /// width saves the new width, not the old one.
     /// </summary>
-    private const int MinInspectorWidth = 380;
+    private void Run(DesignerCommandId id)
+    {
+        if (_session.IsBusy) return;
+        CommitPendingEdit();
+        if (_commands.TryGetValue(id, out var command)) command();
+        RequestRefresh();
+    }
 
-    /// <summary>Widest it may be dragged: past this it takes room from the marina without gaining anything.</summary>
-    private const int MaxInspectorWidth = 560;
+    private void RunCommand(DesignerCommand command)
+    {
+        if (command.Tool is { } tool)
+        {
+            CommitPendingEdit();
+            SelectTool(tool);
+        }
+        else
+        {
+            Run(command.Id);
+        }
+    }
 
-    /// <summary>Least width left for the marina view.</summary>
-    private const int MinViewWidth = 360;
+    /// <summary>
+    /// A number field only takes what was typed into it when it loses the focus; reading its value takes it now. The
+    /// field's ValueChanged then reaches the designer before the command runs.
+    /// </summary>
+    private void CommitPendingEdit()
+    {
+        if (FocusedControl() is not { } focused) return;
+        var upDown = focused as UpDownBase ?? focused.Parent as UpDownBase;
+        if (upDown is NumericUpDown number) _ = number.Value;
+        Validate();
+    }
+
+    private void SelectTool(DesignTool tool)
+    {
+        Designer.IsActive = true;
+        Designer.Tool = tool;
+    }
+
+    private bool Confirm(string title, string message) =>
+        MessageBox.Show(this, message, title, MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
 
     // ---- Shell ---------------------------------------------------------------------------------
 
     private void BuildLayout()
     {
-        var split = new SplitContainer
-        {
-            Dock = DockStyle.Fill,
-            FixedPanel = FixedPanel.Panel2,
-            SplitterWidth = 1,
-            BackColor = Theme.Border,
-            Width = 1200,
-            Panel1MinSize = MinViewWidth,
-            Panel2MinSize = MinInspectorWidth,
-        };
-        split.Panel1.Controls.Add(_view);
+        _split.Dock = DockStyle.Fill;
+        _split.FixedPanel = FixedPanel.Panel2;
+        _split.SplitterWidth = 1;
+        _split.BackColor = Theme.Border;
+        _split.Width = 1200;
+        _split.Panel1MinSize = MinViewWidth;
+        _split.Panel2MinSize = MinInspectorWidth;
+        _split.Panel1.Controls.Add(_view);
+
         // One scrolling column. Docked Top and added in this order, the last one added ends up at the very top, so
         // the tool settings lead and the open side panel follows underneath.
         _appearance.UseOuterScrolling();
@@ -122,7 +213,8 @@ internal sealed class MainForm : Form
         _side.Controls.Add(_appearance);
         _side.Controls.Add(_cameras);
         _side.Controls.Add(_inspector);
-        split.Panel2.Controls.Add(_side);
+        _split.Panel2.Controls.Add(_side);
+        WheelForwarding.Attach(_side);
 
         var logHeader = new Label
         {
@@ -130,13 +222,14 @@ internal sealed class MainForm : Form
             Dock = DockStyle.Top,
             Font = Theme.Caption,
             ForeColor = Theme.TextSoft,
-            Height = 20,
+            AutoSize = true,
+            Padding = new Padding(0, 0, 0, 4),
         };
         _logPanel.Controls.Add(_log);
         _logPanel.Controls.Add(logHeader);
 
         var center = new Panel { Dock = DockStyle.Fill };
-        center.Controls.Add(split);
+        center.Controls.Add(_split);
         center.Controls.Add(_logPanel);
 
         Controls.Add(center);
@@ -145,65 +238,92 @@ internal sealed class MainForm : Form
         Controls.Add(_status);
 
         // The inspector keeps its width while the window is resized; the splitter can only be set once the form has a size.
-        split.SizeChanged += (_, _) => LimitInspectorWidth(split);
+        _split.SizeChanged += (_, _) => LimitInspectorWidth();
         Shown += (_, _) =>
         {
-            LimitInspectorWidth(split);
-            SetInspectorWidth(split, 316);
+            LimitInspectorWidth();
+            SetInspectorWidth(LogicalToDeviceUnits(MinInspectorWidth));
         };
+        DpiChanged += (_, _) => LimitInspectorWidth();
+    }
+
+    /// <summary>
+    /// Holds the settings panel between <see cref="MinInspectorWidth"/> and <see cref="MaxInspectorWidth"/>, scaled to
+    /// the monitor the window is on. The maximum is expressed as a minimum width for the marina view, so the splitter
+    /// simply stops there while being dragged instead of springing back.
+    /// </summary>
+    private void LimitInspectorWidth()
+    {
+        var available = _split.Width - _split.SplitterWidth;
+        var minimum = LogicalToDeviceUnits(MinInspectorWidth);
+        var maximum = LogicalToDeviceUnits(MaxInspectorWidth);
+        var minimumView = LogicalToDeviceUnits(MinViewWidth);
+        if (available <= minimum) return; // The window is too narrow to honour anything; leave it alone.
+
+        // Both minimums have to fit, whatever the window size, or SplitContainer throws.
+        var viewMinimum = Math.Max(minimumView, available - maximum);
+        _split.Panel2MinSize = Math.Min(minimum, available - minimumView);
+        _split.Panel1MinSize = Math.Min(viewMinimum, available - _split.Panel2MinSize);
+
+        // A window that shrank can leave the splitter outside the new bounds.
+        SetInspectorWidth(available - _split.SplitterDistance);
+    }
+
+    private void SetInspectorWidth(int width)
+    {
+        var available = _split.Width - _split.SplitterWidth;
+        var distance = Math.Clamp(available - width, _split.Panel1MinSize, Math.Max(_split.Panel1MinSize, available - _split.Panel2MinSize));
+        if (distance != _split.SplitterDistance) _split.SplitterDistance = distance;
     }
 
     private void BuildMenu()
     {
-        var file = new ToolStripMenuItem(Strings.MenuFile);
-        file.DropDownItems.Add(Menu(Strings.MenuNew, Keys.Control | Keys.N, () => NewMarina(askToSave: true)));
-        file.DropDownItems.Add(Menu(Strings.MenuOpen, Keys.Control | Keys.O, OpenDesign));
-        file.DropDownItems.Add(new ToolStripSeparator());
-        file.DropDownItems.Add(Menu(Strings.MenuSave, Keys.Control | Keys.S, () => SaveDesign(saveAs: false)));
-        file.DropDownItems.Add(Menu(Strings.MenuSaveAs, Keys.Control | Keys.Shift | Keys.S, () => SaveDesign(saveAs: true)));
-        file.DropDownItems.Add(new ToolStripSeparator());
-        file.DropDownItems.Add(Menu(Strings.MenuLoadImage, Keys.Control | Keys.I, LoadReferenceImage));
-        file.DropDownItems.Add(new ToolStripSeparator());
-        file.DropDownItems.Add(Menu(Strings.MenuExit, Keys.Alt | Keys.F4, Close));
+        var file = Menu(Strings.MenuFile, DesignerCommandId.New, DesignerCommandId.Open, null, DesignerCommandId.Save, DesignerCommandId.SaveAs, null, DesignerCommandId.LoadImage, null, DesignerCommandId.Exit);
+        var edit = Menu(Strings.MenuEdit, DesignerCommandId.Undo, DesignerCommandId.Redo, DesignerCommandId.CancelDraft, null, DesignerCommandId.Rename, null, DesignerCommandId.MarinaProperties);
+        var view = Menu(Strings.MenuView, DesignerCommandId.TopView, DesignerCommandId.FitMarina, DesignerCommandId.FitImage, null, DesignerCommandId.ShowLog);
 
-        var edit = new ToolStripMenuItem(Strings.MenuEdit);
-        edit.DropDownItems.Add(Menu(Strings.MenuUndo, Keys.Control | Keys.Z, () => Designer.Undo()));
-        edit.DropDownItems.Add(Menu(Strings.MenuCancelDraft, Keys.None, () => Designer.CancelDraft()));
-        edit.DropDownItems.Add(new ToolStripSeparator());
-        edit.DropDownItems.Add(Menu(Strings.MenuRename, Keys.F2, () => Designer.Tool = DesignTool.Rename));
-        edit.DropDownItems.Add(new ToolStripSeparator());
-        edit.DropDownItems.Add(Menu(Strings.MenuMarinaProperties, Keys.None, EditMarinaProperties));
+        // Ticked when on: they show or hide something beside the marina, rather than open a window.
+        var marina = Menu(Strings.MenuMarina, DesignerCommandId.Appearance, DesignerCommandId.Cameras, DesignerCommandId.BerthLabels);
+        var help = Menu(Strings.MenuHelp, DesignerCommandId.Shortcuts, DesignerCommandId.About);
 
-        var view = new ToolStripMenuItem(Strings.MenuView);
-        view.DropDownItems.Add(Menu(Strings.MenuTopView, Keys.Control | Keys.T, ViewTopDown));
-        view.DropDownItems.Add(Menu(Strings.MenuFitMarina, Keys.Control | Keys.F, () => Marina.ResetCamera()));
-        view.DropDownItems.Add(Menu(Strings.MenuFitImage, Keys.None, () => Designer.FocusReferenceImage()));
-        view.DropDownItems.Add(new ToolStripSeparator());
-        _logMenuItem.CheckedChanged += (_, _) => _logPanel.Visible = _logMenuItem.Checked;
-        view.DropDownItems.Add(_logMenuItem);
+        // The history's items say what they would take back or put back, and the ticks what is shown, every time a
+        // menu opens.
+        edit.DropDownOpening += (_, _) => UpdateHistoryCommands();
+        view.DropDownOpening += (_, _) => UpdateToggles();
+        marina.DropDownOpening += (_, _) => UpdateToggles();
 
-        var marina = new ToolStripMenuItem(Strings.MenuMarina);
-        marina.DropDownItems.Add(Menu(Strings.MenuAppearance, Keys.None, () => ShowSidePanel(SidePanel.Look)));
-        marina.DropDownItems.Add(Menu(Strings.MenuCameras, Keys.None, () => ShowSidePanel(SidePanel.Cameras)));
-        marina.DropDownItems.Add(Menu(Strings.MenuBerthLabels, Keys.None, ToggleLabels));
-
-        var help = new ToolStripMenuItem(Strings.MenuHelp);
-        help.DropDownItems.Add(Menu(Strings.MenuShortcuts, Keys.F1, ShowShortcuts));
-        help.DropDownItems.Add(Menu(Strings.MenuAbout, Keys.None, ShowAbout));
-
-        MainMenuStrip = new MenuStrip { BackColor = Theme.Surface, Font = Theme.Body, Padding = new Padding(6, 2, 0, 2) };
+        MainMenuStrip = new MenuStrip { BackColor = Theme.Surface, Font = Theme.Body, Padding = new Padding(6, 2, 0, 2), ShowItemToolTips = true };
         MainMenuStrip.Items.AddRange(new ToolStripItem[] { file, edit, view, marina, help });
     }
 
-    private static ToolStripMenuItem Menu(string text, Keys shortcut, Action action)
+    /// <summary>A top-level menu of commands from the table; a null entry is a separator.</summary>
+    private ToolStripMenuItem Menu(string title, params DesignerCommandId?[] commands)
     {
-        var item = new ToolStripMenuItem(text, null, (_, _) => action());
-        if (shortcut != Keys.None)
+        var menu = new ToolStripMenuItem(title);
+        foreach (var id in commands)
         {
-            item.ShortcutKeys = shortcut;
+            if (id is { } command) menu.DropDownItems.Add(MenuItem(command));
+            else menu.DropDownItems.Add(new ToolStripSeparator());
+        }
+
+        return menu;
+    }
+
+    /// <summary>A menu item for a command of the table, showing the key the table gives it.</summary>
+    private ToolStripMenuItem MenuItem(DesignerCommandId id)
+    {
+        var command = DesignerCommands.Get(id);
+        var item = new ToolStripMenuItem(command.Label, null, (_, _) => Run(id));
+        if (command.PrimaryGesture(DesignerPlatform.Desktop) is { } gesture)
+        {
+            // The keys themselves are dispatched from ProcessCmdKey before the menu sees them, which knows about the
+            // second key of a command (Ctrl+Shift+Z for Redo) and about fields that keep a key for themselves.
+            item.ShortcutKeys = ToKeys(gesture);
+            item.ShortcutKeyDisplayString = gesture.DisplayText;
             item.ShowShortcutKeys = true;
         }
 
+        _menuItems[id] = item;
         return item;
     }
 
@@ -214,7 +334,8 @@ internal sealed class MainForm : Form
         _toolbar.Renderer = new Theme.ToolbarRenderer();
         _toolbar.Padding = new Padding(8, 6, 8, 6);
         _toolbar.ImageScalingSize = new Size(20, 20);
-        _toolbar.Font = new Font("Segoe UI", 9.5f);
+        _toolbar.Font = Theme.Toolbar;
+        _toolbar.AccessibleName = Strings.ToolbarLabel;
 
         // Getting around, then what you place, then what you dress it with, then what you change.
         AddToolButton(DesignTool.Navigate, Strings.ToolNavigate, Strings.ToolNavigateTip);
@@ -233,87 +354,39 @@ internal sealed class MainForm : Form
         AddToolButton(DesignTool.Erase, Strings.ToolErase, Strings.ToolEraseTip);
         _toolbar.Items.Add(new ToolStripSeparator());
 
-        // Not a drawing tool: it swaps the panel beside the view for the look settings.
-        _lookButton = new ToolStripButton(Strings.ToolLook)
-        {
-            DisplayStyle = ToolStripItemDisplayStyle.Text,
-            Padding = new Padding(12, 4, 12, 4),
-            ToolTipText = Strings.ToolLookTip,
-            ForeColor = Theme.Text,
-            CheckOnClick = true,
-        };
-        _lookButton.CheckedChanged += (_, _) => ShowSidePanel(_lookButton.Checked ? SidePanel.Look : SidePanel.Tools);
+        // Not drawing tools: they add the look or camera settings under the tool's own.
+        _lookButton = Command(Strings.ToolLook, Strings.ToolLookTip, () => Run(DesignerCommandId.Appearance));
+        _camerasButton = Command(Strings.ToolCameras, Strings.ToolCamerasTip, () => Run(DesignerCommandId.Cameras));
         _toolbar.Items.Add(_lookButton);
-
-        _camerasButton = new ToolStripButton(Strings.ToolCameras)
-        {
-            DisplayStyle = ToolStripItemDisplayStyle.Text,
-            Padding = new Padding(12, 4, 12, 4),
-            ToolTipText = Strings.ToolCamerasTip,
-            ForeColor = Theme.Text,
-            CheckOnClick = true,
-        };
-        _camerasButton.CheckedChanged += (_, _) => ShowSidePanel(_camerasButton.Checked ? SidePanel.Cameras : SidePanel.Tools);
         _toolbar.Items.Add(_camerasButton);
 
-        // Undo is not here on purpose: Ctrl+Z and Edit ▸ Undo are where people look for it.
         _toolbar.Items.Add(new ToolStripSeparator());
-        _toolbar.Items.Add(Command(Strings.CommandTopView, Strings.CommandTopViewTip, ViewTopDown));
-        _toolbar.Items.Add(Command(Strings.CommandFitMarina, Strings.CommandFitMarinaTip, () => Marina.ResetCamera()));
+        _toolbar.Items.Add(Command(Strings.CommandTopView, Strings.Format(Strings.CommandTopViewTip, ShortcutOf(DesignerCommandId.TopView)), () => Run(DesignerCommandId.TopView)));
+        _toolbar.Items.Add(Command(Strings.CommandFitMarina, Strings.CommandFitMarinaTip, () => Run(DesignerCommandId.FitMarina)));
+
+        _toolbar.Items.Add(new ToolStripSeparator());
+        _undoButton = Command(Strings.ToolUndo, Strings.NothingToUndo, () => Run(DesignerCommandId.Undo));
+        _redoButton = Command(Strings.ToolRedo, Strings.NothingToRedo, () => Run(DesignerCommandId.Redo));
+        _toolbar.Items.Add(_undoButton);
+        _toolbar.Items.Add(_redoButton);
     }
 
-    /// <summary>Which settings sit beside the marina.</summary>
-    private enum SidePanel
-    {
-        /// <summary>Only the current tool's settings.</summary>
-        Tools = 0,
-
-        /// <summary>The tool's settings, then how the marina is drawn.</summary>
-        Look = 1,
-
-        /// <summary>The tool's settings, then the saved and automatic views.</summary>
-        Cameras = 2,
-    }
-
-    /// <summary>
-    /// Holds the settings panel between <see cref="MinInspectorWidth"/> and <see cref="MaxInspectorWidth"/>. The
-    /// maximum is expressed as a minimum width for the marina view, so the splitter simply stops there while being
-    /// dragged instead of springing back.
-    /// </summary>
-    private static void LimitInspectorWidth(SplitContainer split)
-    {
-        var available = split.Width - split.SplitterWidth;
-        if (available <= MinInspectorWidth) return; // The window is too narrow to honour anything; leave it alone.
-
-        // Both minimums have to fit, whatever the window size, or SplitContainer throws.
-        var viewMinimum = Math.Max(MinViewWidth, available - MaxInspectorWidth);
-        split.Panel2MinSize = Math.Min(MinInspectorWidth, available - MinViewWidth);
-        split.Panel1MinSize = Math.Min(viewMinimum, available - split.Panel2MinSize);
-
-        // A window that shrank can leave the splitter outside the new bounds.
-        SetInspectorWidth(split, available - split.SplitterDistance);
-    }
-
-    private static void SetInspectorWidth(SplitContainer split, int width)
-    {
-        var available = split.Width - split.SplitterWidth;
-        var distance = Math.Clamp(available - width, split.Panel1MinSize, Math.Max(split.Panel1MinSize, available - split.Panel2MinSize));
-        if (distance != split.SplitterDistance) split.SplitterDistance = distance;
-    }
+    private static string ShortcutOf(DesignerCommandId id) => DesignerCommands.Get(id).ShortcutText(DesignerPlatform.Desktop) ?? string.Empty;
 
     private void AddToolButton(DesignTool tool, string text, string tip)
     {
+        var key = DesignerCommands.ForTool(tool)?.ShortcutText(DesignerPlatform.Desktop);
         var button = new ToolStripButton(text)
         {
             DisplayStyle = ToolStripItemDisplayStyle.Text,
             Padding = new Padding(12, 4, 12, 4),
-            ToolTipText = tip,
+            ToolTipText = key is null ? tip : $"{tip} ({key})",
             ForeColor = Theme.Text,
         };
         button.Click += (_, _) =>
         {
-            Designer.IsActive = true;
-            Designer.Tool = tool;
+            CommitPendingEdit();
+            SelectTool(tool);
         };
         _toolButtons[tool] = button;
         _toolbar.Items.Add(button);
@@ -337,200 +410,244 @@ internal sealed class MainForm : Form
         _status.BackColor = Theme.Surface;
         _status.Font = Theme.Small;
         _status.SizingGrip = false;
-        _status.Items.AddRange(new ToolStripItem[] { _statusHint, _statusPointer, _statusCamera });
+        _status.Items.AddRange(new ToolStripItem[] { _statusHint, _statusNotice, _statusPointer, _statusCamera });
     }
 
     private void WireEvents()
     {
-        var designer = Designer;
-        designer.StateChanged += (_, _) => RefreshUi();
+        Designer.StateChanged += (_, _) => RequestRefresh();
 
         // The box-select tool changes the selection without touching the designer's own state.
-        Marina.SelectionChanged += (_, _) => RefreshUi();
-        designer.ElementCreated += (_, e) =>
-        {
-            MarkDirty();
-            Log(e switch
-            {
-                { LandArea: { } land } => Strings.Format(Strings.LogAddedLand, land.DisplayName, land.Points.Count, land.Area),
-                { Pier: { } pier } => Strings.Format(Strings.LogAddedPier, pier.Id, pier.Length, pier.Width),
-                { Berths.Count: 1 } => Strings.Format(Strings.LogAddedBerth, e.Berths[0].Id),
-                _ => Strings.Format(Strings.LogAddedBerths, e.Berths.Count, string.Join(", ", e.Berths.Select(s => s.Id))),
-            });
-        };
-        designer.ElementErased += (_, e) =>
-        {
-            MarkDirty();
-            Log(Strings.Format(Strings.LogRemoved, e.Element.GetType().Name.ToLowerInvariant(), e.RemovedBerths.Count, e.RemovedDividers.Count));
-        };
-        designer.TreesPlanted += (_, e) =>
-        {
-            MarkDirty();
-            Log(Strings.Format(Strings.LogTrees, e.LandArea.DisplayName, e.LandArea.Trees.Count, e.PreviousCount));
-        };
-        designer.ActionUndone += (_, e) =>
-        {
-            MarkDirty();
-            Log(Strings.Format(Strings.LogUndone, e.Description));
-        };
-        designer.ScaleLineDrawn += (_, e) => Log(Strings.Format(Strings.LogScaleLine, e.MeasuredLength));
-        designer.ReferenceImageChanged += (_, e) => Log(Strings.Format(Strings.LogReferenceImage, e.Change.ToString().ToLowerInvariant(), e.MetersPerPixel));
+        Marina.SelectionChanged += (_, _) => RequestRefresh();
 
-        _view.LayoutChanged += (_, _) => MarkDirty();
-        designer.ElementRenaming += (_, e) => AskForName(e);
-        _view.RenderError += (_, e) => Log(Strings.Format(Strings.LogRendererError, e.Exception.Message));
+        // Undo and redo can change a text being typed; the field should show what the design now holds.
+        Designer.ActionUndone += (_, _) => _inspector.RequestSync(overwriteFocused: true);
+        Designer.ActionRedone += (_, _) => _inspector.RequestSync(overwriteFocused: true);
+
+        // The automatic views follow the layout and the size of the view. A collapsed panel is synced when it opens.
+        Marina.CameraPresetsChanged += (_, _) =>
+        {
+            if (!_cameras.Collapsed) _cameras.Sync();
+        };
+
+        _session.TitleChanged += (_, _) => Text = _session.Title;
+        _session.SidePanelChanged += (_, _) => ShowSidePanel(_session.SidePanel);
+        _session.DocumentReplaced += (_, _) =>
+        {
+            // A new or opened design brings its own style, traffic and views; the panels still show the old ones.
+            _appearance.Sync();
+            _cameras.Sync();
+            _inspector.RequestSync(overwriteFocused: true);
+        };
+        _session.Log.Added += (_, _) => AddLogLine();
+        _session.Notice += (_, e) => ShowNotice(e.Message);
+
+        _view.RenderError += (_, e) => _session.Log.Add(Strings.Format(Strings.LogRendererError, e.Exception.Message));
         _view.MouseMove += (_, e) => ShowPointer(e.Location);
         _view.MouseLeave += (_, _) => _statusPointer.Text = string.Empty;
-        FormClosing += (_, e) => e.Cancel = !ConfirmDiscardChanges();
 
-        // Esc always comes back to navigation, even when the view doesn't have the focus.
-        KeyDown += (_, e) =>
+        _cameraTimer.Tick += (_, _) => ShowCamera();
+        _cameraTimer.Start();
+        _noticeTimer.Tick += (_, _) =>
         {
-            if (e.KeyCode == Keys.Escape && !Designer.HasDraft) Designer.Tool = DesignTool.Navigate;
+            _noticeTimer.Stop();
+            _statusNotice.Visible = false;
         };
+
+        FormClosing += OnFormClosing;
     }
+
+    /// <summary>
+    /// Asks about unsaved changes before the window closes. The close is held back while the question is asked, and
+    /// made again once the answer allows it.
+    /// </summary>
+    private async void OnFormClosing(object? sender, FormClosingEventArgs e)
+    {
+        if (_closeConfirmed) return;
+        e.Cancel = true;
+        if (_session.IsBusy) return;
+        CommitPendingEdit();
+        if (!await _session.ConfirmDiscardChangesAsync()) return;
+        _closeConfirmed = true;
+
+        // Closed again once this round of closing (held back above) is over: a Close made from inside FormClosing
+        // would be ignored.
+        BeginInvoke(Close);
+    }
+
+    // ---- Keyboard ------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Every key of the command table, dispatched here rather than by the menus so the table's rules apply: a field being
+    /// typed in keeps Ctrl+Z, Ctrl+Y, F2 and Esc; a tool's letter only counts while the 3D view has the focus; and a
+    /// command's second key (Ctrl+Shift+Z for Redo) works as well as the one the menu shows.
+    /// </summary>
+    /// <param name="msg">The key message.</param>
+    /// <param name="keyData">The key, with its modifiers.</param>
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        var command = DesignerCommands.Match(DesignerPlatform.Desktop, KeyName(keyData & Keys.KeyCode), ToModifiers(keyData));
+        if (command is null) return base.ProcessCmdKey(ref msg, keyData);
+
+        var target = FromChildHandle(msg.HWnd) ?? FocusedControl();
+        var inView = _view.ContainsFocus;
+        if (command.YieldsToTextFields && IsEditing(target)) return false;
+        if (command.ViewOnly && !inView) return base.ProcessCmdKey(ref msg, keyData);
+
+        // Esc in the view is the view's own: it drops the drawing and goes back to Navigate there.
+        if (command.Id == DesignerCommandId.Escape && inView) return base.ProcessCmdKey(ref msg, keyData);
+
+        RunCommand(command);
+        return true;
+    }
+
+    /// <summary>A gesture of the command table as WinForms writes it.</summary>
+    private static Keys ToKeys(KeyGesture gesture)
+    {
+        var keys = Enum.Parse<Keys>(gesture.Key);
+        if (gesture.Modifiers.HasFlag(KeyModifiers.Control)) keys |= Keys.Control;
+        if (gesture.Modifiers.HasFlag(KeyModifiers.Shift)) keys |= Keys.Shift;
+        if (gesture.Modifiers.HasFlag(KeyModifiers.Alt)) keys |= Keys.Alt;
+        return keys;
+    }
+
+    /// <summary>The key's name as the command table writes it: a letter, "F2", "Escape".</summary>
+    private static string KeyName(Keys key) => key == Keys.Escape ? "Escape" : key.ToString();
+
+    private static KeyModifiers ToModifiers(Keys keyData)
+    {
+        var modifiers = KeyModifiers.None;
+        if ((keyData & Keys.Control) != 0) modifiers |= KeyModifiers.Control;
+        if ((keyData & Keys.Shift) != 0) modifiers |= KeyModifiers.Shift;
+        if ((keyData & Keys.Alt) != 0) modifiers |= KeyModifiers.Alt;
+        return modifiers;
+    }
+
+    /// <summary>The control that has the focus, found through every container on the way down (a NumericUpDown included).</summary>
+    private Control? FocusedControl()
+    {
+        Control? control = this;
+        while (control is ContainerControl { ActiveControl: { } inner }) control = inner;
+        return control;
+    }
+
+    /// <summary>True for a control that edits text of its own: a text box, the box of a number field, an editable list.</summary>
+    private static bool IsEditing(Control? control) => control switch
+    {
+        TextBoxBase { ReadOnly: false } => true,
+        UpDownBase => true,
+        ComboBox combo => combo.DropDownStyle != ComboBoxStyle.DropDownList || combo.DroppedDown,
+        { Parent: UpDownBase } => true,
+        _ => false,
+    };
 
     // ---- State ---------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Brings the toolbar, menus and panels in line with the designer once the current burst of changes is over. A
+    /// dragged slider or an undo that changes a dozen things costs one refresh, not one per change.
+    /// </summary>
+    private void RequestRefresh()
+    {
+        _inspector.RequestSync();
+        if (_refreshPending || IsDisposed) return;
+        _refreshPending = true;
+        if (IsHandleCreated) BeginInvoke(RefreshUi);
+        else RefreshUi();
+    }
+
     private void RefreshUi()
     {
+        _refreshPending = false;
         if (IsDisposed) return;
-        foreach (var (tool, button) in _toolButtons) button.Checked = Designer.Tool == tool;
+        foreach (var (tool, button) in _toolButtons) button.Checked = Designer.IsActive && Designer.Tool == tool;
         _statusHint.Text = Designer.ToolHint;
-        var pose = Marina.Camera.Pose;
-        _statusCamera.Text = string.Format(CultureInfo.CurrentCulture, Strings.StatusCamera, pose.Distance, pose.PitchDegrees);
-        _inspector.Sync();
-        if (!_cameras.Collapsed) _cameras.Sync();
-        if (!_appearance.Collapsed) _appearance.Sync();
+        UpdateHistoryCommands();
+        UpdateToggles();
+    }
+
+    private void UpdateHistoryCommands()
+    {
+        var undoTip = DesignerText.UndoTip(Designer);
+        var redoTip = DesignerText.RedoTip(Designer);
+        _undoButton.Enabled = _session.CanUndo;
+        _undoButton.ToolTipText = $"{undoTip} ({ShortcutOf(DesignerCommandId.Undo)})";
+        _redoButton.Enabled = Designer.CanRedo;
+        _redoButton.ToolTipText = $"{redoTip} ({ShortcutOf(DesignerCommandId.Redo)})";
+        _menuItems[DesignerCommandId.Undo].Enabled = _session.CanUndo;
+        _menuItems[DesignerCommandId.Undo].ToolTipText = undoTip;
+        _menuItems[DesignerCommandId.Redo].Enabled = Designer.CanRedo;
+        _menuItems[DesignerCommandId.Redo].ToolTipText = redoTip;
+        _menuItems[DesignerCommandId.CancelDraft].Enabled = Designer.HasDraft;
+    }
+
+    /// <summary>The ticks on the items that show or hide something, read from what is shown.</summary>
+    private void UpdateToggles()
+    {
+        _menuItems[DesignerCommandId.ShowLog].Checked = _logPanel.Visible;
+        _menuItems[DesignerCommandId.Appearance].Checked = _session.SidePanel == DesignerSidePanel.Look;
+        _menuItems[DesignerCommandId.Cameras].Checked = _session.SidePanel == DesignerSidePanel.Cameras;
+        _menuItems[DesignerCommandId.BerthLabels].Checked = Marina.BerthLabelMode != BerthLabelMode.None;
+        _lookButton.Checked = _session.SidePanel == DesignerSidePanel.Look;
+        _camerasButton.Checked = _session.SidePanel == DesignerSidePanel.Cameras;
     }
 
     private void ShowPointer(Point location)
     {
         var point = Designer.PointerPosition ?? (Marina.GetWaterPoint(location.X, location.Y) is { } world ? new Vector2(world.X, world.Z) : (Vector2?)null);
-        _statusPointer.Text = point is { } p ? string.Format(CultureInfo.CurrentCulture, Strings.StatusPointer, p.X, p.Y) : string.Empty;
+        _statusPointer.Text = DesignerText.PointerText(point);
+    }
+
+    /// <summary>The camera readout, redrawn only when the camera has moved since it was last shown.</summary>
+    private void ShowCamera()
+    {
         var pose = Marina.Camera.Pose;
-        _statusCamera.Text = string.Format(CultureInfo.CurrentCulture, Strings.StatusCamera, pose.Distance, pose.PitchDegrees);
+        if (pose == _shownPose && !string.IsNullOrEmpty(_statusCamera.Text)) return;
+        _shownPose = pose;
+        _statusCamera.Text = DesignerText.CameraText(pose);
     }
 
-    private void MarkDirty()
+    private void AddLogLine()
     {
-        if (_dirty) return;
-        _dirty = true;
-        UpdateTitle();
+        if (_session.Log.Latest is not { } entry || IsDisposed) return;
+        _log.Items.Insert(0, entry.Text);
+        while (_log.Items.Count > ActivityLog.Capacity) _log.Items.RemoveAt(_log.Items.Count - 1);
     }
 
-    private void UpdateTitle() =>
-        Text = Strings.Format(Strings.WindowTitle, _dirty ? Strings.UnsavedMarker : string.Empty, Path.GetFileName(_filePath) ?? Marina.MarinaName, AppName);
-
-    private void Log(string message)
+    /// <summary>A change the designer refused, shown in the status bar for a few seconds without stopping the work.</summary>
+    private void ShowNotice(string message)
     {
-        _log.Items.Insert(0, Strings.Format(Strings.LogEntry, DateTime.Now, message));
-        while (_log.Items.Count > 500) _log.Items.RemoveAt(_log.Items.Count - 1);
+        _statusNotice.Text = message;
+        _statusNotice.ToolTipText = message;
+        _statusNotice.Visible = true;
+        _noticeTimer.Stop();
+        _noticeTimer.Start();
+        System.Media.SystemSounds.Asterisk.Play();
+    }
+
+    // ---- Side panel ----------------------------------------------------------------------------
+
+    /// <summary>
+    /// Shows what sits beside the marina. The current tool's settings stay on top whatever is open underneath, so
+    /// switching to the look or camera settings does not mean losing sight of what the tool in hand is doing.
+    /// </summary>
+    /// <param name="which">Which settings to show under the tool's own.</param>
+    private void ShowSidePanel(DesignerSidePanel which)
+    {
+        // Collapsed rather than hidden: a hidden panel loses its layout and costs most of a second to show again.
+        if (which == DesignerSidePanel.Cameras) _cameras.Sync();
+
+        _side.SuspendLayout();
+        _appearance.Collapsed = which != DesignerSidePanel.Look;
+        _cameras.Collapsed = which != DesignerSidePanel.Cameras;
+        _side.ResumeLayout(performLayout: true);
+
+        // The tool settings are always there, at the top of the column, however far it has been scrolled.
+        _side.AutoScrollPosition = Point.Empty;
+        UpdateToggles();
     }
 
     // ---- File ----------------------------------------------------------------------------------
-
-    private void NewMarina(bool askToSave)
-    {
-        if (askToSave && !ConfirmDiscardChanges()) return;
-
-        Marina.Style = new Core.Rendering.MarinaStyle();
-        Marina.InitializeLayout(new MarinaLayout { Name = Strings.NewMarinaName });
-        Designer.ClearHistory();
-        Designer.ClearReferenceImage();
-        Designer.IsActive = true;
-        Designer.Tool = DesignTool.Navigate;
-        Designer.ViewTopDown(immediate: true);
-        Marina.Camera.SetPose(Marina.Camera.DesiredPose with { Distance = 220f }, immediate: true);
-        _filePath = null;
-        _dirty = false;
-        UpdateTitle();
-
-        // A new marina means a fresh style and no traffic, so the look settings are read back too.
-        _appearance.Sync();
-        _cameras.Sync();
-        RefreshUi();
-        Log(Strings.LogNewMarina);
-    }
-
-    private void OpenDesign()
-    {
-        if (!ConfirmDiscardChanges()) return;
-        using var dialog = new OpenFileDialog { Filter = MarinaDocument.FileDialogFilter, Title = Strings.OpenDesignTitle };
-        if (dialog.ShowDialog(this) != DialogResult.OK) return;
-
-        try
-        {
-            var document = MarinaDocument.Load(dialog.FileName);
-            document.ApplyTo(Marina);
-            DecodeReferenceImage();
-            _filePath = dialog.FileName;
-            _dirty = false;
-            Designer.ClearHistory();
-            Designer.IsActive = true;
-            Designer.Tool = DesignTool.Navigate;
-            UpdateTitle();
-
-            // The document brings its own style, traffic and designer settings; the panels still show the old ones.
-            _appearance.Sync();
-            _cameras.Sync();
-            RefreshUi();
-            Log(Strings.Format(Strings.LogOpened, Path.GetFileName(dialog.FileName), document.Layout.Berths.Count, document.Layout.Piers.Count) +
-                (document.IsFromNewerVersion ? Strings.Format(Strings.LogOpenedNewerVersion, document.Version) : string.Empty));
-        }
-        catch (Exception ex) when (ex is MarinaFormatException or MarinaLayoutException or IOException or UnauthorizedAccessException)
-        {
-            Warn(Strings.OpenFailed, ex);
-        }
-    }
-
-    private void SaveDesign(bool saveAs)
-    {
-        var path = _filePath;
-        if (saveAs || path is null)
-        {
-            using var dialog = new SaveFileDialog
-            {
-                Filter = MarinaDocument.FileDialogFilter,
-                Title = Strings.SaveDesignTitle,
-                FileName = path is null ? Sanitize(Marina.MarinaName) + MarinaDocument.FileExtension : Path.GetFileName(path),
-                AddExtension = true,
-            };
-            if (dialog.ShowDialog(this) != DialogResult.OK) return;
-            path = dialog.FileName;
-        }
-
-        try
-        {
-            var document = MarinaDocument.FromVisualizer(Marina, $"{AppName} {Application.ProductVersion}");
-            document.Save(path);
-            _filePath = path;
-            _dirty = false;
-            UpdateTitle();
-            Log(Strings.Format(Strings.LogSaved, Path.GetFileName(path), document.Layout.Berths.Count));
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            Warn(Strings.SaveFailed, ex);
-        }
-    }
-
-    /// <summary>Returns false when the user wants to keep unsaved work.</summary>
-    private bool ConfirmDiscardChanges()
-    {
-        if (!_dirty) return true;
-        var answer = MessageBox.Show(
-            this,
-            Strings.Format(Strings.ConfirmDiscard, Path.GetFileName(_filePath) ?? Marina.MarinaName),
-            AppName,
-            MessageBoxButtons.YesNoCancel,
-            MessageBoxIcon.Question);
-
-        if (answer == DialogResult.Cancel) return false;
-        if (answer == DialogResult.No) return true;
-        SaveDesign(saveAs: false);
-        return !_dirty;
-    }
 
     private void LoadReferenceImage()
     {
@@ -544,274 +661,38 @@ internal sealed class MainForm : Form
         try
         {
             _view.LoadReferenceImage(dialog.FileName);
+            Designer.IsActive = true;
             Designer.FocusReferenceImage();
             Designer.Tool = DesignTool.MeasureScale;
-            Log(Strings.Format(Strings.LogImageLoaded, Path.GetFileName(dialog.FileName)));
+            _session.Log.Add(Strings.Format(Strings.LogImageLoaded, Path.GetFileName(dialog.FileName)));
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or OutOfMemoryException or UnauthorizedAccessException)
         {
-            Warn(Strings.ImageLoadFailed, ex);
+            _ = _session.WarnAsync(Strings.ImageLoadFailed, ex);
         }
     }
 
-    // ---- Dialogs -------------------------------------------------------------------------------
-
-    /// <summary>
-    /// Chooses what sits beside the marina. The current tool's settings stay on top whatever is open underneath, so
-    /// switching to the look or camera settings does not mean losing sight of what the tool in hand is doing.
-    /// </summary>
-    /// <remarks>
-    /// While the look settings are up the scene is drawn with its full atmosphere — the haze the designer normally
-    /// damps down so the shapes it is tracing stay crisp — because that haze is one of the things being set.
-    /// </remarks>
-    /// <param name="which">Which settings to show under the tool's own.</param>
-    private void ShowSidePanel(SidePanel which)
-    {
-        if (_updatingSidePanel) return;
-        _updatingSidePanel = true;
-        try
-        {
-            _lookButton.Checked = which == SidePanel.Look;
-            _camerasButton.Checked = which == SidePanel.Cameras;
-        }
-        finally
-        {
-            _updatingSidePanel = false;
-        }
-
-        // Collapsed rather than hidden: a hidden panel loses its layout and costs most of a second to show again.
-        if (which == SidePanel.Cameras) _cameras.Sync();
-
-        _side.SuspendLayout();
-        _appearance.Collapsed = which != SidePanel.Look;
-        _cameras.Collapsed = which != SidePanel.Cameras;
-        _side.ResumeLayout(performLayout: true);
-
-        // The tool settings are always there, at the top of the column, however far it has been scrolled.
-        _side.AutoScrollPosition = Point.Empty;
-
-        Designer.FogFactor = which == SidePanel.Look ? 1f : DesigningFogFactor;
-        if (which == SidePanel.Look) MarkDirty();
-        RefreshUi();
-    }
-
-    private bool _updatingSidePanel;
-
-    /// <summary>
-    /// Straight down on the whole marina. The automatic view knows how far back that has to be; the designer's own
-    /// top-down only turns the camera and leaves it wherever it was.
-    /// </summary>
-    private void ViewTopDown()
-    {
-        if (!Marina.ApplyBuiltInCameraPreset(MarinaVisualizer.TopDownPresetName)) Designer.ViewTopDown();
-    }
-
-    private void ToggleLabels()
-    {
-        Marina.BerthLabelMode = Marina.BerthLabelMode == BerthLabelMode.None ? BerthLabelMode.All : BerthLabelMode.None;
-        MarkDirty();
-        Log(Marina.BerthLabelMode == BerthLabelMode.None ? Strings.LogBerthLabelsHidden : Strings.LogBerthLabelsShown);
-    }
-
-    /// <summary>
-    /// A design stores its tracing picture as the original PNG or JPEG, which the OpenGL renderer cannot upload.
-    /// This decodes it to pixels once, after loading, keeping the file bytes so the next save still carries it.
-    /// </summary>
-    private void DecodeReferenceImage()
-    {
-        if (Designer.ReferenceImage is not { Rgba: null } stored) return;
-
-        try
-        {
-            var center = Designer.ReferenceImageCenter;
-            var metersPerPixel = Designer.ReferenceImageMetersPerPixel;
-            Designer.SetReferenceImage(ReferenceImageLoader.Decoded(stored), metersPerPixel, center);
-        }
-        catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException)
-        {
-            // The design still opens; only the picture behind it is lost.
-            Designer.ClearReferenceImage();
-            Log(Strings.Format(Strings.LogFailed, Strings.ImageLoadFailed, ex.Message));
-        }
-    }
-
-    /// <summary>Answers the designer's rename request with a name typed by the user.</summary>
-    /// <summary>
-    /// Asks for a new name, and keeps asking while the answer is one something else already has. A berth's name is
-    /// its id and a pier's id is what its berths are named after, so neither may collide.
-    /// </summary>
-    private void AskForName(DesignElementRenamingEventArgs e)
-    {
-        // Alt over a berth renames the whole row, so it asks for the pattern alone and leaves the pier's own name
-        // and id where they are.
-        if (e.Scope == DesignRenameScope.BerthsOfPier)
-        {
-            AskForBerthPattern(e);
-            return;
-        }
-
-        var berth = e.Berth is not null;
-        var name = e.CurrentName;
-        var pierId = e.Pier?.Id ?? string.Empty;
-
-        // Renaming a pier renames every berth on it, so the pattern they are named by is offered as well, filled in
-        // with the one they follow now.
-        var pattern = e.BerthPattern ?? string.Empty;
-        var askPattern = !berth && e.BerthPattern is not null;
-
-        while (true)
-        {
-            // A pier has a display name and an id its berths point at, so it is asked for both.
-            using var form = new TextInputForm(
-                berth ? Strings.RenameBerthTitle : Strings.RenamePierTitle,
-                berth ? Strings.RenameBerthQuestion : Strings.RenamePierQuestion,
-                name,
-                berth ? null : Strings.RenamePierIdQuestion,
-                pierId,
-                askPattern ? Strings.RenamePatternQuestion : null,
-                pattern,
-                askPattern ? Strings.RenamePatternHint : null);
-
-            if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
-            {
-                e.Cancel = true;
-                return;
-            }
-
-            name = form.Value.Trim();
-            if (!berth) pierId = form.SecondValue.Trim();
-            if (askPattern) pattern = form.ThirdValue.Trim();
-
-            var taken = berth
-                ? !Designer.IsBerthNameAvailable(name, e.Berth!.Id) ? name : null
-                : pierId.Length > 0 && !Designer.IsPierIdAvailable(pierId, e.Pier!.Id) ? pierId : null;
-
-            if (taken is null) break;
-
-            Log(Strings.Format(Strings.LogRenameRefused, taken, berth ? e.CurrentName : pierId));
-            MessageBox.Show(
-                this, Strings.Format(Strings.RenameTakenBody, taken), Strings.RenameTakenTitle,
-                MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-
-        if (!berth && e.Pier is { } pier)
-        {
-            var id = pierId.Length == 0 ? pier.Id : pierId;
-            e.NewPierId = id;
-            if (!string.Equals(id, pier.Id, StringComparison.Ordinal))
-            {
-                MarkDirty();
-                Log(Strings.Format(Strings.LogPierIdChanged, pier.Id, id));
-            }
-        }
-
-        if (askPattern && pattern.Length > 0 && !string.Equals(pattern, e.BerthPattern, StringComparison.Ordinal))
-        {
-            e.NewBerthPattern = pattern;
-            MarkDirty();
-            Log(Strings.Format(Strings.LogBerthPattern, e.Pier!.Id, pattern));
-        }
-
-        e.NewName = name;
-        if (name != e.CurrentName)
-        {
-            MarkDirty();
-            Log(Strings.Format(Strings.LogRenamed, e.CurrentName, name));
-        }
-    }
-
-    /// <summary>
-    /// Asks for one pattern and renames every berth on the pier to it. Used when a berth is clicked with Alt held,
-    /// the same modifier that sweeps a whole row with the eraser.
-    /// </summary>
-    private void AskForBerthPattern(DesignElementRenamingEventArgs e)
-    {
-        if (e.Pier is not { } pier) return;
-
-        var berths = Marina.GetBerthsByPier(pier.Id).Count;
-        var pattern = e.BerthPattern ?? string.Empty;
-
-        // Keep asking while the pattern would give two berths the same name, or a name something else already has.
-        // The names are worked out from scratch, so every berth on the pier is renamed whatever it was called.
-        while (true)
-        {
-            using var form = new TextInputForm(
-                Strings.Format(Strings.RenameBerthsTitle, pier.Id),
-                Strings.Format(Strings.RenameBerthsQuestion, berths, pier.Id),
-                pattern,
-                thirdQuestion: null,
-                thirdHint: Strings.RenamePatternHint);
-
-            if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value))
-            {
-                e.Cancel = true;
-                return;
-            }
-
-            pattern = form.Value.Trim();
-            var plan = Designer.PlanBerthNames(pier.Id, pattern);
-            if (plan.IsClear) break;
-
-            var clashes = string.Join(", ", plan.Clashes.Take(8));
-            if (plan.Clashes.Count > 8) clashes += Strings.Format(Strings.RenameClashMore, plan.Clashes.Count - 8);
-
-            Log(Strings.Format(Strings.LogRenameClash, pier.Id, clashes));
-            MessageBox.Show(
-                this, Strings.Format(Strings.RenameClashBody, clashes), Strings.RenameClashTitle,
-                MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
-
-        e.NewBerthPattern = pattern;
-        MarkDirty();
-        Log(Strings.Format(Strings.LogBerthPattern, pier.Id, pattern));
-    }
-
-    private void EditMarinaProperties()
-    {
-        using var form = new TextInputForm(Strings.MarinaNameTitle, Strings.MarinaNameQuestion, Marina.MarinaName);
-        if (form.ShowDialog(this) != DialogResult.OK || string.IsNullOrWhiteSpace(form.Value)) return;
-        Marina.MarinaName = form.Value.Trim();
-        MarkDirty();
-        UpdateTitle();
-        RefreshUi();
-    }
+    // ---- Help ----------------------------------------------------------------------------------
 
     private void ShowShortcuts() => MessageBox.Show(
-        this, Strings.ShortcutsBody, Strings.ShortcutsTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        this, ShortcutHelp.Build(DesignerPlatform.Desktop), Strings.ShortcutsTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
 
     private void ShowAbout() => MessageBox.Show(
         this,
-        Strings.Format(
-            Strings.AboutBody,
-            AppName,
-            Version(typeof(MainForm)),
-            Version(typeof(MarinaVisualizer)),
-            _view.RendererDescription,
-            RuntimeInformation.FrameworkDescription,
-            DateTime.Now.Year,
-            Author),
+        DesignerText.About(typeof(MainForm), _view.RendererDescription, Author, DateTime.Now.Year),
         Strings.AboutTitle,
         MessageBoxButtons.OK,
         MessageBoxIcon.Information);
 
-    /// <summary>Who to credit in the About box.</summary>
-    private const string Author = "Christoforos Sakellaris";
-
-    /// <summary>The three-part version of the assembly a type lives in, e.g. "1.2.0".</summary>
-    private static string Version(Type type) =>
-        type.Assembly.GetName().Version is { } version
-            ? $"{version.Major}.{version.Minor}.{version.Build}"
-            : "1.0.0";
-
-    private void Warn(string title, Exception ex)
+    protected override void Dispose(bool disposing)
     {
-        Log(Strings.Format(Strings.LogFailed, title, ex.Message));
-        MessageBox.Show(this, Strings.Format(Strings.WarnBody, title, ex.Message), AppName, MessageBoxButtons.OK, MessageBoxIcon.Warning);
-    }
+        if (disposing)
+        {
+            _cameraTimer.Dispose();
+            _noticeTimer.Dispose();
+            _session.Dispose();
+        }
 
-    private static string Sanitize(string name)
-    {
-        var cleaned = new string(name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '-' : c).ToArray()).Trim();
-        return cleaned.Length == 0 ? Strings.DefaultFileName : cleaned;
+        base.Dispose(disposing);
     }
 }

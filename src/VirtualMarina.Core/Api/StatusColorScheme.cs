@@ -113,6 +113,21 @@ public sealed class StatusColorScheme : StyleSection
         _ => 0f,
     };
 
+    /// <summary>Takes every color, opacity and marker setting from <paramref name="other"/> (a <see cref="MarinaStyle.Clone"/> step).</summary>
+    /// <remarks>Kept next to the fields, like the other sections' copies, so a setting added here is copied too.</remarks>
+    internal void CopyFrom(StatusColorScheme other)
+    {
+        foreach (var status in Enum.GetValues<BerthStatus>()) Set(status, other.Get(status));
+        DisabledColor = other.DisabledColor;
+        PadOpacity = other.PadOpacity;
+        OccupiedBoatOpacity = other.OccupiedBoatOpacity;
+        ReservedBoatOpacity = other.ReservedBoatOpacity;
+        TemporarilyFreeBoatOpacity = other.TemporarilyFreeBoatOpacity;
+        GhostBoatTint = other.GhostBoatTint;
+        ShowStatusMarkers = other.ShowStatusMarkers;
+        StatusMarkerScale = other.StatusMarkerScale;
+    }
+
     /// <summary>Restores the default colors, opacities and markers.</summary>
     public void Reset()
     {

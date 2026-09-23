@@ -104,10 +104,12 @@ public class BerthLabelTests
     {
         // The shader's bound is derived from the same amplitudes that build the waves.
         Assert.Equal(ShaderSources.WaveComponentAmplitudes.Sum(), ShaderSources.MaxWaveHeightFactor, 4);
-        var vertex = ShaderSources.ModelVertex(ShaderDialect.WebGL2);
-        Assert.Contains("vmMaxWaveHeight()", vertex);
-        Assert.Contains("(uAnimation & 8) != 0", vertex);
-        Assert.Contains("float[4](1.0, 0.6, 0.35, 0.22)", vertex);
+        foreach (var vertex in new[] { ShaderSources.ModelVertex(ShaderDialect.WebGL2), ShaderSources.InstancedModelVertex(ShaderDialect.WebGL2) })
+        {
+            Assert.Contains("vmMaxWaveHeight()", vertex);
+            Assert.Contains("(animation & 8) != 0", vertex);
+            Assert.Contains("float[4](1.0, 0.6, 0.35, 0.22)", vertex);
+        }
 
         // Whatever the wave phases, the surface never reaches the lifted text. Both the camera (MinEyeHeight) and the
         // text are above that level, so the straight line between them is too: no wave can cover a label.

@@ -173,8 +173,12 @@ public class RobustnessProbeTests
         var boat = new Boat("B1", "Guest", BoatType.MotorYacht) { LengthMeters = 9f, BeamMeters = 3f };
         marina.MoorAlongside(new[] { "A-L01", "A-L02" }, boat);
 
-        // A-L02 is already spoken for.
-        Assert.ThrowsAny<Exception>(() => marina.MoorAlongside(new[] { "A-L02", "A-L03" }, boat));
+        // A-L02 is already spoken for, and the refusal leaves everything as it was.
+        var error = Assert.Throws<InvalidOperationException>(() => marina.MoorAlongside(new[] { "A-L02", "A-L03" }, boat));
+        Assert.Contains("already belongs to multi-berth", error.Message, StringComparison.Ordinal);
+        Assert.Single(marina.GetMultiBerths());
+        Assert.Null(marina.GetBerth("A-L03")!.MultiBerthId);
+        Assert.Equal(BerthStatus.Free, marina.GetBerth("A-L03")!.Status);
     }
 
     [Fact]
@@ -184,11 +188,11 @@ public class RobustnessProbeTests
         var boat = new Boat("B1", "Guest", BoatType.MotorYacht) { LengthMeters = 9f, BeamMeters = 3f };
         var multi = marina.MoorAlongside(new[] { "A-L01", "A-L02" }, boat);
 
-        marina.ReleaseMultiBerth(multi.Id);
+        Assert.True(marina.ReleaseMultiBerth(multi.Id));
 
-        var second = Record.Exception(() => marina.ReleaseMultiBerth(multi.Id));
-        Assert.True(second is null or KeyNotFoundException,
-            $"releasing twice should be ignored or report a missing id, not {second?.GetType().Name}");
+        // The second release finds nothing to release and says so, rather than throwing.
+        Assert.False(marina.ReleaseMultiBerth(multi.Id));
+        Assert.Null(marina.GetMultiBerth(multi.Id));
     }
 
     [Fact]
@@ -200,11 +204,13 @@ public class RobustnessProbeTests
 
         marina.RemoveBerth("A-L01");
 
-        var after = marina.GetMultiBerth(multi.Id);
-        if (after is not null)
-        {
-            Assert.All(after.BerthIds, id => Assert.NotNull(marina.GetBerth(id)));
-        }
+        // Two members less one is not a multi-berth any more: the group dissolves and the berth that is left keeps
+        // the boat as an ordinary assignment.
+        Assert.Null(marina.GetMultiBerth(multi.Id));
+        var left = marina.GetBerth("A-L02")!;
+        Assert.Null(left.MultiBerthId);
+        Assert.Equal(BerthStatus.Occupied, left.Status);
+        Assert.Equal("B1", left.Boat?.Id);
 
         Assert.NotNull(marina.BuildRenderFrame());
     }

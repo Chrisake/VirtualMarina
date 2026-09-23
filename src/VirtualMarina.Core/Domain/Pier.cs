@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Mathematics;
 using VirtualMarina.Core.Resources;
 
@@ -30,12 +29,13 @@ public enum PierType
 public sealed record Pier
 {
     private readonly float? _deckHeight;
+    private readonly ValueDictionary _metadata = ValueDictionary.Empty;
 
     /// <summary>Creates a pier from its shore-end point, heading, length and width.</summary>
     /// <param name="id">Unique id (case-insensitive).</param>
     /// <param name="name">Display name (camera preset "Pier: {name}"); the id is used when null.</param>
     /// <param name="start">Center of the shore end of the deck, in plan coordinates (X = world X, Y = world Z).</param>
-    /// <param name="headingDegrees">Direction from the start along the pier (0° = +Z, 90° = +X).</param>
+    /// <param name="headingDegrees">Direction from the start along the pier (0° = +Z (south), 90° = +X (east)).</param>
     /// <param name="length">Length along the heading, in meters.</param>
     /// <param name="width">Deck width across the heading, in meters.</param>
     /// <param name="type">Construction; controls rendering and the default <see cref="DeckHeight"/>.</param>
@@ -56,7 +56,7 @@ public sealed record Pier
     /// <param name="center">Center of the deck in plan coordinates (X = world X, Y = world Z).</param>
     /// <param name="length">Length along <paramref name="headingDegrees"/>.</param>
     /// <param name="width">Width across the heading.</param>
-    /// <param name="headingDegrees">Direction of the pier's long axis (0° = +Z, 90° = +X).</param>
+    /// <param name="headingDegrees">Direction of the pier's long axis (0° = +Z (south), 90° = +X (east)).</param>
     /// <param name="id">Unique id (case-insensitive).</param>
     /// <param name="name">Display name.</param>
     /// <param name="type">Construction; controls rendering and the default <see cref="DeckHeight"/>.</param>
@@ -72,7 +72,7 @@ public sealed record Pier
     /// <summary>Shore-end center point in plan coordinates.</summary>
     public Vector2 Start { get; init; }
 
-    /// <summary>Direction from <see cref="Start"/> along the pier, in degrees (0° = +Z, 90° = +X).</summary>
+    /// <summary>Direction from <see cref="Start"/> along the pier, in degrees (0° = +Z (south), 90° = +X (east)).</summary>
     public float HeadingDegrees { get; init; }
 
     /// <summary>Length along the heading, in meters.</summary>
@@ -90,6 +90,9 @@ public sealed record Pier
         get => _deckHeight ?? GetDefaultDeckHeight(Type);
         init => _deckHeight = value;
     }
+
+    /// <summary>True when <see cref="DeckHeight"/> was set rather than taken from the type.</summary>
+    internal bool HasCustomDeckHeight => _deckHeight.HasValue;
 
     /// <summary>Distance between columns (<see cref="PierType.Concrete"/>) or cleats (<see cref="PierType.FloatingConcrete"/>) along the pier.</summary>
     public float PilingSpacing { get; init; } = 6f;
@@ -114,7 +117,7 @@ public sealed record Pier
     /// reference. Saved to and loaded from a marina file, and never read by the visualizer.
     /// </summary>
     /// <example><code>pier with { Metadata = new Dictionary&lt;string, string&gt; { ["erpId"] = "PONT-07" } }</code></example>
-    public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
+    public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ValueDictionary.From(value); }
 
     /// <summary>True when boats can berth on <paramref name="side"/> (see <see cref="BerthingSides"/>).</summary>
     public bool HasBerthsOn(PierSide side) => (BerthingSides & (side == PierSide.Left ? PierSides.Left : PierSides.Right)) != 0;
@@ -124,10 +127,32 @@ public sealed record Pier
 
     /// <summary>
     /// Unit plan-view vector across the pier toward <see cref="PierSide.Right"/>: the right-hand side of someone standing at
-    /// <see cref="Start"/> and looking toward <see cref="End"/>, <c>(−cos h, sin h)</c>. For a pier with heading 0° (running along +Z)
-    /// it points to −X; for heading 180° (running north, toward −Z) it points to +X (east).
+    /// <see cref="Start"/> and looking toward <see cref="End"/>, <c>(−cos h, sin h)</c>. For a pier with heading 0° (running along +Z,
+    /// south) it points to −X (west); for heading 180° (running north, toward −Z) it points to +X (east).
     /// </summary>
+    /// <remarks>
+    /// This is <em>not</em> the same axis as <see cref="Berth.Right"/>, <see cref="Divider.Right"/> and <see cref="OrientedRect.Right"/>,
+    /// which are the heading's local +X axis and point the opposite way for the same heading: <c>Pier.Right == −Pier.LocalX</c>.
+    /// Both names are kept because files and hosts depend on them; use <see cref="SideNormal"/> or <see cref="LocalX"/> when the
+    /// direction matters. See Docs/20-coordinate-conventions.md.
+    /// </remarks>
     public Vector2 Right => -MarinaMath.HeadingToRight(HeadingDegrees);
+
+    /// <summary>
+    /// The heading's local +X axis, <c>(cos h, −sin h)</c>: +X (east) for heading 0°. It points toward <see cref="PierSide.Left"/>
+    /// and is the axis <see cref="Berth.LocalX"/>, <see cref="Divider.LocalX"/> and <see cref="OrientedRect.LocalX"/> use. Equal to
+    /// <c>−<see cref="Right"/></c>.
+    /// </summary>
+    public Vector2 LocalX => MarinaMath.HeadingToRight(HeadingDegrees);
+
+    /// <summary>
+    /// Unit plan-view vector from the pier's center line out across <paramref name="side"/>: where the berths of that side lie.
+    /// <see cref="PierSide.Left"/> gives <see cref="LocalX"/> (+X for heading 0°), <see cref="PierSide.Right"/> gives
+    /// <see cref="Right"/> (−X for heading 0°).
+    /// </summary>
+    /// <param name="side">The side of the pier.</param>
+    /// <example><code>var berthCenter = pier.Center + pier.SideNormal(PierSide.Left) * (pier.Width / 2 + berthLength / 2);</code></example>
+    public Vector2 SideNormal(PierSide side) => side == PierSide.Right ? Right : LocalX;
 
     /// <summary>Seaward-end center point.</summary>
     public Vector2 End => Start + Direction * Length;
@@ -163,28 +188,35 @@ public sealed record Pier
 
     internal IEnumerable<string> Validate()
     {
-        if (string.IsNullOrWhiteSpace(Id)) yield return "Pier id must not be empty.";
-        if (!(Length > 0f && float.IsFinite(Length))) yield return $"Pier '{Id}' must have a positive, finite length.";
-        if (!(Width > 0f && float.IsFinite(Width))) yield return $"Pier '{Id}' must have a positive, finite width.";
-        if (!(PilingSpacing > 0.5f && float.IsFinite(PilingSpacing))) yield return $"Pier '{Id}' piling spacing must be greater than 0.5 m and finite.";
-        if (!float.IsFinite(Start.X) || !float.IsFinite(Start.Y) || !float.IsFinite(HeadingDegrees)) yield return $"Pier '{Id}' has a non-finite position or heading.";
-        if (!Enum.IsDefined(Type)) yield return $"Pier '{Id}' has an unknown type '{Type}'.";
-        if (BerthingSides is not (PierSides.Left or PierSides.Right or PierSides.Both)) yield return $"Pier '{Id}' berthing sides must be Left, Right or Both.";
-        if ((Services & ~PierServices.PowerAndWater) != 0) yield return $"Pier '{Id}' has unknown services '{Services}'.";
-        if (!(DeckHeight >= 0f) || DeckHeight > 5f) yield return $"Pier '{Id}' deck height must be between 0 and 5 m.";
+        if (string.IsNullOrWhiteSpace(Id)) yield return Strings.ErrorPierIdEmpty;
+        if (!(Length > 0f && float.IsFinite(Length))) yield return Strings.Format(Strings.ErrorPierLength, Id);
+        if (!(Width > 0f && float.IsFinite(Width))) yield return Strings.Format(Strings.ErrorPierWidth, Id);
+        if (!(PilingSpacing > 0.5f && float.IsFinite(PilingSpacing))) yield return Strings.Format(Strings.ErrorPierPilingSpacing, Id);
+        if (!float.IsFinite(Start.X) || !float.IsFinite(Start.Y) || !float.IsFinite(HeadingDegrees)) yield return Strings.Format(Strings.ErrorPierPosition, Id);
+        if (!Enum.IsDefined(Type)) yield return Strings.Format(Strings.ErrorPierUnknownType, Id, Type);
+        if (BerthingSides is not (PierSides.Left or PierSides.Right or PierSides.Both)) yield return Strings.Format(Strings.ErrorPierSides, Id);
+        if ((Services & ~PierServices.PowerAndWater) != 0) yield return Strings.Format(Strings.ErrorPierUnknownServices, Id, Services);
+        if (!(DeckHeight >= 0f) || DeckHeight > 5f) yield return Strings.Format(Strings.ErrorPierDeckHeight, Id);
     }
 }
 
 /// <summary>
 /// Which side of a pier berths and dividers are generated on, as seen from the pier's <see cref="Pier.Start"/> (usually the shore)
-/// looking toward its <see cref="Pier.End"/> (the sea).
+/// looking toward its <see cref="Pier.End"/> (the sea), standing upright on the deck (world +Y up).
 /// </summary>
+/// <remarks><see cref="Pier.SideNormal"/> gives the plan-view direction of each side.</remarks>
 public enum PierSide
 {
-    /// <summary>The left-hand side looking from start to end (+X for a pier with heading 0°). Generated ids use "L": <c>{PierId}-L01</c>.</summary>
+    /// <summary>
+    /// The left-hand side looking from start to end, where <see cref="Pier.LocalX"/> points: +X (east) for a pier with heading 0°
+    /// (running south), −X (west) for heading 180°. Generated ids use "L": <c>{PierId}-L01</c>.
+    /// </summary>
     Left = 0,
 
-    /// <summary>The right-hand side looking from start to end, where <see cref="Pier.Right"/> points (−X for a pier with heading 0°). Generated ids use "R": <c>{PierId}-R01</c>.</summary>
+    /// <summary>
+    /// The right-hand side looking from start to end, where <see cref="Pier.Right"/> points: −X (west) for a pier with heading 0°
+    /// (running south), +X (east) for heading 180°. Generated ids use "R": <c>{PierId}-R01</c>.
+    /// </summary>
     Right = 1,
 }
 

@@ -1,4 +1,4 @@
-using VirtualMarina.Core.Domain;
+﻿using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Rendering;
 
 namespace VirtualMarina.Core.Api;
@@ -88,7 +88,8 @@ public sealed partial class MarinaVisualizer
         var hidden = _selection.Where(id => _berths.TryGetValue(id, out var s) && !filter.Includes(s.Status)).ToArray();
         if (hidden.Length > 0) RemoveFromSelectionCore(hidden);
         if (HoveredBerth is { } hovered && !filter.Includes(hovered.Status)) SetHoveredBerth(null);
-        MarkSceneDirty();
+        InvalidatePickSet();
+        MarkBerthsDirty();
     }
 
     /// <summary>Shows only berths with one of the given statuses, e.g. <c>SetStatusFilter(BerthStatus.Free, BerthStatus.TemporarilyFree)</c>.</summary>

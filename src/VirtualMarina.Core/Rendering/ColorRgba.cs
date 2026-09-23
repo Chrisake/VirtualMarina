@@ -3,7 +3,11 @@ using System.Numerics;
 
 namespace VirtualMarina.Core.Rendering;
 
-/// <summary>Linear RGBA color with components in 0..1.</summary>
+/// <summary>
+/// RGBA color with components in 0..1, used by the shaders as they are, with no gamma conversion either way: the
+/// components are the familiar sRGB values, so <see cref="FromHex"/> and <see cref="ToHex"/> round-trip byte for byte
+/// (<c>#8A4FFF</c> in, <c>#8A4FFF</c> out).
+/// </summary>
 /// <param name="R">Red.</param>
 /// <param name="G">Green.</param>
 /// <param name="B">Blue.</param>

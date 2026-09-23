@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Helpers shared by the test projects: the public API surface writer and the approved-baseline check.
+    A plain library, not a test project, so tests/Directory.Build.props gives it no test runner.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Assert only; the test projects bring the framework and the runner. -->
+    <PackageReference Include="xunit.assert" />
+  </ItemGroup>
+
+</Project>

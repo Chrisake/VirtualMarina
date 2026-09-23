@@ -1,0 +1,73 @@
+/*
+ * VirtualMarina.Blazor: the look of <MarinaView>'s selection popup and focus ring.
+ *
+ * marinaWebGL.js links this file at the top of the page's <head> the first time a view is created, so there is nothing
+ * to add to index.html. Everything here sits in the "virtualmarina" cascade layer: any style of the host page, however
+ * plain its selector, wins over it, so overriding a color or a font is one ordinary rule.
+ */
+@layer virtualmarina {
+    .vm-marina-view > canvas { outline: none; }
+    .vm-marina-view > canvas:focus-visible { outline: 2px solid #1f5fd1; outline-offset: -2px; }
+
+    .vm-marina-view__error {
+        position: absolute; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        padding: 1rem; background: #1b2733; color: #f3c1c1;
+        font-family: sans-serif; text-align: center;
+    }
+
+    .vm-popup {
+        position: absolute; left: 0; top: 0; z-index: 10;
+        visibility: hidden;
+        min-width: 220px; max-width: 320px;
+        background: #ffffff; color: #1c2631;
+        border-radius: 10px;
+        box-shadow: 0 10px 28px rgba(12, 30, 48, .22), 0 2px 6px rgba(12, 30, 48, .12);
+        font: 12.5px/1.35 "Segoe UI", system-ui, -apple-system, sans-serif;
+        user-select: none;
+        pointer-events: auto;
+    }
+    .vm-popup__accent { height: 4px; border-radius: 10px 10px 0 0; background: var(--vm-accent, #5b7a99); }
+    .vm-popup__head { display: flex; align-items: flex-start; gap: 8px; padding: 9px 12px 0; }
+    .vm-popup__titles { flex: 1; min-width: 0; }
+    .vm-popup__title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .vm-popup__subtitle { color: #647383; font-size: 12px; margin-top: 1px; }
+    .vm-popup__close {
+        border: 0; background: transparent; color: #8795a3; cursor: pointer;
+        font-size: 16px; line-height: 1; padding: 0 2px; border-radius: 4px;
+    }
+    .vm-popup__close:hover { color: #1c2631; background: #eef2f5; }
+    .vm-popup__close:focus-visible, .vm-popup__action:focus-visible { outline: 2px solid #1f5fd1; outline-offset: 1px; }
+    .vm-popup__lines {
+        display: grid; grid-template-columns: auto 1fr; gap: 3px 12px;
+        margin: 8px 0 0; padding: 0 12px;
+    }
+    .vm-popup__lines dt { color: #647383; white-space: nowrap; }
+    .vm-popup__lines dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+    .vm-popup__lines dd.vm-strong { font-weight: 600; }
+    .vm-popup__lines dd.vm-wide { grid-column: 1 / -1; }
+    .vm-popup__footer { color: #647383; padding: 6px 12px 0; font-style: italic; }
+    .vm-popup__actions { margin-top: 8px; padding: 4px; border-top: 1px solid #e6ebf0; display: flex; flex-direction: column; }
+    .vm-popup__sep { height: 1px; background: #e6ebf0; margin: 4px 6px; }
+    .vm-popup__action {
+        display: flex; align-items: center; gap: 8px; width: 100%;
+        border: 0; background: transparent; color: inherit; font: inherit; text-align: left;
+        padding: 6px 8px; border-radius: 6px; cursor: pointer;
+    }
+    .vm-popup__action:hover:not(:disabled) { background: #eef3f8; }
+    .vm-popup__action:disabled { opacity: .45; cursor: default; }
+    .vm-popup__action--primary { color: #1f5fd1; font-weight: 600; }
+    .vm-popup__action--danger { color: #c62f28; }
+    .vm-popup__action--danger:hover:not(:disabled) { background: #fdeeee; }
+    .vm-popup__icon { width: 18px; text-align: center; flex: none; }
+    .vm-popup__caption { flex: 1; }
+    .vm-popup__shortcut { color: #8795a3; font-size: 11px; }
+    .vm-popup--tooltip .vm-popup__body { padding-bottom: 10px; }
+    .vm-popup__caret {
+        display: var(--vm-caret-display, block);
+        position: absolute; bottom: -6px; left: var(--vm-caret-x, 50%);
+        width: 12px; height: 12px; margin-left: -6px;
+        background: #ffffff; transform: rotate(45deg);
+        box-shadow: 3px 3px 6px rgba(12, 30, 48, .10);
+    }
+}

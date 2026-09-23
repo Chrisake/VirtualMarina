@@ -3,8 +3,8 @@
     Builds, tests and analyses the solution, then uploads the result to SonarQube Cloud.
 
 .DESCRIPTION
-    The same three steps CI runs (.github/workflows/static-analysis.yml), so a finding can be seen
-    and fixed before it is pushed. The .NET and SonarAnalyzer rules compiled in by
+    CI runs this very script (.github/workflows/static-analysis.yml), so a finding can be seen and
+    fixed before it is pushed, and the scanner settings below are the only copy of them. The .NET and SonarAnalyzer rules compiled in by
     Directory.Build.props already run on every ordinary build; this script adds the server-side
     rules, the coverage report and the quality gate.
 
@@ -35,6 +35,20 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# What the coverage figure leaves out: the Windows-only and GPU-bound hosts, the apps, samples and tools,
+# browser JavaScript, and generated or resource code. Everything else is expected to be covered by tests.
+$coverageExclusions = @(
+    'apps/VirtualMarina.Designer*/**/*'
+    'Docs/tools/**/*'
+    'samples/VirtualMarina.TestHost.*/**/*'
+    'src/VirtualMarina.WinForms/**/*'
+    'src/VirtualMarina.Rendering.OpenGL/**/*'
+    'tests/VirtualMarina.TestSupport/**/*'
+    '**/wwwroot/**/*'
+    '**/Resources/Strings.*'
+    '**/*.Designer.cs'
+) -join ','
 $repo = Split-Path -Parent $PSScriptRoot
 Push-Location $repo
 try {
@@ -45,7 +59,10 @@ try {
     # The scanner is a Java program. Java 8 is still a common thing to have installed on Windows and
     # it fails here with a class-file version error that says nothing about the real cause, so check
     # the version first and say what is wrong.
-    $javaHome = if ($env:JAVA_HOME) { Join-Path $env:JAVA_HOME 'bin\java.exe' } else { 'java' }
+    # $IsWindows exists only in PowerShell 7; Windows PowerShell 5.1 (Desktop edition) runs only on Windows.
+    $onWindows = $IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop'
+    $javaExe = if ($onWindows) { 'java.exe' } else { 'java' }
+    $javaHome = if ($env:JAVA_HOME) { Join-Path (Join-Path $env:JAVA_HOME 'bin') $javaExe } else { 'java' }
     $javaVersion = (& $javaHome -version 2>&1 | Select-Object -First 1) -replace '.*"([^"]+)".*', '$1'
     $javaMajor = if ($javaVersion -match '^1\.(\d+)') { [int]$Matches[1] } else { [int]($javaVersion -split '\.')[0] }
     if ($javaMajor -lt 17) {
@@ -68,16 +85,24 @@ try {
         /d:sonar.token="$env:SONAR_TOKEN" `
         /d:sonar.host.url="$HostUrl" `
         /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml" `
-        /d:sonar.coverage.exclusions="apps/VirtualMarina.Designer/**/*,samples/VirtualMarina.TestHost.*/**/*,src/VirtualMarina.WinForms/**/*,src/VirtualMarina.Rendering.OpenGL/**/*,src/VirtualMarina.Blazor/**/*,**/wwwroot/**/*,**/Resources/Strings.*,**/*.Designer.cs" `
+        /d:sonar.coverage.exclusions="$coverageExclusions" `
         /d:sonar.scanner.scanAll=false
     if ($LASTEXITCODE -ne 0) { throw 'sonarscanner begin failed.' }
 
-    dotnet build VirtualMarina.sln --configuration $Configuration
+    # Off Windows the net8.0-windows projects still compile (EnableWindowsTargeting), so they are analysed,
+    # but their tests cannot run there; only the cross-platform tests contribute coverage.
+    dotnet build VirtualMarina.sln --configuration $Configuration -p:EnableWindowsTargeting=true
     if ($LASTEXITCODE -ne 0) { throw 'Build failed; the analysis would be incomplete.' }
 
-    dotnet test VirtualMarina.sln --configuration $Configuration --no-build `
-        --collect:"XPlat Code Coverage;Format=opencover"
-    if ($LASTEXITCODE -ne 0) { Write-Warning 'Tests failed. Continuing so the analysis still reports, but the coverage figure is not trustworthy.' }
+    # Every test project on Windows; elsewhere all but the Windows-only WinForms one.
+    $testTargets = if ($onWindows) { @('VirtualMarina.sln') } else {
+        Get-ChildItem tests -Filter '*.Tests.csproj' -Recurse | Where-Object Name -NotLike '*WinForms*' | ForEach-Object FullName
+    }
+    foreach ($testTarget in $testTargets) {
+        dotnet test $testTarget --configuration $Configuration --no-build `
+            --collect:"XPlat Code Coverage;Format=opencover"
+        if ($LASTEXITCODE -ne 0) { Write-Warning "Tests failed in $testTarget. Continuing so the analysis still reports, but the coverage figure is not trustworthy." }
+    }
 
     dotnet tool run dotnet-sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"
     if ($LASTEXITCODE -ne 0) { throw 'sonarscanner end failed.' }

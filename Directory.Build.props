@@ -7,7 +7,30 @@
     <Deterministic>true</Deterministic>
     <Authors>VirtualMarina</Authors>
     <Product>VirtualMarina 3D Marina Visualization</Product>
-    <Version>1.0.0</Version>
+
+    <!--
+      Nothing is a NuGet package unless it says so: src/Directory.Build.props opts the shipped libraries in.
+      Apps, samples, tests and tools stay out of `dotnet pack` without each having to remember.
+    -->
+    <IsPackable>false</IsPackable>
+
+    <!--
+      A CI build is reproducible from the commit alone: source paths in the PDBs are mapped to /_/ rather than the
+      runner's checkout directory. Local builds keep real paths, so the debugger finds the files.
+    -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!--
+    Versioning comes from git tags, through MinVer: tag a commit v1.2.3 and every assembly and package built from it
+    is 1.2.3; commits after the last tag get a pre-release version such as 1.2.4-alpha.0.5 (height 5 above the tag).
+    MinVer also sets AssemblyVersion to <major>.0.0.0 and FileVersion to <major>.<minor>.<patch>.0, which is the
+    binary compatibility policy of Docs/16-compatibility.md. A checkout without tags builds as 1.0.0-alpha.0.N.
+    A build outside a git working tree (a source archive) can pass -p:MinVerVersionOverride=1.2.3.
+  -->
+  <PropertyGroup>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerMinimumMajorMinor>1.0</MinVerMinimumMajorMinor>
   </PropertyGroup>
 
   <!--
@@ -15,9 +38,12 @@
     alike, so a finding looks the same in the IDE, in `dotnet build` and in the SonarQube report:
 
       * The .NET analyzers that ship with the SDK (the CAxxxx rules Visual Studio calls "code
-        analysis"). latest-all turns on the whole catalogue rather than the small default set; the
+        analysis"). 8.0-all turns on the whole catalogue rather than the small default set; the
         rules that do not apply to a 3D visualisation library are switched off by name in
-        .editorconfig, where each one carries its reason.
+        .editorconfig, where each one carries its reason. The level is pinned to the .NET 8
+        catalogue rather than "latest": global.json lets the build roll forward to any 8.0.x SDK,
+        and with warnings as errors a rule a newer SDK band adds must not fail a build whose code
+        did not change. Raising it is a deliberate change, made together with the fixes it asks for.
       * SonarAnalyzer.CSharp (the Sxxxx rules). The same analyzer SonarQube Cloud runs server-side,
         referenced here so the issues show up while the code is being written instead of after the
         push. See Docs/19-static-analysis.md.
@@ -28,7 +54,7 @@
   -->
   <PropertyGroup>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <AnalysisLevel>latest-all</AnalysisLevel>
+    <AnalysisLevel>8.0-all</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <!--
@@ -42,9 +68,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.34.0.3385">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <!-- SonarAnalyzer.CSharp is referenced by every project as a GlobalPackageReference in Directory.Packages.props. -->
+    <PackageReference Include="MinVer" PrivateAssets="all" />
   </ItemGroup>
 </Project>

@@ -139,13 +139,13 @@
     <value>&amp;Marina</value>
   </data>
   <data name="MenuAppearance">
-    <value>&amp;Appearance…</value>
+    <value>&amp;Appearance</value>
   </data>
   <data name="MenuBerthLabels">
     <value>Berth &amp;Labels</value>
   </data>
   <data name="MenuCameras">
-    <value>&amp;Cameras…</value>
+    <value>&amp;Cameras</value>
   </data>
   <data name="MenuHelp">
     <value>&amp;Help</value>
@@ -203,7 +203,8 @@
     <value>Top View</value>
   </data>
   <data name="CommandTopViewTip">
-    <value>Look straight down with north up (Ctrl+T)</value>
+    <value>Look straight down with north up ({0})</value>
+    <comment>{0} = the keyboard shortcut, e.g. "Ctrl+T".</comment>
   </data>
   <data name="CommandFitMarina">
     <value>Fit Marina</value>
@@ -343,24 +344,6 @@
   <data name="ShortcutsTitle">
     <value>Keyboard and mouse</value>
   </data>
-  <data name="ShortcutsBody">
-    <value>Mouse
-  Left drag           pan the view
-  Right drag          orbit
-  Wheel               zoom
-  Click               use the tool in hand
-  Right click         finish a shape (land area), or clear the trees under it
-
-Keys
-  Esc                 cancel what you are drawing, then back to Navigate
-  Enter               finish the land area you are drawing
-  Backspace           take back the last corner
-  Delete              remove what the eraser points at
-  Ctrl+Z              undo the last change
-  Shift (while drawing)   snap a pier or a bow direction to 15° steps
-  Alt (while drawing)     ignore the snapping to corners and edges</value>
-    <comment>Keep the columns lined up when translating.</comment>
-  </data>
   <data name="AboutTitle">
     <value>About</value>
   </data>
@@ -470,6 +453,10 @@ Runtime      {4}
   </data>
   <data name="FontBuiltIn">
     <value>Built-in lettering</value>
+  </data>
+  <data name="FontStoredInDesign">
+    <value>{0} (in the design)</value>
+    <comment>A font whose letters the open design carries but this machine does not have. {0} = the font family.</comment>
   </data>
   <data name="CardPreview">
     <value>Preview boats</value>
@@ -884,9 +871,6 @@ Change the pattern and try again.</value>
     <value>Mainland from {0} points, {1}.</value>
     <comment>{0} = how many points the coast has, {1} = the cover, e.g. "Countryside".</comment>
   </data>
-  <data name="MenuCoast">
-    <value>Draw the &amp;Coast</value>
-  </data>
   <data name="LogCoastDrawn">
     <value>Drew the mainland along {0} points</value>
     <comment>{0} = how many points the coast has.</comment>
@@ -1136,15 +1120,6 @@ Change the pattern and try again.</value>
     <comment>Counts of everything drawn, then the overall size.</comment>
   </data>
   <!-- Appearance dialog -->
-  <data name="AppearanceTitle">
-    <value>Water, light and motion</value>
-  </data>
-  <data name="AppearanceDone">
-    <value>Done</value>
-  </data>
-  <data name="AppearanceCancel">
-    <value>Cancel</value>
-  </data>
   <data name="AppearanceReset">
     <value>Reset to defaults</value>
   </data>
@@ -1244,5 +1219,120 @@ Change the pattern and try again.</value>
   </data>
   <data name="ValueDegreesAboveHorizon">
     <value>{0}° above the horizon</value>
+  </data>
+  <data name="MenuRedo" xml:space="preserve">
+    <value>&amp;Redo</value>
+  </data>
+  <data name="ToolUndo" xml:space="preserve">
+    <value>Undo</value>
+  </data>
+  <data name="ToolRedo" xml:space="preserve">
+    <value>Redo</value>
+  </data>
+  <data name="UndoTip" xml:space="preserve">
+    <value>Undo: {0}</value>
+  </data>
+  <data name="RedoTip" xml:space="preserve">
+    <value>Redo: {0}</value>
+  </data>
+  <data name="UndoPointTip" xml:space="preserve">
+    <value>Undo: take back the last point</value>
+    <comment>Tooltip of Undo while a drawing is in progress.</comment>
+  </data>
+  <data name="NothingToUndo" xml:space="preserve">
+    <value>Nothing to undo</value>
+  </data>
+  <data name="NothingToRedo" xml:space="preserve">
+    <value>Nothing to redo</value>
+  </data>
+  <data name="LogRedone" xml:space="preserve">
+    <value>Redone: {0}</value>
+  </data>
+  <data name="ActionFailed" xml:space="preserve">
+    <value>{0} did not go through: {1}</value>
+    <comment>{0} is what was asked for (e.g. "Rename pier A"), {1} why it was refused.</comment>
+  </data>
+  <data name="ElementBerth" xml:space="preserve">
+    <value>berth {0}</value>
+  </data>
+  <data name="ElementPier" xml:space="preserve">
+    <value>pier {0}</value>
+  </data>
+  <data name="ElementLandArea" xml:space="preserve">
+    <value>land area {0}</value>
+  </data>
+  <data name="ElementCoast" xml:space="preserve">
+    <value>the mainland</value>
+  </data>
+  <data name="RenameStep" xml:space="preserve">
+    <value>Rename {0}</value>
+    <comment>The name of the step on the undo list.</comment>
+  </data>
+  <data name="ShortcutsMouse" xml:space="preserve">
+    <value>Mouse
+  Left drag            pan the view
+  Right drag           orbit
+  Wheel                zoom
+  Click                use the tool in hand
+  Right click          finish a shape (land area), or clear the trees under it</value>
+    <comment>Keep the columns lined up when translating.</comment>
+  </data>
+  <data name="ShortcutsCamera" xml:space="preserve">
+    <value>Moving around (click the view first)
+  Arrows, W A S D      pan
+  Shift+arrows         orbit
+  Page Up, Page Down   tilt
+  +  -                 zoom in and out
+  Home                 frame the whole marina</value>
+    <comment>Keep the columns lined up when translating.</comment>
+  </data>
+  <data name="ShortcutsDrawing" xml:space="preserve">
+    <value>While drawing
+  Esc                  cancel what you are drawing, then back to Navigate
+  Enter                finish the shape you are drawing
+  Backspace            take back the last corner
+  Delete               remove what the eraser points at
+  Shift                snap a pier or a bow direction to 15° steps
+  Alt                  ignore the snapping to corners and edges</value>
+    <comment>Keep the columns lined up when translating.</comment>
+  </data>
+  <data name="ShortcutsTools" xml:space="preserve">
+    <value>Tools (while the view has the focus; never while typing in a field)</value>
+  </data>
+  <data name="ShortcutsCommands" xml:space="preserve">
+    <value>Commands</value>
+  </data>
+  <data name="ConfirmResetAppearanceTitle" xml:space="preserve">
+    <value>Reset the look</value>
+  </data>
+  <data name="ConfirmResetAppearance" xml:space="preserve">
+    <value>Put every look setting — water, light, colours, labels and the passing traffic — back to its default?</value>
+  </data>
+  <data name="CameraOverwriteTitle" xml:space="preserve">
+    <value>Replace the view?</value>
+  </data>
+  <data name="CameraOverwrite" xml:space="preserve">
+    <value>A view called {0} is already saved. Replace it with where the camera is now?</value>
+  </data>
+  <data name="CameraDeleteConfirmTitle" xml:space="preserve">
+    <value>Remove the view?</value>
+  </data>
+  <data name="CameraDeleteConfirm" xml:space="preserve">
+    <value>Remove the saved view {0}? Undo does not bring it back.</value>
+  </data>
+  <data name="FontCapturing" xml:space="preserve">
+    <value>Reading the letter shapes of {0}…</value>
+  </data>
+  <data name="NoticeDismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="ToolbarLabel" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="DialogYes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="DialogNo" xml:space="preserve">
+    <value>No</value>
   </data>
 </root>

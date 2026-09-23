@@ -8,7 +8,9 @@
 /// The core library has no image codecs, so the host supplies the pixels: either decoded RGBA
 /// (<see cref="ReferenceImage(int, int, byte[], byte[], string)"/>, e.g. from a WinForms <c>Bitmap</c>) or the original PNG/JPEG bytes plus the pixel size
 /// (<see cref="FromEncoded"/>, which the browser decodes). Every renderer accepts RGBA; the WebGL renderer also accepts encoded data.
-/// Instances are immutable; create a new one to change the picture.
+/// Instances are immutable: the constructors copy the buffers they are given, so changing the caller's array afterwards
+/// changes nothing here. Create a new one to change the picture. The arrays <see cref="Rgba"/> and <see cref="EncodedData"/>
+/// hand out are the image's own and must be treated as read-only.
 /// </remarks>
 public sealed class ReferenceImage
 {
@@ -34,8 +36,8 @@ public sealed class ReferenceImage
             throw new ArgumentException($"Expected {(long)pixelWidth * pixelHeight * 4} RGBA bytes for {pixelWidth} × {pixelHeight} pixels.", nameof(rgba));
         }
 
-        Rgba = rgba;
-        EncodedData = encodedData is { Length: > 0 } ? encodedData : null;
+        Rgba = (byte[])rgba.Clone();
+        EncodedData = encodedData is { Length: > 0 } ? (byte[])encodedData.Clone() : null;
         ContentType = EncodedData is null ? null : string.IsNullOrWhiteSpace(contentType) ? "image/png" : contentType;
     }
 
@@ -62,7 +64,7 @@ public sealed class ReferenceImage
         if (encodedData.Length == 0) throw new ArgumentException("The image data is empty.", nameof(encodedData));
         return new ReferenceImage(pixelWidth, pixelHeight)
         {
-            EncodedData = encodedData,
+            EncodedData = (byte[])encodedData.Clone(),
             ContentType = string.IsNullOrWhiteSpace(contentType) ? "image/png" : contentType,
         };
     }
@@ -73,10 +75,10 @@ public sealed class ReferenceImage
     /// <summary>Height in pixels.</summary>
     public int PixelHeight { get; }
 
-    /// <summary>Decoded pixels (RGBA, top row first), or null for an encoded image.</summary>
+    /// <summary>Decoded pixels (RGBA, top row first), or null for an encoded image. Read-only: the image's own copy.</summary>
     public byte[]? Rgba { get; }
 
-    /// <summary>The original file bytes when they are known, whether or not <see cref="Rgba"/> is also set.</summary>
+    /// <summary>The original file bytes when they are known, whether or not <see cref="Rgba"/> is also set. Read-only: the image's own copy.</summary>
     public byte[]? EncodedData { get; private init; }
 
     /// <summary>MIME type of <see cref="EncodedData"/>, or null when there is none.</summary>

@@ -1,5 +1,6 @@
 ﻿using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Api;
 
@@ -13,41 +14,22 @@ public sealed partial class MarinaVisualizer
         if (errors.Count > 0) throw new MarinaLayoutException(errors);
 
         var previousSelection = SelectedBerths;
+        var wasHovering = _hoveredBerthId is not null;
         ClosePopup();
         ClearState();
 
         MarinaName = layout.Name;
         _shoreline = layout.Shoreline;
         _traffic = layout.MarineTraffic ?? MarineTraffic.None;
-        foreach (var land in layout.LandAreas)
-        {
-            _landAreas[land.Id] = land;
-            _landOrder.Add(land.Id);
-        }
-
-        foreach (var pier in layout.Piers)
-        {
-            _piers[pier.Id] = pier;
-            _pierOrder.Add(pier.Id);
-        }
-
-        foreach (var berth in layout.Berths)
-        {
-            _berths[berth.Id] = Normalize(berth with { MultiBerthId = null });
-            _berthOrder.Add(berth.Id);
-        }
-
-        foreach (var divider in layout.Dividers)
-        {
-            _dividers[divider.Id] = divider;
-            _dividerOrder.Add(divider.Id);
-        }
+        foreach (var land in layout.LandAreas) _landAreas[land.Id] = land;
+        foreach (var pier in layout.Piers) _piers[pier.Id] = pier;
+        foreach (var berth in layout.Berths) _berths[berth.Id] = Normalize(berth with { MultiBerthId = null });
+        foreach (var divider in layout.Dividers) _dividers[divider.Id] = divider;
 
         foreach (var berth in layout.MultiBerths)
         {
             var canonical = berth with { BerthIds = berth.BerthIds.Select(id => _berths[id].Id).ToArray() };
             _multiBerths[berth.Id] = canonical;
-            _multiBerthOrder.Add(berth.Id);
             foreach (var berthId in canonical.BerthIds)
             {
                 _berths[berthId] = _berths[berthId] with { Status = canonical.Status, Boat = canonical.Boat, MultiBerthId = canonical.Id };
@@ -58,7 +40,7 @@ public sealed partial class MarinaVisualizer
 
         var (min, max) = layout.ComputeBounds();
         SetWaterGrid((min + max) * 0.5f, Water.Size);
-        RebuildBuiltInPresets();
+        InvalidateLayoutGeometry();
         ResetCamera(immediate: true);
         MarkSceneDirty();
 
@@ -68,6 +50,7 @@ public sealed partial class MarinaVisualizer
             SelectionCleared?.Invoke(this, EventArgs.Empty);
         }
 
+        if (wasHovering) BerthHoverChanged?.Invoke(this, new BerthHoverEventArgs(null));
         RaiseLayoutChanged(LayoutChangeKind.Initialized);
     }
 
@@ -88,10 +71,11 @@ public sealed partial class MarinaVisualizer
     public void ClearLayout()
     {
         var previous = SelectedBerths;
+        var wasHovering = _hoveredBerthId is not null;
         ClosePopup();
         ClearState();
         RebuildLandMeshes();
-        RebuildBuiltInPresets();
+        InvalidateLayoutGeometry();
         MarkSceneDirty();
         if (previous.Count > 0)
         {
@@ -99,6 +83,7 @@ public sealed partial class MarinaVisualizer
             SelectionCleared?.Invoke(this, EventArgs.Empty);
         }
 
+        if (wasHovering) BerthHoverChanged?.Invoke(this, new BerthHoverEventArgs(null));
         RaiseLayoutChanged(LayoutChangeKind.Cleared);
     }
 
@@ -112,8 +97,7 @@ public sealed partial class MarinaVisualizer
         if (_piers.ContainsKey(pier.Id)) throw new InvalidOperationException($"Pier '{pier.Id}' already exists.");
 
         _piers[pier.Id] = pier;
-        _pierOrder.Add(pier.Id);
-        RebuildBuiltInPresets();
+        InvalidateLayoutGeometry();
         MarkSceneDirty();
         RaiseLayoutChanged(LayoutChangeKind.PierAdded, pier.Id);
     }
@@ -126,7 +110,7 @@ public sealed partial class MarinaVisualizer
         if (!_piers.TryGetValue(pier.Id, out var existing)) throw new KeyNotFoundException($"Pier '{pier.Id}' does not exist.");
 
         _piers[existing.Id] = pier with { Id = existing.Id };
-        RebuildBuiltInPresets();
+        InvalidateLayoutGeometry();
         MarkSceneDirty();
         RefreshPopupIfShowingPier(existing.Id);
         RaiseLayoutChanged(LayoutChangeKind.PierUpdated, existing.Id);
@@ -148,7 +132,7 @@ public sealed partial class MarinaVisualizer
         ArgumentNullException.ThrowIfNull(pierId);
         if (!_piers.TryGetValue(pierId, out var pier)) return false;
 
-        var berthIds = _berthOrder.Where(id => IdComparer.Equals(_berths[id].PierId, pier.Id)).ToList();
+        var berthIds = BerthsOfPier(pier.Id).Select(berth => berth.Id).ToList();
         if (berthIds.Count > 0 && !removeBerths)
         {
             throw new InvalidOperationException($"Pier '{pierId}' still has {berthIds.Count} berth(s).");
@@ -157,10 +141,9 @@ public sealed partial class MarinaVisualizer
         using (BeginUpdate())
         {
             foreach (var berthId in berthIds) RemoveBerth(berthId);
-            foreach (var dividerId in _dividerOrder.Where(id => IdComparer.Equals(_dividers[id].PierId, pier.Id)).ToList()) RemoveDivider(dividerId);
+            foreach (var dividerId in _dividers.WithKey(ByPier, pier.Id).Select(divider => divider.Id).ToList()) RemoveDivider(dividerId);
             _piers.Remove(pier.Id);
-            _pierOrder.RemoveAll(id => IdComparer.Equals(id, pier.Id));
-            RebuildBuiltInPresets();
+            InvalidateLayoutGeometry();
             MarkSceneDirty();
             RaiseLayoutChanged(LayoutChangeKind.PierRemoved, pier.Id);
         }
@@ -184,7 +167,7 @@ public sealed partial class MarinaVisualizer
         if (_dividers.ContainsKey(divider.Id)) throw new InvalidOperationException($"Divider '{divider.Id}' already exists.");
 
         _dividers[divider.Id] = divider;
-        _dividerOrder.Add(divider.Id);
+        InvalidateLayoutGeometry();
         MarkSceneDirty();
         RaiseLayoutChanged(LayoutChangeKind.DividerAdded, divider.PierId, dividerId: divider.Id);
     }
@@ -207,6 +190,7 @@ public sealed partial class MarinaVisualizer
         if (!_dividers.TryGetValue(divider.Id, out var existing)) throw new KeyNotFoundException($"Divider '{divider.Id}' does not exist.");
 
         _dividers[existing.Id] = divider with { Id = existing.Id };
+        InvalidateLayoutGeometry();
         MarkSceneDirty();
         RaiseLayoutChanged(LayoutChangeKind.DividerUpdated, divider.PierId, dividerId: existing.Id);
     }
@@ -218,7 +202,7 @@ public sealed partial class MarinaVisualizer
         if (!_dividers.TryGetValue(dividerId, out var divider)) return false;
 
         _dividers.Remove(divider.Id);
-        _dividerOrder.RemoveAll(id => IdComparer.Equals(id, divider.Id));
+        InvalidateLayoutGeometry();
         MarkSceneDirty();
         RaiseLayoutChanged(LayoutChangeKind.DividerRemoved, divider.PierId, dividerId: divider.Id);
         return true;
@@ -231,8 +215,7 @@ public sealed partial class MarinaVisualizer
     public IReadOnlyList<Divider> GetDividers() => OrderedDividers().ToArray();
 
     /// <inheritdoc/>
-    public IReadOnlyList<Divider> GetDividersByPier(string pierId) =>
-        OrderedDividers().Where(d => IdComparer.Equals(d.PierId, pierId)).ToArray();
+    public IReadOnlyList<Divider> GetDividersByPier(string pierId) => _dividers.WithKey(ByPier, pierId).ToArray();
 
     // ---- Berths ----------------------------------------------------------------------------------
 
@@ -242,9 +225,13 @@ public sealed partial class MarinaVisualizer
         ArgumentNullException.ThrowIfNull(berth);
         ValidateBerthForStorage(berth);
         if (_berths.ContainsKey(berth.Id)) throw new InvalidOperationException($"Berth '{berth.Id}' already exists.");
+        if (_multiBerths.ContainsKey(berth.Id))
+        {
+            throw new MarinaLayoutException(new[] { Strings.Format(Strings.ErrorBerthIdIsMultiBerthId, berth.Id) });
+        }
 
         _berths[berth.Id] = Normalize(berth with { MultiBerthId = null });
-        _berthOrder.Add(berth.Id);
+        InvalidateLayoutGeometry();
         MarkSceneDirty();
         RaiseLayoutChanged(LayoutChangeKind.BerthAdded, berth.PierId, berth.Id, landAreaId: berth.LandAreaId);
     }
@@ -281,6 +268,18 @@ public sealed partial class MarinaVisualizer
         ArgumentNullException.ThrowIfNull(update);
         var existing = RequireBerth(update.BerthId);
         var replacement = update.ApplyTo(existing);
+
+        // Checked before the data bag is touched: the bag is shared with the live berth, so a rejected update must not leave
+        // half of itself behind in it.
+        ValidateBerthForStorage(replacement);
+        if (update.ExternalDataRemovals is not null)
+        {
+            foreach (var key in update.ExternalDataRemovals)
+            {
+                if (key is not null) existing.ExternalData.Remove(key);
+            }
+        }
+
         if (update.ExternalData is not null)
         {
             foreach (var (key, value) in update.ExternalData) existing.ExternalData[key] = value;
@@ -302,7 +301,7 @@ public sealed partial class MarinaVisualizer
             if (berth.MultiBerthId is not null) DetachFromMultiBerth(berth);
 
             _berths.Remove(berth.Id);
-            _berthOrder.RemoveAll(id => IdComparer.Equals(id, berth.Id));
+            InvalidateLayoutGeometry();
             MarkSceneDirty();
             RaiseLayoutChanged(LayoutChangeKind.BerthRemoved, berth.PierId, berth.Id, landAreaId: berth.LandAreaId);
         }
@@ -345,29 +344,17 @@ public sealed partial class MarinaVisualizer
         var renamed = existing with { Id = newPierId };
         using (BeginUpdate())
         {
-            _piers.Remove(existing.Id);
-            _piers[renamed.Id] = renamed;
-
-            var position = _pierOrder.FindIndex(id => IdComparer.Equals(id, existing.Id));
-            if (position >= 0) _pierOrder[position] = renamed.Id;
+            // Keeps its place among the piers.
+            _piers.Rekey([(existing.Id, renamed.Id, renamed)]);
 
             // Everything that pointed at the old id now points at the new one.
-            foreach (var berthId in _berthOrder.ToArray())
-            {
-                if (_berths.TryGetValue(berthId, out var berth) && IdComparer.Equals(berth.PierId, existing.Id))
-                {
-                    _berths[berthId] = berth with { PierId = renamed.Id };
-                }
-            }
+            foreach (var berth in BerthsOfPier(existing.Id).ToArray()) _berths[berth.Id] = berth with { PierId = renamed.Id };
+            foreach (var divider in _dividers.WithKey(ByPier, existing.Id).ToArray()) _dividers[divider.Id] = divider with { PierId = renamed.Id };
+            _selectedSnapshot = null;
 
-            foreach (var dividerId in _dividerOrder.ToArray())
-            {
-                if (_dividers.TryGetValue(dividerId, out var divider) && IdComparer.Equals(divider.PierId, existing.Id))
-                {
-                    _dividers[dividerId] = divider with { PierId = renamed.Id };
-                }
-            }
-
+            // The pier's own view is keyed by its id: one that was switched off stays off under the new id.
+            if (_disabledPresets.Remove(PierPresetKey(existing.Id))) _disabledPresets.Add(PierPresetKey(renamed.Id));
+            InvalidateLayoutGeometry();
             MarkSceneDirty();
         }
 
@@ -382,12 +369,10 @@ public sealed partial class MarinaVisualizer
     public IReadOnlyList<Berth> GetBerths() => OrderedBerths().ToArray();
 
     /// <inheritdoc/>
-    public IReadOnlyList<Berth> GetBerthsByPier(string pierId) =>
-        OrderedBerths().Where(s => IdComparer.Equals(s.PierId, pierId)).ToArray();
+    public IReadOnlyList<Berth> GetBerthsByPier(string pierId) => BerthsOfPier(pierId).ToArray();
 
     /// <inheritdoc/>
-    public IReadOnlyList<Berth> GetBerthsByLandArea(string landAreaId) =>
-        OrderedBerths().Where(s => IdComparer.Equals(s.LandAreaId, landAreaId)).ToArray();
+    public IReadOnlyList<Berth> GetBerthsByLandArea(string landAreaId) => BerthsOfLandArea(landAreaId).ToArray();
 
     // ---- Land -----------------------------------------------------------------------------------
 
@@ -399,24 +384,31 @@ public sealed partial class MarinaVisualizer
         if (_landAreas.ContainsKey(landArea.Id)) throw new InvalidOperationException($"Land area '{landArea.Id}' already exists.");
 
         _landAreas[landArea.Id] = landArea;
-        _landOrder.Add(landArea.Id);
         RegisterLandMesh(landArea);
-        RebuildBuiltInPresets();
+        InvalidateLayoutGeometry();
         MarkSceneDirty();
         RaiseLayoutChanged(LayoutChangeKind.LandAreaAdded, landAreaId: landArea.Id);
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Planting trees, renaming or re-tagging a land area leaves its outline alone, so the outline is not checked
+    /// again (a check that grows with the square of its points) and its ground is not rebuilt; only what stands on it
+    /// is. The automatic views are only refitted when the outline moved.
+    /// </remarks>
     public void UpdateLandArea(LandArea landArea)
     {
         ArgumentNullException.ThrowIfNull(landArea);
-        ThrowIfInvalid(landArea.Validate());
-        if (!_landAreas.TryGetValue(landArea.Id, out var existing)) throw new KeyNotFoundException($"Land area '{landArea.Id}' does not exist.");
+        var existing = GetLandArea(landArea.Id);
+        var sameOutline = existing is not null && existing.Points.SequenceEqual(landArea.Points);
+        ThrowIfInvalid(landArea.Validate(checkOutline: !sameOutline));
+        if (existing is null) throw new KeyNotFoundException($"Land area '{landArea.Id}' does not exist.");
 
         var updated = landArea with { Id = existing.Id };
         _landAreas[existing.Id] = updated;
-        RegisterLandMesh(updated);
-        RebuildBuiltInPresets();
+        var sameGround = sameOutline && existing.Height == updated.Height && existing.Kind == updated.Kind;
+        RegisterLandMesh(updated, rebuildGround: !sameGround);
+        if (!sameOutline) InvalidateLayoutGeometry();
         MarkSceneDirty();
         RefreshPopupIfShowingLand(existing.Id);
         RaiseLayoutChanged(LayoutChangeKind.LandAreaUpdated, landAreaId: existing.Id);
@@ -428,7 +420,7 @@ public sealed partial class MarinaVisualizer
         ArgumentNullException.ThrowIfNull(landAreaId);
         if (!_landAreas.TryGetValue(landAreaId, out var land)) return false;
 
-        var berthIds = _berthOrder.Where(id => IdComparer.Equals(_berths[id].LandAreaId, land.Id)).ToList();
+        var berthIds = BerthsOfLandArea(land.Id).Select(berth => berth.Id).ToList();
         if (berthIds.Count > 0 && !removeBerths)
         {
             throw new InvalidOperationException($"Land area '{landAreaId}' still has {berthIds.Count} berth(s).");
@@ -439,9 +431,8 @@ public sealed partial class MarinaVisualizer
         {
             foreach (var berthId in berthIds) RemoveBerth(berthId);
             _landAreas.Remove(land.Id);
-            _landOrder.RemoveAll(id => IdComparer.Equals(id, land.Id));
             UnregisterLandMesh(land.Id);
-            RebuildBuiltInPresets();
+            InvalidateLayoutGeometry();
             MarkSceneDirty();
             RaiseLayoutChanged(LayoutChangeKind.LandAreaRemoved, landAreaId: land.Id);
         }
@@ -486,7 +477,7 @@ public sealed partial class MarinaVisualizer
 
         _traffic = wanted;
         ReplanTraffic();
-        MarkSceneDirty();
+        MarkOverlayDirty();
         RaiseLayoutChanged(LayoutChangeKind.MarineTrafficChanged);
     }
 
@@ -520,7 +511,7 @@ public sealed partial class MarinaVisualizer
         {
             if (_showTrafficLanes == value) return;
             _showTrafficLanes = value;
-            MarkSceneDirty();
+            MarkOverlayDirty();
         }
     }
 
@@ -579,17 +570,19 @@ public sealed partial class MarinaVisualizer
         _updateDepth--;
         if (_updateDepth > 0) return;
 
-        if (_layoutChangePending)
+        if (_pendingChanges.Count > 0)
         {
-            _layoutChangePending = false;
-            LayoutChanged?.Invoke(this, new LayoutChangedEventArgs(LayoutChangeKind.BatchUpdated));
+            var changes = _pendingChanges.ToArray();
+            _pendingChanges.Clear();
+            LayoutChanged?.Invoke(this, new LayoutChangedEventArgs(changes));
         }
 
         FlushPopupRefresh();
+        FlushPresetsChanged();
     }
 
     /// <summary>
-    /// Replaces a berth. A status or boat change on a member of a multi-berth applies to the whole berth
+    /// Replaces a berth. A status or boat change on a member of a multi-berth applies to the whole multi-berth
     /// (or releases it, when the berth becomes Free or loses its boat).
     /// </summary>
     private Berth ReplaceBerthRoutingMultiBerth(Berth existing, Berth replacement)
@@ -615,44 +608,92 @@ public sealed partial class MarinaVisualizer
     }
 
     /// <summary>Moves a berth to another id, taking its place in the order, the selection and its multi-berth with it.</summary>
-    private Berth ReplaceBerthId(Berth existing, string newBerthId)
-    {
-        // A label that merely repeated the old id is the id showing on the water, so it goes with the name. One the
-        // host wrote is theirs and stays. Without this a renamed berth went on displaying the name it used to have.
-        var label = existing.Label is null || string.Equals(existing.Label, existing.Id, StringComparison.Ordinal)
-            ? null
-            : existing.Label;
+    private Berth ReplaceBerthId(Berth existing, string newBerthId) => MoveBerthIds([(existing, newBerthId)])[0];
 
-        var renamed = Normalize(existing with { Id = newBerthId, Label = label });
+    /// <summary>
+    /// Renames several berths as one change: every berth takes its new name at once, so names can be shuffled among them
+    /// (<c>A-01</c> to <c>A-02</c> while <c>A-02</c> goes to <c>A-03</c>, or two berths swapping) without one landing on
+    /// a name another is still using. Returns the renamed berths, in the order asked, skipping any whose name did not change.
+    /// </summary>
+    /// <param name="renames">(current id, new id) pairs. New ids are trimmed.</param>
+    /// <remarks>
+    /// The whole set is checked before anything moves, so a rename that cannot happen leaves every berth as it was. One
+    /// <see cref="LayoutChangeKind.BerthRenamed"/> is raised per berth that changed name, and no berth is ever seen under a
+    /// name it was only passing through.
+    /// </remarks>
+    /// <exception cref="KeyNotFoundException">A berth to rename does not exist.</exception>
+    /// <exception cref="ArgumentException">A berth is named twice, or a new id is blank.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Two berths would end up with the same name, or a new name belongs to a berth that is not itself being renamed.
+    /// </exception>
+    internal IReadOnlyList<Berth> RenameBerths(IReadOnlyList<(string From, string To)> renames)
+    {
+        ArgumentNullException.ThrowIfNull(renames);
+        var sources = new HashSet<string>(IdComparer);
+        var moving = new List<(Berth Existing, string To)>(renames.Count);
+        foreach (var (from, to) in renames)
+        {
+            if (string.IsNullOrWhiteSpace(to)) throw new ArgumentException("A berth cannot be renamed to a blank name.", nameof(renames));
+            var existing = RequireBerth(from);
+            if (!sources.Add(existing.Id)) throw new ArgumentException($"Berth '{existing.Id}' is renamed twice.", nameof(renames));
+            var target = to.Trim();
+            if (existing.Id != target) moving.Add((existing, target));
+        }
+
+        return moving.Count == 0 ? Array.Empty<Berth>() : MoveBerthIds(moving);
+    }
+
+    /// <summary>
+    /// The one place berth ids change: checks that the new ids are free once the berths moving have left theirs, then
+    /// moves every one at once and raises one <see cref="LayoutChangeKind.BerthRenamed"/> for each.
+    /// </summary>
+    private List<Berth> MoveBerthIds(IReadOnlyList<(Berth Existing, string To)> moving)
+    {
+        var leaving = new HashSet<string>(moving.Select(entry => entry.Existing.Id), IdComparer);
+        var arriving = new HashSet<string>(IdComparer);
+        foreach (var (_, to) in moving)
+        {
+            if (!arriving.Add(to)) throw new InvalidOperationException($"Two berths cannot both be named '{to}'.");
+            if (_berths.TryGetValue(to, out var holder) && !leaving.Contains(holder.Id)) throw new InvalidOperationException($"Berth '{to}' already exists.");
+        }
+
+        var renamed = new List<Berth>(moving.Count);
+        var moves = new List<(string OldId, string NewId, Berth Item)>(moving.Count);
+        var map = new Dictionary<string, string>(IdComparer);
         using (BeginUpdate())
         {
-            _berths.Remove(existing.Id);
-            _berths[renamed.Id] = renamed;
-
-            var position = _berthOrder.FindIndex(id => IdComparer.Equals(id, existing.Id));
-            if (position >= 0) _berthOrder[position] = renamed.Id;
-
-            for (var i = 0; i < _selection.Count; i++)
+            foreach (var (existing, to) in moving)
             {
-                if (IdComparer.Equals(_selection[i], existing.Id)) _selection[i] = renamed.Id;
+                // A label that merely repeated the old id is the id showing on the water, so it goes with the name. One the
+                // host wrote is theirs and stays. Without this a renamed berth went on displaying the name it used to have.
+                var label = existing.Label is null || string.Equals(existing.Label, existing.Id, StringComparison.Ordinal)
+                    ? null
+                    : existing.Label;
+                var berth = Normalize(existing with { Id = to, Label = label });
+                renamed.Add(berth);
+                moves.Add((existing.Id, to, berth));
+                map[existing.Id] = to;
             }
 
-            if (IdComparer.Equals(_hoveredBerthId, existing.Id)) _hoveredBerthId = renamed.Id;
+            // Every berth keeps its place in the order under its new name.
+            _berths.Rekey(moves);
+            RenameInSelection(map);
 
-            if (renamed.MultiBerthId is { } multiBerthId && _multiBerths.TryGetValue(multiBerthId, out var group))
+            if (_hoveredBerthId is not null && map.TryGetValue(_hoveredBerthId, out var hovered)) _hoveredBerthId = hovered;
+
+            foreach (var group in _multiBerths.Values.ToArray())
             {
-                _multiBerths[group.Id] = group with
-                {
-                    BerthIds = group.BerthIds.Select(id => IdComparer.Equals(id, existing.Id) ? renamed.Id : id).ToArray(),
-                };
+                if (!group.BerthIds.Any(map.ContainsKey)) continue;
+                _multiBerths[group.Id] = group with { BerthIds = group.BerthIds.Select(id => map.GetValueOrDefault(id, id)).ToArray() };
             }
 
             MarkSceneDirty();
-            if (IsBerthSelected(renamed.Id)) RequestPopupRefresh();
+            InvalidatePickSet();
+            if (renamed.Any(berth => IsBerthSelected(berth.Id))) RequestPopupRefresh();
         }
 
-        // Outside the update scope, so listeners are told the berth was renamed rather than just "something changed".
-        RaiseLayoutChanged(LayoutChangeKind.BerthRenamed, renamed.PierId, renamed.Id, landAreaId: renamed.LandAreaId);
+        // Outside the update scope, so listeners are told each berth was renamed rather than just "something changed".
+        foreach (var berth in renamed) RaiseLayoutChanged(LayoutChangeKind.BerthRenamed, berth.PierId, berth.Id, landAreaId: berth.LandAreaId);
         return renamed;
     }
 
@@ -681,7 +722,18 @@ public sealed partial class MarinaVisualizer
             MultiBerthId = keepMultiBerthId && replacement.MultiBerthId is null ? existing.MultiBerthId : replacement.MultiBerthId,
         });
         _berths[existing.Id] = normalized;
-        MarkSceneDirty();
+        if (IsBerthSelected(existing.Id)) _selectedSnapshot = null;
+
+        // A new status, boat or label changes only what the berths layer shows; the piers, fingers and pedestals stay.
+        if (ShapesStructure(existing, normalized)) MarkSceneDirty();
+        else MarkBerthsDirty();
+
+        // Moved, resized or given to another pier: the automatic views frame it somewhere else.
+        if (existing.Bounds != normalized.Bounds || !IdComparer.Equals(existing.PierId, normalized.PierId) ||
+            !IdComparer.Equals(existing.LandAreaId, normalized.LandAreaId))
+        {
+            InvalidateLayoutGeometry();
+        }
 
         if (IsBerthSelected(existing.Id))
         {
@@ -708,12 +760,12 @@ public sealed partial class MarinaVisualizer
         var errors = berth.Validate().ToList();
         if (!string.IsNullOrWhiteSpace(berth.PierId) && !_piers.ContainsKey(berth.PierId))
         {
-            errors.Add($"Berth '{berth.Id}' references unknown pier '{berth.PierId}'.");
+            errors.Add(Strings.Format(Strings.ErrorBerthUnknownPier, berth.Id, berth.PierId));
         }
 
         if (!string.IsNullOrWhiteSpace(berth.LandAreaId) && !_landAreas.ContainsKey(berth.LandAreaId))
         {
-            errors.Add($"Berth '{berth.Id}' references unknown land area '{berth.LandAreaId}'.");
+            errors.Add(Strings.Format(Strings.ErrorBerthUnknownLandArea, berth.Id, berth.LandAreaId));
         }
 
         ThrowIfInvalid(errors);
@@ -724,7 +776,7 @@ public sealed partial class MarinaVisualizer
         var errors = divider.Validate().ToList();
         if (divider.PierId is not null && !_piers.ContainsKey(divider.PierId))
         {
-            errors.Add($"Divider '{divider.Id}' references unknown pier '{divider.PierId}'.");
+            errors.Add(Strings.Format(Strings.ErrorDividerUnknownPier, divider.Id, divider.PierId));
         }
 
         ThrowIfInvalid(errors);
@@ -743,19 +795,16 @@ public sealed partial class MarinaVisualizer
     private void ClearState()
     {
         _piers.Clear();
-        _pierOrder.Clear();
         _berths.Clear();
-        _berthOrder.Clear();
         _dividers.Clear();
-        _dividerOrder.Clear();
         _multiBerths.Clear();
-        _multiBerthOrder.Clear();
         _landAreas.Clear();
-        _landOrder.Clear();
         _shoreline = null;
         _traffic = MarineTraffic.None;
         _trafficField = null;
         _selection.Clear();
+        _selectedIds.Clear();
+        _selectedSnapshot = null;
         _hoveredBerthId = null;
         _popupRefreshPending = false;
         Designer.ClearHistory(); // The old elements are gone; undoing into them would resurrect stale ids.

@@ -74,15 +74,28 @@ html, body {
 }
 
 .vm-menu__item { position: relative; }
+.vm-menu__backdrop { position: fixed; inset: 0; z-index: 35; }
 
 .vm-menu__label {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
     padding: 5px 10px;
     cursor: default;
     border-radius: 4px;
+    position: relative;
+    z-index: 36;
 }
 
 .vm-menu__item:hover .vm-menu__label,
-.vm-menu__item--open .vm-menu__label { background: var(--accent-soft); }
+.vm-menu__item--open .vm-menu__label,
+.vm-menu__label:focus-visible { background: var(--accent-soft); }
+
+.vm-menu__label:focus-visible, .vm-menu__entry:focus-visible, .vm-tool:focus-visible, .vm-btn:focus-visible, .vm-reset:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
 
 .vm-menu__drop {
     position: absolute;
@@ -98,16 +111,24 @@ html, body {
 
 .vm-menu__entry {
     display: flex;
-    justify-content: space-between;
-    gap: 24px;
-    padding: 6px 10px;
+    align-items: baseline;
+    width: 100%;
+    gap: 8px;
+    padding: 6px 10px 6px 4px;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    background: none;
+    border: none;
     cursor: pointer;
     border-radius: 4px;
     white-space: nowrap;
 }
 
-.vm-menu__entry:hover { background: var(--accent-soft); }
-.vm-menu__entry--checked::before { content: "\2713 "; color: var(--accent); }
+.vm-menu__entry:hover:not(:disabled), .vm-menu__entry:focus-visible { background: var(--accent-soft); }
+.vm-menu__entry:disabled { opacity: .45; cursor: default; }
+.vm-menu__check { width: 14px; color: var(--accent); flex: none; }
+.vm-menu__text { flex: 1; padding-right: 24px; }
 .vm-menu__shortcut { color: var(--text-soft); font-size: 12px; }
 .vm-menu__sep { height: 1px; background: var(--border); margin: 4px 6px; }
 
@@ -153,7 +174,11 @@ html, body {
     color: var(--text-soft);
 }
 
-.vm-status__hint { flex: 1; }
+.vm-status__hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vm-status__notice { color: var(--danger); display: inline-flex; align-items: center; gap: 6px; }
+.vm-status__notice:empty { display: none; }
+.vm-status__dismiss { font: inherit; border: none; background: none; color: var(--text-soft); cursor: pointer; padding: 0 2px; }
+.vm-status__readout { white-space: nowrap; }
 
 /* ---- Activity log ------------------------------------------------------------------------------- */
 
@@ -187,7 +212,8 @@ html, body {
 
 /* ---- Cards & rows ------------------------------------------------------------------------------- */
 
-.vm-panel__title { font-size: 15px; font-weight: 600; color: var(--text); }
+h2.vm-panel__title, h3.vm-card__title, h4.vm-section { margin-top: 0; }
+.vm-panel__title { font-size: 15px; font-weight: 600; color: var(--text); margin: 0; }
 .vm-panel__hint { color: var(--text-soft); margin: 2px 0 10px; }
 
 .vm-card {
@@ -210,6 +236,7 @@ html, body {
 .vm-grid__label { color: var(--text); }
 .vm-grid__wide { grid-column: 1 / -1; }
 .vm-hint { color: var(--text-soft); font-size: 12px; margin: 2px 0; }
+.vm-hint--pre { white-space: pre-line; }
 
 .vm-with-reset { display: flex; align-items: center; gap: 6px; }
 .vm-with-reset > :first-child { flex: 1; min-width: 0; }
@@ -273,27 +300,25 @@ label.vm-check { display: inline-flex; align-items: center; gap: 6px; user-selec
 
 /* ---- Modal dialog ------------------------------------------------------------------------------- */
 
-.vm-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(20, 30, 45, .35);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-}
-
 .vm-modal {
     background: var(--surface);
+    color: var(--text);
+    border: none;
     border-radius: 6px;
     box-shadow: 0 16px 48px rgba(15, 25, 40, .35);
-    width: 400px;
+    width: 440px;
     max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 48px);
     padding: 16px;
 }
 
-.vm-modal__title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
-.vm-modal__label { color: var(--text-soft); margin: 8px 0 4px; }
+.vm-modal::backdrop { background: rgba(20, 30, 45, .35); }
+.vm-modal__title { font-size: 15px; font-weight: 600; margin: 0 0 12px; }
+.vm-modal__message { margin: 0 0 4px; white-space: pre-line; }
+.vm-modal__message--warning { color: var(--danger); }
+.vm-modal__message--pre { white-space: pre; font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; overflow-x: auto; }
+.vm-modal:has(.vm-modal__message--pre) { width: auto; }
+.vm-modal__label { display: block; color: var(--text-soft); margin: 8px 0 4px; }
 .vm-modal__hint { color: var(--text-soft); font-size: 12px; margin: 6px 0 2px; }
 .vm-modal__buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 

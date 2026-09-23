@@ -24,6 +24,7 @@ public sealed class MarinaLayoutBuilder
     private readonly List<Divider> _dividers = [];
     private readonly List<MultiBerth> _multiBerths = [];
     private readonly List<LandArea> _land = [];
+    private readonly GeneratedIds _ids = new();
     private Shoreline? _shoreline;
     private MarineTraffic? _traffic;
 
@@ -40,7 +41,7 @@ public sealed class MarinaLayoutBuilder
     public MarinaLayoutBuilder AddLandArea(LandArea landArea, Action<LandAreaBuilder>? configure = null)
     {
         _land.Add(landArea);
-        configure?.Invoke(new LandAreaBuilder(landArea, _berths));
+        configure?.Invoke(new LandAreaBuilder(landArea, _berths, _ids));
         return this;
     }
 
@@ -59,7 +60,7 @@ public sealed class MarinaLayoutBuilder
     public MarinaLayoutBuilder AddPier(Pier pier, Action<PierBuilder>? configure = null)
     {
         _piers.Add(pier);
-        configure?.Invoke(new PierBuilder(pier, _berths, _dividers));
+        configure?.Invoke(new PierBuilder(pier, _berths, _dividers, _ids));
         return this;
     }
 
@@ -67,7 +68,7 @@ public sealed class MarinaLayoutBuilder
     /// <param name="id">Unique pier id.</param>
     /// <param name="name">Display name.</param>
     /// <param name="start">Shore-end center point in plan coordinates.</param>
-    /// <param name="headingDegrees">Direction along the pier (0° = +Z, 90° = +X).</param>
+    /// <param name="headingDegrees">Direction along the pier (0° = +Z (south), 90° = +X (east)).</param>
     /// <param name="length">Length in meters.</param>
     /// <param name="configure">Callback receiving a <see cref="PierBuilder"/> for this pier.</param>
     /// <param name="width">Deck width in meters.</param>
@@ -80,14 +81,18 @@ public sealed class MarinaLayoutBuilder
     /// <summary>Adds a berth at an explicit position, size and orientation.</summary>
     public MarinaLayoutBuilder AddBerth(Berth berth)
     {
+        ArgumentNullException.ThrowIfNull(berth);
         _berths.Add(berth);
+        _ids.Berths.Add(berth.Id);
         return this;
     }
 
     /// <summary>Adds a divider at an explicit position, length and orientation.</summary>
     public MarinaLayoutBuilder AddDivider(Divider divider)
     {
+        ArgumentNullException.ThrowIfNull(divider);
         _dividers.Add(divider);
+        _ids.RegisterDivider(divider);
         return this;
     }
 
@@ -131,13 +136,15 @@ public sealed class PierBuilder
 {
     private readonly List<Berth> _berths;
     private readonly List<Divider> _dividers;
+    private readonly GeneratedIds _ids;
     private readonly Dictionary<PierSide, float> _nextOffset = [];
 
-    internal PierBuilder(Pier pier, List<Berth> berths, List<Divider> dividers)
+    internal PierBuilder(Pier pier, List<Berth> berths, List<Divider> dividers, GeneratedIds ids)
     {
         Pier = pier;
         _berths = berths;
         _dividers = dividers;
+        _ids = ids;
     }
 
     /// <summary>The pier being configured.</summary>
@@ -163,23 +170,33 @@ public sealed class PierBuilder
         PierSide side, int count, float berthWidth, float berthLength,
         Func<int, Berth, Berth>? customize = null, float startOffset = 2f, float gap = 0f, DividerType? dividers = null)
     {
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
         var offset = _nextOffset.TryGetValue(side, out var existing) ? existing : startOffset;
-        var existingCount = _berths.Count(s => s.PierId == Pier.Id && s.Id.StartsWith(BerthGenerator.SidePrefix(Pier, side), StringComparison.Ordinal));
-        var generated = BerthGenerator.AlongPier(Pier, side, count, berthWidth, berthLength, offset, gap, existingCount + 1);
+
+        // Numbered on from the berths this side already has, skipping any id already taken, even one a customize callback
+        // gave a berth of another row.
+        var prefix = BerthGenerator.SidePrefix(Pier, side);
+        var firstNumber = _ids.ReserveNumbers(prefix, count, _ids.Berths);
+        var generated = BerthGenerator.AlongPier(Pier, side, count, berthWidth, berthLength, offset, gap, firstNumber);
         for (var i = 0; i < generated.Count; i++)
         {
             var berth = dividers.HasValue ? generated[i] with { HasFingerPiers = false } : generated[i];
-            _berths.Add(customize is null ? berth : customize(i, berth));
+            var added = customize is null ? berth : customize(i, berth);
+            _berths.Add(added);
+            _ids.Berths.Add(added.Id);
         }
 
         if (dividers is { } dividerType)
         {
+            var dividerPrefix = BerthGenerator.DividerPrefix(Pier, side);
             foreach (var divider in BerthGenerator.DividersAlongPier(Pier, side, count, berthWidth, berthLength, dividerType, offset, gap))
             {
-                // Skip a boundary shared with berths added by an earlier call.
-                if (_dividers.Any(d => Vector2.DistanceSquared(d.Start, divider.Start) < 0.01f && d.Type == divider.Type)) continue;
-                var number = _dividers.Count(d => d.Id.StartsWith(BerthGenerator.DividerPrefix(Pier, side), StringComparison.Ordinal)) + 1;
-                _dividers.Add(divider with { Id = $"{BerthGenerator.DividerPrefix(Pier, side)}{number:00}" });
+                // Skip a boundary shared with berths added by an earlier call on this pier.
+                if (!_ids.TryClaimDividerStart(Pier.Id, divider)) continue;
+                var number = _ids.ReserveNumbers(dividerPrefix, 1, _ids.Dividers);
+                var numbered = divider with { Id = $"{dividerPrefix}{number:00}" };
+                _dividers.Add(numbered);
+                _ids.Dividers.Add(numbered.Id);
             }
         }
 
@@ -198,7 +215,9 @@ public sealed class PierBuilder
     public PierBuilder AddBerth(string id, PierSide side, float offsetAlong, float berthWidth, float berthLength, Func<Berth, Berth>? customize = null)
     {
         var berth = BerthGenerator.AtPier(Pier, id, side, offsetAlong, berthWidth, berthLength);
-        _berths.Add(customize is null ? berth : customize(berth));
+        var added = customize is null ? berth : customize(berth);
+        _berths.Add(added);
+        _ids.Berths.Add(added.Id);
         return this;
     }
 
@@ -207,6 +226,7 @@ public sealed class PierBuilder
     {
         ArgumentNullException.ThrowIfNull(berth);
         _berths.Add(berth.PierId == Pier.Id ? berth : berth with { PierId = Pier.Id });
+        _ids.Berths.Add(berth.Id);
         return this;
     }
 
@@ -214,7 +234,9 @@ public sealed class PierBuilder
     public PierBuilder AddDivider(Divider divider)
     {
         ArgumentNullException.ThrowIfNull(divider);
-        _dividers.Add(divider.PierId == Pier.Id ? divider : divider with { PierId = Pier.Id });
+        var added = divider.PierId == Pier.Id ? divider : divider with { PierId = Pier.Id };
+        _dividers.Add(added);
+        _ids.RegisterDivider(added);
         return this;
     }
 }
@@ -223,11 +245,13 @@ public sealed class PierBuilder
 public sealed class LandAreaBuilder
 {
     private readonly List<Berth> _berths;
+    private readonly GeneratedIds _ids;
 
-    internal LandAreaBuilder(LandArea landArea, List<Berth> berths)
+    internal LandAreaBuilder(LandArea landArea, List<Berth> berths, GeneratedIds ids)
     {
         LandArea = landArea;
         _berths = berths;
+        _ids = ids;
     }
 
     /// <summary>The land area being configured.</summary>
@@ -243,7 +267,9 @@ public sealed class LandAreaBuilder
     public LandAreaBuilder AddBerth(string id, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f, Func<Berth, Berth>? customize = null)
     {
         var berth = Berth.OnLand(id, LandArea.Id, position, headingDegrees, length, width);
-        _berths.Add(customize is null ? berth : customize(berth));
+        var added = customize is null ? berth : customize(berth);
+        _berths.Add(added);
+        _ids.Berths.Add(added.Id);
         return this;
     }
 
@@ -272,11 +298,13 @@ public sealed class LandAreaBuilder
 
         var direction = MarinaMath.HeadingToDirection(rowHeadingDegrees);
         var heading = boatHeadingDegrees ?? rowHeadingDegrees - 90f;
-        var existing = _berths.Count(s => s.Id.StartsWith(idPrefix, StringComparison.Ordinal));
+        var first = _ids.ReserveNumbers(idPrefix, count, _ids.Berths);
         for (var i = 0; i < count; i++)
         {
-            var berth = Berth.OnLand($"{idPrefix}{existing + i + 1:00}", LandArea.Id, firstPosition + direction * (i * (berthWidth + gap)), heading, berthLength, berthWidth);
-            _berths.Add(customize is null ? berth : customize(i, berth));
+            var berth = Berth.OnLand($"{idPrefix}{first + i:00}", LandArea.Id, firstPosition + direction * (i * (berthWidth + gap)), heading, berthLength, berthWidth);
+            var added = customize is null ? berth : customize(i, berth);
+            _berths.Add(added);
+            _ids.Berths.Add(added.Id);
         }
 
         return this;
@@ -292,7 +320,14 @@ public static class BerthGenerator
             ? $"{pier.Id}-"
             : $"{pier.Id}-{(side == PierSide.Left ? "L" : "R")}";
 
-    internal static string DividerPrefix(Pier pier, PierSide side) => $"{SidePrefix(pier, side)}-D";
+    /// <summary>
+    /// Id prefix of generated dividers: <c>{PierId}-L-D</c> / <c>{PierId}-R-D</c> on a pier with berths on both sides, and
+    /// <c>{PierId}-D</c> on a single-sided one (which has no left and right to tell apart).
+    /// </summary>
+    internal static string DividerPrefix(Pier pier, PierSide side) =>
+        pier.BerthingSides is PierSides.Left or PierSides.Right
+            ? $"{pier.Id}-D"
+            : $"{pier.Id}-{(side == PierSide.Left ? "L" : "R")}-D";
 
     /// <summary>
     /// Generates berths perpendicular to a pier, bows pointing at the pier.
@@ -330,7 +365,7 @@ public static class BerthGenerator
 
     /// <summary>A single berth perpendicular to the pier, bow toward it.</summary>
     /// <param name="pier">The pier.</param>
-    /// <param name="id">Berth id (also used as its label).</param>
+    /// <param name="id">Berth id. The berth's <see cref="Berth.Label"/> is left null, so it shows this id until you give it one.</param>
     /// <param name="side">Side of the pier.</param>
     /// <param name="offsetAlong">Distance from the pier's start to the berth's near edge.</param>
     /// <param name="berthWidth">Width along the pier, in meters.</param>
@@ -347,7 +382,7 @@ public static class BerthGenerator
         var outward = Outward(pier, side);
         var along = offsetAlong + berthWidth * 0.5f;
         var center = pier.Start + pier.Direction * along + outward * (pier.Width * 0.5f + berthLength * 0.5f);
-        return new Berth(id, pier.Id, center, MarinaMath.DirectionToHeading(-outward), berthLength, berthWidth) { Label = id };
+        return new Berth(id, pier.Id, center, MarinaMath.DirectionToHeading(-outward), berthLength, berthWidth);
     }
 
     /// <summary>
@@ -373,7 +408,7 @@ public static class BerthGenerator
 
         var outward = Outward(pier, side);
         var heading = MarinaMath.DirectionToHeading(outward);
-        var length = type == DividerType.FingerPier ? berthLength * 0.75f : berthLength;
+        var length = DividerDefaults.Length(type, berthLength);
         var prefix = DividerPrefix(pier, side);
         var result = new List<Divider>();
         if (count == 0) return result;
@@ -390,8 +425,8 @@ public static class BerthGenerator
                 result.Add(new Divider($"{prefix}{result.Count + 1:00}", start, heading, length, type)
                 {
                     PierId = pier.Id,
-                    Width = type == DividerType.FingerPier ? 0.9f : type == DividerType.Boom ? 0.35f : 0.4f,
-                    Spacing = type == DividerType.Piles ? MathF.Max(3f, length / 3f) : 1.6f,
+                    Width = DividerDefaults.Width(type),
+                    Spacing = DividerDefaults.Spacing(type, length),
                 });
             }
         }
@@ -418,12 +453,12 @@ public static class BerthGenerator
         ThrowIfNoBerths(pier, side);
 
         var outward = Outward(pier, side);
-        var length = type == DividerType.FingerPier ? berthLength * 0.75f : berthLength;
+        var length = DividerDefaults.Length(type, berthLength);
         return new Divider(id, pier.Start + pier.Direction * offsetAlong + outward * (pier.Width * 0.5f), MarinaMath.DirectionToHeading(outward), length, type)
         {
             PierId = pier.Id,
-            Width = type == DividerType.FingerPier ? 0.9f : type == DividerType.Boom ? 0.35f : 0.4f,
-            Spacing = type == DividerType.Piles ? MathF.Max(3f, length / 3f) : 1.6f,
+            Width = DividerDefaults.Width(type),
+            Spacing = DividerDefaults.Spacing(type, length),
         };
     }
 
@@ -435,5 +470,86 @@ public static class BerthGenerator
         }
     }
 
-    private static Vector2 Outward(Pier pier, PierSide side) => pier.Right * (side == PierSide.Right ? 1f : -1f);
+    private static Vector2 Outward(Pier pier, PierSide side) => pier.SideNormal(side);
+}
+
+/// <summary>
+/// The ids and divider positions a <see cref="MarinaLayoutBuilder"/> has handed out, so each generated row numbers on from the
+/// last one on the same side without scanning every berth, and a boundary two rows share gets one divider rather than two.
+/// </summary>
+internal sealed class GeneratedIds
+{
+    /// <summary>Divider starts are compared on a grid this fine (10 cm): two in the same or neighbouring cells are the same boundary.</summary>
+    private const float SameStart = 0.1f;
+
+    private readonly Dictionary<string, int> _nextNumber = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, HashSet<(DividerType Type, int X, int Y)>> _dividerStarts = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Every berth id added so far, however it was added.</summary>
+    public HashSet<string> Berths { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Every divider id added so far.</summary>
+    public HashSet<string> Dividers { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The first of <paramref name="count"/> consecutive numbers for ids <c>{prefix}NN</c>, carrying on from the last ones handed
+    /// out with that prefix and past any id already in <paramref name="taken"/>.
+    /// </summary>
+    public int ReserveNumbers(string prefix, int count, HashSet<string> taken)
+    {
+        var first = _nextNumber.TryGetValue(prefix, out var next) ? next : 1;
+        while (FirstTaken(prefix, first, count, taken) is { } clash) first = clash + 1;
+
+        _nextNumber[prefix] = first + count;
+        return first;
+    }
+
+    /// <summary>Remembers a divider added by hand, so a generated one is not put on top of it.</summary>
+    public void RegisterDivider(Divider divider)
+    {
+        Dividers.Add(divider.Id);
+        if (divider.PierId is { } pierId) Starts(pierId).Add(Key(divider));
+    }
+
+    /// <summary>
+    /// Claims the boundary a generated divider stands on, along its own pier: false when one of the same type already stands
+    /// there (from an earlier row, or added by hand).
+    /// </summary>
+    public bool TryClaimDividerStart(string pierId, Divider divider)
+    {
+        var starts = Starts(pierId);
+        var (type, x, y) = Key(divider);
+
+        // Look at the neighbouring cells too, so two starts either side of a cell edge still count as one.
+        for (var dx = -1; dx <= 1; dx++)
+        {
+            for (var dy = -1; dy <= 1; dy++)
+            {
+                if (starts.Contains((type, x + dx, y + dy))) return false;
+            }
+        }
+
+        starts.Add((type, x, y));
+        return true;
+    }
+
+    /// <summary>The first number of <paramref name="count"/> from <paramref name="first"/> whose id is taken, or null.</summary>
+    private static int? FirstTaken(string prefix, int first, int count, HashSet<string> taken)
+    {
+        for (var number = first; number < first + count; number++)
+        {
+            if (taken.Contains($"{prefix}{number:00}")) return number;
+        }
+
+        return null;
+    }
+
+    private static (DividerType Type, int X, int Y) Key(Divider divider) =>
+        (divider.Type, (int)MathF.Round(divider.Start.X / SameStart), (int)MathF.Round(divider.Start.Y / SameStart));
+
+    private HashSet<(DividerType Type, int X, int Y)> Starts(string pierId)
+    {
+        if (!_dividerStarts.TryGetValue(pierId, out var starts)) _dividerStarts[pierId] = starts = [];
+        return starts;
+    }
 }
