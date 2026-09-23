@@ -247,7 +247,10 @@ public class MarineTrafficTests
         // One kind only, so what is left is the variation between them.
         var traffic = Busy() with
         {
-            LaneCount = 1, MaximumVessels = 40, SpawnDelaySeconds = 1f, Vessels = new[] { BoatType.Ferry },
+            LaneCount = 1,
+            MaximumVessels = 40,
+            SpawnDelaySeconds = 1f,
+            Vessels = new[] { BoatType.Ferry },
         };
 
         var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
@@ -302,7 +305,11 @@ public class MarineTrafficTests
         // One lane, one vessel allowed, moving quickly: it crosses, leaves, and another follows.
         var traffic = Busy() with
         {
-            LaneCount = 1, MaximumVessels = 1, SpeedPercent = 4000f, SpawnDelaySeconds = 30f, Seed = 4,
+            LaneCount = 1,
+            MaximumVessels = 1,
+            SpeedPercent = 4000f,
+            SpawnDelaySeconds = 30f,
+            Seed = 4,
         };
 
         var lanes = MarineTrafficPlanner.Plan(traffic, MarinaBounds(), StraightCoast());
@@ -469,8 +476,15 @@ public class MarineTrafficTests
         var quiet = marina.BuildRenderFrame().Objects.Count;
         marina.SetMarineTraffic(MarineTraffic.None with
         {
-            IsEnabled = true, Clearance = 150f, Seed = 3, LaneCount = 3, LaneSpacing = 220f,
-            EdgeClearance = 900f, SpeedPercent = 140f, SpawnDelaySeconds = 12f, MaximumVessels = 9,
+            IsEnabled = true,
+            Clearance = 150f,
+            Seed = 3,
+            LaneCount = 3,
+            LaneSpacing = 220f,
+            EdgeClearance = 900f,
+            SpeedPercent = 140f,
+            SpawnDelaySeconds = 12f,
+            MaximumVessels = 9,
         });
 
         Assert.Equal(3, marina.TrafficLanes.Count);

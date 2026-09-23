@@ -191,18 +191,18 @@ internal sealed class LayoutDto : ExtensibleDto
     public List<MultiBerthDto>? MultiBerths { get; set; }
 
     /// <summary>The piers. Up to format 1.x they were written as "docks".</summary>
-    public List<PierDto> ReadPiers() => Piers ?? Read(MarinaJson.Indented.ListPierDto, "docks") ?? new List<PierDto>();
+    public List<PierDto> ReadPiers() => Piers ?? Read(MarinaJson.Indented.ListPierDto, "docks") ?? [];
 
     /// <summary>
     /// The berths. Up to format 1.x they were "slips", and "berths" meant the multi-berth groups, so an older file's berth list
     /// lives under the old name.
     /// </summary>
     public List<BerthDto> ReadBerths(bool legacy) =>
-        (legacy ? Read(MarinaJson.Indented.ListBerthDto, "slips") : Berths) ?? new List<BerthDto>();
+        (legacy ? Read(MarinaJson.Indented.ListBerthDto, "slips") : Berths) ?? [];
 
     /// <summary>The multi-berth groups; in an older file they are the list called "berths".</summary>
     public List<MultiBerthDto> ReadMultiBerths(bool legacy) =>
-        (legacy ? Berths?.Select(MultiBerthDto.FromLegacyBerthEntry).ToList() : MultiBerths) ?? new List<MultiBerthDto>();
+        (legacy ? Berths?.Select(MultiBerthDto.FromLegacyBerthEntry).ToList() : MultiBerths) ?? [];
 
     private List<T>? Read<T>(System.Text.Json.Serialization.Metadata.JsonTypeInfo<List<T>> typeInfo, string name)
     {
@@ -360,7 +360,7 @@ internal sealed class LandAreaDto : ExtensibleDto
         Metadata = Copy(land.Metadata),
     };
 
-    public LandArea ToDomain() => new(Id, Outline ?? new List<Vector2>(), Height, Kind)
+    public LandArea ToDomain() => new(Id, Outline ?? [], Height, Kind)
     {
         Name = Name,
         Trees = Trees?.Select(t => t.ToDomain()).ToArray() ?? Array.Empty<LandTree>(),

@@ -122,7 +122,8 @@ public class EdgeCaseProbeTests
         marina.SetViewportSize(800, 600);
         marina.AddPier(APier());
         marina.AddBerth(BerthGenerator.AtPier(marina.GetPier("A")!, "A-L01", PierSide.Left, 0f, 5f, 12f)
-            with { Label = "\U0001F6A2 \U0001F30A" });   // ship, wave
+            with
+        { Label = "\U0001F6A2 \U0001F30A" });   // ship, wave
         marina.BerthLabelMode = BerthLabelMode.All;
 
         var frame = marina.BuildRenderFrame();
@@ -142,7 +143,8 @@ public class EdgeCaseProbeTests
         marina.SetViewportSize(800, 600);
         marina.AddPier(APier());
         marina.AddBerth(BerthGenerator.AtPier(marina.GetPier("A")!, "A-L01", PierSide.Left, 0f, 5f, 12f)
-            with { Label = label });
+            with
+        { Label = label });
         marina.BerthLabelMode = BerthLabelMode.All;
 
         Assert.NotEmpty(marina.BuildRenderFrame().Objects);

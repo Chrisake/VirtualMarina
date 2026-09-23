@@ -58,15 +58,15 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private static readonly StringComparer IdComparer = StringComparer.OrdinalIgnoreCase;
 
     private readonly Dictionary<string, Pier> _piers = new(IdComparer);
-    private readonly List<string> _pierOrder = new();
+    private readonly List<string> _pierOrder = [];
     private readonly Dictionary<string, Berth> _berths = new(IdComparer);
-    private readonly List<string> _berthOrder = new();
+    private readonly List<string> _berthOrder = [];
     private readonly Dictionary<string, Divider> _dividers = new(IdComparer);
-    private readonly List<string> _dividerOrder = new();
+    private readonly List<string> _dividerOrder = [];
     private readonly Dictionary<string, MultiBerth> _multiBerths = new(IdComparer);
-    private readonly List<string> _multiBerthOrder = new();
+    private readonly List<string> _multiBerthOrder = [];
     private readonly Dictionary<string, LandArea> _landAreas = new(IdComparer);
-    private readonly List<string> _landOrder = new();
+    private readonly List<string> _landOrder = [];
     private Shoreline? _shoreline;
     private MarineTraffic _traffic = MarineTraffic.None;
     private MarineTrafficField? _trafficField;
@@ -74,12 +74,12 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private bool _showTrafficLanes;
     private LabelFontDefinition? _registeredLabelFont;
     private bool _trafficDirty = true;
-    private readonly List<RenderObject> _frameObjects = new();
+    private readonly List<RenderObject> _frameObjects = [];
     private int _staticObjectCount = -1;
     private readonly Dictionary<string, int> _landMeshSlots = new(IdComparer);
     private int _nextLandMeshSlot;
-    private readonly List<CameraPreset> _presets = new();
-    private readonly List<RenderObject> _renderObjects = new();
+    private readonly List<CameraPreset> _presets = [];
+    private readonly List<RenderObject> _renderObjects = [];
     private MarinaStyle _style;
 
     private string? _hoveredBerthId;

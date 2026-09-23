@@ -241,6 +241,7 @@ public sealed class SampleErpIntegration : IDisposable
     /// <summary>Moves a berth's boat into the water (<paramref name="launch"/>) or up onto a land berth, in one batch.</summary>
     public Berth? MoveBoat(Berth from, bool launch)
     {
+        ArgumentNullException.ThrowIfNull(from);
         if (from.Boat is not { } boat) return null;
         var target = launch ? MockMarinaFactory.FindFreeWaterBerth(_marina, boat) : MockMarinaFactory.FindFreeLandBerth(_marina, boat);
         if (target is null)

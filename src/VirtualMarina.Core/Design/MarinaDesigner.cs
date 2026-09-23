@@ -7,8 +7,8 @@ using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Input;
 using VirtualMarina.Core.Mathematics;
 using VirtualMarina.Core.Picking;
-using VirtualMarina.Core.Resources;
 using VirtualMarina.Core.Rendering;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Design;
 
@@ -88,7 +88,7 @@ public sealed class MarinaDesigner
     private static readonly Vector4 TextColor = new(1f, 1f, 1f, 0.97f);
 
     private readonly MarinaVisualizer _marina;
-    private readonly List<Vector2> _points = new();
+    private readonly List<Vector2> _points = [];
     private List<Vector2>? _shorelineSide;
     private bool _active;
     private DesignTool _tool;
@@ -129,7 +129,7 @@ public sealed class MarinaDesigner
     private float _treeDensity = 8f;
     private readonly Random _random = new();
     private HinterlandScenery _scenery = HinterlandScenery.Countryside;
-    private readonly List<DesignAction> _history = new();
+    private readonly List<DesignAction> _history = [];
     private bool _undoing;
 
     private ReferenceImage? _image;
@@ -507,11 +507,11 @@ public sealed class MarinaDesigner
         switch (_tool)
         {
             case DesignTool.DrawLandArea when _points.Count >= 3:
-            {
-                var outline = RemoveDuplicatePoints(_points);
-                if (outline.Count < 3 || !PolygonMath.IsSimple(outline)) return false;
-                return TryCreate(() => CreateLandArea(outline) is not null);
-            }
+                {
+                    var outline = RemoveDuplicatePoints(_points);
+                    if (outline.Count < 3 || !PolygonMath.IsSimple(outline)) return false;
+                    return TryCreate(() => CreateLandArea(outline) is not null);
+                }
 
             case DesignTool.DrawPier when _points.Count == 1 && _pointer is { } end:
                 return TryCreate(() => CreatePier(_points[0], end) is not null);
@@ -524,17 +524,17 @@ public sealed class MarinaDesigner
 
             // Enter does not finish a coast; it settles the line, and the next click says which side is land.
             case DesignTool.DrawShoreline when _shorelineSide is null && _points.Count >= 2 && !DraftShorelineCrosses():
-            {
-                var line = RemoveDuplicatePoints(_points);
-                if (line.Count < 2) return false;
+                {
+                    var line = RemoveDuplicatePoints(_points);
+                    if (line.Count < 2) return false;
 
-                _shorelineSide = line.ToList();
-                _points.Clear();
-                _marina.MarkSceneDirty();
-                DraftChanged?.Invoke(this, new DesignDraftChangedEventArgs(_tool, DesignDraftChange.PointAdded, _shorelineSide.ToArray()));
-                RaiseStateChanged();
-                return false;
-            }
+                    _shorelineSide = line.ToList();
+                    _points.Clear();
+                    _marina.MarkSceneDirty();
+                    DraftChanged?.Invoke(this, new DesignDraftChangedEventArgs(_tool, DesignDraftChange.PointAdded, _shorelineSide.ToArray()));
+                    RaiseStateChanged();
+                    return false;
+                }
 
             default:
                 return false;
@@ -2956,36 +2956,36 @@ public sealed class MarinaDesigner
 
         public string Description { get; }
 
-        public List<LandArea> AddedLandAreas { get; } = new();
+        public List<LandArea> AddedLandAreas { get; } = [];
 
-        public List<Pier> AddedPiers { get; } = new();
+        public List<Pier> AddedPiers { get; } = [];
 
-        public List<Divider> AddedDividers { get; } = new();
+        public List<Divider> AddedDividers { get; } = [];
 
-        public List<Berth> AddedBerths { get; } = new();
+        public List<Berth> AddedBerths { get; } = [];
 
-        public List<LandArea> RemovedLandAreas { get; } = new();
+        public List<LandArea> RemovedLandAreas { get; } = [];
 
-        public List<Pier> RemovedPiers { get; } = new();
+        public List<Pier> RemovedPiers { get; } = [];
 
-        public List<Divider> RemovedDividers { get; } = new();
+        public List<Divider> RemovedDividers { get; } = [];
 
-        public List<Berth> RemovedBerths { get; } = new();
+        public List<Berth> RemovedBerths { get; } = [];
 
         /// <summary>The land areas as they were before the change (trees, for now).</summary>
-        public List<LandArea> ChangedLandAreas { get; } = new();
+        public List<LandArea> ChangedLandAreas { get; } = [];
 
         /// <summary>The piers as they were before the change (service pedestals and names).</summary>
-        public List<Pier> ChangedPiers { get; } = new();
+        public List<Pier> ChangedPiers { get; } = [];
 
         /// <summary>The berths as they were before the change (pedestals, for now).</summary>
-        public List<Berth> ChangedBerths { get; } = new();
+        public List<Berth> ChangedBerths { get; } = [];
 
         /// <summary>Berths that were renamed, as (old name, new name); undoing names them back.</summary>
-        public List<(string From, string To)> RenamedBerths { get; } = new();
+        public List<(string From, string To)> RenamedBerths { get; } = [];
 
         /// <summary>Piers that were given another id, as (old id, new id); undoing moves them back.</summary>
-        public List<(string From, string To)> RenamedPiers { get; } = new();
+        public List<(string From, string To)> RenamedPiers { get; } = [];
 
         /// <summary>True when this action set or removed the mainland, so undoing puts <see cref="PreviousShoreline"/> back.</summary>
         public bool TouchedShoreline { get; init; }

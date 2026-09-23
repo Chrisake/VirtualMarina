@@ -25,6 +25,9 @@ public static class MockMarinaFactory
     /// <summary>Id of the sample's multi-berth (a motor yacht moored alongside three berths on pier B).</summary>
     public const string SampleMultiBerthId = "BERTH-B-L10";
 
+    /// <summary>The berths the sample multi-berth spans. Built once rather than per call (CA1861).</summary>
+    private static readonly string[] SampleMultiBerthMembers = ["B-L10", "B-L11", "B-L12"];
+
     /// <summary>Id of the sample's boatyard, a land area with two rows of land berths.</summary>
     public const string BoatyardId = "boatyard";
 
@@ -124,7 +127,7 @@ public static class MockMarinaFactory
                 .AddBerths(PierSide.Right, 16, 4f, 8f, (_, s) => Populate(s, personal), dividers: DividerType.Boom), width: 3f)
             .AddMultiBerth(new MultiBerth(
                 SampleMultiBerthId,
-                new[] { "B-L10", "B-L11", "B-L12" },
+                SampleMultiBerthMembers,
                 new Boat("BT-70001", "Meltemi Star", BoatType.MotorYacht)
                 {
                     LengthMeters = 14.5f,
@@ -203,18 +206,28 @@ public static class MockMarinaFactory
     }
 
     /// <summary>The first free, enabled land berth whose spot fits <paramref name="boat"/>, or null.</summary>
-    public static Berth? FindFreeLandBerth(IMarinaVisualizer marina, Boat boat) =>
-        marina.GetBerths().FirstOrDefault(s => s.IsOnLand && s.Status == BerthStatus.Free && s.AllowsActions && FitsBoat(s, boat));
+    public static Berth? FindFreeLandBerth(IMarinaVisualizer marina, Boat boat)
+    {
+        ArgumentNullException.ThrowIfNull(marina);
+        ArgumentNullException.ThrowIfNull(boat);
+        return marina.GetBerths().FirstOrDefault(s => s.IsOnLand && s.Status == BerthStatus.Free && s.AllowsActions && FitsBoat(s, boat));
+    }
 
     /// <summary>The first free, enabled water berth (not in a multi-berth) whose size fits <paramref name="boat"/>, or null.</summary>
-    public static Berth? FindFreeWaterBerth(IMarinaVisualizer marina, Boat boat) =>
-        marina.GetBerths().FirstOrDefault(s => !s.IsOnLand && s.Status == BerthStatus.Free && s.AllowsActions && s.MultiBerthId is null && FitsBoat(s, boat));
+    public static Berth? FindFreeWaterBerth(IMarinaVisualizer marina, Boat boat)
+    {
+        ArgumentNullException.ThrowIfNull(marina);
+        ArgumentNullException.ThrowIfNull(boat);
+        return marina.GetBerths().FirstOrDefault(s => !s.IsOnLand && s.Status == BerthStatus.Free && s.AllowsActions && s.MultiBerthId is null && FitsBoat(s, boat));
+    }
 
     private static bool FitsBoat(Berth berth, Boat boat) => boat.LengthMeters <= berth.Length - 0.5f && boat.BeamMeters <= berth.Width - 0.3f;
 
     /// <summary>Creates a plausible boat that fits the berth, preferring the given types.</summary>
     public static Boat CreateBoatForBerth(Berth berth, Random rng, IReadOnlyList<BoatType>? preferredTypes = null)
     {
+        ArgumentNullException.ThrowIfNull(berth);
+        ArgumentNullException.ThrowIfNull(rng);
         var candidates = (preferredTypes ?? BoatTypeCatalog.All).Where(t => Fits(t, berth)).ToList();
         if (candidates.Count == 0) candidates = BoatTypeCatalog.All.Where(t => Fits(t, berth)).ToList();
         var type = candidates.Count > 0 ? candidates[rng.Next(candidates.Count)] : BoatType.JetSki;
@@ -240,6 +253,9 @@ public static class MockMarinaFactory
     /// </summary>
     public static IReadOnlyList<BerthUpdate> CreateRandomActivity(IReadOnlyList<Berth> berths, Random rng, int count)
     {
+        ArgumentNullException.ThrowIfNull(berths);
+        ArgumentNullException.ThrowIfNull(rng);
+
         var updates = new List<BerthUpdate>();
         foreach (var berth in berths.Where(s => !s.IsDisabled && s.MultiBerthId is null).OrderBy(_ => rng.Next()).Take(count))
         {
@@ -264,6 +280,7 @@ public static class MockMarinaFactory
     /// </summary>
     public static Berth? CreateGuestBerth(IMarinaVisualizer marina, string pierId)
     {
+        ArgumentNullException.ThrowIfNull(marina);
         var pier = marina.GetPier(pierId);
         if (pier is null) return null;
 

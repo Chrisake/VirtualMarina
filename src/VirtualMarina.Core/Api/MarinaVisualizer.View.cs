@@ -81,7 +81,10 @@ public sealed partial class MarinaVisualizer
     {
         // The automatic Overview, even when a saved view has been given the same name.
         var overview = _presets.FirstOrDefault(p => p.IsBuiltIn && string.Equals(p.Name, OverviewPresetName, StringComparison.OrdinalIgnoreCase));
-        if (overview is not null) Camera.SetPose(overview.Pose, immediate);
+        if (overview is not null)
+        {
+            Camera.SetPose(overview.Pose, immediate);
+        }
         else if (!ApplyCameraPreset(OverviewPresetName, immediate))
         {
             Camera.SetPose(new CameraPose(Vector3.Zero, 25f, 45f, 150f), immediate);

@@ -32,9 +32,9 @@ internal sealed class SelectionPopupPanel : Control
     private readonly ToolTip _hint = new() { InitialDelay = 400, ShowAlways = true };
 
     private BerthPopup? _popup;
-    private readonly List<(BerthTooltipLine Line, Rectangle Label, Rectangle Value)> _lines = new();
-    private readonly List<(BerthAction Action, Rectangle Bounds)> _actions = new();
-    private readonly List<int> _separators = new();
+    private readonly List<(BerthTooltipLine Line, Rectangle Label, Rectangle Value)> _lines = [];
+    private readonly List<(BerthAction Action, Rectangle Bounds)> _actions = [];
+    private readonly List<int> _separators = [];
     private Rectangle _titleRect;
     private Rectangle _subtitleRect;
     private Rectangle _closeRect;

@@ -37,7 +37,7 @@ internal sealed class MainForm : Form
         BackColor = Theme.Background,
     };
     private readonly ToolStrip _toolbar = new();
-    private readonly Dictionary<DesignTool, ToolStripButton> _toolButtons = new();
+    private readonly Dictionary<DesignTool, ToolStripButton> _toolButtons = [];
     private readonly StatusStrip _status = new();
     private readonly ToolStripStatusLabel _statusHint = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
     private readonly ToolStripStatusLabel _statusPointer = new() { AutoSize = true, TextAlign = ContentAlignment.MiddleRight };

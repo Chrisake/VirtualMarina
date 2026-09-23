@@ -24,7 +24,7 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
     private readonly IJSInProcessObjectReference _module;
     private readonly int _viewId;
     private readonly float[] _frame = new float[FrameLength];
-    private readonly Dictionary<int, Core.Geometry.MeshData> _uploadedMeshes = new();
+    private readonly Dictionary<int, Core.Geometry.MeshData> _uploadedMeshes = [];
     private readonly double[] _image = new double[8];
     private float[] _objects = Array.Empty<float>();
     private int _uploadedImageKey = -1;

@@ -41,11 +41,11 @@ public sealed class MarineTrafficField
     /// <summary>How much the wait for the next vessel may differ from the setting, as a share of it.</summary>
     private const float DelayVariation = 0.8f;
 
-    private readonly List<Sailing> _sailings = new();
-    private readonly List<TrafficVessel> _vessels = new();
+    private readonly List<Sailing> _sailings = [];
+    private readonly List<TrafficVessel> _vessels = [];
 
     /// <summary>How long until each vessel that has left the map is replaced.</summary>
-    private readonly List<double> _due = new();
+    private readonly List<double> _due = [];
     private readonly Random _random;
 
     /// <summary>Puts a random amount of traffic out on the lanes, ready to move.</summary>

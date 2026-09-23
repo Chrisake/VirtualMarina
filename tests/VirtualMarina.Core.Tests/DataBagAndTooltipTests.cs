@@ -191,9 +191,11 @@ public class DataBagAndTooltipTests
     [Fact]
     public void Actions_FindAndRemove_WorkByActionId()
     {
-        var actions = new BerthActionCollection();
-        actions.Add("free", "Free");
-        actions.Add("invoice", "Invoice");
+        var actions = new BerthActionCollection
+        {
+            { "free", "Free" },
+            { "invoice", "Invoice" }
+        };
 
         Assert.Equal("Invoice", actions.Find("invoice")?.Caption);
         Assert.Null(actions.Find("absent"));

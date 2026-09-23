@@ -10,7 +10,10 @@
 root = true
 
 [*]
-charset = utf-8
+# No charset line on purpose. The repository is mixed about the UTF-8 byte-order mark -- roughly two
+# thirds of the .cs files carry one -- and declaring either answer here would make the formatter
+# rewrite the encoding of every file that disagrees, for no functional gain. Left for a deliberate
+# decision rather than settled as a side effect of running a formatter.
 end_of_line = lf
 indent_style = space
 indent_size = 4
@@ -35,7 +38,10 @@ trim_trailing_whitespace = false
 csharp_style_namespace_declarations = file_scoped:warning
 csharp_using_directive_placement = outside_namespace:warning
 dotnet_sort_system_directives_first = true
-csharp_prefer_braces = true:suggestion
+# Braces when the body is on its own line, none when the whole statement fits on one. That is what
+# the code does -- 739 single-line guards against 248 multi-line bodies -- so it is what the rule
+# says, and a multi-line body without braces is now an error rather than a matter of taste.
+csharp_prefer_braces = when_multiline:warning
 csharp_style_var_for_built_in_types = false:none
 csharp_style_var_when_type_is_apparent = true:none
 csharp_style_var_elsewhere = false:none
@@ -53,9 +59,10 @@ dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.underscore_camel.required_prefix = _
 dotnet_naming_style.underscore_camel.capitalization = camel_case
 
-# Formatting findings are a suggestion, not a warning: reformatting 148 files in one commit would
-# bury the real findings and every later `git blame`.
-dotnet_diagnostic.IDE0055.severity = suggestion
+# Formatting and collection expressions are enforced, so the file you open looks like the one you
+# left. IDE0055 was a suggestion while the backlog was being worked down; it is an error now.
+dotnet_diagnostic.IDE0055.severity = warning
+dotnet_diagnostic.IDE0028.severity = warning
 
 # -- .NET analyzer (CAxxxx) rules that do not apply to this solution ---------------------------
 
@@ -80,10 +87,15 @@ dotnet_diagnostic.CA1716.severity = none
 
 # -- .NET analyzer rules kept, but at suggestion while the backlog is worked down ---------------
 
-# CA1861 "prefer static readonly for constant arrays" and CA1863 "cache a CompositeFormat":
-# micro-optimisations in code that runs once per frame at most. Worth doing, not worth a warning.
-dotnet_diagnostic.CA1861.severity = suggestion
-dotnet_diagnostic.CA1863.severity = suggestion
+# CA1861 "prefer static readonly for constant arrays" rebuilds a constant array on every call; in a
+# scene rebuilt per frame that is worth the static field.
+dotnet_diagnostic.CA1861.severity = warning
+
+# CA1863 "cache a CompositeFormat" assumes the format string is a constant. Every one it flags here
+# is a localized resource read through Strings.Get, so its text changes with Strings.Culture. A
+# CompositeFormat parsed once into a static field would freeze whichever language happened to be
+# current at first use, and the tooltip would stay in it after the host switched language.
+dotnet_diagnostic.CA1863.severity = none
 
 # -- .NET analyzer rules the code was measured against and deliberately does not follow ---------
 
@@ -104,6 +116,13 @@ dotnet_diagnostic.CA1720.severity = none
 dotnet_diagnostic.CA1721.severity = none
 
 # -- SonarAnalyzer (Sxxxx) rules ---------------------------------------------------------------
+
+# S2342 wants a [Flags] enum named in the plural, because one value can hold several. Both it flags
+# -- BerthStatusFilter and RenderAnimation -- are published types, so renaming them is a major
+# version change (Docs/16-compatibility.md), and the singular reads better where they are actually
+# used: BerthStatusFilter.Free and RenderAnimation.Wave name one member, not the set. The two are
+# consistent with each other, which is what matters here.
+dotnet_diagnostic.S2342.severity = none
 
 # S3358 "extract this nested ternary". A chained ternary, one condition per line, is how this
 # codebase writes a multi-way expression, from geometry to colour selection. Unpicking 47 of them
@@ -153,6 +172,11 @@ dotnet_diagnostic.CA1307.severity = none
 dotnet_diagnostic.CA1305.severity = none
 dotnet_diagnostic.CA1310.severity = none
 
+# CA1861 "prefer static readonly over constant array arguments" is about not rebuilding an array on
+# a hot path. An expected value in an assertion is built once per test, and hoisting 84 of them into
+# fields would put the expected value a screen away from the assertion that checks it.
+dotnet_diagnostic.CA1861.severity = none
+
 # CA1062 "validate arguments of public methods" and CA2007 "call ConfigureAwait": both are rules
 # about being a well-behaved library. A test assembly is not one.
 dotnet_diagnostic.CA1062.severity = none
@@ -168,7 +192,7 @@ dotnet_diagnostic.CA1515.severity = none
 # all three protect a published API surface. An app has no callers outside itself.
 dotnet_diagnostic.CA1515.severity = none
 dotnet_diagnostic.CA2007.severity = none
-dotnet_diagnostic.CA1062.severity = suggestion
+dotnet_diagnostic.CA1062.severity = warning
 
 # ---------------------------------------------------------------------------------------------
 # Generated code. Nobody edits it, so nobody can fix a finding in it.

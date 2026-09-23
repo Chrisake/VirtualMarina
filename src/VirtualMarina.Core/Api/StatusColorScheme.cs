@@ -24,7 +24,7 @@ public sealed class StatusColorScheme : StyleSection
     /// <summary>Default color of disabled berths (gray).</summary>
     public static readonly ColorRgba DefaultDisabled = new(0.58f, 0.60f, 0.62f);
 
-    private readonly Dictionary<BerthStatus, ColorRgba> _colors = new();
+    private readonly Dictionary<BerthStatus, ColorRgba> _colors = [];
     private float _padOpacity;
     private float _occupiedBoatOpacity;
     private float _reservedBoatOpacity;

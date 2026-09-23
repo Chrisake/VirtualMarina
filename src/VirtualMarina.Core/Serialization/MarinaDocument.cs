@@ -360,7 +360,7 @@ public sealed class MarinaDocument
         if (dto.MarineTraffic is not null) Remember(extras, "traffic", string.Empty, dto.MarineTraffic.Extra);
 
         var landAreas = new List<LandArea>();
-        foreach (var land in dto.LandAreas ?? new List<LandAreaDto>())
+        foreach (var land in dto.LandAreas ?? [])
         {
             landAreas.Add(land.ToDomain());
             Remember(extras, "land", land.Id, land.Extra);
@@ -374,7 +374,7 @@ public sealed class MarinaDocument
         }
 
         var dividers = new List<Divider>();
-        foreach (var divider in dto.Dividers ?? new List<DividerDto>())
+        foreach (var divider in dto.Dividers ?? [])
         {
             dividers.Add(divider.ToDomain());
             Remember(extras, "divider", divider.Id, divider.Extra);

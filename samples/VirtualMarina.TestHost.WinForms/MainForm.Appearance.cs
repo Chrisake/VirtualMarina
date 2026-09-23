@@ -7,7 +7,7 @@ namespace VirtualMarina.TestHost.WinForms;
 /// <summary>The "Appearance" tab: live controls for <c>marinaView.Style</c> (waves, reflections, opacities, colors, trees, ...).</summary>
 public partial class MainForm
 {
-    private readonly List<Action> _refreshAppearance = new();
+    private readonly List<Action> _refreshAppearance = [];
     private bool _updatingAppearance;
 
     private TabPage CreateAppearancePage()

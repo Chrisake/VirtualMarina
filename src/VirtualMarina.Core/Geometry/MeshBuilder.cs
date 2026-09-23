@@ -12,8 +12,8 @@ namespace VirtualMarina.Core.Geometry;
 /// </remarks>
 public sealed class MeshBuilder
 {
-    private readonly List<float> _vertices = new();
-    private readonly List<uint> _indices = new();
+    private readonly List<float> _vertices = [];
+    private readonly List<uint> _indices = [];
 
     /// <summary>Vertices added so far.</summary>
     public int VertexCount => _vertices.Count / MeshData.VertexStride;

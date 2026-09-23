@@ -24,7 +24,7 @@ namespace VirtualMarina.WinForms;
 public sealed class MarinaDesignerPanel : UserControl
 {
     private readonly CheckBox _chkActive = new() { Text = Strings.DesignMode, AutoSize = true };
-    private readonly Dictionary<DesignTool, CheckBox> _toolButtons = new();
+    private readonly Dictionary<DesignTool, CheckBox> _toolButtons = [];
     private readonly Label _lblHint = new() { AutoSize = true, MaximumSize = new Size(280, 0), ForeColor = SystemColors.GrayText, Padding = new Padding(0, 4, 0, 4) };
 
     private readonly Button _btnUndo = new() { Text = Strings.Undo, AutoSize = true };

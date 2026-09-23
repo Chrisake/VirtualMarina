@@ -41,8 +41,8 @@ public sealed class LabelFontDefinition
     /// <summary>The most characters a captured font may carry.</summary>
     public const int GlyphLimit = 512;
 
-    private readonly Dictionary<char, LabelGlyph> _glyphs = new();
-    private readonly Dictionary<char, int> _meshIds = new();
+    private readonly Dictionary<char, LabelGlyph> _glyphs = [];
+    private readonly Dictionary<char, int> _meshIds = [];
 
     /// <summary>Creates a font from its glyphs.</summary>
     /// <param name="name">What the font is called, for showing in a UI and for recognising it again.</param>

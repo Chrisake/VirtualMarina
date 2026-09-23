@@ -74,7 +74,7 @@ public static class MeshIds
 /// </summary>
 public sealed class MeshLibrary
 {
-    private readonly Dictionary<int, MeshData> _meshes = new();
+    private readonly Dictionary<int, MeshData> _meshes = [];
 
     /// <summary>Incremented on every <see cref="Register"/>; renderers re-upload meshes when it changes.</summary>
     public int Version { get; private set; }

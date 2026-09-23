@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
-using OpenTK.Windowing.Common;
 using OpenTK.GLControl;
+using OpenTK.Windowing.Common;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Input;

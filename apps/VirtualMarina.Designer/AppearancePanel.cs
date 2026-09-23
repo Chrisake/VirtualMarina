@@ -29,7 +29,7 @@ internal sealed class AppearancePanel : SidePanel
     private Label? _trafficLanes;
 
     /// <summary>One per control: puts the value the marina holds back into it. Run by <see cref="Sync"/>.</summary>
-    private readonly List<Action> _refresh = new();
+    private readonly List<Action> _refresh = [];
 
     /// <summary>True while values are being read back, so the controls do not write what they are being given.</summary>
     private bool _updating;

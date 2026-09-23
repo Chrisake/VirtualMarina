@@ -73,6 +73,19 @@ Two findings did not belong in `.editorconfig` because they are one site each, s
 triangle's winding in `MeshBuilder`, and the `FontFamily` in `FontCapture` that a `using` takes over
 on the following line.
 
+### Code style
+
+The style rules are enforced too, and they state what the code already does rather than what a
+default thinks it should. The brace rule is the clearest case: `csharp_prefer_braces` is
+`when_multiline`, because that is the convention -- 739 single-line guards against 248 multi-line
+bodies -- so the 912 findings it used to report were the rule disagreeing with the house style, not
+912 inconsistencies. Set correctly it reports 2, and both were real.
+
+`.editorconfig` deliberately sets no `charset`. The repository is mixed about the UTF-8 byte-order
+mark, roughly two thirds of the .cs files carrying one, and declaring either answer would make
+`dotnet format` rewrite the encoding of every file that disagrees. That one is left for a
+deliberate decision rather than settled as a side effect.
+
 ### Kept at zero
 
 Already done. `TreatWarningsAsErrors` and `CodeAnalysisTreatWarningsAsErrors` are both true in

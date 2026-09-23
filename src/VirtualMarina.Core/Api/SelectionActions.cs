@@ -20,7 +20,7 @@ public sealed class BerthTooltip
     public ColorRgba? AccentColor { get; set; }
 
     /// <summary>Label/value rows.</summary>
-    public IList<BerthTooltipLine> Lines { get; } = new List<BerthTooltipLine>();
+    public IList<BerthTooltipLine> Lines { get; } = [];
 
     /// <summary>Optional free text under the rows.</summary>
     public string? Footer { get; set; }

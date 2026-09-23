@@ -19,11 +19,11 @@ namespace VirtualMarina.Core.Domain;
 public sealed class MarinaLayoutBuilder
 {
     private readonly string _name;
-    private readonly List<Pier> _piers = new();
-    private readonly List<Berth> _berths = new();
-    private readonly List<Divider> _dividers = new();
-    private readonly List<MultiBerth> _multiBerths = new();
-    private readonly List<LandArea> _land = new();
+    private readonly List<Pier> _piers = [];
+    private readonly List<Berth> _berths = [];
+    private readonly List<Divider> _dividers = [];
+    private readonly List<MultiBerth> _multiBerths = [];
+    private readonly List<LandArea> _land = [];
     private Shoreline? _shoreline;
     private MarineTraffic? _traffic;
 
@@ -131,7 +131,7 @@ public sealed class PierBuilder
 {
     private readonly List<Berth> _berths;
     private readonly List<Divider> _dividers;
-    private readonly Dictionary<PierSide, float> _nextOffset = new();
+    private readonly Dictionary<PierSide, float> _nextOffset = [];
 
     internal PierBuilder(Pier pier, List<Berth> berths, List<Divider> dividers)
     {

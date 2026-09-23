@@ -130,7 +130,7 @@ public class MarinaViewControlEventTests
     /// <summary>Subscribes to every public event of an object through reflection and records the calls.</summary>
     private sealed class Recorder
     {
-        private readonly Dictionary<string, List<(object? Sender, object Args)>> _calls = new();
+        private readonly Dictionary<string, List<(object? Sender, object Args)>> _calls = [];
 
         public static Recorder SubscribeAll(object target, Type eventSource)
         {
@@ -144,7 +144,7 @@ public class MarinaViewControlEventTests
                 var sink = new Sink(recorder, e.Name);
                 var method = typeof(Sink).GetMethod(nameof(Sink.Handle))!.MakeGenericMethod(argsType);
                 ev.AddEventHandler(target, Delegate.CreateDelegate(ev.EventHandlerType, sink, method));
-                recorder._calls[e.Name] = new List<(object?, object)>();
+                recorder._calls[e.Name] = [];
             }
 
             return recorder;

@@ -88,8 +88,10 @@ internal static class FontCapture
             using var graphics = Graphics.FromImage(bitmap);
             using var font = new Font(family, CaptureSize, style, GraphicsUnit.Pixel);
 
-            var glyphs = new List<LabelGlyph>(Characters.Length + 1);
-            glyphs.Add(new LabelGlyph(' ', SpaceAdvance(graphics, font) / capHeight, Array.Empty<IReadOnlyList<Vector2>>()));
+            var glyphs = new List<LabelGlyph>(Characters.Length + 1)
+            {
+                new LabelGlyph(' ', SpaceAdvance(graphics, font) / capHeight, Array.Empty<IReadOnlyList<Vector2>>())
+            };
 
             foreach (var character in Characters)
             {
@@ -156,7 +158,7 @@ internal static class FontCapture
             if ((types[i] & closeSubpath) == 0) continue;
 
             if (current.Count >= 3) contours.Add(current);
-            current = new List<Vector2>();
+            current = [];
         }
 
         if (current.Count >= 3) contours.Add(current);

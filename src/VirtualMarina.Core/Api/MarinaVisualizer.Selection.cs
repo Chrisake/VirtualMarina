@@ -8,7 +8,7 @@ namespace VirtualMarina.Core.Api;
 public sealed partial class MarinaVisualizer
 {
     /// <summary>Selected berth ids in selection order; the last one is the primary berth.</summary>
-    private readonly List<string> _selection = new();
+    private readonly List<string> _selection = [];
 
     private BerthPopup? _popup;
     private int _popupVersion;
@@ -221,44 +221,44 @@ public sealed partial class MarinaVisualizer
         switch (button)
         {
             case PointerButton.Left when additive:
-            {
-                var ids = IsBerthSelected(berth.Id)
-                    ? _selection.Where(id => !IdComparer.Equals(id, berth.Id)).ToArray()
-                    : _selection.Append(berth.Id).ToArray();
-                if (SetSelectionCore(ids) && ids.Length > 0)
                 {
-                    RaiseContentAndShowPopup(SelectionReason.Pointer, isNewSelection: true, button, BerthPopupKind.Tooltip, worldPoint);
-                }
+                    var ids = IsBerthSelected(berth.Id)
+                        ? _selection.Where(id => !IdComparer.Equals(id, berth.Id)).ToArray()
+                        : _selection.Append(berth.Id).ToArray();
+                    if (SetSelectionCore(ids) && ids.Length > 0)
+                    {
+                        RaiseContentAndShowPopup(SelectionReason.Pointer, isNewSelection: true, button, BerthPopupKind.Tooltip, worldPoint);
+                    }
 
-                break;
-            }
+                    break;
+                }
 
             case PointerButton.Left:
-            {
-                var changed = SetSelectionCore(new[] { berth.Id });
-                RaiseContentAndShowPopup(SelectionReason.Pointer, changed, button, BerthPopupKind.Tooltip, worldPoint);
-                break;
-            }
+                {
+                    var changed = SetSelectionCore(new[] { berth.Id });
+                    RaiseContentAndShowPopup(SelectionReason.Pointer, changed, button, BerthPopupKind.Tooltip, worldPoint);
+                    break;
+                }
 
             case PointerButton.Right:
-            {
-                var before = new HashSet<string>(_selection, IdComparer);
-                string[] ids;
-                if (before.Contains(berth.Id) && (before.Count > 1 || additive))
                 {
-                    // Right-click inside a multi-selection keeps it and moves the popup to the clicked berth.
-                    ids = _selection.Where(id => !IdComparer.Equals(id, berth.Id)).Append(berth.Id).ToArray();
-                }
-                else
-                {
-                    ids = additive ? _selection.Append(berth.Id).ToArray() : new[] { berth.Id };
-                }
+                    var before = new HashSet<string>(_selection, IdComparer);
+                    string[] ids;
+                    if (before.Contains(berth.Id) && (before.Count > 1 || additive))
+                    {
+                        // Right-click inside a multi-selection keeps it and moves the popup to the clicked berth.
+                        ids = _selection.Where(id => !IdComparer.Equals(id, berth.Id)).Append(berth.Id).ToArray();
+                    }
+                    else
+                    {
+                        ids = additive ? _selection.Append(berth.Id).ToArray() : new[] { berth.Id };
+                    }
 
-                SetSelectionCore(ids);
-                var isNew = !before.SetEquals(ids);
-                RaiseContentAndShowPopup(SelectionReason.Pointer, isNew, button, BerthPopupKind.Actions, worldPoint);
-                break;
-            }
+                    SetSelectionCore(ids);
+                    var isNew = !before.SetEquals(ids);
+                    RaiseContentAndShowPopup(SelectionReason.Pointer, isNew, button, BerthPopupKind.Actions, worldPoint);
+                    break;
+                }
         }
 
         BerthClicked?.Invoke(this, CreateBerthArgs(berth, button, isDoubleClick: false, worldPoint));

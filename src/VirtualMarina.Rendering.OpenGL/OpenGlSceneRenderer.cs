@@ -14,7 +14,7 @@ namespace VirtualMarina.Rendering.OpenGL;
 /// </remarks>
 public sealed class OpenGlSceneRenderer : ISceneRenderer
 {
-    private readonly Dictionary<int, GpuMesh> _meshes = new();
+    private readonly Dictionary<int, GpuMesh> _meshes = [];
     private GlShaderProgram? _modelProgram;
     private GlShaderProgram? _waterProgram;
     private GlShaderProgram? _imageProgram;

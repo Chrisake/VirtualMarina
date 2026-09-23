@@ -16,7 +16,7 @@ public sealed class SampleErpIntegrationTests : IDisposable
 {
     private readonly MarinaVisualizer _marina = new();
     private readonly SampleErpIntegration _erp;
-    private readonly List<string> _log = new();
+    private readonly List<string> _log = [];
 
     public SampleErpIntegrationTests()
     {

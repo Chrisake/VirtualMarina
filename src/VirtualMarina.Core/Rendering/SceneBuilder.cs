@@ -657,59 +657,59 @@ internal static class SceneBuilder
         switch (divider.Type)
         {
             case DividerType.Piles:
-            {
-                var count = Math.Max(2, (int)MathF.Floor(divider.Length / divider.Spacing) + 1);
-                var steel = pier is { Type: not PierType.FloatingWooden };
-                for (var i = 0; i < count; i++)
                 {
-                    var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
-                    output.Add(steel ? SteelPile(position, deckHeight + 1.4f, divider.Width) : Piling(position, deckHeight + 1.4f, divider.Width));
-                }
+                    var count = Math.Max(2, (int)MathF.Floor(divider.Length / divider.Spacing) + 1);
+                    var steel = pier is { Type: not PierType.FloatingWooden };
+                    for (var i = 0; i < count; i++)
+                    {
+                        var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
+                        output.Add(steel ? SteelPile(position, deckHeight + 1.4f, divider.Width) : Piling(position, deckHeight + 1.4f, divider.Width));
+                    }
 
-                break;
-            }
+                    break;
+                }
 
             case DividerType.Boom:
-            {
-                const float y = 0.12f;
-                output.Add(new RenderObject(
-                    MeshIds.UnitBox,
-                    MarinaMath.CreatePlacement(new Vector3(0.08f, 0.06f, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
-                    BoomLine));
-                var count = Math.Max(2, (int)MathF.Floor(divider.Length / divider.Spacing) + 1);
-                for (var i = 0; i < count; i++)
                 {
-                    var isEnd = i == 0 || i == count - 1;
-                    var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
-                    var size = divider.Width * (isEnd ? 1.5f : 1f);
+                    const float y = 0.12f;
                     output.Add(new RenderObject(
-                        MeshIds.Buoy,
-                        Matrix4x4.CreateScale(size) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(position, y)),
-                        isEnd ? BoomEnd : BoomFloat, 0.1f, RenderAnimation.FloatOnWater, MarinaMath.StableHash01(divider.Id) * MathF.Tau + i * 0.7f));
+                        MeshIds.UnitBox,
+                        MarinaMath.CreatePlacement(new Vector3(0.08f, 0.06f, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
+                        BoomLine));
+                    var count = Math.Max(2, (int)MathF.Floor(divider.Length / divider.Spacing) + 1);
+                    for (var i = 0; i < count; i++)
+                    {
+                        var isEnd = i == 0 || i == count - 1;
+                        var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
+                        var size = divider.Width * (isEnd ? 1.5f : 1f);
+                        output.Add(new RenderObject(
+                            MeshIds.Buoy,
+                            Matrix4x4.CreateScale(size) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(position, y)),
+                            isEnd ? BoomEnd : BoomFloat, 0.1f, RenderAnimation.FloatOnWater, MarinaMath.StableHash01(divider.Id) * MathF.Tau + i * 0.7f));
+                    }
+
+                    break;
                 }
 
-                break;
-            }
-
             case DividerType.SinglePile:
-            {
-                // Mediterranean mooring: one pile at the outer end of the boundary, nothing in between.
-                var steel = pier is { Type: not PierType.FloatingWooden };
-                output.Add(steel ? SteelPile(divider.End, deckHeight + 1.6f, divider.Width) : Piling(divider.End, deckHeight + 1.4f, divider.Width));
-                break;
-            }
+                {
+                    // Mediterranean mooring: one pile at the outer end of the boundary, nothing in between.
+                    var steel = pier is { Type: not PierType.FloatingWooden };
+                    output.Add(steel ? SteelPile(divider.End, deckHeight + 1.6f, divider.Width) : Piling(divider.End, deckHeight + 1.4f, divider.Width));
+                    break;
+                }
 
             default:
-            {
-                var wooden = pier is null or { Type: PierType.FloatingWooden };
-                var y = MathF.Min(deckHeight, 0.6f) - 0.12f - FingerThickness * 0.5f;
-                output.Add(new RenderObject(
-                    MeshIds.UnitBox,
-                    MarinaMath.CreatePlacement(new Vector3(divider.Width, FingerThickness, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
-                    wooden ? WoodFinger : PontoonTop));
-                output.Add(wooden ? Piling(divider.End, y + 1.2f, 0.34f) : SteelPile(divider.End, y + 1.4f, 0.38f));
-                break;
-            }
+                {
+                    var wooden = pier is null or { Type: PierType.FloatingWooden };
+                    var y = MathF.Min(deckHeight, 0.6f) - 0.12f - FingerThickness * 0.5f;
+                    output.Add(new RenderObject(
+                        MeshIds.UnitBox,
+                        MarinaMath.CreatePlacement(new Vector3(divider.Width, FingerThickness, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
+                        wooden ? WoodFinger : PontoonTop));
+                    output.Add(wooden ? Piling(divider.End, y + 1.2f, 0.34f) : SteelPile(divider.End, y + 1.4f, 0.38f));
+                    break;
+                }
         }
     }
 
