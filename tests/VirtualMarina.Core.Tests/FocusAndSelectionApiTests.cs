@@ -94,7 +94,7 @@ public class FocusAndSelectionApiTests
         marina.SetSelection("A-L06");
         marina.SetBerthFlags(new[] { "A-L08", "A-L09" }, disabled: true);
 
-        var result = marina.SetSelection(new[] { "A-L08", "A-L09" });
+        var result = marina.SetSelection("A-L08", "A-L09");
 
         Assert.True(result.IsEmpty);
         Assert.Empty(marina.SelectedBerths);

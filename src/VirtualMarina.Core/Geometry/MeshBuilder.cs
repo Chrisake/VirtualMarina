@@ -42,7 +42,9 @@ public sealed class MeshBuilder
         var centroid = (a + b + c) / 3f;
         if (Vector3.Dot(normal, centroid - interior) < 0f)
         {
-            AddTriangle(a, c, b, color);
+#pragma warning disable S2234 // b and c are passed the other way round on purpose: that reverses
+            AddTriangle(a, c, b, color);   // the winding, which is how the normal gets flipped.
+#pragma warning restore S2234
         }
         else
         {
@@ -58,6 +60,8 @@ public sealed class MeshBuilder
         IReadOnlyList<Vector3> loopA, IReadOnlyList<Vector3> loopB,
         Vector3 sideColor, Vector3? capAColor, Vector3? capBColor, Vector3? interior = null)
     {
+        ArgumentNullException.ThrowIfNull(loopA);
+        ArgumentNullException.ThrowIfNull(loopB);
         if (loopA.Count != loopB.Count || loopA.Count < 3)
         {
             throw new ArgumentException("Loops must have the same number of points (at least 3).");

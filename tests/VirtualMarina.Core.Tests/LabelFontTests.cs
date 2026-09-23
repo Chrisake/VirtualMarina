@@ -138,7 +138,7 @@ public class LabelFontTests
 
         var font = reloaded.Style.Labels.Font;
         Assert.NotNull(font);
-        Assert.Equal("Test Sans", font!.Name);
+        Assert.Equal("Test Sans", font.Name);
         Assert.Equal(3, font.Glyphs.Count);
         Assert.Equal(1f, font.AdvanceOf('O'), tolerance: 0.001f);
 

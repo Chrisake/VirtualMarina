@@ -181,7 +181,7 @@ public sealed record LandArea
     };
 
     /// <summary><see cref="Name"/> when set, otherwise <see cref="Id"/>.</summary>
-    public string DisplayName => string.IsNullOrWhiteSpace(Name) ? Id : Name!;
+    public string DisplayName => string.IsNullOrWhiteSpace(Name) ? Id : Name;
 
     /// <summary>Plan-view area in square meters.</summary>
     public float Area => MathF.Abs(PolygonMath.SignedArea(Points));

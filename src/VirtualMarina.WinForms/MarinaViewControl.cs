@@ -255,6 +255,7 @@ public sealed class MarinaViewControl : UserControl, IMessageFilter
     /// <summary>In the designer (or if OpenGL is unavailable) draws a placeholder describing the 3D render area.</summary>
     protected override void OnPaint(PaintEventArgs e)
     {
+        ArgumentNullException.ThrowIfNull(e);
         base.OnPaint(e);
         if (_glControl is not null) return;
 

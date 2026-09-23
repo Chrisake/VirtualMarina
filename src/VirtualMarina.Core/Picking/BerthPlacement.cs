@@ -64,7 +64,7 @@ internal static class BerthPlacement
     /// <summary>Placement of a boat spanning several berths, in the frame of the first berth.</summary>
     public static Matrix4x4 MultiBerthBoatWorld(IReadOnlyList<Berth> berths, Boat boat, MooringStyle style, float? ground = null, MeshLibrary? meshes = null)
     {
-        var (center, width, length, reference) = CombinedFrame(berths);
+        var (center, _, length, reference) = CombinedFrame(berths);
         var y = BoatBaseHeight(boat, ground, meshes);
         if (style == MooringStyle.Alongside)
         {

@@ -99,7 +99,7 @@ internal static class PreviewFleet
     /// <summary>
     /// Looks for a boat too wide for one berth but at home across two: a catamaran in the pair of berths beside it.
     /// </summary>
-    private static bool TryPair(Berth berth, IReadOnlyList<Berth> mates, ISet<string> taken, Random random, int index, out Mooring pair)
+    private static bool TryPair(Berth berth, IReadOnlyList<Berth> mates, HashSet<string> taken, Random random, int index, out Mooring pair)
     {
         var order = mates.ToArray();
         Shuffle(order, random);

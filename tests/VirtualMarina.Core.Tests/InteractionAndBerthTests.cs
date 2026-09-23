@@ -58,7 +58,7 @@ public class InteractionAndBerthTests
         Click(marina, "A-L02");
 
         Assert.NotNull(selected);
-        Assert.Equal(SelectionReason.Pointer, selected!.Reason);
+        Assert.Equal(SelectionReason.Pointer, selected.Reason);
         Assert.True(selected.IsNewSelection);
         var popup = Assert.IsType<BerthPopup>(marina.ActivePopup);
         Assert.Equal(BerthPopupKind.Tooltip, popup.Kind);

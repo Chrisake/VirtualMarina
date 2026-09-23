@@ -121,7 +121,7 @@ public class MarineTrafficTests
             // not the endless ones the ends are out on.
             var ends = shore.EndsAtTheMapEdge();
             Assert.NotNull(ends);
-            foreach (var corner in new[] { ends!.Value.Start, ends.Value.End })
+            foreach (var corner in new[] { ends.Value.Start, ends.Value.End })
             {
                 var nearest = MathF.Min(Vector2.Distance(corner, lane.Points[0]), Vector2.Distance(corner, lane.Points[^1]));
                 Assert.Equal(edge, nearest, tolerance: edge * 0.2f + 5f);
@@ -149,7 +149,7 @@ public class MarineTrafficTests
             Assert.True(Vector2.Distance(last, Centre()) > 5000f, "a lane ends near the marina rather than at the edge of the map");
 
             // One end near each end of the coast, so it crosses rather than doubling back.
-            var toStart = MathF.Min(Vector2.Distance(first, ends!.Value.Start), Vector2.Distance(first, ends.Value.End));
+            var toStart = MathF.Min(Vector2.Distance(first, ends.Value.Start), Vector2.Distance(first, ends.Value.End));
             Assert.True(toStart < 3000f, "a lane does not reach the edge of the map");
             Assert.True(lane.DistanceTo(Centre()) < 1000f, "a lane never comes in to the marina");
         }

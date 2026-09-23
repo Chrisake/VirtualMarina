@@ -327,7 +327,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// The scene with the passing traffic put back on top of it. The still part is copied only when the scene itself
     /// changed; the traffic is a short tail that is rewritten every frame.
     /// </summary>
-    private IReadOnlyList<RenderObject> AppendTraffic()
+    private List<RenderObject> AppendTraffic()
     {
         if (_trafficDirty && (_traffic.IsEnabled || _trafficField is not null)) ReplanTraffic();
         AdvanceTraffic();

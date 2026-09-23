@@ -304,7 +304,7 @@ public class GeometryAndCameraTests
         // designer's camera list ended up sending every automatic view to the middle of a marina many times smaller.
         var held = marina.CameraPresets.Where(preset => preset.IsBuiltIn).ToDictionary(preset => preset.Name);
 
-        var (min, max) = marina.GetLayout().ComputeBounds();
+        var (_, max) = marina.GetLayout().ComputeBounds();
         var far = new Vector2(max.X + 900f, max.Y + 900f);
         marina.AddLandArea(new LandArea("far", new[]
         {

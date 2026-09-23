@@ -51,7 +51,7 @@ public class NamingTests
     [Fact]
     public void Designer_NamesDrawnBerths_ByTheScheme()
     {
-        var marina = WithPier(out var designer);
+        WithPier(out var designer);
         designer.BerthNaming = new BerthNamingScheme { Pattern = "{number}", StartNumber = 101, Increment = 2, NumberDigits = 3 };
 
         var berths = designer.CreateBerths("A", PierSide.Left, 0f, 15f);
@@ -395,7 +395,7 @@ public class NamingTests
     [Fact]
     public void ChangePierId_RefusesAnIdAlreadyTaken()
     {
-        var marina = WithPier(out var designer);
+        var marina = WithPier(out _);
         marina.AddPier(new Pier("B", "Pier B", new Vector2(50, 0), 0f, 40f));
 
         Assert.Throws<InvalidOperationException>(() => marina.ChangePierId("A", "B"));
@@ -480,7 +480,7 @@ public class NamingTests
     [Fact]
     public void ChangePierId_KeepsAPierNameSomeoneChose()
     {
-        var marina = WithPier(out var designer);
+        WithPier(out var designer);
         designer.RenamePier("A", "West pontoon");
 
         var moved = designer.ChangePierId("A", "W");

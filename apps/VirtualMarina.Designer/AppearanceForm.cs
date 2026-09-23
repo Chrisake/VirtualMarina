@@ -151,7 +151,7 @@ internal sealed class AppearanceForm : Form
     }
 
     /// <summary>A color swatch that opens the color picker.</summary>
-    private Panel ColorRow(string label, Func<ColorRgba> get, Action<ColorRgba> set)
+    private FlowLayoutPanel ColorRow(string label, Func<ColorRgba> get, Action<ColorRgba> set)
     {
         var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 3, 0, 3) };
         var swatch = new Panel { Width = 42, Height = 22, BackColor = ToColor(get()), BorderStyle = BorderStyle.FixedSingle, Cursor = Cursors.Hand, Margin = new Padding(0, 0, 8, 0) };

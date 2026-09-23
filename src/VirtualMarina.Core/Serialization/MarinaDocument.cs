@@ -264,9 +264,9 @@ public sealed class MarinaDocument
             Extra = Extensions.Count == 0 ? null : new Dictionary<string, JsonElement>(Extensions, StringComparer.Ordinal),
         };
 
-        dto.Layout!.Extra = Restore("layout");
+        dto.Layout.Extra = Restore("layout");
         if (dto.Designer is not null) dto.Designer.Extra = Restore("designer");
-        RestorePresentation(dto.Presentation!);
+        RestorePresentation(dto.Presentation);
         return JsonSerializer.Serialize(dto, indented ? MarinaJson.Indented.DocumentDto : MarinaJson.Compact.DocumentDto);
     }
 
@@ -498,6 +498,11 @@ public sealed class MarinaFormatException : Exception
     /// <param name="message">What is wrong with the file.</param>
     public MarinaFormatException(string message)
         : base(message)
+    {
+    }
+
+    /// <summary>Creates the exception with no message of its own.</summary>
+    public MarinaFormatException()
     {
     }
 

@@ -406,7 +406,7 @@ public class MarinaDocumentTests
         var before = designer.ScaleLine!.Value;
         designer.ReferenceImageCenter += new Vector2(25, -8);
 
-        var after = designer.ScaleLine!.Value;
+        var after = designer.ScaleLine.Value;
         Assert.Equal(before.Start + new Vector2(25, -8), after.Start);
         Assert.Equal(before.End + new Vector2(25, -8), after.End);
 

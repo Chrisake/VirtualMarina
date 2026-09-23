@@ -456,7 +456,7 @@ public static class LandMeshFactory
     }
 
     /// <summary>The drawn line with both ends carried on, so scenery does not end where the drawing did.</summary>
-    private static IReadOnlyList<Vector2> ExtendedLine(Shoreline shoreline)
+    private static List<Vector2> ExtendedLine(Shoreline shoreline)
     {
         var points = shoreline.Points;
         var line = new List<Vector2>(points.Count + 2) { points[0] + Onward(points[1], points[0]) * SceneryRun };
