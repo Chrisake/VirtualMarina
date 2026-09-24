@@ -1,0 +1,122 @@
+<Project>
+
+  <!--
+    Compiles the shared .NET 8 sources for .NET Framework 4.8 without changing them.
+
+    Most of what .NET 8 has and .NET Framework lacks is supplied in Polyfills/: missing types (MathF, IReadOnlySet<T>,
+    ReferenceEqualityComparer) and missing instance members, as extension methods. What C# 12 cannot supply is a static
+    member on a type that already exists — float.IsFinite, ArgumentNullException.ThrowIfNull, Math.Clamp — and the few
+    places that lean on a .NET Core conversion or indexer. For those, just before compiling, each shared source is copied
+    to obj/ with the calls below pointed at Polyfills/Net48.cs, and the copy is compiled instead of the original.
+
+    A rewrite never adds or removes a line, and each copy starts with a #line directive naming the original file, so
+    errors and the debugger point at the original source. The copies of the other projects' sources are marked as
+    generated code: their own .NET 8 builds run the analyzers and the nullable checks on them, against a framework that
+    carries the nullable annotations .NET Framework's lacks. MarinaViewControl.cs, which belongs to this project, is
+    rewritten too but not marked, so it is analyzed here.
+
+    Each rule is a .NET regular expression (Pattern) and what replaces it (Replacement); Files, when set, limits the rule
+    to the files whose path ends with one of the listed names. A new .NET 8-only call in the shared code shows up as a
+    compile error here; it is fixed with a polyfill, or with a rule below and a member in Net48.cs.
+  -->
+  <PropertyGroup>
+    <_Net48>global::VirtualMarina.Net48</_Net48>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Net48Rewrite Include="float.IsFinite, double.IsFinite" Pattern="\b(?:float|double)\.IsFinite\(" Replacement="$(_Net48).IsFinite(" />
+    <Net48Rewrite Include="float.Lerp" Pattern="\bfloat\.Lerp\(" Replacement="$(_Net48).Lerp(" />
+    <Net48Rewrite Include="char.IsAsciiDigit, char.IsAsciiLetter" Pattern="\bchar\.(IsAsciiDigit|IsAsciiLetter)\(" Replacement="$(_Net48).$1(" />
+    <Net48Rewrite Include="string.Create" Pattern="\bstring\.Create\(" Replacement="$(_Net48).CreateString(" />
+    <Net48Rewrite Include="int.TryParse(ReadOnlySpan)" Pattern="\bint\.TryParse\(" Replacement="$(_Net48).TryParseInt32(" />
+    <Net48Rewrite Include="byte.Parse(ReadOnlySpan)" Pattern="\bbyte\.Parse\(" Replacement="$(_Net48).ParseByte(" />
+    <Net48Rewrite Include="Math.Clamp" Pattern="(?&lt;![\w.])Math\.Clamp\(" Replacement="$(_Net48).Clamp(" />
+    <Net48Rewrite Include="ArgumentException and friends: ThrowIf..." Pattern="(?&lt;![\w.])(?:ArgumentNullException|ArgumentException|ArgumentOutOfRangeException)\.(ThrowIf\w*)\(" Replacement="$(_Net48).$1(" />
+    <Net48Rewrite Include="ObjectDisposedException.ThrowIf" Pattern="(?&lt;![\w.])ObjectDisposedException\.ThrowIf\(" Replacement="$(_Net48).ThrowIfDisposed(" />
+    <Net48Rewrite Include="Enum.IsDefined&lt;T&gt;, Enum.GetValues&lt;T&gt;" Pattern="(?&lt;![\w.])Enum\.(IsDefined\(|GetValues&lt;)" Replacement="$(_Net48).$1" />
+    <Net48Rewrite Include="Array.Clear(Array)" Pattern="(?&lt;![\w.])Array\.Clear\(" Replacement="$(_Net48).ArrayClear(" />
+    <Net48Rewrite Include="Convert.TryFromBase64String" Pattern="(?&lt;![\w.])Convert\.TryFromBase64String\(" Replacement="$(_Net48).TryFromBase64String(" />
+    <Net48Rewrite Include="File.Move(overwrite)" Pattern="(?&lt;![\w.])File\.Move\(" Replacement="$(_Net48).MoveFile(" />
+    <Net48Rewrite Include="ReadOnlyDictionary.Empty" Pattern="(?&lt;![\w.])ReadOnlyDictionary&lt;([^&lt;&gt;]*)&gt;\.Empty\b" Replacement="$(_Net48).EmptyReadOnlyDictionary&lt;$1&gt;()" />
+
+    <!-- The Vector3 indexer (.NET 7) in the two ray/box tests. -->
+    <Net48Rewrite Include="Vector3[axis]" Files="MeshData.cs;PickSet.cs" Pattern="\b([A-Za-z_][\w.]*)\[axis\]" Replacement="$(_Net48).Component($1, axis)" />
+    <!-- OpenTK 3 takes the buffer offset only as an IntPtr, where OpenTK 4 also takes an int. -->
+    <Net48Rewrite Include="GL.BufferSubData(int offset)" Files="OpenGlSceneRenderer.cs" Pattern="(GL\.BufferSubData\(BufferTarget\.ArrayBuffer, )(range\.Start \* InstanceData\.StrideBytes)," Replacement="$1(IntPtr)($2)," />
+    <!-- A span compared with a string literal, which needs .NET Core's string-to-span conversion. -->
+    <Net48Rewrite Include="span.Equals(string)" Files="BerthNamingScheme.cs" Pattern="\btoken\.Equals\(&quot;" Replacement="$(_Net48).SpanEquals(token, &quot;" />
+  </ItemGroup>
+
+  <UsingTask TaskName="RewriteSourcesForNet48" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Rules ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <OutputDirectory Required="true" />
+      <Rewritten ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var rules = Rules.Select(r => new
+        {
+            Regex = new Regex(r.GetMetadata("Pattern"), RegexOptions.CultureInvariant),
+            Replacement = r.GetMetadata("Replacement"),
+            Files = r.GetMetadata("Files").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries),
+        }).ToArray();
+
+        var rewritten = new List<ITaskItem>();
+        foreach (var source in Sources)
+        {
+            var original = source.GetMetadata("FullPath");
+            var relative = source.GetMetadata("Link");
+            if (string.IsNullOrEmpty(relative)) relative = source.ItemSpec;
+
+            var text = File.ReadAllText(original);
+            foreach (var rule in rules)
+            {
+                if (rule.Files.Length > 0 && !rule.Files.Any(f => original.EndsWith(Path.DirectorySeparatorChar + f, StringComparison.OrdinalIgnoreCase))) continue;
+                text = rule.Regex.Replace(text, rule.Replacement);
+            }
+
+            // The other projects' sources (the linked ones) are marked generated, their nullable annotations kept.
+            var header = string.IsNullOrEmpty(source.GetMetadata("Link")) ? "" : "// <auto-generated/>\n#nullable enable annotations\n";
+            text = header + "#line 1 \"" + original + "\"\n" + text;
+
+            // Written only when it changed, so an unchanged source does not make the compiler run again.
+            var target = Path.GetFullPath(Path.Combine(OutputDirectory, relative));
+            if (!File.Exists(target) || File.ReadAllText(target) != text)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(target));
+                File.WriteAllText(target, text, new UTF8Encoding(true));
+            }
+
+            var item = new TaskItem(target);
+            source.CopyMetadataTo(item);
+            rewritten.Add(item);
+        }
+
+        Rewritten = rewritten.ToArray();
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="RewriteSharedSourcesForNet48" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <_Net48Source Include="@(Compile)" Condition="'%(Compile.Net48Rewrite)' == 'true'" />
+    </ItemGroup>
+
+    <RewriteSourcesForNet48 Sources="@(_Net48Source)" Rules="@(Net48Rewrite)" OutputDirectory="$(IntermediateOutputPath)net48\">
+      <Output TaskParameter="Rewritten" ItemName="_Net48Rewritten" />
+    </RewriteSourcesForNet48>
+
+    <ItemGroup>
+      <Compile Remove="@(_Net48Source)" />
+      <Compile Include="@(_Net48Rewritten)" />
+      <FileWrites Include="@(_Net48Rewritten)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

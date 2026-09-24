@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The WinForms host control for .NET Framework 4.8: MarinaViewControl and MarinaDesignerPanel on an OpenGL surface, for
+    applications that cannot move to .NET 8. The public types keep their namespaces (VirtualMarina.WinForms,
+    VirtualMarina.Core.*), so code written against VirtualMarina.WinForms compiles against this assembly unchanged.
+
+    Core and Rendering.OpenGL target net8.0, which a net48 project cannot reference, so their sources are compiled into
+    this assembly, together with the WinForms sources that do not touch OpenTK. They are linked, not copied: a change to
+    those projects is a change here too. Net48Rewrite.targets and Polyfills/ bridge what .NET 8 has and .NET Framework
+    lacks. MarinaViewControl.cs alone is a copy, because OpenTK 4 does not run on .NET Framework: this project uses
+    OpenTK 3.3, whose GLControl is made differently.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>VirtualMarina.WinForms</RootNamespace>
+    <AssemblyName>VirtualMarina.WinFormsFramework</AssemblyName>
+    <Description>Windows Forms host for VirtualMarina on .NET Framework 4.8: the MarinaViewControl and MarinaDesignerPanel controls on an OpenGL surface, with the VirtualMarina core and OpenGL renderer built in.</Description>
+    <!-- PolySharp also supplies the trimming attributes (RequiresUnreferencedCode and the like) the core carries. -->
+    <PolySharpIncludeRuntimeSupportedAttributes>true</PolySharpIncludeRuntimeSupportedAttributes>
+  </PropertyGroup>
+
+  <!--
+    The versions are set here, with VersionOverride, rather than in Directory.Packages.props: that file pins transitive
+    packages for the whole solution, and these .NET Framework packages are no business of the .NET 8 projects.
+  -->
+  <ItemGroup>
+    <!-- OpenTK 3.3 is the last OpenTK, and its GLControl the last GLControl, that run on .NET Framework. -->
+    <PackageReference Include="OpenTK" VersionOverride="3.3.3" />
+    <PackageReference Include="OpenTK.GLControl" VersionOverride="3.3.3" />
+    <!-- The .NET 8 library APIs the shared code uses: spans, System.Text.Json (with its source generator), HashCode. -->
+    <PackageReference Include="System.Memory" VersionOverride="4.6.3" />
+    <PackageReference Include="System.Text.Json" VersionOverride="8.0.6" />
+    <PackageReference Include="Microsoft.Bcl.HashCode" VersionOverride="6.0.0" />
+    <PackageReference Include="PolySharp" VersionOverride="1.15.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Label="VirtualMarina.Core">
+    <!-- ISceneRenderer has a default interface member, which .NET Framework cannot run: Polyfills/ holds its net48 form. -->
+    <Compile Include="..\VirtualMarina.Core\**\*.cs" Exclude="..\VirtualMarina.Core\bin\**;..\VirtualMarina.Core\obj\**;..\VirtualMarina.Core\Rendering\ISceneRenderer.cs" Link="Core\%(RecursiveDir)%(Filename)%(Extension)" Net48Rewrite="true" />
+    <EmbeddedResource Include="..\VirtualMarina.Core\Resources\Strings*.resx" Link="Core\Resources\%(Filename)%(Extension)" LogicalName="VirtualMarina.Core.Resources.%(Filename).resources" />
+  </ItemGroup>
+
+  <ItemGroup Label="VirtualMarina.Rendering.OpenGL">
+    <Compile Include="..\VirtualMarina.Rendering.OpenGL\*.cs" Link="Rendering.OpenGL\%(Filename)%(Extension)" Net48Rewrite="true" />
+  </ItemGroup>
+
+  <ItemGroup Label="VirtualMarina.WinForms">
+    <Compile Include="..\VirtualMarina.WinForms\**\*.cs" Exclude="..\VirtualMarina.WinForms\bin\**;..\VirtualMarina.WinForms\obj\**;..\VirtualMarina.WinForms\MarinaViewControl.cs" Link="WinForms\%(RecursiveDir)%(Filename)%(Extension)" Net48Rewrite="true" />
+    <EmbeddedResource Include="..\VirtualMarina.WinForms\Resources\Strings*.resx" Link="WinForms\Resources\%(Filename)%(Extension)" LogicalName="VirtualMarina.WinForms.Resources.%(Filename).resources" />
+    <!-- The copy is kept as close to the original as it can be, so it goes through the same rewrite. -->
+    <Compile Update="MarinaViewControl.cs" Net48Rewrite="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- One copy of the resource lookup, compiled into each assembly that shows text. See shared/ResourceText.cs. -->
+    <Compile Include="..\..\shared\ResourceText.cs" Link="Resources\ResourceText.cs" />
+  </ItemGroup>
+
+  <Import Project="Net48Rewrite.targets" />
+
+</Project>

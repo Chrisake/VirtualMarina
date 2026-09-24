@@ -47,6 +47,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualMarina.Designer.Comm
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualMarina.Designer.Common.Tests", "tests\VirtualMarina.Designer.Common.Tests\VirtualMarina.Designer.Common.Tests.csproj", "{ABF6FD27-E307-4462-BA95-50778752F8E6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VirtualMarina.WinFormsFramework", "src\VirtualMarina.WinFormsFramework\VirtualMarina.WinFormsFramework.csproj", "{B9114868-8A92-4DAF-8FF9-0E6BF9801667}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -261,6 +263,18 @@ Global
 		{ABF6FD27-E307-4462-BA95-50778752F8E6}.Release|x64.Build.0 = Release|Any CPU
 		{ABF6FD27-E307-4462-BA95-50778752F8E6}.Release|x86.ActiveCfg = Release|Any CPU
 		{ABF6FD27-E307-4462-BA95-50778752F8E6}.Release|x86.Build.0 = Release|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Debug|x64.Build.0 = Debug|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Debug|x86.Build.0 = Debug|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Release|x64.ActiveCfg = Release|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Release|x64.Build.0 = Release|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Release|x86.ActiveCfg = Release|Any CPU
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -283,5 +297,6 @@ Global
 		{AD274862-C911-42EA-8BFA-95F7163C70E2} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{4BEB67EB-9A98-4686-91F6-8CCC547D4619} = {1787FE1D-075E-9E68-7218-25F1BD1BBEAB}
 		{ABF6FD27-E307-4462-BA95-50778752F8E6} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{B9114868-8A92-4DAF-8FF9-0E6BF9801667} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal
