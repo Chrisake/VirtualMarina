@@ -156,7 +156,8 @@ html, body {
 
 .vm-tool:hover:not(:disabled) { background: var(--accent-soft); }
 .vm-tool--active { background: var(--accent); border-color: var(--accent); color: #fff; }
-.vm-tool--active:hover { background: var(--accent); }
+/* Hovered, the active tool takes the light hover background like any other, so its text goes back to the normal colour. */
+.vm-tool--active:hover:not(:disabled) { color: var(--text); }
 .vm-tool:disabled { opacity: .45; cursor: default; }
 .vm-toolbar__sep { width: 1px; align-self: stretch; background: var(--border); margin: 2px 6px; }
 .vm-toolbar__spring { flex: 1; }
