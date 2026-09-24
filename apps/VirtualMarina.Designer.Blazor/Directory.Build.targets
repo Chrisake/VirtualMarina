@@ -11,20 +11,23 @@
     a Directory.Build.targets imports late enough to win, and again after ComputeRunArguments, the target the SDK runs
     just before it reads them.
 
+    The launcher is started with its console option, so its messages still appear in the terminal the project was
+    run from; started on its own it shows no console window.
+
     The plain dev server, a browser tab with WebAssembly debugging, is still there when asked for: set the property
     DesignerDevServer to true, as Docs/14-designer-app.md shows.
   -->
   <PropertyGroup Condition="'$(DesignerDevServer)' != 'true'">
     <_DesignerLauncherProject>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory), '..', 'VirtualMarina.Designer.Desktop', 'VirtualMarina.Designer.Desktop.csproj'))</_DesignerLauncherProject>
     <RunCommand>dotnet</RunCommand>
-    <RunArguments>run --project &quot;$(_DesignerLauncherProject)&quot; --configuration $(Configuration)</RunArguments>
+    <RunArguments>run --project &quot;$(_DesignerLauncherProject)&quot; --configuration $(Configuration) -- --console</RunArguments>
     <RunWorkingDirectory>$(MSBuildThisFileDirectory)</RunWorkingDirectory>
   </PropertyGroup>
 
   <Target Name="_RunDesignerThroughLauncher" AfterTargets="ComputeRunArguments" Condition="'$(DesignerDevServer)' != 'true'">
     <PropertyGroup>
       <RunCommand>dotnet</RunCommand>
-      <RunArguments>run --project &quot;$(_DesignerLauncherProject)&quot; --configuration $(Configuration)</RunArguments>
+      <RunArguments>run --project &quot;$(_DesignerLauncherProject)&quot; --configuration $(Configuration) -- --console</RunArguments>
       <RunWorkingDirectory>$(MSBuildThisFileDirectory)</RunWorkingDirectory>
     </PropertyGroup>
   </Target>

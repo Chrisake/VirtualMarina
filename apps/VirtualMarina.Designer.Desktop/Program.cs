@@ -41,10 +41,24 @@ internal static class Program
     /// <summary>How often an idle event stream is written to, so a connection that died quietly is noticed.</summary>
     private static readonly TimeSpan KeepAlive = TimeSpan.FromSeconds(10);
 
+    /// <summary>Asks for a console to show the launcher's messages in; on Windows there is none otherwise.</summary>
+    private static readonly string[] ConsoleSwitches = ["--console", "-c"];
+
+    private const string NoBrowserSwitch = "--no-browser";
+
     private static async Task<int> Main(string[] args)
     {
-        var noBrowser = args.Contains("--no-browser", StringComparer.OrdinalIgnoreCase);
-        var hostArgs = args.Where(arg => !string.Equals(arg, "--no-browser", StringComparison.OrdinalIgnoreCase)).ToArray();
+        var noBrowser = args.Contains(NoBrowserSwitch, StringComparer.OrdinalIgnoreCase);
+
+        // Opening no browser leaves the printed address as the only way in, so it brings the console with it.
+        var hasConsole = noBrowser || args.Any(arg => ConsoleSwitches.Contains(arg, StringComparer.OrdinalIgnoreCase));
+        if (hasConsole) ConsoleWindow.Show();
+
+        // The launcher's own switches are not for the web host, which reads its arguments as configuration.
+        var hostArgs = args
+            .Where(arg => !string.Equals(arg, NoBrowserSwitch, StringComparison.OrdinalIgnoreCase))
+            .Where(arg => !ConsoleSwitches.Contains(arg, StringComparer.OrdinalIgnoreCase))
+            .ToArray();
 
         // The content root is where the launcher is, not wherever it was started from, so a published copy finds its
         // wwwroot from any working directory.
@@ -68,6 +82,10 @@ internal static class Program
         Console.WriteLine($"VirtualMarina Designer is running at {url}");
 
         var window = noBrowser ? new BrowserWindow("no browser (--no-browser)", null, Opened: false) : BrowserLauncher.Open(url);
+
+        // Nothing could be opened at all, not even the default browser: without a console, this is the only way to say where to go.
+        if (!noBrowser && !window.Opened) ConsoleWindow.Tell($"No browser could be opened. Open this address in one:\n{url}", hasConsole);
+
         try
         {
             await RunUntilClosedAsync(app, window, liveness);

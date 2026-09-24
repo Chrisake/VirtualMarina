@@ -302,7 +302,17 @@ apps/VirtualMarina.Designer.Desktop`) and nowhere else. `dotnet publish` copies 
 3. On Linux, the same browsers installed as a Flatpak.
 4. The default browser, as an ordinary tab.
 
-`--no-browser` opens nothing and only prints the address, for opening it by hand.
+**No console window.** On Windows the launcher is a windowed program, so starting it — from Explorer, a shortcut or a
+terminal — opens the app window and nothing else. Two switches bring a console back:
+
+- `--console` (or `-c`) shows the launcher's messages: in the terminal it was started from, where Ctrl+C then stops it,
+  or in a console window of its own when it was started from Explorer or a shortcut. Output sent to a file or a pipe
+  stays there. Running `apps/VirtualMarina.Designer.Blazor` passes it, so `dotnet run` still shows them.
+- `--no-browser` opens nothing and only prints the address, for opening it by hand; it implies `--console`, since the
+  address is the only way in.
+
+Should no browser open at all — not even the default one — and there is no console, a message box gives the address.
+On macOS and Linux the launcher is an ordinary command-line program and both switches just work as described.
 
 A browser the launcher can start as a process of its own gets a profile of its own, kept between launches under the
 user's local application data (`%LOCALAPPDATA%\VirtualMarina\Designer\BrowserProfiles` on Windows,

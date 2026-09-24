@@ -6,8 +6,15 @@
     The behaviour is identical on Windows, macOS and Linux, and nothing here overlaps apps/VirtualMarina.Designer,
     which stays the native desktop app on Windows.
   -->
+  <!--
+    A Windows application (WinExe), so starting it opens no console window: the app window is all there is.
+    The console option (-c, or its long form) gives it one, attached to the terminal it was started from; see
+    ConsoleWindow.cs and Docs/14-designer-app.md. On macOS and Linux WinExe builds the same program as Exe.
+  -->
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
+    <!-- For the LibraryImport calls in ConsoleWindow, whose generated marshalling code is unsafe. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VirtualMarina.Designer.Desktop</RootNamespace>
     <AssemblyName>VirtualMarina.Designer.Desktop</AssemblyName>
