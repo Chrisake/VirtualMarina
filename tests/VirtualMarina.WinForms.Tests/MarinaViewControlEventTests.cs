@@ -103,7 +103,8 @@ public class MarinaViewControlEventTests
     /// <summary>A scenario that raises every IMarinaVisualizer event at least once.</summary>
     private static void RaiseEveryEvent(MarinaVisualizer marina)
     {
-        marina.SetViewportSize(800, 600);
+        _ = marina.CameraPresets;                                                  // raised once until read, so read it first
+        marina.SetViewportSize(800, 600);                                          // CameraPresetsChanged
         marina.InitializeLayout(SmallLayout());                                    // LayoutChanged
         marina.BerthSelected += (_, e) => e.Actions.Add("checkin", "Check in");
 

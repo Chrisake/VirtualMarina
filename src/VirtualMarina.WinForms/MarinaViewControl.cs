@@ -157,6 +157,11 @@ public sealed class MarinaViewControl : UserControl
     [Description("Piers, berths, dividers or berths were added, changed or removed.")]
     public event EventHandler<LayoutChangedEventArgs>? LayoutChanged;
 
+    /// <inheritdoc cref="IMarinaVisualizer.CameraPresetsChanged"/>
+    [Category("Marina")]
+    [Description("The list of camera views may have changed; read Marina.CameraPresets again.")]
+    public event EventHandler? CameraPresetsChanged;
+
     /// <summary>
     /// The visualizer this control displays. Can be swapped at runtime; the control's Marina events follow the new instance.
     /// </summary>
@@ -195,6 +200,7 @@ public sealed class MarinaViewControl : UserControl
         marina.BerthHoverChanged += OnMarinaBerthHoverChanged;
         marina.BerthStatusChanged += OnMarinaBerthStatusChanged;
         marina.LayoutChanged += OnMarinaLayoutChanged;
+        marina.CameraPresetsChanged += OnMarinaCameraPresetsChanged;
         marina.RedrawRequested += OnMarinaRedrawRequested;
     }
 
@@ -210,6 +216,7 @@ public sealed class MarinaViewControl : UserControl
         marina.BerthHoverChanged -= OnMarinaBerthHoverChanged;
         marina.BerthStatusChanged -= OnMarinaBerthStatusChanged;
         marina.LayoutChanged -= OnMarinaLayoutChanged;
+        marina.CameraPresetsChanged -= OnMarinaCameraPresetsChanged;
         marina.RedrawRequested -= OnMarinaRedrawRequested;
     }
 
@@ -232,6 +239,8 @@ public sealed class MarinaViewControl : UserControl
     private void OnMarinaBerthStatusChanged(object? sender, BerthStatusChangedEventArgs e) => Post(() => BerthStatusChanged?.Invoke(this, e));
 
     private void OnMarinaLayoutChanged(object? sender, LayoutChangedEventArgs e) => Post(() => LayoutChanged?.Invoke(this, e));
+
+    private void OnMarinaCameraPresetsChanged(object? sender, EventArgs e) => Post(() => CameraPresetsChanged?.Invoke(this, e));
 
     /// <summary>Something changed in the marina: draw it now rather than at the next idle check.</summary>
     private void OnMarinaRedrawRequested(object? sender, EventArgs e) => Post(RequestFrame);
@@ -829,9 +838,10 @@ public sealed class MarinaViewControl : UserControl
         if (MarinaKeyMap.IsChord(modifiers)) return;
         if (MarinaKeyMap.FromVirtualKey((int)e.KeyCode, modifiers) is not { } key) return;
 
+        // The physical arrows only: W, A, S and D pan like them, but a letter is the host's to take first.
         e.IsInputKey = key switch
         {
-            MarinaKey.Left or MarinaKey.Right or MarinaKey.Up or MarinaKey.Down => true,
+            MarinaKey.Left or MarinaKey.Right or MarinaKey.Up or MarinaKey.Down => e.KeyCode is Keys.Left or Keys.Right or Keys.Up or Keys.Down,
             MarinaKey.Escape or MarinaKey.Enter => _marina.Input.WantsKey(key, modifiers),
             _ => e.IsInputKey,
         };

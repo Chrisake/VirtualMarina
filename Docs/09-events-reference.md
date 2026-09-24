@@ -115,7 +115,7 @@ marina.LayoutChanged += (_, e) =>
 
 | Where | Event | Raised when |
 |---|---|---|
-| `MarinaViewControl` (WinForms) | The visualizer's events above, except `CameraPresetsChanged` | Forwarded from `Marina` with the control as sender, so they can be wired in the Visual Studio designer |
+| `MarinaViewControl` (WinForms) | The visualizer's events above | Forwarded from `Marina` with the control as sender, so they can be wired in the Visual Studio designer |
 | | `RenderError` | OpenGL could not be started or a frame failed to draw; the view shows a placeholder until `RetryRendering()` |
 | | `MarinaChanged` | The `Marina` property was given a different visualizer |
 | `MarinaDesignerPanel` (WinForms) | `ImageLoadFailed` | Loading a reference image file failed (without a handler, a message box) |

@@ -647,7 +647,7 @@ public sealed partial class MarinaVisualizer
     /// The one place berth ids change: checks that the new ids are free once the berths moving have left theirs, then
     /// moves every one at once and raises one <see cref="LayoutChangeKind.BerthRenamed"/> for each.
     /// </summary>
-    private List<Berth> MoveBerthIds(IReadOnlyList<(Berth Existing, string To)> moving)
+    private List<Berth> MoveBerthIds(List<(Berth Existing, string To)> moving)
     {
         var leaving = new HashSet<string>(moving.Select(entry => entry.Existing.Id), IdComparer);
         var arriving = new HashSet<string>(IdComparer);
