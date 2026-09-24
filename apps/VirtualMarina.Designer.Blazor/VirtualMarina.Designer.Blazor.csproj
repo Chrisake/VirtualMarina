@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!--
+    VirtualMarina Designer, Blazor WebAssembly edition: the same tool as apps/VirtualMarina.Designer
+    (WinForms), running in the browser. Every piece of designer logic is the shared MarinaDesigner /
+    MarinaVisualizer in VirtualMarina.Core, driven through the reusable <MarinaView> of
+    VirtualMarina.Blazor; only the shell, panels and dialogs are re-hosted here as Razor components.
+  -->
+  <!--
+    Not compiled ahead of time: AOT needs the wasm-tools workload, which the build machines do not have. The app runs
+    on the interpreter, which is fast enough for the panels; the drawing is WebGL's either way.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>VirtualMarina.Designer.Blazor</RootNamespace>
+    <AssemblyName>VirtualMarina.Designer.Blazor</AssemblyName>
+    <Product>VirtualMarina Designer</Product>
+    <IsPackable>false</IsPackable>
+
+    <!--
+      Suppressions shared with the WinForms designer and the Blazor test host:
+      CA5394 "Random is insecure": the preview fleet picks sample boats at random. Decorative randomness.
+      S5693  "limit HTTP request content length": about a server accepting uploads, which this browser app is not.
+    -->
+    <NoWarn>$(NoWarn);CA5394;S5693</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VirtualMarina.Blazor\VirtualMarina.Blazor.csproj" />
+    <!-- The file workflow, rename questions, activity log, command table and displayed text, shared with the WinForms designer. -->
+    <ProjectReference Include="..\VirtualMarina.Designer.Common\VirtualMarina.Designer.Common.csproj" />
+  </ItemGroup>
+
+</Project>

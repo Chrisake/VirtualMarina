@@ -6,18 +6,23 @@ namespace VirtualMarina.Core.Rendering;
 /// WebGPU, etc.) decides <em>how</em>.
 /// </summary>
 /// <remarks>
-/// Backend responsibilities:
+/// <para>Backend responsibilities:</para>
 /// <list type="number">
 /// <item>Upload every mesh in <see cref="RenderFrame.Meshes"/> (by id) and re-upload when <see cref="RenderFrame.MeshLibraryVersion"/> changes.</item>
-/// <item>Draw opaque objects, then the water grid with the water shader, then transparent objects with blending and depth writes off.</item>
+/// <item>
+/// Draw opaque objects, then the water grid with the water shader, then transparent objects with blending and depth writes
+/// off. Either draw <see cref="RenderFrame.Layers"/> batch by batch with <see cref="ShaderSources.InstancedModelVertex"/>,
+/// uploading a layer again only when its versions say so (<see cref="LayerUploadTracker"/> does the bookkeeping), or draw
+/// <see cref="RenderFrame.Objects"/> one by one with <see cref="ShaderSources.ModelVertex"/>.
+/// </item>
 /// <item>Apply the frame uniforms (camera, lighting, water, time) to the shaders in <see cref="ShaderSources"/>.</item>
 /// </list>
-/// All calls happen on the thread that owns the graphics context.
-/// </remarks>
-/// <remarks>
+/// <para>All calls happen on the thread that owns the graphics context.</para>
+/// <para>
 /// This interface is meant to be implemented outside the library, so anything added to it in a later version
 /// comes with a default implementation that keeps existing backends compiling and working unchanged
 /// (see <c>Docs/16-compatibility.md</c>).
+/// </para>
 /// </remarks>
 public interface ISceneRenderer : IDisposable
 {

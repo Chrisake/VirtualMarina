@@ -1,28 +1,35 @@
-# Samples and use cases
+﻿# Samples and use cases
 
 The repository ships a sample marina, a sample ERP integration and two test hosts that exercise the whole API. They
 are the fastest way to see what the library does, and the sample integration is a reasonable starting point for a
 real one.
 
 ```bash
-dotnet run --project samples/VirtualMarina.TestHost.WinForms   # desktop
+dotnet run --project samples/VirtualMarina.TestHost.WinForms   # desktop (Windows)
 dotnet run --project samples/VirtualMarina.TestHost.Blazor     # then open http://localhost:5280
-dotnet run --project apps/VirtualMarina.Designer               # the stand-alone designer
+dotnet run --project apps/VirtualMarina.Designer               # the stand-alone designer (Windows)
+dotnet run --project apps/VirtualMarina.Designer.Blazor        # the designer in the browser, http://localhost:5290
+dotnet run --project apps/VirtualMarina.Designer.Desktop       # the browser designer in a window of its own
 ```
+
+The WinForms projects target `net8.0-windows` and only run on Windows; the Blazor ones run anywhere the .NET 8 SDK
+does. The desktop launcher serves the Blazor designer and opens it in an application window of a Chromium-family
+browser; see [the designer application](14-designer-app.md).
 
 ## The sample marina
 
-`MockMarinaFactory.CreateSampleMarina(seed)` builds a complete marina, the same one every time for a given seed, so
-screenshots and tests stay comparable. Seen from the quay looking out to sea, piers A to D run left to right:
+`MockMarinaFactory.CreateSampleMarina(seed, clock)` builds a complete marina, the same one every time for a given
+seed, so screenshots and tests stay comparable. The optional `TimeProvider` only dates expected arrivals; pass a fixed
+one to pin those too, or leave it out for the system clock. Seen from the quay looking out to sea, piers A to D run left to right:
 
 | | |
 |---|---|
 | **A** | Fixed concrete, pile dividers between berths |
-| **B** | Floating wooden, with a motor yacht moored alongside three berths as one [multi-berth](05-multi-berths.md) |
+| **B** | Floating wooden, with a motor yacht moored alongside three berths (`B-L10` to `B-L12`) as one [multi-berth](05-multi-berths.md) |
 | **C** | Floating concrete, sized for multihulls |
-| **D** | Floating wooden, booms between the jet ski berths |
-| **E** | A single-sided pontoon along the east mole |
-| **W** | A single-sided fixed quay wall |
+| **D** | Floating wooden, superyacht berths on one side and booms between the jet ski berths on the other |
+| **E** | A single-sided floating concrete pontoon along the east mole, single piles between its berths |
+| **W** | A single-sided fixed quay wall, pile dividers |
 
 The land is polygons rather than rectangles: the main quay, a trapezoid boatyard with two rows of berths ashore, a
 tapered east mole with a maintenance row, an irregular lawn, and two curved rubble-mound breakwaters drawn as rock.
@@ -36,13 +43,13 @@ Other helpers on the same class are useful when writing a host or a test:
 | `FindFreeWaterBerth(marina, boat)` | The first free, enabled berth the boat actually fits |
 | `FindFreeLandBerth(marina, boat)` | The same for a spot ashore |
 | `CreateBoatForBerth(berth, rng, types)` | A plausible boat that fits a given berth |
-| `CreateRandomActivity(berths, rng, count)` | A batch of `BerthUpdate`s, for simulating traffic through the marina |
+| `CreateRandomActivity(berths, rng, count, clock)` | A batch of `BerthUpdate`s, for simulating traffic through the marina |
 | `CreateGuestBerth(marina, pierId)` | Adds a berth to a pier at runtime |
 
 ## The sample ERP integration
 
-`SampleErpIntegration` is what a host application typically does with the interaction events, and both test hosts
-share it. It subscribes to `BerthSelected`, `MultiBerthSelected` and `BerthActionInvoked`, and shows the three things
+`SampleErpIntegration(marina, rng, log, clock)` is what a host application typically does with the interaction
+events, and both test hosts share it. Seed `rng` and pass a fixed `TimeProvider` for repeatable runs. It subscribes to `BerthSelected`, `MultiBerthSelected` and `BerthActionInvoked`, and shows the three things
 a real integration has to get right:
 
 - **Filling the tooltip** with its own data rather than only the berth's;
@@ -82,6 +89,10 @@ something the guides describe.
 
 | | |
 |---|---|
-| `VirtualMarina.TestHost.WinForms` | `MarinaViewControl` plus panels for every part of the API |
+| `VirtualMarina.TestHost.WinForms` | `MarinaViewControl` plus panels for every part of the API, under a File / Edit / View menu with the usual shortcuts. The menu is there to show the [keyboard contract](07-camera-and-focus.md#which-keys-the-view-takes): Ctrl+O, Ctrl+S, Ctrl+Z (the designer's Undo), Ctrl+Y and Ctrl+R reach the form whether or not the 3D view has the focus |
 | `VirtualMarina.TestHost.Blazor` | `<MarinaView>` in a WebAssembly page, with the same panels |
-| `apps/VirtualMarina.Designer` | The stand-alone drawing tool, which is a real application rather than a harness |
+| `apps/VirtualMarina.Designer`, `apps/VirtualMarina.Designer.Blazor` | The stand-alone drawing tool on the desktop and in the browser, which are real applications rather than harnesses |
+
+Both test hosts keep the design file they last opened and save it back with `MarinaDocument.UpdateFrom` rather than
+writing a fresh one, so sections and properties they do not understand survive the round trip — the pattern a host
+that edits designs should follow (see [marina files](13-marina-file-format.md)).

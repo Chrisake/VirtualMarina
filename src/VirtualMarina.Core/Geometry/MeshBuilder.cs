@@ -6,9 +6,9 @@ namespace VirtualMarina.Core.Geometry;
 /// Builds flat-shaded low-poly meshes from convex primitives (boxes, prisms, cylinders, cones, spheres).
 /// </summary>
 /// <remarks>
-/// Every face gets its own vertices so normals stay faceted. Triangle winding is computed so that
-/// front faces point away from each primitive's interior; renderers can therefore enable or disable
-/// back-face culling freely.
+/// Every flat face gets its own vertices so normals stay faceted, shared by the triangles of that face: a quad is four
+/// vertices, a cap is one per corner. Triangle winding is computed so that front faces point away from each primitive's
+/// interior; renderers can therefore enable or disable back-face culling freely.
 /// </remarks>
 public sealed class MeshBuilder
 {
@@ -33,6 +33,71 @@ public sealed class MeshBuilder
         _indices.Add(start);
         _indices.Add(start + 1);
         _indices.Add(start + 2);
+    }
+
+    /// <summary>
+    /// Adds a flat convex polygon as a fan sharing one vertex per corner, wound to face away from <paramref name="interior"/>.
+    /// A polygon that is not flat is added triangle by triangle instead, each with its own normal, as before.
+    /// </summary>
+    internal void AddFace(IReadOnlyList<Vector3> corners, Vector3 color, Vector3 interior)
+    {
+        // Corners that coincide (the apex of a cone) add nothing.
+        Span<Vector3> points = stackalloc Vector3[corners.Count];
+        var n = 0;
+        foreach (var corner in corners)
+        {
+            if (n > 0 && Vector3.DistanceSquared(points[n - 1], corner) < 1e-18f) continue;
+            points[n++] = corner;
+        }
+
+        while (n > 1 && Vector3.DistanceSquared(points[n - 1], points[0]) < 1e-18f) n--;
+        if (n < 3) return;
+        points = points[..n];
+
+        // Newell's method: the normal of the whole polygon, however its corners are spaced.
+        var normal = Vector3.Zero;
+        var centroid = Vector3.Zero;
+        for (var i = 0; i < n; i++)
+        {
+            var p = points[i];
+            var q = points[(i + 1) % n];
+            normal += new Vector3((p.Y - q.Y) * (p.Z + q.Z), (p.Z - q.Z) * (p.X + q.X), (p.X - q.X) * (p.Y + q.Y));
+            centroid += p;
+        }
+
+        centroid /= n;
+        var length = normal.Length();
+        if (length < 1e-9f) return;
+        normal /= length;
+
+        // Flat means every triangle of the fan faces the same way as the whole; otherwise fall back to separate triangles.
+        var flat = true;
+        for (var i = 1; i < n - 1 && flat; i++)
+        {
+            var edge = Vector3.Cross(points[i] - points[0], points[i + 1] - points[0]);
+            var edgeLength = edge.Length();
+            flat = edgeLength < 1e-9f || Vector3.Dot(edge / edgeLength, normal) > 0.9999f;
+        }
+
+        if (!flat)
+        {
+            for (var i = 1; i < n - 1; i++) AddTriangleFacingAway(points[0], points[i], points[i + 1], color, interior);
+            return;
+        }
+
+        var reversed = Vector3.Dot(normal, centroid - interior) < 0f;
+        if (reversed) normal = -normal;
+
+        var start = (uint)VertexCount;
+        foreach (var p in points) AddVertex(p, normal, color);
+        for (var i = 1; i < n - 1; i++)
+        {
+            // Skip the slivers a collinear corner would make; the rest of the fan still covers the face.
+            if (Vector3.Cross(points[i] - points[0], points[i + 1] - points[0]).LengthSquared() < 1e-18f) continue;
+            _indices.Add(start);
+            _indices.Add(start + (uint)(reversed ? i + 1 : i));
+            _indices.Add(start + (uint)(reversed ? i : i + 1));
+        }
     }
 
     /// <summary>Adds a triangle wound so its normal points away from <paramref name="interior"/>.</summary>
@@ -70,11 +135,15 @@ public sealed class MeshBuilder
         var n = loopA.Count;
         var inside = interior ?? (Average(loopA) + Average(loopB)) * 0.5f;
 
+        var quad = new Vector3[4];
         for (var i = 0; i < n; i++)
         {
             var j = (i + 1) % n;
-            AddTriangleFacingAway(loopA[i], loopA[j], loopB[j], sideColor, inside);
-            AddTriangleFacingAway(loopA[i], loopB[j], loopB[i], sideColor, inside);
+            quad[0] = loopA[i];
+            quad[1] = loopA[j];
+            quad[2] = loopB[j];
+            quad[3] = loopB[i];
+            AddFace(quad, sideColor, inside);
         }
 
         if (capAColor.HasValue) AddCap(loopA, capAColor.Value, inside);
@@ -169,25 +238,43 @@ public sealed class MeshBuilder
         AddTriangleFacingAway(a, b, c, color, ((a + b + c) / 3f) - Vector3.UnitY);
 
     /// <summary>Flat horizontal quad facing +Y (for markers laid on the water).</summary>
-    public void AddQuadUp(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 color)
+    public void AddQuadUp(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 color) =>
+        AddFace(new[] { a, b, c, d }, color, (a + b + c + d) / 4f - Vector3.UnitY);
+
+    /// <summary>
+    /// Adds a copy of another mesh, moved by <paramref name="world"/> (normals turned to match) with its colors multiplied
+    /// by <paramref name="colorScale"/>: how instances of a shared mesh are baked into one.
+    /// </summary>
+    internal void AddTransformed(MeshData mesh, Matrix4x4 world, Vector3 colorScale)
     {
-        var below = (a + b + c + d) / 4f - Vector3.UnitY;
-        AddTriangleFacingAway(a, b, c, color, below);
-        AddTriangleFacingAway(a, c, d, color, below);
+        // Normals go through the inverse transpose, so a stretched shape still gets normals square to its faces.
+        var normalMatrix = Matrix4x4.Invert(world, out var inverse) ? Matrix4x4.Transpose(inverse) : world;
+        var start = (uint)VertexCount;
+        var v = mesh.Vertices;
+        for (var i = 0; i < v.Length; i += MeshData.VertexStride)
+        {
+            var position = Vector3.Transform(new Vector3(v[i], v[i + 1], v[i + 2]), world);
+            var normal = Vector3.TransformNormal(new Vector3(v[i + 3], v[i + 4], v[i + 5]), normalMatrix);
+            normal = normal.LengthSquared() > 1e-20f ? Vector3.Normalize(normal) : Vector3.UnitY;
+            AddVertex(position, normal, new Vector3(v[i + 6], v[i + 7], v[i + 8]) * colorScale);
+        }
+
+        // A mirroring transform turns every triangle inside out; wind them the other way round to face out again.
+        var mirrored = world.GetDeterminant() < 0f;
+        var indices = mesh.Indices;
+        for (var i = 0; i + 2 < indices.Length; i += 3)
+        {
+            _indices.Add(start + indices[i]);
+            _indices.Add(start + indices[mirrored ? i + 2 : i + 1]);
+            _indices.Add(start + indices[mirrored ? i + 1 : i + 2]);
+        }
     }
 
     /// <summary>Creates the mesh from everything added so far.</summary>
     public MeshData Build(int id, string name, bool isWater = false) =>
         new(id, name, _vertices.ToArray(), _indices.ToArray(), isWater);
 
-    private void AddCap(IReadOnlyList<Vector3> loop, Vector3 color, Vector3 interior)
-    {
-        var center = Average(loop);
-        for (var i = 0; i < loop.Count; i++)
-        {
-            AddTriangleFacingAway(center, loop[i], loop[(i + 1) % loop.Count], color, interior);
-        }
-    }
+    private void AddCap(IReadOnlyList<Vector3> loop, Vector3 color, Vector3 interior) => AddFace(loop, color, interior);
 
     private void AddVertex(Vector3 p, Vector3 n, Vector3 c)
     {

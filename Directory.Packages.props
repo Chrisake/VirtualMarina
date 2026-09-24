@@ -1,0 +1,41 @@
+<Project>
+  <!--
+    Central Package Management: every NuGet version the solution uses is set here, once. A project lists the
+    package with <PackageReference Include="..." /> and no Version; a Version attribute in a project is an error
+    (NU1008). To add a package, add a <PackageVersion> line here and the versionless reference in the project.
+    Dependabot (.github/dependabot.yml) keeps this file current.
+  -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- A transitive package with a known vulnerability is pinned here rather than left to whatever resolves. -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- The ASP.NET Core 8 servicing band; the Blazor packages have to move together. -->
+    <AspNetCoreVersion>8.0.31</AspNetCoreVersion>
+  </PropertyGroup>
+
+  <ItemGroup Label="Build">
+    <GlobalPackageReference Include="SonarAnalyzer.CSharp" Version="10.34.0.3385" />
+    <PackageVersion Include="MinVer" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Libraries and apps">
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="OpenTK.GLControl" Version="4.0.2" />
+    <PackageVersion Include="OpenTK.Graphics" Version="4.9.4" />
+  </ItemGroup>
+
+  <ItemGroup Label="Tests">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.assert" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="CsCheck" Version="4.9.1" />
+  </ItemGroup>
+</Project>

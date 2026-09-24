@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using VirtualMarina.Core.Api;
 using VirtualMarina.Core.Design;
 using VirtualMarina.Core.Domain;
@@ -10,55 +10,58 @@ namespace VirtualMarina.Designer;
 /// The panel beside the view: the name of the tool in use, what to do with it, and only the settings that tool needs. Everything
 /// else stays out of the way, so the window never has to be scrolled to reach a control.
 /// </summary>
+/// <remarks>
+/// The cards are stacked in a single column that is always the full width of the panel. A card docked into that column is
+/// given its width by the layout engine, so dragging the splitter resizes the cards and the text inside them without
+/// anything being measured here.
+/// </remarks>
 internal sealed class InspectorPanel : SidePanel
 {
-    private readonly MarinaVisualizer _marina;
+    private readonly DesignerSession _session;
     private readonly Action _loadImage;
-    private readonly Label _toolName = new() { Font = new Font("Segoe UI Semibold", 13f), ForeColor = Theme.Text, AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
+    private readonly Label _toolName = new() { Font = Theme.PanelTitle, ForeColor = Theme.Text, AutoSize = true, Margin = new Padding(0, 0, 0, 2) };
     private readonly Label _toolHint = new() { Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) };
-    /// <summary>
-    /// The cards, stacked in a single column that is always the full width of the panel. A card docked into that
-    /// column is given its width by the layout engine, so dragging the splitter resizes the cards and the text
-    /// inside them without anything being measured here.
-    /// </summary>
+
+    /// <summary>Marks a naming pattern the designer would refuse, with the reason on its tooltip.</summary>
+    private readonly ErrorProvider _errors = new() { BlinkStyle = ErrorBlinkStyle.NeverBlink };
 
     // Land area
     private readonly Panel _landCard;
     private readonly ComboBox _landKind = Theme.Choice();
-    private readonly NumericUpDown _landHeight = Theme.Number(0m, 50m, 0.25m);
+    private readonly NumericUpDown _landHeight = Theme.Number(DesignerRanges.LandHeight);
 
     // Pier
     private readonly Panel _pierCard;
     private readonly ComboBox _pierType = Theme.Choice();
-    private readonly NumericUpDown _pierWidth = Theme.Number(0.5m, 30m, 0.25m);
+    private readonly NumericUpDown _pierWidth = Theme.Number(DesignerRanges.PierWidth);
     private readonly ComboBox _pierSides = Theme.Choice();
     private readonly TextBox _pierNamePattern = Theme.Field();
 
     // Berths
     private readonly Panel _berthCard;
-    private readonly NumericUpDown _berthWidth = Theme.Number(1m, 50m, 0.25m);
-    private readonly NumericUpDown _berthLength = Theme.Number(1m, 150m, 0.5m);
-    private readonly NumericUpDown _berthDepth = Theme.Number(0.1m, 50m, 0.1m);
+    private readonly NumericUpDown _berthWidth = Theme.Number(DesignerRanges.BerthWidth);
+    private readonly NumericUpDown _berthLength = Theme.Number(DesignerRanges.BerthLength);
+    private readonly NumericUpDown _berthDepth = Theme.Number(DesignerRanges.BerthDepth);
     private readonly ComboBox _separators = Theme.Choice();
-    private readonly NumericUpDown _berthGap = Theme.Number(0m, 20m, 0.1m);
+    private readonly NumericUpDown _berthGap = Theme.Number(DesignerRanges.BerthGap);
     private readonly CheckBox _alignBerths = Theme.Check(Strings.AlignBerths);
     private readonly ComboBox _services = Theme.Choice();
     private readonly Label _separatorHint = Theme.Hint(string.Empty);
     private readonly TextBox _berthPattern = Theme.Field();
-    private readonly NumericUpDown _berthStartNumber = Theme.Number(-99999m, 99999m, 1m, 0);
-    private readonly NumericUpDown _berthIncrement = Theme.Number(-999m, 999m, 1m, 0);
-    private readonly NumericUpDown _berthDigits = Theme.Number(1m, 9m, 1m, 0);
+    private readonly NumericUpDown _berthStartNumber = Theme.Number(DesignerRanges.NamingStart);
+    private readonly NumericUpDown _berthIncrement = Theme.Number(DesignerRanges.NamingIncrement);
+    private readonly NumericUpDown _berthDigits = Theme.Number(DesignerRanges.NamingDigits);
     private readonly Label _berthNameExample = Theme.Hint(string.Empty);
 
     // Land berths
     private readonly Panel _landBerthCard;
-    private readonly NumericUpDown _landBerthWidth = Theme.Number(1m, 50m, 0.25m);
-    private readonly NumericUpDown _landBerthLength = Theme.Number(1m, 150m, 0.5m);
-    private readonly NumericUpDown _landBerthHeading = Theme.Number(-180m, 180m, 15m, 0);
+    private readonly NumericUpDown _landBerthWidth = Theme.Number(DesignerRanges.BerthWidth);
+    private readonly NumericUpDown _landBerthLength = Theme.Number(DesignerRanges.BerthLength);
+    private readonly NumericUpDown _landBerthHeading = Theme.Number(DesignerRanges.LandBerthHeading);
     private readonly TextBox _landPattern = Theme.Field();
-    private readonly NumericUpDown _landStartNumber = Theme.Number(-99999m, 99999m, 1m, 0);
-    private readonly NumericUpDown _landIncrement = Theme.Number(-999m, 999m, 1m, 0);
-    private readonly NumericUpDown _landDigits = Theme.Number(1m, 9m, 1m, 0);
+    private readonly NumericUpDown _landStartNumber = Theme.Number(DesignerRanges.NamingStart);
+    private readonly NumericUpDown _landIncrement = Theme.Number(DesignerRanges.NamingIncrement);
+    private readonly NumericUpDown _landDigits = Theme.Number(DesignerRanges.NamingDigits);
     private readonly Label _landNameExample = Theme.Hint(string.Empty);
 
     // Rename
@@ -80,7 +83,7 @@ internal sealed class InspectorPanel : SidePanel
 
     // Trees
     private readonly Panel _treeCard;
-    private readonly TrackBar _treeDensity = new() { Minimum = 0, Maximum = 60 };
+    private readonly TrackBar _treeDensity = new() { Minimum = (int)DesignerRanges.TreeDensity.Min, Maximum = (int)DesignerRanges.TreeDensity.Max };
     private readonly Label _treeDensityValue = new();
 
     // Erase
@@ -90,9 +93,9 @@ internal sealed class InspectorPanel : SidePanel
     private readonly Panel _imageCard;
     private readonly Button _imageMove;
     private readonly Button _imageMeasure;
-    private readonly TrackBar _imageOpacity = new() { Minimum = 0, Maximum = 100 };
+    private readonly TrackBar _imageOpacity = new() { Minimum = (int)DesignerRanges.ImageOpacityPercent.Min, Maximum = (int)DesignerRanges.ImageOpacityPercent.Max };
     private readonly Label _imageOpacityValue = new();
-    private readonly NumericUpDown _scaleLength = Theme.Number(0.01m, 100000m, 1m, 1);
+    private readonly NumericUpDown _scaleLength = Theme.Number(DesignerRanges.ScaleLength);
     private readonly Button _applyScale;
     private readonly Label _imageState = Theme.Hint(string.Empty);
     private readonly CheckBox _imageAbove = Theme.Check(Strings.ImageAbove);
@@ -103,18 +106,23 @@ internal sealed class InspectorPanel : SidePanel
     private readonly Panel _summaryCard;
     private readonly Label _summary = Theme.Hint(string.Empty);
 
+    /// <summary>True while the controls are being filled in from the designer, so they do not write back what they are given.</summary>
     private bool _updating;
 
+    /// <summary>True while a refresh is waiting to run: however many changes arrive meanwhile, it runs once.</summary>
+    private bool _syncPending;
 
+    /// <summary>True when the waiting refresh should also put the designer's text into a field being typed in.</summary>
+    private bool _overwriteFocused;
 
-    public InspectorPanel(MarinaVisualizer marina, Action loadImage)
+    public InspectorPanel(DesignerSession session, Action loadImage)
     {
-        _marina = marina;
+        _session = session;
         _loadImage = loadImage;
         BackColor = Theme.Background;
         Dock = DockStyle.Fill;
 
-        // One full-width column again, so the hint under the tool's name wraps instead of being clipped.
+        // One full-width column, so the hint under the tool's name wraps instead of being clipped.
         var header = new TableLayoutPanel
         {
             ColumnCount = 1,
@@ -153,28 +161,60 @@ internal sealed class InspectorPanel : SidePanel
             Stack.Controls.Add(card, 0, Stack.RowCount++);
         }
 
-        // A last row that soaks up the space left over, so the cards stay at the top instead of spreading out.
         Scroller.Controls.Add(Stack);
         Controls.Add(Scroller);
         SetHeader(header);
         Controls.Add(header);
 
+        foreach (var box in new Control[] { _pierNamePattern, _berthPattern, _landPattern, _berthIncrement, _landIncrement })
+        {
+            _errors.SetIconAlignment(box, ErrorIconAlignment.MiddleLeft);
+        }
+
         Wire();
-        Sync(force: true);
+        Sync(overwriteFocused: true);
     }
 
-    private MarinaDesigner Designer => _marina.Designer;
+    private MarinaVisualizer Marina => _session.Marina;
+
+    private MarinaDesigner Designer => _session.Designer;
+
+    /// <summary>
+    /// Asks for the panel to be brought in line with the designer once the current burst of changes is over. A slider
+    /// dragged, or an undo that changes a dozen settings, costs one refresh rather than one per change.
+    /// </summary>
+    /// <param name="overwriteFocused">
+    /// Also put the designer's text into a field that has the focus. After an undo or a redo the field is out of date and
+    /// should show what the designer holds; while typing it should be left alone.
+    /// </param>
+    public void RequestSync(bool overwriteFocused = false)
+    {
+        _overwriteFocused |= overwriteFocused;
+        if (_syncPending || IsDisposed) return;
+        _syncPending = true;
+        if (IsHandleCreated) BeginInvoke(RunPendingSync);
+        else RunPendingSync();
+    }
+
+    private void RunPendingSync()
+    {
+        _syncPending = false;
+        var overwrite = _overwriteFocused;
+        _overwriteFocused = false;
+        if (!IsDisposed) Sync(overwrite);
+    }
 
     /// <summary>Brings the panel in line with the designer: the tool's name and hint, its settings, and which cards are shown.</summary>
-    public void Sync(bool force = false)
+    /// <param name="overwriteFocused">Also refresh a text field that has the focus.</param>
+    private void Sync(bool overwriteFocused)
     {
-        if (_updating && !force) return;
+        if (_updating) return;
         _updating = true;
         try
         {
             var designer = Designer;
             var tool = designer.Tool;
-            _toolName.Text = ToolTitle(tool);
+            _toolName.Text = DesignerText.ToolTitle(tool);
             _toolHint.Text = designer.ToolHint;
 
             _landCard.Visible = tool == DesignTool.DrawLandArea;
@@ -187,21 +227,20 @@ internal sealed class InspectorPanel : SidePanel
             _servicesCard.Visible = tool == DesignTool.EditServices;
             _selectCard.Visible = tool == DesignTool.SelectArea;
             _coastCard.Visible = tool == DesignTool.DrawShoreline;
-            _coastScenery.SelectedItem = Choice.Of(_coastScenery, designer.Scenery);
-            _coastRemove.Enabled = _marina.Shoreline is not null;
-            _coastState.Text = _marina.Shoreline is { } shore
-                ? Strings.Format(Strings.CoastPresent, shore.Points.Count, shore.Scenery.GetDisplayName())
-                : Strings.CoastNone;
-            _selectCount.Text = Strings.Format(Strings.SelectCount, _marina.SelectedBerths.Count);
             _imageCard.Visible = tool is DesignTool.Navigate or DesignTool.MoveReferenceImage or DesignTool.MeasureScale;
             _summaryCard.Visible = tool is DesignTool.Navigate or DesignTool.Erase;
+
+            _coastScenery.SelectedItem = Choice.Of(_coastScenery, designer.Scenery);
+            _coastRemove.Enabled = Marina.Shoreline is not null;
+            _coastState.Text = DesignerText.CoastState(Marina);
+            _selectCount.Text = Strings.Format(Strings.SelectCount, Marina.SelectedBerths.Count);
 
             _landKind.SelectedItem = Choice.Of(_landKind, designer.LandKind);
             SetNumber(_landHeight, designer.LandHeight);
             _pierType.SelectedItem = Choice.Of(_pierType, designer.PierType);
             SetNumber(_pierWidth, designer.PierWidth);
             _pierSides.SelectedItem = Choice.Of(_pierSides, designer.PierBerthingSides);
-            SetText(_pierNamePattern, designer.PierNamePattern);
+            SetText(_pierNamePattern, designer.PierNamePattern, overwriteFocused);
 
             SetNumber(_berthWidth, designer.BerthWidth);
             SetNumber(_berthLength, designer.BerthLength);
@@ -211,25 +250,25 @@ internal sealed class InspectorPanel : SidePanel
             _alignBerths.Checked = designer.AlignBerthsToExisting;
             _services.SelectedItem = Choice.Of(_services, designer.BerthServices);
             _servicesChoice.SelectedItem = Choice.Of(_servicesChoice, designer.BerthServices);
-            _separatorHint.Text = SeparatorHint(designer.BerthSeparators, designer.BerthWidth, designer.BerthGap);
+            _separatorHint.Text = DesignerText.SeparatorHint(designer.BerthSeparators, designer.BerthWidth, designer.BerthGap);
 
             var naming = designer.BerthNaming;
-            SetText(_berthPattern, naming.Pattern);
+            SetText(_berthPattern, naming.Pattern, overwriteFocused);
             SetNumber(_berthStartNumber, naming.StartNumber);
             SetNumber(_berthIncrement, naming.Increment);
             SetNumber(_berthDigits, naming.NumberDigits);
-            _berthNameExample.Text = NamingExample(naming);
+            if (_errors.GetError(_berthPattern).Length == 0 || overwriteFocused) _berthNameExample.Text = DesignerText.NamingExample(Marina, naming);
 
             SetNumber(_landBerthWidth, designer.BerthWidth);
             SetNumber(_landBerthLength, designer.BerthLength);
             SetNumber(_landBerthHeading, designer.LandBerthHeading);
+            SetText(_landPattern, naming.LandPattern ?? naming.Pattern, overwriteFocused);
+            SetNumber(_landStartNumber, naming.LandStartNumber ?? naming.StartNumber);
+            SetNumber(_landIncrement, naming.LandIncrement ?? naming.Increment);
+            SetNumber(_landDigits, naming.LandNumberDigits ?? naming.NumberDigits);
+            if (_errors.GetError(_landPattern).Length == 0 || overwriteFocused) _landNameExample.Text = DesignerText.AshoreNameExample(Marina, naming);
+            if (overwriteFocused) ClearErrors();
 
-            var ashore = designer.BerthNaming;
-            SetText(_landPattern, ashore.LandPattern ?? ashore.Pattern);
-            SetNumber(_landStartNumber, ashore.LandStartNumber ?? ashore.StartNumber);
-            SetNumber(_landIncrement, ashore.LandIncrement ?? ashore.Increment);
-            SetNumber(_landDigits, ashore.LandNumberDigits ?? ashore.NumberDigits);
-            _landNameExample.Text = AshoreNameExample(ashore);
             _treeDensity.Value = Math.Clamp((int)MathF.Round(designer.TreeDensity), _treeDensity.Minimum, _treeDensity.Maximum);
 
             var image = designer.ReferenceImage;
@@ -241,16 +280,13 @@ internal sealed class InspectorPanel : SidePanel
             _imageShown.Enabled = image is not null;
             _imageShown.Checked = designer.ReferenceImageVisible;
             _clearScaleLine.Enabled = designer.ScaleLine is not null;
-            _imageOpacity.Value = (int)MathF.Round(designer.ReferenceImageOpacity * 100f);
+            _imageOpacity.Value = Math.Clamp((int)MathF.Round(designer.ReferenceImageOpacity * 100f), _imageOpacity.Minimum, _imageOpacity.Maximum);
             _scaleLength.Enabled = designer.ScaleLine is not null;
             _applyScale.Enabled = designer.ScaleLine is not null;
-            _imageState.Text = image is null
-                ? Strings.ImageStateEmpty
-                : designer.ScaleLine is { } line
-                    ? string.Format(CultureInfo.CurrentCulture, Strings.ImageStateLine, System.Numerics.Vector2.Distance(line.Start, line.End))
-                    : string.Format(CultureInfo.CurrentCulture, Strings.ImageStateReady, designer.ReferenceImageSize.X, designer.ReferenceImageSize.Y, designer.ReferenceImageMetersPerPixel);
+            _imageState.Text = DesignerText.ImageState(designer);
 
-            _summary.Text = Summary();
+            // Counting the whole marina and measuring its bounds is the dearest line on the panel; only when it shows.
+            if (_summaryCard.Visible) _summary.Text = DesignerText.Summary(Marina);
         }
         finally
         {
@@ -261,58 +297,12 @@ internal sealed class InspectorPanel : SidePanel
         ContentChanged();
     }
 
-    private string Summary()
-    {
-        var berths = _marina.GetBerths();
-        var piers = _marina.GetPiers();
-        var land = _marina.GetLandAreas();
-        var water = berths.Count(s => !s.IsOnLand);
-        var ashore = berths.Count - water;
-        var trees = land.Sum(l => l.Trees.Count);
-        var (min, max) = _marina.GetLayout().ComputeBounds();
-        var size = max - min;
-        return string.Format(
-            CultureInfo.CurrentCulture,
-            Strings.Summary,
-            berths.Count, water, ashore, piers.Count, land.Count, _marina.GetDividers().Count, trees, size.X, size.Y);
-    }
-
-    /// <summary>The library calls a berth a berth; this window calls it a berth everywhere, including in the tool hints.</summary>
-    private static string ToolTitle(DesignTool tool) => tool switch
-    {
-        DesignTool.DrawLandArea => Strings.TitleLandArea,
-        DesignTool.DrawPier => Strings.TitlePier,
-        DesignTool.AddBerths => Strings.TitleBerths,
-        DesignTool.AddLandBerths => Strings.TitleStorageAshore,
-        DesignTool.PlantTrees => Strings.TitleTrees,
-        DesignTool.Erase => Strings.TitleErase,
-        DesignTool.Rename => Strings.TitleRename,
-        DesignTool.EditServices => Strings.TitleServices,
-        DesignTool.SelectArea => Strings.TitleSelect,
-        DesignTool.DrawShoreline => Strings.TitleCoast,
-        DesignTool.MoveReferenceImage => Strings.TitleMoveImage,
-        DesignTool.MeasureScale => Strings.TitleMeasureScale,
-        _ => Strings.TitleNavigate,
-    };
-
-    private static string SeparatorHint(BerthSeparator separator, float width, float gap) => separator switch
-    {
-        BerthSeparator.FingerPiers => Strings.SeparatorHintFingerPiers,
-        BerthSeparator.None => Strings.SeparatorHintNone,
-        BerthSeparator.FingerPier => Strings.SeparatorHintFingerPier,
-        BerthSeparator.Piles => Strings.SeparatorHintPiles,
-        BerthSeparator.Boom => Strings.SeparatorHintBoom,
-        BerthSeparator.PairedFingerPiers => Strings.SeparatorHintPaired,
-        BerthSeparator.SinglePile => Strings.SeparatorHintSinglePile,
-        _ => string.Empty,
-    } + (gap > 0f ? string.Format(CultureInfo.CurrentCulture, Strings.SeparatorHintSpacing, gap, width + gap) : string.Empty);
-
     // ---- Cards ----------------------------------------------------------------------------------
 
     private Panel BuildLandCard()
     {
         var card = Theme.Card(Strings.CardLandArea, out var table);
-        Choice.Fill(_landKind, LandKind.Quay, LandKind.Grass, LandKind.Breakwater);
+        Choice.Fill(_landKind, DesignerChoices.LandKinds);
         Theme.Row(table, Strings.LandSurface, _landKind, Strings.LandSurfaceTip);
         Theme.Row(table, Strings.LandHeight, _landHeight, Strings.LandHeightTip);
         Theme.FullRow(table, Theme.Hint(Strings.LandHint));
@@ -322,8 +312,8 @@ internal sealed class InspectorPanel : SidePanel
     private Panel BuildPierCard()
     {
         var card = Theme.Card(Strings.CardPier, out var table);
-        Choice.Fill(_pierType, Enum.GetValues<PierType>());
-        Choice.Fill(_pierSides, PierSides.Both, PierSides.Left, PierSides.Right);
+        Choice.Fill(_pierType, DesignerChoices.PierTypes);
+        Choice.Fill(_pierSides, DesignerChoices.BerthingSides);
         Theme.Row(table, Strings.PierConstruction, _pierType, Strings.PierConstructionTip);
         Theme.Row(table, Strings.PierWidth, _pierWidth);
         Theme.Row(table, Strings.PierBerths, _pierSides, Strings.PierBerthsTip);
@@ -335,16 +325,8 @@ internal sealed class InspectorPanel : SidePanel
     private Panel BuildBerthCard()
     {
         var card = Theme.Card(Strings.CardBerths, out var table);
-        Choice.Fill(
-            _separators,
-            BerthSeparator.FingerPiers,
-            BerthSeparator.PairedFingerPiers,
-            BerthSeparator.FingerPier,
-            BerthSeparator.Piles,
-            BerthSeparator.SinglePile,
-            BerthSeparator.Boom,
-            BerthSeparator.None);
-        Choice.Fill(_services, PierServices.None, PierServices.PowerAndWater, PierServices.Power, PierServices.Water);
+        Choice.Fill(_separators, DesignerChoices.Separators);
+        Choice.Fill(_services, DesignerChoices.Services);
 
         Theme.Row(table, Strings.BerthWidth, _berthWidth, Strings.BerthWidthTip);
         Theme.Row(table, Strings.BerthLength, _berthLength, Strings.BerthLengthTip);
@@ -373,7 +355,7 @@ internal sealed class InspectorPanel : SidePanel
         Theme.Row(table, Strings.LandBerthHeading, _landBerthHeading, Strings.LandBerthHeadingTip);
 
         var compass = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty };
-        foreach (var (text, heading) in new[] { ("N", 0f), ("E", 90f), ("S", 180f), ("W", -90f) })
+        foreach (var (text, heading) in DesignerChoices.CompassHeadings)
         {
             compass.Controls.Add(Theme.Action(text, (_, _) => Apply(d => d.LandBerthHeading = heading)));
         }
@@ -393,7 +375,7 @@ internal sealed class InspectorPanel : SidePanel
     private Panel BuildCoastCard()
     {
         var card = Theme.Card(Strings.CardCoast, out var table);
-        Choice.Fill(_coastScenery, HinterlandScenery.Countryside, HinterlandScenery.Fields, HinterlandScenery.Town, HinterlandScenery.None);
+        Choice.Fill(_coastScenery, DesignerChoices.Sceneries);
         Theme.Row(table, Strings.CoastScenery, _coastScenery, Strings.CoastSceneryTip);
         Theme.FullRow(table, Theme.Hint(Strings.CoastHint));
         Theme.FullRow(table, Theme.Hint(Strings.CoastEndlessHint));
@@ -429,7 +411,7 @@ internal sealed class InspectorPanel : SidePanel
     private Panel BuildServicesCard()
     {
         var card = Theme.Card(Strings.CardServices, out var table);
-        Choice.Fill(_servicesChoice, PierServices.None, PierServices.PowerAndWater, PierServices.Power, PierServices.Water);
+        Choice.Fill(_servicesChoice, DesignerChoices.Services);
         Theme.Row(table, Strings.BerthServices, _servicesChoice, Strings.BerthServicesTip);
         Theme.FullRow(table, Theme.Hint(Strings.ServicesHint));
         Theme.FullRow(table, Theme.Hint(Strings.ServicesInheritHint));
@@ -447,21 +429,21 @@ internal sealed class InspectorPanel : SidePanel
     private Panel BuildImageCard(out Button move, out Button measure, out Button apply)
     {
         var card = Theme.Card(Strings.CardReferenceImage, out var table);
-        var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(262, 0), Margin = Padding.Empty };
+        var buttons = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
         buttons.Controls.Add(Theme.Action(Strings.ImageLoad, (_, _) => _loadImage()));
         buttons.Controls.Add(Theme.Action(Strings.ImageFit, (_, _) => Apply(d => d.FocusReferenceImage())));
         buttons.Controls.Add(Theme.Action(Strings.ImageRemove, (_, _) => Apply(d => d.ClearReferenceImage())));
         Theme.FullRow(table, buttons);
         Theme.FullRow(table, _imageState);
 
-        var tools = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(262, 0), Margin = Padding.Empty };
+        var tools = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Dock = DockStyle.Fill, Margin = Padding.Empty };
         move = Theme.Action(Strings.ImageMove, (_, _) => Apply(d => d.Tool = DesignTool.MoveReferenceImage));
         measure = Theme.Action(Strings.ImageMeasure, (_, _) => Apply(d => d.Tool = DesignTool.MeasureScale), primary: true);
         tools.Controls.Add(measure);
         tools.Controls.Add(move);
         Theme.FullRow(table, tools);
 
-        var calibrate = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Margin = Padding.Empty, MaximumSize = new Size(180, 0) };
+        var calibrate = new FlowLayoutPanel { AutoSize = true, WrapContents = true, Margin = Padding.Empty, Dock = DockStyle.Fill };
         _scaleLength.Width = 84;
         apply = Theme.Action(Strings.ImageApply, (_, _) => Apply(d => d.CalibrateReferenceImage((float)_scaleLength.Value)));
         calibrate.Controls.Add(_scaleLength);
@@ -495,10 +477,7 @@ internal sealed class InspectorPanel : SidePanel
         _pierType.SelectedIndexChanged += (_, _) => Apply(d => d.PierType = Choice.Value<PierType>(_pierType));
         _pierWidth.ValueChanged += (_, _) => Apply(d => d.PierWidth = (float)_pierWidth.Value);
         _pierSides.SelectedIndexChanged += (_, _) => Apply(d => d.PierBerthingSides = Choice.Value<PierSides>(_pierSides));
-        _pierNamePattern.TextChanged += (_, _) => Apply(d =>
-        {
-            if (!string.IsNullOrWhiteSpace(_pierNamePattern.Text)) d.PierNamePattern = _pierNamePattern.Text;
-        });
+        _pierNamePattern.TextChanged += (_, _) => ApplyPierPattern();
 
         _berthWidth.ValueChanged += (_, _) => Apply(d => d.BerthWidth = (float)_berthWidth.Value);
         _berthLength.ValueChanged += (_, _) => Apply(d => d.BerthLength = (float)_berthLength.Value);
@@ -508,18 +487,18 @@ internal sealed class InspectorPanel : SidePanel
         _alignBerths.CheckedChanged += (_, _) => Apply(d => d.AlignBerthsToExisting = _alignBerths.Checked);
         _services.SelectedIndexChanged += (_, _) => Apply(d => d.BerthServices = Choice.Value<PierServices>(_services));
         _servicesChoice.SelectedIndexChanged += (_, _) => Apply(d => d.BerthServices = Choice.Value<PierServices>(_servicesChoice));
-        _berthPattern.TextChanged += (_, _) => ApplyNaming(n => string.IsNullOrWhiteSpace(_berthPattern.Text) ? n : n with { Pattern = _berthPattern.Text });
-        _berthStartNumber.ValueChanged += (_, _) => ApplyNaming(n => n with { StartNumber = (int)_berthStartNumber.Value });
-        _berthIncrement.ValueChanged += (_, _) => ApplyNaming(n => (int)_berthIncrement.Value == 0 ? n : n with { Increment = (int)_berthIncrement.Value });
-        _berthDigits.ValueChanged += (_, _) => ApplyNaming(n => n with { NumberDigits = (int)_berthDigits.Value });
+        _berthPattern.TextChanged += (_, _) => ApplyNaming(_berthPattern, _berthNameExample, n => n with { Pattern = _berthPattern.Text });
+        _berthStartNumber.ValueChanged += (_, _) => ApplyNaming(_berthStartNumber, _berthNameExample, n => n with { StartNumber = (int)_berthStartNumber.Value });
+        _berthIncrement.ValueChanged += (_, _) => ApplyNaming(_berthIncrement, _berthNameExample, n => n with { Increment = (int)_berthIncrement.Value });
+        _berthDigits.ValueChanged += (_, _) => ApplyNaming(_berthDigits, _berthNameExample, n => n with { NumberDigits = (int)_berthDigits.Value });
 
         _landBerthWidth.ValueChanged += (_, _) => Apply(d => d.BerthWidth = (float)_landBerthWidth.Value);
         _landBerthLength.ValueChanged += (_, _) => Apply(d => d.BerthLength = (float)_landBerthLength.Value);
         _landBerthHeading.ValueChanged += (_, _) => Apply(d => d.LandBerthHeading = (float)_landBerthHeading.Value);
-        _landPattern.TextChanged += (_, _) => ApplyNaming(n => string.IsNullOrWhiteSpace(_landPattern.Text) ? n : n with { LandPattern = _landPattern.Text });
-        _landStartNumber.ValueChanged += (_, _) => ApplyNaming(n => n with { LandStartNumber = (int)_landStartNumber.Value });
-        _landIncrement.ValueChanged += (_, _) => ApplyNaming(n => (int)_landIncrement.Value == 0 ? n : n with { LandIncrement = (int)_landIncrement.Value });
-        _landDigits.ValueChanged += (_, _) => ApplyNaming(n => n with { LandNumberDigits = (int)_landDigits.Value });
+        _landPattern.TextChanged += (_, _) => ApplyNaming(_landPattern, _landNameExample, n => n with { LandPattern = _landPattern.Text });
+        _landStartNumber.ValueChanged += (_, _) => ApplyNaming(_landStartNumber, _landNameExample, n => n with { LandStartNumber = (int)_landStartNumber.Value });
+        _landIncrement.ValueChanged += (_, _) => ApplyNaming(_landIncrement, _landNameExample, n => n with { LandIncrement = (int)_landIncrement.Value });
+        _landDigits.ValueChanged += (_, _) => ApplyNaming(_landDigits, _landNameExample, n => n with { LandNumberDigits = (int)_landDigits.Value });
         _treeDensity.ValueChanged += (_, _) => Apply(d => d.TreeDensity = _treeDensity.Value);
 
         _imageOpacity.ValueChanged += (_, _) => Apply(d => d.ReferenceImageOpacity = _imageOpacity.Value / 100f);
@@ -527,15 +506,15 @@ internal sealed class InspectorPanel : SidePanel
         _imageShown.CheckedChanged += (_, _) => Apply(d => d.ReferenceImageVisible = _imageShown.Checked);
     }
 
-    /// <summary>Runs a change on the designer, unless the controls are being filled in from it.</summary>
     /// <summary>Takes the mainland away, leaving the marina in open water. Ctrl+Z brings it back.</summary>
     private void RemoveShoreline()
     {
         if (_updating) return;
-        Designer.DeleteShoreline();
-        Sync(force: true);
+        _session.RemoveShoreline();
+        RequestSync();
     }
 
+    /// <summary>Runs a change on the designer, unless the controls are being filled in from it.</summary>
     private void Apply(Action<MarinaDesigner> change)
     {
         if (_updating) return;
@@ -543,45 +522,54 @@ internal sealed class InspectorPanel : SidePanel
         {
             change(Designer);
         }
-        catch (ArgumentOutOfRangeException)
+        catch (ArgumentException)
         {
-            // The control ranges match the designer's; ignore anything typed past them.
+            // The control ranges match the designer's; a value it still refuses is put back by the refresh below.
         }
 
-        Sync(force: true);
+        // The designer's StateChanged asks for the same refresh; both land in the one that runs.
+        RequestSync();
     }
 
-    /// <summary>Changes the berth naming scheme, ignoring a combination the designer would refuse.</summary>
-    private void ApplyNaming(Func<BerthNamingScheme, BerthNamingScheme> change) => Apply(d =>
+    /// <summary>A pier name pattern takes effect once it is not blank; a blank one is marked and left unapplied.</summary>
+    private void ApplyPierPattern()
     {
-        var naming = change(d.BerthNaming);
-        if (!naming.Validate().Any()) d.BerthNaming = naming;
-    });
-
-    /// <summary>The first three names the slots ashore would get, mirroring the preview on the berth card.</summary>
-    private string AshoreNameExample(BerthNamingScheme naming)
-    {
-        var areas = _marina.GetLandAreas();
-        var land = (areas.Count > 0 ? areas[0] : null)
-            ?? new LandArea("yard", new[] { new System.Numerics.Vector2(0, 0), new System.Numerics.Vector2(10, 0), new System.Numerics.Vector2(10, 10) }, 1f);
-        var start = naming.LandStartNumber ?? naming.StartNumber;
-        var step = naming.LandIncrement ?? naming.Increment;
-        var numbers = Enumerable.Range(0, 3).Select(i => start + i * step);
-        return Strings.Format(Strings.BerthNamingExample, string.Join(", ", numbers.Select(n => naming.Format(land, n))));
+        if (_updating) return;
+        var text = _pierNamePattern.Text;
+        _errors.SetError(_pierNamePattern, string.IsNullOrWhiteSpace(text) ? Strings.PierNameTip : string.Empty);
+        if (!string.IsNullOrWhiteSpace(text)) Apply(d => d.PierNamePattern = text);
     }
 
-    /// <summary>The first three names the scheme would give, so the effect of a pattern is visible while typing it.</summary>
-    private string NamingExample(BerthNamingScheme naming)
+    /// <summary>
+    /// Changes the berth naming scheme. A combination the designer would refuse (a blank pattern, counting by zero) is
+    /// not applied: the field is marked, the reason is on its tooltip and in place of the example underneath.
+    /// </summary>
+    private void ApplyNaming(Control source, Label example, Func<BerthNamingScheme, BerthNamingScheme> change)
     {
-        var piers = _marina.GetPiers();
-        var pier = (piers.Count > 0 ? piers[0] : null) ?? new Pier("A", "Pier A", System.Numerics.Vector2.Zero, 0f, 20f);
-        var numbers = Enumerable.Range(0, 3).Select(i => naming.StartNumber + i * naming.Increment);
-        return Strings.Format(Strings.BerthNamingExample, string.Join(", ", numbers.Select(n => naming.Format(pier, PierSide.Left, n))));
+        if (_updating) return;
+        var naming = change(Designer.BerthNaming);
+        var problem = DesignerText.NamingProblem(naming);
+        _errors.SetError(source, problem ?? string.Empty);
+        if (problem is not null)
+        {
+            example.Text = problem;
+            return;
+        }
+
+        Apply(d => d.BerthNaming = naming);
     }
 
-    private static void SetText(TextBox box, string value)
+    private void ClearErrors()
     {
-        if (box.Text == value || box.Focused) return;
+        foreach (var box in new Control[] { _pierNamePattern, _berthPattern, _landPattern, _berthStartNumber, _berthIncrement, _berthDigits, _landStartNumber, _landIncrement, _landDigits })
+        {
+            _errors.SetError(box, string.Empty);
+        }
+    }
+
+    private static void SetText(TextBox box, string value, bool overwriteFocused)
+    {
+        if (box.Text == value || (box.Focused && !overwriteFocused)) return;
         box.Text = value;
     }
 
@@ -589,6 +577,12 @@ internal sealed class InspectorPanel : SidePanel
     {
         var rounded = Math.Clamp(Math.Round((decimal)value, control.DecimalPlaces), control.Minimum, control.Maximum);
         if (control.Value != rounded) control.Value = rounded;
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _errors.Dispose();
+        base.Dispose(disposing);
     }
 
     /// <summary>Combo box entries that show friendly text and carry a value.</summary>
@@ -600,24 +594,13 @@ internal sealed class InspectorPanel : SidePanel
     private static class Choice
     {
         /// <summary>Fills a combo box with values, each shown under the name the core library gives it.</summary>
-        public static void Fill<T>(ComboBox combo, params T[] values) => Fill(combo, (IEnumerable<T>)values);
-
         public static void Fill<T>(ComboBox combo, IEnumerable<T> values)
+            where T : struct, Enum
         {
             combo.Items.Clear();
-            foreach (var value in values) combo.Items.Add(new Choice<T>(Describe(value), value));
+            foreach (var value in values) combo.Items.Add(new Choice<T>(DesignerChoices.Describe(value), value));
             combo.SelectedIndex = 0;
         }
-
-        private static string Describe<T>(T value) => value switch
-        {
-            LandKind kind => kind.GetDisplayName(),
-            PierType type => Core.Domain.Pier.GetDisplayName(type),
-            PierSides sides => sides.GetDisplayName(),
-            PierServices services => services.GetDisplayName(),
-            BerthSeparator separator => separator.GetDisplayName(),
-            _ => value?.ToString() ?? string.Empty,
-        };
 
         public static Choice<T>? Of<T>(ComboBox combo, T value) => combo.Items.Cast<Choice<T>>().FirstOrDefault(c => Equals(c.Value, value));
 

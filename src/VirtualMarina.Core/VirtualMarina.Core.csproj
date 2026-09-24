@@ -8,7 +8,15 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VirtualMarina.Core</RootNamespace>
+    <Description>The platform-neutral core of VirtualMarina: marina domain model, public API and events, camera, input, picking, procedural geometry, the .marina.json format and the renderer abstraction. Runs on the desktop CLR and in WebAssembly.</Description>
+    <!--
+      Safe to trim and to compile ahead of time: the Blazor host ships it to the browser trimmed. The trim and AOT
+      analyzers run on every build, so the few members that need reflection or runtime code generation (the
+      host-data extension helpers of MarinaDocument) have to say so with [RequiresUnreferencedCode] and
+      [RequiresDynamicCode].
+    -->
     <IsTrimmable>true</IsTrimmable>
+    <IsAotCompatible>true</IsAotCompatible>
     <!-- XML documentation is generated for all libraries by src/Directory.Build.props. -->
   </PropertyGroup>
 

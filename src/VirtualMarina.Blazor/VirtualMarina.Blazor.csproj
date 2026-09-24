@@ -7,14 +7,26 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>VirtualMarina.Blazor</RootNamespace>
+    <Description>Blazor WebAssembly host for VirtualMarina: the MarinaView component and a WebGL 2 scene renderer.</Description>
+    <PackageTags>$(PackageTags);webassembly</PackageTags>
+    <!--
+      Not yet marked IsTrimmable/IsAotCompatible: the trim analyzer reports IL2026 on the generic
+      IJSInProcessObjectReference.Invoke<T> calls in MarinaView.razor.cs and WebGlSceneRenderer.cs. They marshal only
+      primitives and arrays of them, but each needs its justification recorded in the code before the flags go on.
+    -->
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The component's tests reach its internals directly rather than through reflection. -->
+    <InternalsVisibleTo Include="VirtualMarina.Blazor.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.31" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
   </ItemGroup>
 
   <ItemGroup>

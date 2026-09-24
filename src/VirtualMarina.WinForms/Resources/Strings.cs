@@ -37,6 +37,15 @@ internal static class Strings
     /// <summary>"Nothing to undo"</summary>
     internal static string NothingToUndo => Get("NothingToUndo");
 
+    /// <summary>"The last point placed"</summary>
+    internal static string UndoLastPoint => Get("UndoLastPoint");
+
+    /// <summary>"Redo (Ctrl+Y)"</summary>
+    internal static string Redo => Get("Redo");
+
+    /// <summary>"Nothing to redo"</summary>
+    internal static string NothingToRedo => Get("NothingToRedo");
+
     /// <summary>"Turn on design mode to draw land areas, piers and berths."</summary>
     internal static string TurnOnDesignMode => Get("TurnOnDesignMode");
 
@@ -161,6 +170,9 @@ internal static class Strings
     /// <summary>"Close (Esc)"</summary>
     internal static string PopupClose => Get("PopupClose");
 
+    /// <summary>"Press"</summary>
+    internal static string AccessibleActionPress => Get("AccessibleActionPress");
+
     // ---- View control --------------------------------------------------------------------------------
 
     /// <summary>"Images (*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff)"</summary>
@@ -177,4 +189,7 @@ internal static class Strings
 
     /// <summary>"OpenGL (not initialized)"</summary>
     internal static string RendererNotInitialized => Get("RendererNotInitialized");
+
+    /// <summary>"Rendering failed"</summary>
+    internal static string RenderFailedTitle => Get("RenderFailedTitle");
 }

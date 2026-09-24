@@ -1,6 +1,6 @@
-﻿using System.Collections.ObjectModel;
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Mathematics;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Domain;
 
@@ -61,6 +61,10 @@ public readonly record struct LandTree(Vector2 Position, float Height, float Cro
 /// </example>
 public sealed record LandArea
 {
+    private readonly ValueList<Vector2> _points = ValueList<Vector2>.Empty;
+    private readonly ValueList<LandTree> _trees = ValueList<LandTree>.Empty;
+    private readonly ValueDictionary _metadata = ValueDictionary.Empty;
+
     /// <summary>Creates a land area from its outline.</summary>
     /// <param name="id">Unique id (case-insensitive). Land berths reference it.</param>
     /// <param name="points">Outline in plan coordinates (X = world X, Y = world Z), at least three points.</param>
@@ -71,7 +75,7 @@ public sealed record LandArea
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(points);
         Id = id;
-        Points = points.ToArray();
+        _points = ValueList<Vector2>.From(points);
         Height = height;
         Kind = kind;
     }
@@ -93,8 +97,11 @@ public sealed record LandArea
     /// <summary>Display name (tooltips); the id is used when null.</summary>
     public string? Name { get; init; }
 
-    /// <summary>Outline in plan coordinates (X = world X, Y = world Z). The last point connects back to the first.</summary>
-    public IReadOnlyList<Vector2> Points { get; init; }
+    /// <summary>
+    /// Outline in plan coordinates (X = world X, Y = world Z). The last point connects back to the first. The record keeps its own
+    /// copy, so changing the list it was given later changes nothing; null reads as empty.
+    /// </summary>
+    public IReadOnlyList<Vector2> Points { get => _points; init => _points = ValueList<Vector2>.From(value); }
 
     /// <summary>Height of the top surface above the water, in meters, over the whole area.</summary>
     public float Height { get; init; }
@@ -106,14 +113,14 @@ public sealed record LandArea
     /// Trees standing on the area (usually lawns). Their positions are part of the layout, so they never move between sessions; generate
     /// them once with <see cref="GenerateTrees"/> or the designer.
     /// </summary>
-    public IReadOnlyList<LandTree> Trees { get; init; } = Array.Empty<LandTree>();
+    public IReadOnlyList<LandTree> Trees { get => _trees; init => _trees = ValueList<LandTree>.From(value); }
 
     /// <summary>
     /// Read-only string attributes the host application attaches to this land area, e.g. its own key or a contract
     /// reference. Saved to and loaded from a marina file, and never read by the visualizer.
     /// </summary>
     /// <example><code>land with { Metadata = new Dictionary&lt;string, string&gt; { ["zone"] = "winter storage" } }</code></example>
-    public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
+    public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ValueDictionary.From(value); }
 
     /// <summary>
     /// Scatters trees randomly inside an outline, at about <paramref name="treesPer1000SquareMeters"/>, keeping them apart, away from the
@@ -132,39 +139,105 @@ public sealed record LandArea
 
         var area = MathF.Abs(PolygonMath.SignedArea(outline));
         var target = Math.Min(5000, (int)MathF.Round(area / 1000f * treesPer1000SquareMeters));
-        var clear = keepClear?.ToArray() ?? Array.Empty<OrientedRect>();
+        var clear = (keepClear ?? Enumerable.Empty<OrientedRect>()).Select(rect => new ClearZone(rect)).ToArray();
         var (min, max) = PolygonMath.GetBounds(outline);
         var trees = new List<LandTree>(target);
+        var grid = new TreeGrid();
         for (var attempt = 0; attempt < target * 30 && trees.Count < target; attempt++)
         {
             var shape = PickShape(random);
-            var narrow = shape is TreeShape.Conifer or TreeShape.Cypress or TreeShape.Palm;
-            var height = shape switch
-            {
-                TreeShape.Conifer => 6f + (float)random.NextDouble() * 7f,
-                TreeShape.Cypress => 7f + (float)random.NextDouble() * 5f,
-                TreeShape.Palm => 5f + (float)random.NextDouble() * 5f,
-                TreeShape.Cherry => 4f + (float)random.NextDouble() * 3f,
-                _ => 4f + (float)random.NextDouble() * 5f,
-            };
-
-            var radius = shape switch
-            {
-                TreeShape.Cypress => height * (0.08f + (float)random.NextDouble() * 0.03f),
-                TreeShape.Palm => height * (0.22f + (float)random.NextDouble() * 0.06f),
-                _ when narrow => height * (0.16f + (float)random.NextDouble() * 0.06f),
-                _ => height * (0.3f + (float)random.NextDouble() * 0.12f),
-            };
+            var profile = TreeShapeProfile.For(shape);
+            var height = profile.NextHeight(random);
+            var radius = profile.NextCrownRadius(height, random);
             var position = new Vector2(min.X + (float)random.NextDouble() * (max.X - min.X), min.Y + (float)random.NextDouble() * (max.Y - min.Y));
 
+            if (IsInKeepClear(clear, position, radius) || grid.Crowds(position, radius)) continue;
             if (!PolygonMath.Contains(outline, position) || PolygonMath.DistanceToBoundary(outline, position) < radius * 0.8f + 0.5f) continue;
-            if (clear.Any(r => new OrientedRect(r.Center, r.Size + new Vector2(radius * 2f + 1f), r.HeadingDegrees).Contains(position))) continue;
-            if (trees.Any(t => Vector2.Distance(t.Position, position) < (t.CrownRadius + radius) * 0.9f)) continue;
 
-            trees.Add(new LandTree(position, MathF.Round(height, 2), MathF.Round(radius, 2), shape));
+            var tree = new LandTree(position, MathF.Round(height, 2), MathF.Round(radius, 2), shape);
+            trees.Add(tree);
+            grid.Add(tree);
         }
 
         return trees;
+    }
+
+    /// <summary>True when a crown of <paramref name="radius"/> at <paramref name="position"/> reaches into an area kept clear.</summary>
+    private static bool IsInKeepClear(ClearZone[] zones, Vector2 position, float radius)
+    {
+        // The area grows by the crown's diameter and half a meter each way, as the crown must clear it, not just the trunk.
+        var margin = radius + 0.5f;
+        foreach (var zone in zones)
+        {
+            var rel = position - zone.Center;
+            if (MathF.Abs(Vector2.Dot(rel, zone.Across)) <= zone.HalfWidth + margin && MathF.Abs(Vector2.Dot(rel, zone.Along)) <= zone.HalfLength + margin) return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>An area kept clear of trees, with its axes worked out once rather than for every tree tried.</summary>
+    private readonly struct ClearZone
+    {
+        public ClearZone(OrientedRect rect)
+        {
+            Center = rect.Center;
+            Across = rect.LocalX;
+            Along = rect.Forward;
+            HalfWidth = rect.Width * 0.5f;
+            HalfLength = rect.Length * 0.5f;
+        }
+
+        public Vector2 Center { get; }
+
+        public Vector2 Across { get; }
+
+        public Vector2 Along { get; }
+
+        public float HalfWidth { get; }
+
+        public float HalfLength { get; }
+    }
+
+    /// <summary>
+    /// The trees placed so far, bucketed by position, so a new one is only checked against its neighbours instead of against
+    /// every tree already standing (up to 5000 of them).
+    /// </summary>
+    private sealed class TreeGrid
+    {
+        // No two crowns reach further apart than this, so the neighbours of a tree are all in the 3×3 cells around it.
+        private const float CellSize = TreeShapeProfile.MaxCrownRadius * 2f;
+
+        private readonly Dictionary<(int X, int Y), List<LandTree>> _cells = [];
+
+        public void Add(LandTree tree)
+        {
+            var cell = CellOf(tree.Position);
+            if (!_cells.TryGetValue(cell, out var list)) _cells[cell] = list = [];
+            list.Add(tree);
+        }
+
+        /// <summary>True when a crown of <paramref name="radius"/> at <paramref name="position"/> would overlap a tree already placed.</summary>
+        public bool Crowds(Vector2 position, float radius)
+        {
+            var (cx, cy) = CellOf(position);
+            for (var x = cx - 1; x <= cx + 1; x++)
+            {
+                for (var y = cy - 1; y <= cy + 1; y++)
+                {
+                    if (!_cells.TryGetValue((x, y), out var list)) continue;
+                    foreach (var tree in list)
+                    {
+                        if (Vector2.Distance(tree.Position, position) < (tree.CrownRadius + radius) * 0.9f) return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static (int X, int Y) CellOf(Vector2 position) =>
+            ((int)MathF.Floor(position.X / CellSize), (int)MathF.Floor(position.Y / CellSize));
     }
 
     /// <summary>
@@ -192,28 +265,40 @@ public sealed record LandArea
     /// <summary>The smallest axis-aligned rectangle containing the outline.</summary>
     public (Vector2 Min, Vector2 Max) GetAxisAlignedBounds() => PolygonMath.GetBounds(Points);
 
-    internal IEnumerable<string> Validate()
+    /// <summary>
+    /// True when every point lies on one straight line, which folds the outline back over itself. That is reported
+    /// as having no area rather than as crossing itself, which is what the user actually did wrong.
+    /// </summary>
+    private static bool IsFlat(IReadOnlyList<Vector2> points)
     {
-        if (string.IsNullOrWhiteSpace(Id)) yield return "Land area id must not be empty.";
-        if (Points is null || Points.Count < 3)
+        var far = points.MaxBy(p => Vector2.DistanceSquared(p, points[0]));
+        var along = far - points[0];
+        if (along.LengthSquared() < 1e-8f) return true;
+        along = Vector2.Normalize(along);
+        return points.All(p => MathF.Abs(along.X * (p.Y - points[0].Y) - along.Y * (p.X - points[0].X)) < 1e-3f);
+    }
+
+    internal IEnumerable<string> Validate() => Validate(checkOutline: true);
+
+    /// <param name="checkOutline">False to skip the (quadratic) self-crossing check, for an outline already known to be good.</param>
+    internal IEnumerable<string> Validate(bool checkOutline)
+    {
+        if (string.IsNullOrWhiteSpace(Id)) yield return Strings.ErrorLandIdEmpty;
+        if (Points.Count < 3)
         {
-            yield return $"Land area '{Id}' needs at least three points.";
+            yield return Strings.Format(Strings.ErrorLandTooFewPoints, Id);
             yield break;
         }
 
-        if (Points.Any(p => !float.IsFinite(p.X) || !float.IsFinite(p.Y))) yield return $"Land area '{Id}' has a non-finite point.";
-        else if (!PolygonMath.IsSimple(Points)) yield return $"Land area '{Id}' outline must not cross itself or repeat points.";
-        else if (!(Area > 1e-3f)) yield return $"Land area '{Id}' outline has no area.";
-        if (!float.IsFinite(Height) || Height < 0f || Height > 50f) yield return $"Land area '{Id}' height must be between 0 and 50 m.";
-        if (Trees is null)
-        {
-            yield return $"Land area '{Id}' must have a Trees list.";
-        }
-        else if (Trees.Any(t => !float.IsFinite(t.Position.X) || !float.IsFinite(t.Position.Y) || !(t.Height >= 1f && t.Height <= 40f) ||
+        if (Points.Any(p => !float.IsFinite(p.X) || !float.IsFinite(p.Y))) yield return Strings.Format(Strings.ErrorLandNonFinitePoint, Id);
+        else if (checkOutline && !PolygonMath.IsSimple(Points) && !IsFlat(Points)) yield return Strings.Format(Strings.ErrorLandCrossesItself, Id);
+        else if (!(Area > 1e-3f)) yield return Strings.Format(Strings.ErrorLandNoArea, Id);
+        if (!float.IsFinite(Height) || Height < 0f || Height > 50f) yield return Strings.Format(Strings.ErrorLandHeight, Id);
+        if (Trees.Any(t => !float.IsFinite(t.Position.X) || !float.IsFinite(t.Position.Y) || !(t.Height >= 1f && t.Height <= 40f) ||
                                 !(t.CrownRadius >= 0.3f && t.CrownRadius <= 15f) || !Enum.IsDefined(t.Shape)))
         {
-            yield return $"Land area '{Id}' has a tree with a non-finite position, a height outside 1–40 m or a crown radius outside 0.3–15 m.";
+            yield return Strings.Format(Strings.ErrorLandTree, Id);
         }
-        if (!Enum.IsDefined(Kind)) yield return $"Land area '{Id}' has an unknown kind '{Kind}'.";
+        if (!Enum.IsDefined(Kind)) yield return Strings.Format(Strings.ErrorLandUnknownKind, Id, Kind);
     }
 }

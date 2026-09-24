@@ -1,0 +1,16 @@
+/*
+    The look of MarinaDesignerPanel. Scoped to the component, and deliberately light: each selector weighs one class
+    (the :where() adds nothing, the scope attribute Blazor adds is the one class), so a host's own rule for a
+    "vm-designer" class, loaded after it or not, is never outweighed.
+*/
+:where(.vm-designer) { display: flex; flex-direction: column; gap: 8px; font: inherit; }
+:where(.vm-designer) fieldset { margin: 0; }
+.vm-designer__tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.vm-designer__tool { padding: 4px 9px; border: 1px solid #b9c3cc; border-radius: 5px; background: #fff; cursor: pointer; font: inherit; }
+.vm-designer__tool--active { background: #1f5fd1; border-color: #1f5fd1; color: #fff; }
+.vm-designer__tool:disabled { opacity: .45; cursor: default; }
+.vm-designer__hint { color: #5d6b78; font-size: 12px; margin-top: 6px; min-height: 1.3em; }
+.vm-designer__grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; align-items: center; margin-top: 4px; }
+:where(.vm-designer__grid) input[type=number], :where(.vm-designer__grid) select { width: 100%; box-sizing: border-box; font: inherit; }
+.vm-designer__row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.vm-designer__note { color: #5d6b78; font-size: 12px; }

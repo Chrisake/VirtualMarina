@@ -10,11 +10,16 @@ namespace VirtualMarina.WinForms;
 /// <summary>
 /// Ready-made tool panel for <see cref="MarinaDesigner"/>: design mode, tools (land area, pier, berths, land berths, trees, erase),
 /// their settings, undo, and the reference image (load, opacity, move, scale calibration). Put it next to a
-/// <see cref="MarinaViewControl"/> and set <see cref="Marina"/>.
+/// <see cref="MarinaViewControl"/> and set <see cref="View"/> (in the Windows Forms designer too), or set <see cref="Marina"/>.
 /// </summary>
+/// <remarks>
+/// Its sizes are laid out for 96 DPI and scaled with the monitor it is on, whether or not the form hosting it scales.
+/// The number fields' ranges are the designer's own (<see cref="DesignerLimits"/>), and their steps the ones the
+/// VirtualMarina Designer apps use.
+/// </remarks>
 /// <example>
 /// <code>
-/// var panel = new MarinaDesignerPanel { Dock = DockStyle.Right, Width = 320, Marina = marinaView.Marina };
+/// var panel = new MarinaDesignerPanel { Dock = DockStyle.Right, Width = 320, View = marinaView };
 /// form.Controls.Add(panel);
 /// marinaView.Marina.Designer.ElementCreated += (s, e) => SaveToErp(marinaView.Marina.ExportObjects());
 /// </code>
@@ -24,29 +29,39 @@ namespace VirtualMarina.WinForms;
 public sealed class MarinaDesignerPanel : UserControl
 {
     private readonly CheckBox _chkActive = new() { Text = Strings.DesignMode, AutoSize = true };
+    /// <summary>The tools offered in the toolbar, in the order they appear (the image's own two are with the image).</summary>
+    private static readonly DesignTool[] Tools =
+    [
+        DesignTool.Navigate, DesignTool.SelectArea, DesignTool.DrawShoreline, DesignTool.DrawLandArea, DesignTool.DrawPier,
+        DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlantTrees, DesignTool.EditServices, DesignTool.Rename,
+        DesignTool.Erase,
+    ];
+
     private readonly Dictionary<DesignTool, CheckBox> _toolButtons = [];
     private readonly Label _lblHint = new() { AutoSize = true, MaximumSize = new Size(280, 0), ForeColor = SystemColors.GrayText, Padding = new Padding(0, 4, 0, 4) };
 
     private readonly Button _btnUndo = new() { Text = Strings.Undo, AutoSize = true };
     private readonly Label _lblUndo = new() { AutoSize = true, ForeColor = SystemColors.GrayText, Padding = new Padding(6, 6, 0, 0) };
+    private readonly Button _btnRedo = new() { Text = Strings.Redo, AutoSize = true };
+    private readonly Label _lblRedo = new() { AutoSize = true, ForeColor = SystemColors.GrayText, Padding = new Padding(6, 6, 0, 0) };
 
     private readonly ComboBox _cmbLandKind = CreateCombo();
-    private readonly NumericUpDown _nudLandHeight = CreateNumber(0m, 50m, 0.1m, 2);
-    private readonly TrackBar _trkTreeDensity = new() { Minimum = 0, Maximum = 100, TickFrequency = 10, Dock = DockStyle.Fill, AutoSize = false, Height = 28 };
+    private readonly NumericUpDown _nudLandHeight = CreateNumber(DesignerLimits.LandHeight, 0.25m, 2);
+    private readonly TrackBar _trkTreeDensity = CreateTrack(DesignerLimits.TreeDensity, 1f);
     private readonly Label _lblTreeDensity = new() { AutoSize = true, ForeColor = SystemColors.GrayText };
 
     private readonly ComboBox _cmbPierType = CreateCombo();
-    private readonly NumericUpDown _nudPierWidth = CreateNumber(0.5m, 30m, 0.1m, 2);
+    private readonly NumericUpDown _nudPierWidth = CreateNumber(DesignerLimits.PierWidth, 0.25m, 2);
     private readonly ComboBox _cmbPierSides = CreateCombo();
 
-    private readonly NumericUpDown _nudBerthWidth = CreateNumber(1m, 50m, 0.1m, 2);
-    private readonly NumericUpDown _nudBerthLength = CreateNumber(1m, 150m, 0.5m, 2);
-    private readonly NumericUpDown _nudBerthDepth = CreateNumber(0.1m, 50m, 0.1m, 2);
+    private readonly NumericUpDown _nudBerthWidth = CreateNumber(DesignerLimits.BerthWidth, 0.25m, 2);
+    private readonly NumericUpDown _nudBerthLength = CreateNumber(DesignerLimits.BerthLength, 0.5m, 2);
+    private readonly NumericUpDown _nudBerthDepth = CreateNumber(DesignerLimits.BerthDepth, 0.1m, 2);
     private readonly ComboBox _cmbBerthSeparators = CreateCombo();
-    private readonly NumericUpDown _nudBerthGap = CreateNumber(0m, 20m, 0.1m, 2);
+    private readonly NumericUpDown _nudBerthGap = CreateNumber(DesignerLimits.BerthGap, 0.1m, 2);
     private readonly CheckBox _chkAlignBerths = new() { Text = Strings.AlignBerths, AutoSize = true };
     private readonly ComboBox _cmbBerthServices = CreateCombo();
-    private readonly NumericUpDown _nudLandBerthHeading = CreateNumber(-180m, 180m, 15m, 0);
+    private readonly NumericUpDown _nudLandBerthHeading = CreateNumber(DesignerLimits.LandBerthHeading, 15m, 0);
 
     private readonly Button _btnLoadImage = new() { Text = Strings.LoadImage, AutoSize = true };
     private readonly Button _btnClearImage = new() { Text = Strings.RemoveImage, AutoSize = true };
@@ -54,18 +69,24 @@ public sealed class MarinaDesignerPanel : UserControl
     private readonly Button _btnTopDown = new() { Text = Strings.TopViewNorthUp, AutoSize = true };
     private readonly CheckBox _chkImageVisible = new() { Text = Strings.ShowImage, AutoSize = true };
     private readonly CheckBox _chkImageAbove = new() { Text = Strings.ImageAboveScene, AutoSize = true };
-    private readonly TrackBar _trkOpacity = new() { Minimum = 0, Maximum = 100, TickFrequency = 10, Dock = DockStyle.Fill, AutoSize = false, Height = 28 };
-    private readonly NumericUpDown _nudMetersPerPixel = CreateNumber(0.0001m, 1000m, 0.01m, 4);
+    private readonly TrackBar _trkOpacity = CreateTrack(DesignerLimits.ReferenceImageOpacity, 100f);
+    private readonly NumericUpDown _nudMetersPerPixel = CreateNumber(DesignerLimits.ReferenceImageMetersPerPixel, 0.01m, 4);
     private readonly NumericUpDown _nudScaleLength = CreateNumber(0.01m, 100000m, 1m, 2);
     private readonly Button _btnCalibrate = new() { Text = Strings.ApplyScale, AutoSize = true };
     private readonly Label _lblScaleLine = new() { AutoSize = true, ForeColor = SystemColors.GrayText };
 
     private MarinaVisualizer? _marina;
+    private MarinaViewControl? _view;
+    private Font? _boldFont;
     private bool _updating;
 
-    /// <summary>Creates the panel. Set <see cref="Marina"/> to connect it.</summary>
+    /// <summary>Creates the panel. Set <see cref="View"/> or <see cref="Marina"/> to connect it.</summary>
     public MarinaDesignerPanel()
     {
+        // Every size below is written for 96 DPI and scaled from there, when the panel is shown and whenever it moves to
+        // a monitor with another scale.
+        AutoScaleDimensions = new SizeF(96f, 96f);
+        AutoScaleMode = AutoScaleMode.Dpi;
         AutoScroll = true;
         Padding = new Padding(4);
 
@@ -79,15 +100,15 @@ public sealed class MarinaDesignerPanel : UserControl
         };
 
         // Designer and tools
-        _chkActive.Font = new Font(Font, FontStyle.Bold);
+        UpdateBoldFont();
         var tools = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(290, 0), Margin = new Padding(0, 4, 0, 0) };
-        foreach (var tool in new[] { DesignTool.Navigate, DesignTool.DrawLandArea, DesignTool.DrawPier, DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlantTrees, DesignTool.Erase })
-        {
-            AddTool(tools, tool);
-        }
+        foreach (var tool in Tools) AddTool(tools, tool);
         var undo = new FlowLayoutPanel { AutoSize = true, WrapContents = false, MaximumSize = new Size(290, 0), Margin = Padding.Empty };
         undo.Controls.Add(_btnUndo);
         undo.Controls.Add(_lblUndo);
+        var redo = new FlowLayoutPanel { AutoSize = true, WrapContents = false, MaximumSize = new Size(290, 0), Margin = Padding.Empty };
+        redo.Controls.Add(_btnRedo);
+        redo.Controls.Add(_lblRedo);
         var mode = Section(Strings.SectionDesigner, out var modeTable);
         modeTable.Controls.Add(_chkActive, 0, 0);
         modeTable.SetColumnSpan(_chkActive, 2);
@@ -97,6 +118,8 @@ public sealed class MarinaDesignerPanel : UserControl
         modeTable.SetColumnSpan(_lblHint, 2);
         modeTable.Controls.Add(undo, 0, 3);
         modeTable.SetColumnSpan(undo, 2);
+        modeTable.Controls.Add(redo, 0, 4);
+        modeTable.SetColumnSpan(redo, 2);
         stack.Controls.Add(mode);
 
         // Land
@@ -176,6 +199,37 @@ public sealed class MarinaDesignerPanel : UserControl
         RefreshControls();
     }
 
+    /// <summary>
+    /// The view whose marina this panel drives. The panel follows the view: when the view is given another marina, the
+    /// panel drives that one. Set it in the Windows Forms designer, or in code; setting <see cref="Marina"/> instead
+    /// connects the panel to a marina without a view.
+    /// </summary>
+    [Category("Marina")]
+    [Description("The MarinaViewControl whose marina this panel designs; followed when the view's marina is replaced.")]
+    [DefaultValue(null)]
+    public MarinaViewControl? View
+    {
+        get => _view;
+        set
+        {
+            if (ReferenceEquals(value, _view)) return;
+            if (_view is not null)
+            {
+                _view.MarinaChanged -= OnViewMarinaChanged;
+                _view.Disposed -= OnViewDisposed;
+            }
+
+            _view = value;
+            if (_view is not null)
+            {
+                _view.MarinaChanged += OnViewMarinaChanged;
+                _view.Disposed += OnViewDisposed;
+            }
+
+            Marina = _view?.Marina;
+        }
+    }
+
     /// <summary>The visualizer whose <see cref="MarinaVisualizer.Designer"/> this panel drives.</summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
@@ -206,22 +260,50 @@ public sealed class MarinaDesignerPanel : UserControl
     [Category("Marina")]
     public event EventHandler<ThreadExceptionEventArgs>? ImageLoadFailed;
 
-    /// <summary>Unsubscribes from the designer.</summary>
+    /// <summary>Unsubscribes from the view and the designer, and lets go of the bold font.</summary>
     protected override void Dispose(bool disposing)
     {
-        if (disposing) Marina = null;
+        if (disposing)
+        {
+            View = null;
+            Marina = null;
+            _chkActive.Font = null;
+            _boldFont?.Dispose();
+            _boldFont = null;
+        }
+
         base.Dispose(disposing);
     }
+
+    /// <summary>Keeps the design mode tick bold in whatever font the panel is given, including after a DPI change.</summary>
+    protected override void OnFontChanged(EventArgs e)
+    {
+        base.OnFontChanged(e);
+        UpdateBoldFont();
+    }
+
+    private void UpdateBoldFont()
+    {
+        var old = _boldFont;
+        _boldFont = new Font(Font, FontStyle.Bold);
+        _chkActive.Font = _boldFont;
+        old?.Dispose();
+    }
+
+    private void OnViewMarinaChanged(object? sender, EventArgs e) => Marina = _view?.Marina;
+
+    private void OnViewDisposed(object? sender, EventArgs e) => View = null;
 
     private MarinaDesigner? Designer => _marina?.Designer;
 
     private void WireControls()
     {
         _chkActive.CheckedChanged += (_, _) => Apply(d => d.IsActive = _chkActive.Checked);
-        _cmbLandKind.SelectedIndexChanged += (_, _) => Apply(d => d.LandKind = (LandKind)_cmbLandKind.SelectedItem!);
+        _cmbLandKind.SelectedIndexChanged += (_, _) => Apply(d => d.LandKind = ((Choice<LandKind>)_cmbLandKind.SelectedItem!).Value);
         _nudLandHeight.ValueChanged += (_, _) => Apply(d => d.LandHeight = (float)_nudLandHeight.Value);
         _trkTreeDensity.ValueChanged += (_, _) => Apply(d => d.TreeDensity = _trkTreeDensity.Value);
-        _btnUndo.Click += (_, _) => Apply(d => d.Undo());
+        _btnUndo.Click += (_, _) => Apply(d => d.TryUndo());
+        _btnRedo.Click += (_, _) => Apply(d => d.TryRedo());
         _cmbPierType.SelectedIndexChanged += (_, _) => Apply(d => d.PierType = ((Choice<PierType>)_cmbPierType.SelectedItem!).Value);
         _nudPierWidth.ValueChanged += (_, _) => Apply(d => d.PierWidth = (float)_nudPierWidth.Value);
         _cmbPierSides.SelectedIndexChanged += (_, _) => Apply(d => d.PierBerthingSides = ((Choice<PierSides>)_cmbPierSides.SelectedItem!).Value);
@@ -272,9 +354,9 @@ public sealed class MarinaDesignerPanel : UserControl
         {
             change(designer);
         }
-        catch (ArgumentOutOfRangeException)
+        catch (ArgumentException)
         {
-            // The numeric ranges match the designer's; ignore values typed past them.
+            // The numeric ranges match the designer's; a value it still refuses is put back by the refresh below.
         }
 
         RefreshControls();
@@ -334,8 +416,10 @@ public sealed class MarinaDesignerPanel : UserControl
             _lblTreeDensity.Text = designer.TreeDensity > 0f
                 ? string.Format(CultureInfo.CurrentCulture, Strings.TreeDensity, designer.TreeDensity)
                 : Strings.NoTrees;
-            _btnUndo.Enabled = designer.CanUndo;
-            _lblUndo.Text = designer.UndoDescription ?? Strings.NothingToUndo;
+            _btnUndo.Enabled = designer.HasDraft || designer.CanUndo;
+            _lblUndo.Text = designer.HasDraft ? Strings.UndoLastPoint : designer.UndoDescription ?? Strings.NothingToUndo;
+            _btnRedo.Enabled = designer.CanRedo;
+            _lblRedo.Text = designer.RedoDescription ?? Strings.NothingToRedo;
             _cmbPierType.SelectedItem = _cmbPierType.Items.Cast<Choice<PierType>>().First(c => c.Value == designer.PierType);
             SetNumber(_nudPierWidth, designer.PierWidth);
             _cmbPierSides.SelectedItem = _cmbPierSides.Items.Cast<Choice<PierSides>>().First(c => c.Value == designer.PierBerthingSides);
@@ -359,7 +443,7 @@ public sealed class MarinaDesignerPanel : UserControl
             _toolButtons[DesignTool.MeasureScale].Enabled = hasImage;
             _chkImageVisible.Checked = designer.ReferenceImageVisible;
             _chkImageAbove.Checked = designer.ReferenceImageAboveScene;
-            _trkOpacity.Value = (int)MathF.Round(designer.ReferenceImageOpacity * 100f);
+            _trkOpacity.Value = Math.Clamp((int)MathF.Round(designer.ReferenceImageOpacity * 100f), _trkOpacity.Minimum, _trkOpacity.Maximum);
             SetNumber(_nudMetersPerPixel, designer.ReferenceImageMetersPerPixel);
 
             var line = designer.ScaleLine;
@@ -406,6 +490,21 @@ public sealed class MarinaDesignerPanel : UserControl
 
     private static NumericUpDown CreateNumber(decimal min, decimal max, decimal increment, int decimals) =>
         new() { Minimum = min, Maximum = max, Increment = increment, DecimalPlaces = decimals, Width = 90, TextAlign = HorizontalAlignment.Right };
+
+    /// <summary>A number field over the range of a designer setting.</summary>
+    private static NumericUpDown CreateNumber(DesignerSettingRange range, decimal increment, int decimals) =>
+        CreateNumber((decimal)range.Minimum, (decimal)range.Maximum, increment, decimals);
+
+    /// <summary>A slider over the range of a designer setting, in whole steps of <paramref name="scale"/> per unit.</summary>
+    private static TrackBar CreateTrack(DesignerSettingRange range, float scale) => new()
+    {
+        Minimum = (int)MathF.Round(range.Minimum * scale),
+        Maximum = (int)MathF.Round(range.Maximum * scale),
+        TickFrequency = 10,
+        Dock = DockStyle.Fill,
+        AutoSize = false,
+        Height = 28,
+    };
 
     private static void SetNumber(NumericUpDown control, float value)
     {

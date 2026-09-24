@@ -2,15 +2,15 @@
 
   <!--
     Generates Docs/11-api-reference.md from the public surface of the VirtualMarina libraries (reflection) and their
-    XML documentation files. Not part of VirtualMarina.sln. Run from the repository root:
-    dotnet run (project Docs/tools/ApiDocGen) with the output path as argument, e.g. Docs/11-api-reference.md
+    XML documentation files. Part of VirtualMarina.sln (solution folder "tools"), so every build and CI compile it
+    under the same analyzers as the libraries. CI (.github/workflows/ci.yml, Windows job) regenerates it and fails when
+    the committed file differs. To regenerate, run this project (on Windows) with no argument: it rewrites
+    Docs/11-api-reference.md in place, wherever it is run from. An argument writes to that path instead.
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

@@ -7,22 +7,13 @@
 @using VirtualMarina.Blazor.Resources
 @implements IDisposable
 
-@* Ready-made tool panel for MarinaVisualizer.Designer. Styles are prefixed "vm-designer" so hosts can restyle them. *@
+@*
+    Ready-made tool panel for MarinaVisualizer.Designer. Its look is in MarinaDesignerPanel.razor.css, which reaches the
+    page through the host's {App}.styles.css bundle; every rule there is a single class of weight, so any style of the
+    host's own that names a "vm-designer" class wins. The ranges of the number fields are the designer's own
+    (DesignerLimits), and their steps the ones the VirtualMarina Designer apps use.
+*@
 <div class="vm-designer @CssClass">
-    <style>
-        .vm-designer { display: flex; flex-direction: column; gap: 8px; font: inherit; }
-        .vm-designer fieldset { margin: 0; }
-        .vm-designer__tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-        .vm-designer__tool { padding: 4px 9px; border: 1px solid #b9c3cc; border-radius: 5px; background: #fff; cursor: pointer; font: inherit; }
-        .vm-designer__tool--active { background: #1f5fd1; border-color: #1f5fd1; color: #fff; }
-        .vm-designer__tool:disabled { opacity: .45; cursor: default; }
-        .vm-designer__hint { color: #5d6b78; font-size: 12px; margin-top: 6px; min-height: 1.3em; }
-        .vm-designer__grid { display: grid; grid-template-columns: auto 1fr; gap: 5px 10px; align-items: center; margin-top: 4px; }
-        .vm-designer__grid input[type=number], .vm-designer__grid select { width: 100%; box-sizing: border-box; font: inherit; }
-        .vm-designer__row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
-        .vm-designer__note { color: #5d6b78; font-size: 12px; }
-    </style>
-
     <fieldset>
         <legend>@Strings.SectionDesigner</legend>
         <label class="vm-designer__row"><input type="checkbox" checked="@Designer.IsActive" @onchange="e => Designer.IsActive = e.Value is true" /> <strong>@Strings.DesignMode</strong></label>
@@ -34,8 +25,12 @@
         </div>
         <div class="vm-designer__hint">@(Designer.IsActive ? Designer.ToolHint : Strings.TurnOnDesignMode)</div>
         <div class="vm-designer__row">
-            <button class="vm-designer__tool" disabled="@(!Designer.CanUndo)" @onclick="() => Set(d => d.Undo())">@Strings.Undo</button>
-            <span class="vm-designer__note">@(Designer.UndoDescription ?? Strings.NothingToUndo)</span>
+            <button class="vm-designer__tool" disabled="@(!(Designer.HasDraft || Designer.CanUndo))" @onclick="() => Set(d => d.TryUndo())">@Strings.Undo</button>
+            <span class="vm-designer__note">@(Designer.HasDraft ? Strings.UndoLastPoint : Designer.UndoDescription ?? Strings.NothingToUndo)</span>
+        </div>
+        <div class="vm-designer__row">
+            <button class="vm-designer__tool" disabled="@(!Designer.CanRedo)" @onclick="() => Set(d => d.TryRedo())">@Strings.Redo</button>
+            <span class="vm-designer__note">@(Designer.RedoDescription ?? Strings.NothingToRedo)</span>
         </div>
     </fieldset>
 
@@ -50,10 +45,10 @@
                 }
             </select>
             <span>@Strings.LandHeight</span>
-            <input type="number" min="0" max="50" step="0.1" value="@Format(Designer.LandHeight)" @onchange="e => SetNumber(e, (d, v) => d.LandHeight = v)" />
+            <input type="number" min="@Min(DesignerLimits.LandHeight)" max="@Max(DesignerLimits.LandHeight)" step="0.25" value="@Format(Designer.LandHeight)" @onchange="e => SetNumber(e, (d, v) => d.LandHeight = v)" />
             <span title="@Strings.TreeCoverageHint">@Strings.TreeCoverage</span>
             <span class="vm-designer__row" style="margin:0;flex-wrap:nowrap">
-                <input type="range" min="0" max="100" step="1" value="@((int)MathF.Round(Designer.TreeDensity))" @oninput="e => SetNumber(e, (d, v) => d.TreeDensity = v)" style="flex:1" />
+                <input type="range" min="@Min(DesignerLimits.TreeDensity)" max="@Max(DesignerLimits.TreeDensity)" step="1" value="@((int)MathF.Round(Designer.TreeDensity))" @oninput="e => SetNumber(e, (d, v) => d.TreeDensity = v)" style="flex:1" />
                 <span class="vm-designer__note" style="white-space:nowrap">@(Designer.TreeDensity > 0f ? Strings.Format(Strings.TreeDensity, Format(Designer.TreeDensity, "0")) : Strings.NoTrees)</span>
             </span>
         </div>
@@ -70,7 +65,7 @@
                 }
             </select>
             <span>@Strings.PierWidth</span>
-            <input type="number" min="0.5" max="30" step="0.1" value="@Format(Designer.PierWidth)" @onchange="e => SetNumber(e, (d, v) => d.PierWidth = v)" />
+            <input type="number" min="@Min(DesignerLimits.PierWidth)" max="@Max(DesignerLimits.PierWidth)" step="0.25" value="@Format(Designer.PierWidth)" @onchange="e => SetNumber(e, (d, v) => d.PierWidth = v)" />
             <span>@Strings.PierBerths</span>
             <select value="@Designer.PierBerthingSides" @onchange="e => Set(d => d.PierBerthingSides = Enum.Parse<PierSides>((string)e.Value!))">
                 @foreach (var sides in BerthingSides)
@@ -85,11 +80,11 @@
         <legend>@Strings.SectionBerths</legend>
         <div class="vm-designer__grid">
             <span>@Strings.BerthWidth</span>
-            <input type="number" min="1" max="50" step="0.1" value="@Format(Designer.BerthWidth)" @onchange="e => SetNumber(e, (d, v) => d.BerthWidth = v)" />
+            <input type="number" min="@Min(DesignerLimits.BerthWidth)" max="@Max(DesignerLimits.BerthWidth)" step="0.25" value="@Format(Designer.BerthWidth)" @onchange="e => SetNumber(e, (d, v) => d.BerthWidth = v)" />
             <span>@Strings.BerthLength</span>
-            <input type="number" min="1" max="150" step="0.5" value="@Format(Designer.BerthLength)" @onchange="e => SetNumber(e, (d, v) => d.BerthLength = v)" />
+            <input type="number" min="@Min(DesignerLimits.BerthLength)" max="@Max(DesignerLimits.BerthLength)" step="0.5" value="@Format(Designer.BerthLength)" @onchange="e => SetNumber(e, (d, v) => d.BerthLength = v)" />
             <span>@Strings.BerthDepth</span>
-            <input type="number" min="0.1" max="50" step="0.1" value="@Format(Designer.BerthDepth)" @onchange="e => SetNumber(e, (d, v) => d.BerthDepth = v)" />
+            <input type="number" min="@Min(DesignerLimits.BerthDepth)" max="@Max(DesignerLimits.BerthDepth)" step="0.1" value="@Format(Designer.BerthDepth)" @onchange="e => SetNumber(e, (d, v) => d.BerthDepth = v)" />
             <span>@Strings.BerthSeparators</span>
             <select value="@Designer.BerthSeparators" @onchange="e => Set(d => d.BerthSeparators = Enum.Parse<BerthSeparator>((string)e.Value!))">
                 @foreach (var separator in Separators)
@@ -98,7 +93,7 @@
                 }
             </select>
             <span title="@Strings.BerthGapHint">@Strings.BerthGap</span>
-            <input type="number" min="0" max="20" step="0.1" value="@Format(Designer.BerthGap)" @onchange="e => SetNumber(e, (d, v) => d.BerthGap = v)" />
+            <input type="number" min="@Min(DesignerLimits.BerthGap)" max="@Max(DesignerLimits.BerthGap)" step="0.1" value="@Format(Designer.BerthGap)" @onchange="e => SetNumber(e, (d, v) => d.BerthGap = v)" />
             <span title="@Strings.AlignBerthsHint">@Strings.AlignBerthsLabel</span>
             <label><input type="checkbox" checked="@Designer.AlignBerthsToExisting" @onchange="e => Set(d => d.AlignBerthsToExisting = e.Value is true)" /> @Strings.AlignBerths</label>
             <span title="@Strings.BerthServicesHint">@Strings.BerthServices</span>
@@ -109,7 +104,7 @@
                 }
             </select>
             <span title="@Strings.LandBerthHeadingHint">@Strings.LandBerthHeading</span>
-            <input type="number" min="-180" max="180" step="15" value="@Format(Designer.LandBerthHeading, "0")" @onchange="e => SetNumber(e, (d, v) => d.LandBerthHeading = v)" />
+            <input type="number" min="@Min(DesignerLimits.LandBerthHeading)" max="@Max(DesignerLimits.LandBerthHeading)" step="15" value="@Format(Designer.LandBerthHeading, "0")" @onchange="e => SetNumber(e, (d, v) => d.LandBerthHeading = v)" />
         </div>
     </fieldset>
 
@@ -134,7 +129,7 @@
         </div>
         <div class="vm-designer__grid">
             <span>@Strings.ImageOpacity</span>
-            <input type="range" min="0" max="100" disabled="@(!hasImage)" value="@((int)MathF.Round(Designer.ReferenceImageOpacity * 100f))" @oninput="e => SetNumber(e, (d, v) => d.ReferenceImageOpacity = v / 100f)" />
+            <input type="range" min="@Min(DesignerLimits.ReferenceImageOpacity, 100f)" max="@Max(DesignerLimits.ReferenceImageOpacity, 100f)" disabled="@(!hasImage)" value="@((int)MathF.Round(Designer.ReferenceImageOpacity * 100f))" @oninput="e => SetNumber(e, (d, v) => d.ReferenceImageOpacity = v / 100f)" />
         </div>
         <div class="vm-designer__tools">
             @ToolButton(DesignTool.MoveReferenceImage, !hasImage)
@@ -161,7 +156,7 @@
                 <button class="vm-designer__tool" disabled="@(Designer.ScaleLine is null || !(_scaleLength > 0))" @onclick="Calibrate">@Strings.ApplyScale</button>
             </span>
             <span>@Strings.MetersPerPixel</span>
-            <input type="number" min="0.0001" step="0.01" disabled="@(!hasImage)" value="@Format(Designer.ReferenceImageMetersPerPixel, "0.####")" @onchange="e => SetNumber(e, (d, v) => d.ReferenceImageMetersPerPixel = v)" />
+            <input type="number" min="@Min(DesignerLimits.ReferenceImageMetersPerPixel)" max="@Max(DesignerLimits.ReferenceImageMetersPerPixel)" step="0.01" disabled="@(!hasImage)" value="@Format(Designer.ReferenceImageMetersPerPixel, "0.####")" @onchange="e => SetNumber(e, (d, v) => d.ReferenceImageMetersPerPixel = v)" />
         </div>
     </fieldset>
 </div>
@@ -218,8 +213,9 @@
     /// <summary>The tools offered in the toolbar, in the order they appear.</summary>
     private static readonly DesignTool[] Tools =
     {
-        DesignTool.Navigate, DesignTool.DrawLandArea, DesignTool.DrawPier,
-        DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlantTrees, DesignTool.Erase,
+        DesignTool.Navigate, DesignTool.SelectArea, DesignTool.DrawShoreline, DesignTool.DrawLandArea, DesignTool.DrawPier,
+        DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlantTrees, DesignTool.EditServices, DesignTool.Rename,
+        DesignTool.Erase,
     };
 
     private static readonly PierSides[] BerthingSides = { PierSides.Both, PierSides.Left, PierSides.Right };
@@ -248,9 +244,9 @@
         {
             change(Designer);
         }
-        catch (ArgumentOutOfRangeException)
+        catch (ArgumentException)
         {
-            // Out-of-range input is ignored; the field shows the designer's value again.
+            // Input the designer refuses (out of range, not a number it takes) is ignored; the field shows its value again.
         }
 
         StateHasChanged();
@@ -301,4 +297,10 @@
     }
 
     private static string Format(float value, string format = "0.##") => value.ToString(format, CultureInfo.InvariantCulture);
+
+    /// <summary>The smallest value of a designer setting, as an HTML attribute wants it; <paramref name="scale"/> converts units.</summary>
+    private static string Min(DesignerSettingRange range, float scale = 1f) => (range.Minimum * scale).ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>The largest value of a designer setting, as an HTML attribute wants it.</summary>
+    private static string Max(DesignerSettingRange range, float scale = 1f) => (range.Maximum * scale).ToString(CultureInfo.InvariantCulture);
 }

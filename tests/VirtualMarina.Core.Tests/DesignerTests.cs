@@ -6,6 +6,7 @@ using VirtualMarina.Core.Domain;
 using VirtualMarina.Core.Geometry;
 using VirtualMarina.Core.Input;
 using VirtualMarina.Core.Mathematics;
+using VirtualMarina.Core.Resources;
 using VirtualMarina.SampleData;
 
 namespace VirtualMarina.Core.Tests;
@@ -27,15 +28,20 @@ public class DesignerTests
         return marina;
     }
 
-    private static Vector2 Screen(MarinaVisualizer marina, Vector2 plan)
+    /// <summary>Where a plan point shows on screen, at <paramref name="height"/> above the water.</summary>
+    private static Vector2 Screen(MarinaVisualizer marina, Vector2 plan, float height = 0f)
     {
-        Assert.True(marina.TryProjectToScreen(MarinaMath.ToWorld(plan), out var screen));
+        Assert.True(marina.TryProjectToScreen(MarinaMath.ToWorld(plan, height), out var screen));
         return screen;
     }
 
-    private static void Click(MarinaVisualizer marina, Vector2 plan, PointerButton button = PointerButton.Left, InputModifiers modifiers = InputModifiers.None)
+    /// <summary>
+    /// Clicks where a plan point shows. A drawing is picked on the plane it is drawn on — a land outline at the land's height, a
+    /// pier at its deck — so a click meant for a point of one gives its height.
+    /// </summary>
+    private static void Click(MarinaVisualizer marina, Vector2 plan, PointerButton button = PointerButton.Left, InputModifiers modifiers = InputModifiers.None, float height = 0f)
     {
-        var s = Screen(marina, plan);
+        var s = Screen(marina, plan, height);
         marina.Input.PointerMove(s.X, s.Y, modifiers);
         marina.Input.PointerDown(s.X, s.Y, button, modifiers);
         marina.Input.PointerUp(s.X, s.Y, button, modifiers);
@@ -59,7 +65,7 @@ public class DesignerTests
         marina.LayoutChanged += (_, e) => layoutChanges.Add(e.Kind);
 
         var outline = new[] { new Vector2(-30, -20), new Vector2(30, -20), new Vector2(30, 0), new Vector2(0, 20), new Vector2(-30, 10) };
-        foreach (var point in outline) Click(marina, point);
+        foreach (var point in outline) Click(marina, point, height: designer.LandHeight);
         Assert.Equal(outline.Length, designer.DraftPoints.Count);
         Assert.True(marina.Input.KeyDown(MarinaKey.Enter));
 
@@ -182,8 +188,8 @@ public class DesignerTests
         Click(marina, new Vector2(0, -30));
         Click(marina, new Vector2(60, -20));
 
-        // Enter does not finish a coast; it settles the line and waits for the side.
-        Assert.False(marina.Input.KeyDown(MarinaKey.Enter));
+        // Enter does not finish a coast; it settles the line and waits for the side. The key was still used.
+        Assert.True(marina.Input.KeyDown(MarinaKey.Enter));
         Assert.Null(marina.Shoreline);
         Assert.Equal(3, designer.ShorelineAwaitingSide?.Count);
 
@@ -258,14 +264,15 @@ public class DesignerTests
         var marina = CreateDesigner(DesignTool.DrawShoreline);
         var designer = marina.Designer;
 
-        Click(marina, new Vector2(-60, -20));
-        Click(marina, new Vector2(60, -20));
+        Click(marina, new Vector2(-60, -20), height: designer.LandHeight);
+        Click(marina, new Vector2(60, -20), height: designer.LandHeight);
         marina.Input.KeyDown(MarinaKey.Enter);
         Click(marina, new Vector2(0, 120));
         var first = marina.Shoreline;
 
-        Click(marina, new Vector2(-60, 40));
-        Click(marina, new Vector2(60, 40));
+        // The coast is drawn at the height of the mainland it replaces.
+        Click(marina, new Vector2(-60, 40), height: first!.Height);
+        Click(marina, new Vector2(60, 40), height: first.Height);
         marina.Input.KeyDown(MarinaKey.Enter);
         Click(marina, new Vector2(0, 200));
 
@@ -303,8 +310,9 @@ public class DesignerTests
         designer.PierWidth = 4f;
         designer.PierBerthingSides = PierSides.Left;
 
-        Click(marina, new Vector2(50.4f, -20.3f)); // within snapping distance of the quay corner
-        Click(marina, new Vector2(50, 20));
+        var deck = Pier.GetDefaultDeckHeight(PierType.Concrete);
+        Click(marina, new Vector2(50.4f, -20.3f), height: deck); // within snapping distance of the quay corner
+        Click(marina, new Vector2(50, 20), height: deck);
 
         var pier = Assert.Single(marina.GetPiers());
         Assert.Equal("A", pier.Id);
@@ -604,8 +612,9 @@ public class DesignerTests
         Assert.False(designer.CanUndo);
         Assert.Null(designer.UndoDescription);
 
-        Click(marina, new Vector2(0, -25));
-        Click(marina, new Vector2(0, 25));
+        var deck = Pier.GetDefaultDeckHeight(designer.PierType);
+        Click(marina, new Vector2(0, -25), height: deck);
+        Click(marina, new Vector2(0, 25), height: deck);
         designer.Tool = DesignTool.AddBerths;
         designer.BerthWidth = 5f;
         designer.BerthLength = 10f;
@@ -891,22 +900,50 @@ public class DesignerTests
     {
         var marina = new MarinaVisualizer();
         marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+        marina.SetMarineTraffic(MarineTraffic.None with { IsEnabled = true, Clearance = 400f, LaneCount = 3 });
 
         var objects = marina.ExportObjects();
         var layout = marina.GetLayout();
-        var shorelines = layout.Shoreline is null ? 0 : 1;
-        Assert.Equal(shorelines + layout.LandAreas.Count + layout.Piers.Count + layout.Dividers.Count + layout.Berths.Count + layout.MultiBerths.Count, objects.Length);
+        Assert.NotNull(layout.Shoreline);
+        Assert.NotNull(layout.MarineTraffic);
+        Assert.Equal(2 + layout.LandAreas.Count + layout.Piers.Count + layout.Dividers.Count + layout.Berths.Count + layout.MultiBerths.Count, objects.Length);
 
-        // The mainland goes first: everything else is drawn on top of it.
+        // The mainland goes first: everything else is drawn on top of it. The passing traffic comes with it.
         Assert.IsType<Shoreline>(objects[0]);
-        Assert.IsType<LandArea>(objects[1]);
+        Assert.IsType<MarineTraffic>(objects[1]);
+        Assert.IsType<LandArea>(objects[2]);
         Assert.IsType<MultiBerth>(objects[^1]);
+
+        // Everything but the name is in the array, so the same array and the name give the same layout back.
+        Assert.Equal(layout, MarinaLayout.FromObjects(objects, layout.Name));
 
         var rebuilt = MarinaLayout.FromObjects(objects.Reverse(), layout.Name);
         Assert.Empty(rebuilt.Validate());
         Assert.Equal(layout.Shoreline, rebuilt.Shoreline);
+        Assert.Equal(layout.MarineTraffic, rebuilt.MarineTraffic);
         Assert.Equal(layout.Berths.Select(s => s.Id).OrderBy(x => x), rebuilt.Berths.Select(s => s.Id).OrderBy(x => x));
-        Assert.Throws<ArgumentException>(() => MarinaLayout.FromObjects(new object[] { "not an element" }));
+
+        var copy = new MarinaVisualizer();
+        copy.InitializeLayout(rebuilt);
+        Assert.Equal(layout.MarineTraffic, copy.GetLayout().MarineTraffic);
+
+        var refused = Assert.Throws<ArgumentException>(() => MarinaLayout.FromObjects(new object[] { "not an element" }));
+        Assert.StartsWith(Strings.Format(Strings.ErrorUnsupportedMarinaElement, nameof(String)), refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ExportObjects_WithoutACoast_StillCarriesTheTrafficSettings_EvenSwitchedOff()
+    {
+        var marina = new MarinaVisualizer();
+        marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
+
+        var objects = marina.ExportObjects();
+
+        Assert.Equal(2, objects.Length);
+        Assert.Same(MarineTraffic.None, objects[0]);
+        Assert.IsType<Pier>(objects[1]);
+        Assert.Empty(MarinaLayout.Empty.ToObjects()); // a layout without traffic settings has none to give
+        Assert.Equal(marina.GetLayout(), MarinaLayout.FromObjects(objects, marina.MarinaName));
     }
 
     [Fact]

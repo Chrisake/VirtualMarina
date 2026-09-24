@@ -469,9 +469,11 @@ public class MarinaDocumentTests
     [Fact]
     public void ScatteredTrees_AreMostlyOrdinary_WithTheOccasionalCherry()
     {
-        var outline = new[] { new Vector2(0, 0), new Vector2(400, 0), new Vector2(400, 400), new Vector2(0, 400) };
-        var trees = LandArea.GenerateTrees(outline, 40f, new Random(7));
-        Assert.True(trees.Count > 200, $"expected a decent sample, got {trees.Count}");
+        // About 800 trees on 4 ha: a large enough sample for the proportions below, loose enough that the generator
+        // is not spending most of its attempts looking for the last free gaps (the spacing check is quadratic).
+        var outline = new[] { new Vector2(0, 0), new Vector2(200, 0), new Vector2(200, 200), new Vector2(0, 200) };
+        var trees = LandArea.GenerateTrees(outline, 20f, new Random(7));
+        Assert.True(trees.Count > 500, $"expected a decent sample, got {trees.Count}");
 
         var kinds = trees.GroupBy(t => t.Shape).ToDictionary(g => g.Key, g => g.Count());
         Assert.True(kinds.GetValueOrDefault(TreeShape.Broadleaf) > kinds.GetValueOrDefault(TreeShape.Conifer));
@@ -526,9 +528,10 @@ public class MarinaDocumentTests
         marina.Style.Water.Ripples = 0.8f;
         marina.Style.Water.SunGlints = 1.4f;
 
-        // The water shader needs to know where the detailed grid is, so it can flatten the sea beyond it.
+        // The water shader needs to know where the detailed grid is, so it can flatten the sea beyond it; the middle of
+        // the marina is there for custom backends.
         var frame = marina.BuildRenderFrame();
-        Assert.NotEqual(Vector2.Zero, frame.MarinaCenter);
+        Assert.Equal(new Vector2(140, 80), frame.MarinaCenter);
         Assert.True(frame.WaterDetailRadius > 0f, "the water has no detail radius to fade over");
         Assert.Equal(marina.Water.Size * 0.5f, frame.WaterDetailRadius, 1);
 

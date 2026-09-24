@@ -5,7 +5,11 @@ using VirtualMarina.Core.Mathematics;
 
 namespace VirtualMarina.SampleData;
 
-/// <summary>Deterministic sample marina and simulated ERP activity for the test hosts.</summary>
+/// <summary>
+/// Sample marina and simulated ERP activity for the test hosts. Deterministic: the same seed (or <see cref="Random"/>)
+/// and the same clock give the same result. The clock only dates expected arrivals; pass a fixed
+/// <see cref="TimeProvider"/> to pin those too, or leave it out for the system clock.
+/// </summary>
 public static class MockMarinaFactory
 {
     private static readonly string[] BoatNames =
@@ -43,20 +47,21 @@ public static class MockMarinaFactory
     /// east mole with a maintenance row, an irregular lawn, and two curved rubble-mound breakwaters drawn as rocks.
     /// A few berths are disabled, read-only or hidden.
     /// </summary>
-    public static MarinaLayout CreateSampleMarina(int seed = 42)
+    public static MarinaLayout CreateSampleMarina(int seed = 42, TimeProvider? clock = null)
     {
         var rng = new Random(seed);
+        var now = (clock ?? TimeProvider.System).GetLocalNow();
         var mixed = new[] { BoatType.MonohullSailboat, BoatType.MonohullSailboat, BoatType.FishingBoat, BoatType.DayMotorBoat };
         var small = new[] { BoatType.DayMotorBoat, BoatType.FishingBoat, BoatType.MonohullSailboat };
         var cats = new[] { BoatType.CatamaranSailboat, BoatType.CatamaranMotorboat };
         var yachts = new[] { BoatType.MotorYacht };
         var personal = new[] { BoatType.JetSki, BoatType.JetSki, BoatType.DayMotorBoat };
 
-        Berth Populate(Berth berth, BoatType[] preferred) => WithRandomOccupancy(berth, rng, preferred);
+        Berth Populate(Berth berth, BoatType[] preferred) => WithRandomOccupancy(berth, rng, preferred, now);
 
         // The land berths and single-sided piers draw from their own generator, so piers A to D keep their occupancy.
         var extraRng = new Random(unchecked(seed * 31 + 7));
-        Berth PopulateExtra(Berth berth, BoatType[] preferred) => WithRandomOccupancy(berth, extraRng, preferred);
+        Berth PopulateExtra(Berth berth, BoatType[] preferred) => WithRandomOccupancy(berth, extraRng, preferred, now);
         Berth Stored(Berth berth, BoatType[] preferred) => PopulateExtra(berth, preferred) with
         {
             Metadata = new Dictionary<string, string> { ["Kind"] = "Dry storage", ["Power"] = "16A", ["DailyRate"] = $"{Math.Round(berth.Length * 2.0, 0)} EUR" },
@@ -251,10 +256,11 @@ public static class MockMarinaFactory
     /// arrivals (Temporarily Free / Reserved → Occupied) and new bookings (Free → Reserved/Occupied).
     /// Disabled berths and multi-berths are left alone.
     /// </summary>
-    public static IReadOnlyList<BerthUpdate> CreateRandomActivity(IReadOnlyList<Berth> berths, Random rng, int count)
+    public static IReadOnlyList<BerthUpdate> CreateRandomActivity(IReadOnlyList<Berth> berths, Random rng, int count, TimeProvider? clock = null)
     {
         ArgumentNullException.ThrowIfNull(berths);
         ArgumentNullException.ThrowIfNull(rng);
+        var now = (clock ?? TimeProvider.System).GetLocalNow();
 
         var updates = new List<BerthUpdate>();
         foreach (var berth in berths.Where(s => !s.IsDisabled && s.MultiBerthId is null).OrderBy(_ => rng.Next()).Take(count))
@@ -262,12 +268,12 @@ public static class MockMarinaFactory
             updates.Add(berth.Status switch
             {
                 BerthStatus.Occupied => rng.NextDouble() < 0.3
-                    ? BerthUpdate.TemporarilyFree(berth.Id, berth.Boat is { } b ? b with { ExpectedArrival = DateTimeOffset.Now.AddDays(rng.Next(2, 21)) } : null)
+                    ? BerthUpdate.TemporarilyFree(berth.Id, berth.Boat is { } b ? b with { ExpectedArrival = now.AddDays(rng.Next(2, 21)) } : null)
                     : BerthUpdate.Free(berth.Id),
                 BerthStatus.TemporarilyFree => BerthUpdate.Occupy(berth.Id, (berth.Boat ?? CreateBoatForBerth(berth, rng)) with { ExpectedArrival = null }),
                 BerthStatus.Reserved => BerthUpdate.Occupy(berth.Id, berth.Boat ?? CreateBoatForBerth(berth, rng)),
                 _ => rng.NextDouble() < 0.5
-                    ? BerthUpdate.Reserve(berth.Id, CreateBoatForBerth(berth, rng) with { ExpectedArrival = DateTimeOffset.Now.AddHours(rng.Next(1, 48)) })
+                    ? BerthUpdate.Reserve(berth.Id, CreateBoatForBerth(berth, rng) with { ExpectedArrival = now.AddHours(rng.Next(1, 48)) })
                     : BerthUpdate.Occupy(berth.Id, CreateBoatForBerth(berth, rng)),
             });
         }
@@ -302,7 +308,7 @@ public static class MockMarinaFactory
         };
     }
 
-    private static Berth WithRandomOccupancy(Berth berth, Random rng, IReadOnlyList<BoatType> preferred)
+    private static Berth WithRandomOccupancy(Berth berth, Random rng, IReadOnlyList<BoatType> preferred, DateTimeOffset now)
     {
         var roll = rng.NextDouble();
         var berthWithMeta = berth with
@@ -324,7 +330,7 @@ public static class MockMarinaFactory
         if (roll < 0.75)
         {
             var expected = rng.NextDouble() < 0.75
-                ? CreateBoatForBerth(berth, rng, preferred) with { ExpectedArrival = DateTimeOffset.Now.AddHours(rng.Next(1, 72)) }
+                ? CreateBoatForBerth(berth, rng, preferred) with { ExpectedArrival = now.AddHours(rng.Next(1, 72)) }
                 : null;
             return berthWithMeta with { Status = BerthStatus.Reserved, Boat = expected };
         }
@@ -332,7 +338,7 @@ public static class MockMarinaFactory
         if (roll < 0.83)
         {
             // Berth holder away cruising: the berth can be let out until they return.
-            var away = CreateBoatForBerth(berth, rng, preferred) with { ExpectedArrival = DateTimeOffset.Now.AddDays(rng.Next(2, 21)) };
+            var away = CreateBoatForBerth(berth, rng, preferred) with { ExpectedArrival = now.AddDays(rng.Next(2, 21)) };
             return berthWithMeta with { Status = BerthStatus.TemporarilyFree, Boat = away };
         }
 

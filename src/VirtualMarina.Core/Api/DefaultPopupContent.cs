@@ -84,7 +84,7 @@ public static class DefaultPopupContent
             .ToArray();
         var tooltip = new BerthTooltip
         {
-            Title = Strings.Format(Strings.TooltipBerthsSelected, berths.Count),
+            Title = Strings.Plural("TooltipBerthsSelected", berths.Count, berths.Count),
             Subtitle = string.Join(", ", piers),
             AccentColor = statuses.Length == 1 ? colors.Get(statuses[0]) : null,
         };

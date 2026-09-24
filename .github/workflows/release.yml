@@ -1,0 +1,90 @@
+# Packs the libraries when a version tag is pushed, and publishes them to NuGet.
+#
+# Versions come from the tag through MinVer (see Directory.Build.props): pushing v1.2.3 builds 1.2.3,
+# v1.3.0-rc.1 builds that pre-release. The .nupkg and .snupkg files are always uploaded as a workflow artifact;
+# they are pushed to nuget.org only when the repository has a NUGET_API_KEY secret, so a fork or a dry run
+# still gets the packages to inspect.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  pack:
+    name: Test, pack and publish
+    # Windows, so the WinForms library's tests run before its package is made.
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up the .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props', '**/*.csproj', '**/Directory.Build.props', 'global.json') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      - name: Build
+        run: dotnet build VirtualMarina.sln --configuration Release
+
+      - name: Test
+        run: dotnet test VirtualMarina.sln --configuration Release --no-build
+
+      # Only the four libraries are packable (src/Directory.Build.props); packing them by name keeps the apps,
+      # samples and tests out of the output even if one of them forgets IsPackable=false.
+      - name: Pack
+        shell: bash
+        run: |
+          for project in VirtualMarina.Core VirtualMarina.Rendering.OpenGL VirtualMarina.WinForms VirtualMarina.Blazor; do
+            dotnet pack "src/$project/$project.csproj" --configuration Release --no-build --output artifacts
+          done
+          ls -l artifacts
+
+      - name: Upload the packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          if-no-files-found: error
+
+      - name: Push to NuGet
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::notice::NUGET_API_KEY is not set; the packages are in the 'packages' artifact but were not published."
+            exit 0
+          fi
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            echo "::notice::Not a tag build; the packages are in the 'packages' artifact but were not published."
+            exit 0
+          fi
+          # The .snupkg files beside each .nupkg are pushed with it, to the NuGet symbol server.
+          dotnet nuget push "artifacts/*.nupkg" --api-key "$NUGET_API_KEY" \
+            --source https://api.nuget.org/v3/index.json --skip-duplicate

@@ -17,7 +17,7 @@ Without it a marina looks like an island in an empty sea. A `Shoreline` is an op
 one side of it:
 
 ```csharp
-// A straight coast running east-west, with the land to the north.
+// A straight coast running east (+X), with the land to the north (−Z).
 marina.SetShoreline(new Shoreline(
     new[] { new Vector2(-500, -40), new Vector2(500, -40) },
     landOnLeft: false));
@@ -27,9 +27,25 @@ Two points are a straight coast; more bend it into bays and headlands. The line 
 before the first point and the stretch after the last one run on without end, so the land never runs out however far
 the camera pulls back.
 
-`LandOnLeft` picks the half — left of the line walked from the first point to the last. The only rule is that the two
-endless stretches must not cross each other, because then neither side is "the land"; `Validate()` reports that and
-nothing is drawn.
+`LandOnLeft` picks the half. "Left" is meant in **plan coordinates** (plan Y is world Z): true puts the land on the
+side reached by turning the line's direction from +X toward +Z, so a line running east has its land to the south.
+Plan coordinates look mirrored from above, because +Z points south, toward the bottom of a north-up view — so seen from
+above, `LandOnLeft = true` is the **right-hand** side of someone walking the line from the first point to the last, the
+side `Pier.Right` points to for a pier running the same way. The name stays as it is because saved designs depend on it.
+See [coordinate conventions](20-coordinate-conventions.md). The designer sidesteps all of this: you click the side that
+should be land.
+
+The line, carried on without end at both ends, must split the plan cleanly in two, or "the land side" means nothing.
+`Validate()` reports each way it can fail:
+
+- fewer than two points, or a point that is not a finite position;
+- two neighbouring points in the same place (within a centimeter);
+- the drawn line crossing or touching itself;
+- the two endless stretches crossing each other;
+- either endless stretch running back across the drawn line.
+
+`SetShoreline` throws `MarinaLayoutException` with those messages, and a design holding such a shoreline fails to load
+with them. (Earlier versions accepted a line crossing itself and drew land in the wrong places.)
 
 | Property | Default | |
 |---|---|---|
@@ -43,13 +59,15 @@ nothing is drawn.
 The scenery is scattered in a band along the coast and thins out inland. It is generated from the seed rather than
 stored, so a wooded coast costs no more in the file than a bare one.
 
-There is only ever one shoreline: setting another replaces it, and `SetShoreline(null)` takes it away. It is drawn
+There is only ever one shoreline: setting another replaces it, and `SetShoreline(null)` or `RemoveShoreline()` takes it away. It is drawn
 **beneath** the [land areas](03-layout.md#land-areas) placed by hand, so a quay traced along the shore sits on top of
 it and the two read as one piece of ground.
 
 `BuildOutline()` returns the closed shape covering the land side, `Contains(point)` says whether a point is on land,
-`DistanceToShore(point)` how far it is from the drawn line, and `EndsAtTheMapEdge()` where the two endless stretches
-finally reach the edge of the world. Drawing a shoreline by hand is covered in the
+`DistanceToShore(point)` how far it is from the drawn line, `LandSideNormal(segment)` which way is inland from a stretch
+of it, and `EndsAtTheMapEdge()` where the two endless stretches finally reach the edge of the world (at least
+`Shoreline.Reach`, 12 km, out). The shape is worked out once and kept, so testing many points is cheap. `Shoreline` is a
+record with value equality: two shorelines with the same points and settings are equal. Drawing a shoreline by hand is covered in the
 [designer guide](12-designer.md#the-mainland).
 
 ## Passing traffic
@@ -94,7 +112,8 @@ means 300 m whether the marina is 100 m across or 2 km. Together with `EdgeClear
 sweeps in. Lanes beyond the first step out to sea by `LaneSpacing` on average, give or take, so they are not ruled
 parallel.
 
-Every vessel in a lane runs the same way, so nothing ever meets head-on. Half the lanes run one way and half the
+Every vessel in a lane runs the same way, so nothing ever meets head-on. A vessel swings smoothly round the bend in
+its lane rather than turning at each point. Half the lanes run one way and half the
 other, in an order drawn from `Seed` — a marina always has traffic in both directions, but not in a fixed
 arrangement. `Reversed` says which way a lane runs, and its `Points` are stored in that direction.
 
@@ -122,18 +141,22 @@ way, so no two of a kind keep station while the average is still the real figure
 
 ### How they come and go
 
-The sea starts full: `MaximumVessels` of them, scattered along the lanes and already under way, so it is busy from
-the first frame. Each vessel crosses its lane **once** and is gone off the far edge. About `SpawnDelaySeconds` after
+The sea starts full: `MaximumVessels` of them (`VesselCount`), scattered along the lanes and already under way, so it
+is busy from the first frame. When the marina's layout changes under it, the lanes are planned again and the traffic
+carries on: every vessel keeps its lane, kind, speed and progress, and only one whose lane is gone moves to another. Each vessel crosses its lane **once** and is gone off the far edge. About `SpawnDelaySeconds` after
 one leaves, another appears at the start of a lane — a lane of its own choosing, of its own kind, at its own speed
 and its own offset within the lane.
 
-`MarineTrafficField` holds that: `Advance(seconds)` moves it on and `Vessels` says where everything is. The
-visualizer keeps one and advances it as time passes; `GetTrafficVessels()` returns the same snapshot for a host that
-wants to draw its own marker on top. The vessels are decoration: not berths, not clickable, and they take no part in
+`MarineTrafficField` holds that: `Advance(seconds)` moves it on and `Vessels` says where everything is — a live view that
+the next `Advance` rewrites, so copy it (`Vessels.ToArray()`) to keep it. The visualizer keeps one and advances it as
+time passes; `GetTrafficVessels()` returns where everything is now for a host that wants to draw its own marker on top.
+A `TrafficVessel`'s `HeadingDegrees` uses the library's heading convention (0° = +Z, south; 90° = +X, east), not a
+compass bearing: a bearing `b` is the heading `180 − b`. The vessels are decoration: not berths, not clickable, and they take no part in
 selection.
 
-While traffic is on, the scene's instance data is rebuilt every frame because the vessels move. Switching it off
-hands the renderer the still scene again, which it can leave uploaded.
+The vessels are a render layer of their own (`RenderLayerKind.Traffic`), so while traffic is on only that layer is sent
+to the GPU each frame; the piers, berths and boats stay uploaded as they are. Moving vessels count as animation
+(`IsAnimating`), so a view drawing on demand keeps drawing while there is traffic, and can rest again once it is switched off.
 
 ## See also
 

@@ -471,3 +471,41 @@ public sealed class ReferenceImageChangedEventArgs : EventArgs
     /// <summary>Meters per image pixel.</summary>
     public float MetersPerPixel { get; }
 }
+
+/// <summary>Data for <see cref="MarinaDesigner.ActionRedone"/>: the last change undone was made again.</summary>
+public sealed class DesignActionRedoneEventArgs : EventArgs
+{
+    /// <summary>Creates the event data.</summary>
+    /// <param name="description">What was made again.</param>
+    /// <param name="remainingSteps">How many undone steps can still be redone.</param>
+    public DesignActionRedoneEventArgs(string description, int remainingSteps)
+    {
+        Description = description;
+        RemainingSteps = remainingSteps;
+    }
+
+    /// <summary>What was made again, e.g. "Add 4 berths".</summary>
+    public string Description { get; }
+
+    /// <summary>How many undone steps can still be redone.</summary>
+    public int RemainingSteps { get; }
+}
+
+/// <summary>Data for <see cref="MarinaDesigner.ActionFailed"/>: something asked for in the view could not be done.</summary>
+public sealed class DesignActionFailedEventArgs : EventArgs
+{
+    /// <summary>Creates the event data.</summary>
+    /// <param name="description">What was being done, e.g. "Undo Add 4 berths" or the tool in hand.</param>
+    /// <param name="exception">Why it could not be done.</param>
+    public DesignActionFailedEventArgs(string description, Exception exception)
+    {
+        Description = description;
+        Exception = exception;
+    }
+
+    /// <summary>What was being done.</summary>
+    public string Description { get; }
+
+    /// <summary>Why it could not be done; its message is fit to show the user.</summary>
+    public Exception Exception { get; }
+}

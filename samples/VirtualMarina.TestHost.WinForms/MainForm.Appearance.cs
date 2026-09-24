@@ -84,9 +84,9 @@ public partial class MainForm
         }
     }
 
-    private static void Header(TableLayoutPanel table, string text)
+    private void Header(TableLayoutPanel table, string text)
     {
-        var label = new Label { Text = text, AutoSize = true, Font = new Font(table.Font, FontStyle.Bold), Margin = new Padding(0, 10, 0, 2) };
+        var label = new Label { Text = text, AutoSize = true, Font = _headerFont, Margin = new Padding(0, 10, 0, 2) };
         FullRow(table, label);
     }
 
@@ -136,15 +136,13 @@ public partial class MainForm
         var button = new Button { Text = status.GetDisplayName(), AutoSize = true, FlatStyle = FlatStyle.Flat };
         void Paint()
         {
-            var c = marinaView.Style.Status.Get(status);
-            button.FlatAppearance.BorderColor = Color.FromArgb((int)(c.R * 255), (int)(c.G * 255), (int)(c.B * 255));
+            button.FlatAppearance.BorderColor = ToColor(marinaView.Style.Status.Get(status));
             button.FlatAppearance.BorderSize = 3;
         }
 
         button.Click += (_, _) =>
         {
-            var current = marinaView.Style.Status.Get(status);
-            using var dialog = new ColorDialog { Color = Color.FromArgb((int)(current.R * 255), (int)(current.G * 255), (int)(current.B * 255)), FullOpen = true };
+            using var dialog = new ColorDialog { Color = ToColor(marinaView.Style.Status.Get(status)), FullOpen = true };
             if (dialog.ShowDialog(this) != DialogResult.OK) return;
             marinaView.Style.Status.Set(status, ColorRgba.FromBytes(dialog.Color.R, dialog.Color.G, dialog.Color.B));
             Paint();
@@ -152,4 +150,12 @@ public partial class MainForm
         _refreshAppearance.Add(Paint);
         return button;
     }
+
+    /// <summary>
+    /// A style colour as a GDI+ one. Style channels may run past 1 (a light brighter than white) or below 0, which
+    /// Color.FromArgb refuses, so each channel is brought into the byte range first.
+    /// </summary>
+    private static Color ToColor(ColorRgba color) => Color.FromArgb(Channel(color.R), Channel(color.G), Channel(color.B));
+
+    private static int Channel(float value) => float.IsFinite(value) ? Math.Clamp((int)MathF.Round(value * 255f), 0, 255) : 0;
 }

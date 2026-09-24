@@ -99,13 +99,13 @@ internal static class Strings
     /// <summary>"&amp;Marina"</summary>
     internal static string MenuMarina => Get("MenuMarina");
 
-    /// <summary>"&amp;Appearance…"</summary>
+    /// <summary>"&amp;Appearance"</summary>
     internal static string MenuAppearance => Get("MenuAppearance");
 
     /// <summary>"Berth &amp;Labels"</summary>
     internal static string MenuBerthLabels => Get("MenuBerthLabels");
 
-    /// <summary>"&amp;Cameras…"</summary>
+    /// <summary>"&amp;Cameras"</summary>
     internal static string MenuCameras => Get("MenuCameras");
 
     /// <summary>"&amp;Help"</summary>
@@ -164,7 +164,7 @@ internal static class Strings
     /// <summary>"Top View"</summary>
     internal static string CommandTopView => Get("CommandTopView");
 
-    /// <summary>"Look straight down with north up (Ctrl+T)"</summary>
+    /// <summary>"Look straight down with north up ({0})"</summary>
     internal static string CommandTopViewTip => Get("CommandTopViewTip");
 
     /// <summary>"Fit Marina"</summary>
@@ -267,6 +267,9 @@ internal static class Strings
     /// <summary>"Save the changes to {0} first?"</summary>
     internal static string ConfirmDiscard => Get("ConfirmDiscard");
 
+    /// <summary>"Don't save"</summary>
+    internal static string ConfirmDiscardButton => Get("ConfirmDiscardButton");
+
     /// <summary>"Marina name"</summary>
     internal static string MarinaNameTitle => Get("MarinaNameTitle");
 
@@ -283,9 +286,6 @@ internal static class Strings
 
     /// <summary>"Keyboard and mouse"</summary>
     internal static string ShortcutsTitle => Get("ShortcutsTitle");
-
-    /// <summary>"Mouse   Left drag           pan the view   Right drag          orbit   Wheel               zo..."</summary>
-    internal static string ShortcutsBody => Get("ShortcutsBody");
 
     /// <summary>"About"</summary>
     internal static string AboutTitle => Get("AboutTitle");
@@ -358,8 +358,6 @@ internal static class Strings
     /// <summary>"Berth labels"</summary>
     internal static string CardLabels => Get("CardLabels");
 
-    /// <summary>"Face"</summary>
-    /// <summary>"Weight and width of the lettering painted on the water."</summary>
     /// <summary>"Normal"</summary>
     internal static string LabelColorNormal => Get("LabelColorNormal");
 
@@ -369,33 +367,37 @@ internal static class Strings
     /// <summary>"Ashore"</summary>
     internal static string LabelColorAshore => Get("LabelColorAshore");
 
-    /// <summary>"Colour of the names of berths ashore. ..."</summary>
+    /// <summary>"Colour of the names of berths ashore. They are read against quay concrete or grass rather than ag..."</summary>
     internal static string LabelColorAshoreTip => Get("LabelColorAshoreTip");
 
     /// <summary>"Disabled"</summary>
     internal static string LabelColorDisabled => Get("LabelColorDisabled");
 
-    /// <summary>"Regular"</summary>
+    /// <summary>"Font"</summary>
     internal static string LabelFont => Get("LabelFont");
 
+    /// <summary>"The font the berth names are drawn in. Its letter shapes are stored inside the design, so the mar..."</summary>
     internal static string LabelFontTip => Get("LabelFontTip");
 
+    /// <summary>"Bold"</summary>
     internal static string LabelBold => Get("LabelBold");
 
+    /// <summary>"Use the bold face of the chosen font."</summary>
     internal static string LabelBoldTip => Get("LabelBoldTip");
 
+    /// <summary>"Built-in lettering"</summary>
     internal static string FontBuiltIn => Get("FontBuiltIn");
 
-    /// <summary>"Bold"</summary>
-    /// <summary>"Condensed"</summary>
-    /// <summary>"Wide"</summary>
+    /// <summary>"{0} (in the design)"</summary>
+    internal static string FontStoredInDesign => Get("FontStoredInDesign");
+
     /// <summary>"Preview boats"</summary>
     internal static string CardPreview => Get("CardPreview");
 
     /// <summary>"Marina full"</summary>
     internal static string PreviewFill => Get("PreviewFill");
 
-    /// <summary>"How full the marina ends up when you press Add boats: at 100% every berth has a boat in..."</summary>
+    /// <summary>"How full the marina ends up when you press Add boats: at 100% every berth has a boat in it, ashor..."</summary>
     internal static string PreviewFillTip => Get("PreviewFillTip");
 
     /// <summary>"Add boats"</summary>
@@ -404,7 +406,7 @@ internal static class Strings
     /// <summary>"Clear boats"</summary>
     internal static string PreviewClear => Get("PreviewClear");
 
-    /// <summary>"Boats to judge the settings against, each picked to suit the berth it goes in, with the wi..."</summary>
+    /// <summary>"Boats to judge the settings against, each picked to suit the berth it goes in, with the wide ones..."</summary>
     internal static string PreviewHint => Get("PreviewHint");
 
     /// <summary>"Filled {0} of the {1} berths with preview boats"</summary>
@@ -500,7 +502,7 @@ internal static class Strings
     /// <summary>"A pier along a quay wall or a mole only takes boats on its water side."</summary>
     internal static string PierBerthsTip => Get("PierBerthsTip");
 
-    /// <summary>"Click the shore end, then the far end. The pier squares up with the quay and the piers alread..."</summary>
+    /// <summary>"Click the shore end, then the far end. The pier squares up with the quay and the piers already th..."</summary>
     internal static string PierHint => Get("PierHint");
 
     /// <summary>"Name"</summary>
@@ -547,7 +549,7 @@ internal static class Strings
     /// <summary>"Power and water points, placed between every two berths of the pier."</summary>
     internal static string BerthServicesTip => Get("BerthServicesTip");
 
-    /// <summary>"Click beside a pier where the row starts, then where it ends. Clear the tick above to start t..."</summary>
+    /// <summary>"Click beside a pier where the row starts, then where it ends. Clear the tick above to start the r..."</summary>
     internal static string BerthHint => Get("BerthHint");
 
     /// <summary>"Each berth gets its own pair of short finger piers."</summary>
@@ -580,13 +582,13 @@ internal static class Strings
     /// <summary>"Pattern"</summary>
     internal static string BerthNamePattern => Get("BerthNamePattern");
 
-    /// <summary>"Name of each new berth. {pier} is the pier, {pierName} its name, {side} the side (L or R) and..."</summary>
+    /// <summary>"Name of each new berth. {pier} is the pier, {pierName} its name, {side} the side (L or R) and {nu..."</summary>
     internal static string BerthNamePatternTip => Get("BerthNamePatternTip");
 
     /// <summary>"Start at"</summary>
     internal static string BerthStartNumber => Get("BerthStartNumber");
 
-    /// <summary>"Number the first new berth gets. Names already taken are skipped, so a second row carries on ..."</summary>
+    /// <summary>"Number the first new berth gets. Names already taken are skipped, so a second row carries on afte..."</summary>
     internal static string BerthStartNumberTip => Get("BerthStartNumberTip");
 
     /// <summary>"Count by"</summary>
@@ -618,13 +620,13 @@ internal static class Strings
     /// <summary>"Direction the stored boat faces: 0° = north, 90° = east."</summary>
     internal static string LandBerthHeadingTip => Get("LandBerthHeadingTip");
 
-    /// <summary>"Name of each new slot ashore. {pier} is the land area, {pierName} its name and {number} the r..."</summary>
+    /// <summary>"Name of each new slot ashore. {pier} is the land area, {pierName} its name and {number} the runni..."</summary>
     internal static string LandNamePatternTip => Get("LandNamePatternTip");
 
     /// <summary>"Number the first new slot ashore gets. Counts separately from the berths on the water."</summary>
     internal static string LandStartNumberTip => Get("LandStartNumberTip");
 
-    /// <summary>"Click the spot on a land area, then click where the bow should point. Click the same spot twi..."</summary>
+    /// <summary>"Click the spot on a land area, then click where the bow should point. Click the same spot twice t..."</summary>
     internal static string LandBerthHint => Get("LandBerthHint");
 
     // ---- Inspector: trees and erase ------------------------------------------------------------------
@@ -632,10 +634,10 @@ internal static class Strings
     /// <summary>"none"</summary>
     internal static string TreeNone => Get("TreeNone");
 
-    /// <summary>"Trees per 1000 m². Click a lawn to scatter them; click again for a different arrangement, Ctr..."</summary>
+    /// <summary>"Trees per 1000 m². Click a lawn to scatter them; click again for a different arrangement, Ctrl+cl..."</summary>
     internal static string TreeHint => Get("TreeHint");
 
-    /// <summary>"Click a berth, a pier or a land area to remove it. Piers and land areas take their berths wit..."</summary>
+    /// <summary>"Click a berth, a pier or a land area to remove it. Piers and land areas take their berths with th..."</summary>
     internal static string EraseHint => Get("EraseHint");
 
     /// <summary>"Ctrl+Z brings back anything you remove by mistake."</summary>
@@ -655,22 +657,22 @@ internal static class Strings
     /// <summary>"Select"</summary>
     internal static string CardSelect => Get("CardSelect");
 
-    /// <summary>"Drag a box over the water. Every berth whose middle falls inside it is selected; hold Shift o..."</summary>
+    /// <summary>"Drag a box over the water. Every berth whose middle falls inside it is selected; hold Shift or Ct..."</summary>
     internal static string SelectHint => Get("SelectHint");
 
     /// <summary>"{0} berth(s) selected"</summary>
     internal static string SelectCount => Get("SelectCount");
 
-    /// <summary>"Pick what the pedestals offer, then click a berth. Hold Alt or Ctrl to change every berth dow..."</summary>
+    /// <summary>"Pick what the pedestals offer, then click a berth. Hold Alt or Ctrl to change every berth down th..."</summary>
     internal static string ServicesHint => Get("ServicesHint");
 
-    /// <summary>"A berth left alone takes whatever its pier offers, so only the ones you change carry their ow..."</summary>
+    /// <summary>"A berth left alone takes whatever its pier offers, so only the ones you change carry their own se..."</summary>
     internal static string ServicesInheritHint => Get("ServicesInheritHint");
 
     /// <summary>"Rename"</summary>
     internal static string CardRename => Get("CardRename");
 
-    /// <summary>"Click a berth to give it another name, or a pier to give it a title. Berth names are also the..."</summary>
+    /// <summary>"Click a berth to give it another name, or a pier to give it a title. Berth names are also their i..."</summary>
     internal static string RenameHint => Get("RenameHint");
 
     /// <summary>"Ctrl+Z puts the old name back."</summary>
@@ -691,20 +693,28 @@ internal static class Strings
     /// <summary>"Its id, which its berths and dividers point at:"</summary>
     internal static string RenamePierIdQuestion => Get("RenamePierIdQuestion");
 
+    /// <summary>"Rename the berths on pier {0}"</summary>
     internal static string RenameBerthsTitle => Get("RenameBerthsTitle");
 
+    /// <summary>"Name all {0} berths on pier {1} by:"</summary>
     internal static string RenameBerthsQuestion => Get("RenameBerthsQuestion");
 
+    /// <summary>"Name its berths by:"</summary>
     internal static string RenamePatternQuestion => Get("RenamePatternQuestion");
 
+    /// <summary>"Use {pier}, {side} and {number}. Every berth on the pier is renamed and renumbered along it, what..."</summary>
     internal static string RenamePatternHint => Get("RenamePatternHint");
 
+    /// <summary>"Those names are taken"</summary>
     internal static string RenameClashTitle => Get("RenameClashTitle");
 
+    /// <summary>"This pattern would give more than one berth the same name, or a name something else already has: ..."</summary>
     internal static string RenameClashBody => Get("RenameClashBody");
 
+    /// <summary>" and {0} more"</summary>
     internal static string RenameClashMore => Get("RenameClashMore");
 
+    /// <summary>"Pier {0} not renamed; these names are taken: {1}"</summary>
     internal static string LogRenameClash => Get("LogRenameClash");
 
     /// <summary>"Pier id {0} is now {1}"</summary>
@@ -743,6 +753,7 @@ internal static class Strings
     /// <summary>"Renamed {0} to {1}"</summary>
     internal static string LogRenamed => Get("LogRenamed");
 
+    /// <summary>"Berths on pier {0} are now named {1}"</summary>
     internal static string LogBerthPattern => Get("LogBerthPattern");
 
     /// <summary>"{0} is already taken; {1} keeps its name."</summary>
@@ -768,10 +779,10 @@ internal static class Strings
     /// <summary>"What is scattered across the land behind the shore. Bare ground is the cheapest to draw."</summary>
     internal static string CoastSceneryTip => Get("CoastSceneryTip");
 
-    /// <summary>"Click along the coast (two points make a straight one), press Enter, then click the side that..."</summary>
+    /// <summary>"Click along the coast (two points make a straight one), press Enter, then click the side that is ..."</summary>
     internal static string CoastHint => Get("CoastHint");
 
-    /// <summary>"The first and last stretches run on without end, so the land never stops however far you pull..."</summary>
+    /// <summary>"The first and last stretches run on without end, so the land never stops however far you pull back."</summary>
     internal static string CoastEndlessHint => Get("CoastEndlessHint");
 
     /// <summary>"Remove the mainland"</summary>
@@ -782,9 +793,6 @@ internal static class Strings
 
     /// <summary>"Mainland from {0} points, {1}."</summary>
     internal static string CoastPresent => Get("CoastPresent");
-
-    /// <summary>"Draw the &amp;Coast"</summary>
-    internal static string MenuCoast => Get("MenuCoast");
 
     /// <summary>"Drew the mainland along {0} points"</summary>
     internal static string LogCoastDrawn => Get("LogCoastDrawn");
@@ -800,53 +808,61 @@ internal static class Strings
     /// <summary>"Vessels out at sea"</summary>
     internal static string TrafficShow => Get("TrafficShow");
 
-    /// <summary>"Boats, yachts and a ferry crossing the bay beyond the marina. They are decoration: they canno..."</summary>
+    /// <summary>"Boats, yachts and a ferry crossing the bay beyond the marina. They are decoration: they cannot be..."</summary>
     internal static string TrafficShowTip => Get("TrafficShowTip");
 
-    /// <summary>"How busy"</summary>
+    /// <summary>"Clear of land at the edge"</summary>
     internal static string TrafficEdgeClearance => Get("TrafficEdgeClearance");
 
-    /// <summary>"How many vessels are out there at once."</summary>
+    /// <summary>"How far off the coast a lane sits where it leaves the map. With the setting above it decides how ..."</summary>
     internal static string TrafficEdgeClearanceTip => Get("TrafficEdgeClearanceTip");
 
+    /// <summary>"Wait before the next one"</summary>
     internal static string TrafficSpawnDelay => Get("TrafficSpawnDelay");
 
+    /// <summary>"Roughly how long after a vessel leaves the map before another appears somewhere. Each wait is dra..."</summary>
     internal static string TrafficSpawnDelayTip => Get("TrafficSpawnDelayTip");
 
     /// <summary>"Keep clear by"</summary>
     internal static string TrafficClearance => Get("TrafficClearance");
 
-    /// <summary>"How far the lanes must stay from the marina and from any land. Raise it to push the traffic o..."</summary>
+    /// <summary>"How near the middle of the marina the shipping passes. Turn the path on below to see where it runs."</summary>
     internal static string TrafficClearanceTip => Get("TrafficClearanceTip");
 
     /// <summary>"Speed"</summary>
     internal static string TrafficSpeed => Get("TrafficSpeed");
 
-    /// <summary>"How fast the vessels cross, in knots."</summary>
+    /// <summary>"Speeds the whole sea up or slows it down. Every kind of vessel keeps its own speed: a fishing boa..."</summary>
     internal static string TrafficSpeedTip => Get("TrafficSpeedTip");
 
-    /// <summary>"{0} lane(s) found room out there."</summary>
+    /// <summary>"{0} lane(s); the nearest passes {1} m from the middle of the marina."</summary>
     internal static string TrafficPasses => Get("TrafficPasses");
 
+    /// <summary>"Lanes"</summary>
     internal static string TrafficLanes => Get("TrafficLanes");
 
+    /// <summary>"How many lanes of shipping there are. The nearest passes at the distance below, and the rest step..."</summary>
     internal static string TrafficLanesTip => Get("TrafficLanesTip");
 
+    /// <summary>"Space between lanes"</summary>
     internal static string TrafficLaneSpacing => Get("TrafficLaneSpacing");
 
+    /// <summary>"How far apart the lanes are. It also sets how far a vessel may wander across its own lane, so wid..."</summary>
     internal static string TrafficLaneSpacingTip => Get("TrafficLaneSpacingTip");
 
+    /// <summary>"Show the lanes"</summary>
     internal static string TrafficShowLanes => Get("TrafficShowLanes");
 
+    /// <summary>"Draws the lines the shipping follows, tinted by which way each one runs, so the spacing can be se..."</summary>
     internal static string TrafficShowLanesTip => Get("TrafficShowLanesTip");
 
-    /// <summary>"No room for a lane: lower the clearance, or widen the water."</summary>
+    /// <summary>"No lane could be found: lower the clearance, or widen the water."</summary>
     internal static string TrafficNoRoom => Get("TrafficNoRoom");
 
-    /// <summary>"Lanes never cross the marina or the land, and vessels fade away at the edge of the map."</summary>
+    /// <summary>"Each lane sweeps in past the marina and back out to the edge of the map. Vessels cross it once an..."</summary>
     internal static string TrafficHint => Get("TrafficHint");
 
-    /// <summary>"{0} kn"</summary>
+    /// <summary>"{0} s"</summary>
     internal static string ValueSeconds => Get("ValueSeconds");
 
     // ---- Look: the mainland --------------------------------------------------------------------------
@@ -930,16 +946,16 @@ internal static class Strings
     /// <summary>"Cast shadows"</summary>
     internal static string ShadowsShow => Get("ShadowsShow");
 
-    /// <summary>"The boats and the piers throw their shape onto the water and the quays. Turning it off makes ..."</summary>
+    /// <summary>"The boats and the piers throw their shape onto the water and the quays. Turning it off makes a bi..."</summary>
     internal static string ShadowsShowTip => Get("ShadowsShowTip");
 
     /// <summary>"Darkness"</summary>
     internal static string ShadowStrength => Get("ShadowStrength");
 
-    /// <summary>"How dark a shadow is. Past about 40% the places where a boat overlaps its own shadow start to..."</summary>
+    /// <summary>"How dark a shadow is. Past about 40% the places where a boat overlaps its own shadow start to show."</summary>
     internal static string ShadowStrengthTip => Get("ShadowStrengthTip");
 
-    /// <summary>"Shadows follow the sun above. They land on the ground an object stands over, so a boat ashore..."</summary>
+    /// <summary>"Shadows follow the sun above. They land on the ground an object stands over, so a boat ashore sha..."</summary>
     internal static string ShadowHint => Get("ShadowHint");
 
     // ---- Look: the water area ------------------------------------------------------------------------
@@ -947,18 +963,19 @@ internal static class Strings
     /// <summary>"Detailed area"</summary>
     internal static string WaterArea => Get("WaterArea");
 
-    /// <summary>"How far out the water has waves, reflections and glints. Past it the sea carries on flat to t..."</summary>
+    /// <summary>"How far out the water has waves, reflections and glints. Past it the sea carries on flat to the h..."</summary>
     internal static string WaterAreaTip => Get("WaterAreaTip");
 
     /// <summary>"At most"</summary>
     internal static string TrafficMaximum => Get("TrafficMaximum");
 
-    /// <summary>"The most vessels on the water at once. How busy is a share of this."</summary>
+    /// <summary>"The most vessels on the water at once. How many there actually are wanders below this as they com..."</summary>
     internal static string TrafficMaximumTip => Get("TrafficMaximumTip");
 
     /// <summary>"{0} vessels"</summary>
     internal static string ValueVessels => Get("ValueVessels");
 
+    /// <summary>"{0} lanes"</summary>
     internal static string ValueLanes => Get("ValueLanes");
 
     // ---- Inspector: reference image ------------------------------------------------------------------
@@ -1005,7 +1022,7 @@ internal static class Strings
     /// <summary>"The line you drew is {0:0.0} m long at the current scale. Type what it should be and apply."</summary>
     internal static string ImageStateLine => Get("ImageStateLine");
 
-    /// <summary>"Image is {0:0} × {1:0} m ({2:0.###} m per pixel). Draw a line over a known length to set the ..."</summary>
+    /// <summary>"Image is {0:0} × {1:0} m ({2:0.###} m per pixel). Draw a line over a known length to set the scale."</summary>
     internal static string ImageStateReady => Get("ImageStateReady");
 
     /// <summary>"{0}%"</summary>
@@ -1013,19 +1030,10 @@ internal static class Strings
 
     // ---- Inspector: summary --------------------------------------------------------------------------
 
-    /// <summary>"{0} berth(s): {1} on the water, {2} ashore {3} pier(s), {4} land area(s), {5} separator(s), {..."</summary>
+    /// <summary>"{0} berth(s): {1} on the water, {2} ashore {3} pier(s), {4} land area(s), {5} separator(s), {6} t..."</summary>
     internal static string Summary => Get("Summary");
 
     // ---- Appearance dialog ---------------------------------------------------------------------------
-
-    /// <summary>"Water, light and motion"</summary>
-    internal static string AppearanceTitle => Get("AppearanceTitle");
-
-    /// <summary>"Done"</summary>
-    internal static string AppearanceDone => Get("AppearanceDone");
-
-    /// <summary>"Cancel"</summary>
-    internal static string AppearanceCancel => Get("AppearanceCancel");
 
     /// <summary>"Reset to defaults"</summary>
     internal static string AppearanceReset => Get("AppearanceReset");
@@ -1122,4 +1130,99 @@ internal static class Strings
 
     /// <summary>"{0}° above the horizon"</summary>
     internal static string ValueDegreesAboveHorizon => Get("ValueDegreesAboveHorizon");
+
+    // ---- Shared session, history and help --------------------------------------------------------
+
+    /// <summary>"&amp;Redo"</summary>
+    internal static string MenuRedo => Get("MenuRedo");
+
+    /// <summary>"Undo"</summary>
+    internal static string ToolUndo => Get("ToolUndo");
+
+    /// <summary>"Redo"</summary>
+    internal static string ToolRedo => Get("ToolRedo");
+
+    /// <summary>"Undo: {0}"</summary>
+    internal static string UndoTip => Get("UndoTip");
+
+    /// <summary>"Redo: {0}"</summary>
+    internal static string RedoTip => Get("RedoTip");
+
+    /// <summary>"Undo: take back the last point"</summary>
+    internal static string UndoPointTip => Get("UndoPointTip");
+
+    /// <summary>"Nothing to undo"</summary>
+    internal static string NothingToUndo => Get("NothingToUndo");
+
+    /// <summary>"Nothing to redo"</summary>
+    internal static string NothingToRedo => Get("NothingToRedo");
+
+    /// <summary>"Redone: {0}"</summary>
+    internal static string LogRedone => Get("LogRedone");
+
+    /// <summary>"{0} did not go through: {1}"</summary>
+    internal static string ActionFailed => Get("ActionFailed");
+
+    /// <summary>"berth {0}"</summary>
+    internal static string ElementBerth => Get("ElementBerth");
+
+    /// <summary>"pier {0}"</summary>
+    internal static string ElementPier => Get("ElementPier");
+
+    /// <summary>"land area {0}"</summary>
+    internal static string ElementLandArea => Get("ElementLandArea");
+
+    /// <summary>"the mainland"</summary>
+    internal static string ElementCoast => Get("ElementCoast");
+
+    /// <summary>"Rename {0}"</summary>
+    internal static string RenameStep => Get("RenameStep");
+
+    /// <summary>"Mouse   Left drag            pan the view   Right drag           orbit   Wheel                zoo..."</summary>
+    internal static string ShortcutsMouse => Get("ShortcutsMouse");
+
+    /// <summary>"Moving around (click the view first)   Arrows, W A S D      pan   Shift+arrows         orbit   Pa..."</summary>
+    internal static string ShortcutsCamera => Get("ShortcutsCamera");
+
+    /// <summary>"While drawing   Esc                  cancel what you are drawing, then back to Navigate   Enter  ..."</summary>
+    internal static string ShortcutsDrawing => Get("ShortcutsDrawing");
+
+    /// <summary>"Tools (while the view has the focus; never while typing in a field)"</summary>
+    internal static string ShortcutsTools => Get("ShortcutsTools");
+
+    /// <summary>"Commands"</summary>
+    internal static string ShortcutsCommands => Get("ShortcutsCommands");
+
+    /// <summary>"Reset the look"</summary>
+    internal static string ConfirmResetAppearanceTitle => Get("ConfirmResetAppearanceTitle");
+
+    /// <summary>"Put every look setting — water, light, colours, labels and the passing traffic — back to its defa..."</summary>
+    internal static string ConfirmResetAppearance => Get("ConfirmResetAppearance");
+
+    /// <summary>"Replace the view?"</summary>
+    internal static string CameraOverwriteTitle => Get("CameraOverwriteTitle");
+
+    /// <summary>"A view called {0} is already saved. Replace it with where the camera is now?"</summary>
+    internal static string CameraOverwrite => Get("CameraOverwrite");
+
+    /// <summary>"Remove the view?"</summary>
+    internal static string CameraDeleteConfirmTitle => Get("CameraDeleteConfirmTitle");
+
+    /// <summary>"Remove the saved view {0}? Undo does not bring it back."</summary>
+    internal static string CameraDeleteConfirm => Get("CameraDeleteConfirm");
+
+    /// <summary>"Reading the letter shapes of {0}…"</summary>
+    internal static string FontCapturing => Get("FontCapturing");
+
+    /// <summary>"Dismiss"</summary>
+    internal static string NoticeDismiss => Get("NoticeDismiss");
+
+    /// <summary>"Tools"</summary>
+    internal static string ToolbarLabel => Get("ToolbarLabel");
+
+    /// <summary>"Yes"</summary>
+    internal static string DialogYes => Get("DialogYes");
+
+    /// <summary>"No"</summary>
+    internal static string DialogNo => Get("DialogNo");
 }

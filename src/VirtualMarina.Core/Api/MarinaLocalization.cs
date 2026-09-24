@@ -23,6 +23,13 @@ public static class MarinaLocalization
     /// The culture text is looked up in. Null (the default) follows <see cref="CultureInfo.CurrentUICulture"/>.
     /// Setting it applies to the calling thread and to every thread started afterwards.
     /// </summary>
+    /// <remarks>
+    /// This is one setting for the whole process, not per window or per user: it also sets
+    /// <see cref="CultureInfo.DefaultThreadCurrentUICulture"/>. That suits a desktop application. A Blazor Server
+    /// application serves many users from one process, each possibly in a different language, so it should leave this
+    /// null and set <see cref="CultureInfo.CurrentUICulture"/> per request or circuit (as ASP.NET Core's request
+    /// localization does); the text then follows each user's culture.
+    /// </remarks>
     public static CultureInfo? Culture
     {
         get => Resources.Strings.Culture;

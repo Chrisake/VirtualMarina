@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tests for the Blazor host component and its WebGL renderer, run without a browser: an in-memory renderer and a
+    fake JS runtime stand in for the page. The test framework, runner and coverage come from tests/Directory.Build.props.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VirtualMarina.Blazor\VirtualMarina.Blazor.csproj" />
+    <!-- The API surface writer and the baseline check are shared with the other test projects rather than copied. -->
+    <ProjectReference Include="..\VirtualMarina.TestSupport\VirtualMarina.TestSupport.csproj" />
+  </ItemGroup>
+
+</Project>

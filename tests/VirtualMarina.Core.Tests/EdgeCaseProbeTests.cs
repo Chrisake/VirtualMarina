@@ -97,8 +97,10 @@ public class EdgeCaseProbeTests
         var pier = marina.GetPier("A")!;
         marina.AddBerth(BerthGenerator.AtPier(pier, "A-L01", PierSide.Left, 0f, 5f, 12f));
 
-        Assert.ThrowsAny<Exception>(() =>
+        var error = Assert.Throws<InvalidOperationException>(() =>
             marina.AddBerth(BerthGenerator.AtPier(pier, "a-l01", PierSide.Left, 12f, 5f, 12f)));
+        Assert.Contains("already exists", error.Message, StringComparison.Ordinal);
+        Assert.Single(marina.GetBerths());
     }
 
     [Fact]
@@ -106,7 +108,10 @@ public class EdgeCaseProbeTests
     {
         var marina = new MarinaVisualizer();
 
-        Assert.ThrowsAny<Exception>(() => marina.AddPier(new Pier("   ", "Blank", Vector2.Zero, 0f, 40f)));
+        // Refused by the Pier constructor itself, so a blank id never reaches the marina.
+        var error = Assert.Throws<ArgumentException>(() => marina.AddPier(new Pier("   ", "Blank", Vector2.Zero, 0f, 40f)));
+        Assert.Equal("id", error.ParamName);
+        Assert.Empty(marina.GetPiers());
     }
 
     // ---- Labels made of unusual characters ---------------------------------------------------

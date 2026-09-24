@@ -273,19 +273,46 @@ public sealed class TrafficLane
 
     /// <summary>Where the lane is a fraction of the way along it, and which way its traffic heads there.</summary>
     /// <param name="along">0 at the start of the lane, 1 at the end. Values outside are clamped.</param>
+    /// <remarks>
+    /// The position lies on the line through <see cref="Points"/>. The direction turns smoothly from one stretch to the next
+    /// rather than snapping at each point: it is each stretch's own direction at its middle and blends into the next one's
+    /// in between, so a vessel swings round a bend instead of jerking.
+    /// </remarks>
     public (Vector2 Position, Vector2 Direction) At(float along)
     {
         var distance = Math.Clamp(along, 0f, 1f) * Length;
 
-        var segment = 0;
-        while (segment < Points.Count - 2 && _reached[segment + 1] < distance) segment++;
+        // The stretch the distance falls in: the last point reached at or before it.
+        var segment = Array.BinarySearch(_reached, distance);
+        if (segment < 0) segment = ~segment - 1;
+        segment = Math.Clamp(segment, 0, Points.Count - 2);
 
         var from = Points[segment];
         var to = Points[segment + 1];
         var span = _reached[segment + 1] - _reached[segment];
         var t = span > 1e-4f ? (distance - _reached[segment]) / span : 0f;
-        var step = to - from;
 
-        return (Vector2.Lerp(from, to, t), step.LengthSquared() > 1e-8f ? Vector2.Normalize(step) : Vector2.UnitX);
+        // Blend toward the neighbouring stretch on whichever side of this one's middle the distance is.
+        var here = DirectionOf(segment);
+        var neighbour = t < 0.5f ? segment - 1 : segment + 1;
+        var direction = here;
+        if (neighbour >= 0 && neighbour < Points.Count - 1)
+        {
+            var neighbourSpan = _reached[neighbour + 1] - _reached[neighbour];
+            var middle = _reached[segment] + span * 0.5f;
+            var neighbourMiddle = _reached[neighbour] + neighbourSpan * 0.5f;
+            var blend = MathF.Abs(neighbourMiddle - middle) > 1e-4f ? Math.Clamp((distance - middle) / (neighbourMiddle - middle), 0f, 1f) : 0f;
+            var mixed = Vector2.Lerp(here, DirectionOf(neighbour), blend);
+            if (mixed.LengthSquared() > 1e-8f) direction = Vector2.Normalize(mixed);
+        }
+
+        return (Vector2.Lerp(from, to, t), direction);
+    }
+
+    /// <summary>The unit direction of one stretch of the lane.</summary>
+    private Vector2 DirectionOf(int segment)
+    {
+        var step = Points[segment + 1] - Points[segment];
+        return step.LengthSquared() > 1e-8f ? Vector2.Normalize(step) : Vector2.UnitX;
     }
 }

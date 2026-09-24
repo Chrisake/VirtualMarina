@@ -10,3 +10,24 @@ TestResults/
 
 # API baselines: the .approved.txt files are committed, the .received.txt a failing test writes is not.
 *.received.txt
+
+# Editors other than Visual Studio.
+.idea/
+.vscode/
+*.DotSettings.user
+
+# Test results and coverage reports.
+*.trx
+coverage*.xml
+coverage*.json
+coverage*.info
+coverage-report/
+
+# NuGet packages produced by `dotnet pack`, and the JavaScript lint tooling (package.json).
+artifacts/
+*.nupkg
+*.snupkg
+node_modules/
+
+# Shader sources written out for glslangValidator (VM_SHADER_DUMP_DIR).
+shader-dump/

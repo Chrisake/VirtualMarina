@@ -13,7 +13,9 @@ A marina is a `MarinaLayout`:
 | `Shoreline` | The mainland behind the marina, or null (see [The sea and the shore](17-sea-and-shore.md)) |
 | `MarineTraffic` | Vessels passing out at sea, or null (see [The sea and the shore](17-sea-and-shore.md)) |
 
-Load it with `InitializeLayout(layout)`. This replaces everything, clears the selection, rebuilds the camera presets and resets the camera. Save the current state with `GetLayout()`, which round-trips through `InitializeLayout`.
+Load it with `InitializeLayout(layout)`. This validates the whole layout first (throwing `MarinaLayoutException` with every problem, and changing nothing, when it is invalid), then replaces everything, clears the selection and popup, marks the camera presets for regeneration and resets the camera to the overview. Save the current state with `GetLayout()`, which round-trips through `InitializeLayout`.
+
+A `MarinaLayout` and everything in it are immutable records with **value equality**: two layouts built the same way are `Equal`, collections included (see [immutable snapshots](02-coordinates-and-conventions.md#immutable-snapshots)).
 
 ## Building a layout
 
@@ -36,9 +38,9 @@ var layout = new MarinaLayoutBuilder("VirtualMarina Harbor")
 
 **`PierBuilder.AddBerths(side, count, berthWidth, berthLength, customize, startOffset = 2, gap = 0, dividers = null)`**
 - Berths are perpendicular to the pier with their bows toward it.
-- Ids are `{PierId}-L01…` or `{PierId}-R01…`, and numbering continues across calls on the same side.
+- Ids are `{PierId}-L01…` or `{PierId}-R01…` (`{PierId}-01…` on a [single-sided pier](#single-sided-piers)). Numbering continues across calls on the same side, skipping any id already taken.
 - `startOffset` is the distance from the pier's start to the first berth (it only applies to the first call on a side).
-- `dividers`: when set, a divider of that type is generated at every berth boundary and the berths' automatic finger piers are turned off.
+- `dividers`: when set, a divider of that type is generated at every berth boundary and the berths' automatic finger piers are turned off. Dividers are named `{PierId}-L-D01…` / `{PierId}-R-D01…`, or `{PierId}-D01…` on a single-sided pier; a boundary shared with berths added by an earlier call gets one divider, not two.
 
 **`PierBuilder.AddBerth(id, side, offsetAlong, berthWidth, berthLength, customize)`** adds one berth at an explicit distance from the pier's start.
 
@@ -55,7 +57,7 @@ Every element can be placed by position, size and orientation:
 ```csharp
 var pier  = Pier.FromCenter("E", "Pier E", center: new Vector2(150, 30), length: 60, width: 3, headingDegrees: 0, PierType.FloatingWooden);
 var berth  = new Berth("E-01", "E", center: new Vector2(142.5f, 10), headingDegrees: 90, length: 12, width: 5);   // left of E, bow toward the pier
-var piles = new Divider("E-D1", start: new Vector2(148.5f, 7.5f), headingDegrees: -90, length: 12, DividerType.Piles) { PierId = "E" };
+var piles = new Divider("E-D01", start: new Vector2(148.5f, 7.5f), headingDegrees: -90, length: 12, DividerType.Piles) { PierId = "E" };
 
 var layout = new MarinaLayout { Name = "Custom", Piers = new[] { pier }, Berths = new[] { berth }, Dividers = new[] { piles } };
 ```
@@ -76,7 +78,8 @@ Useful when your ERP stores only berth numbers and pier dimensions.
 |---|---|
 | `new Pier(id, name, start, headingDegrees, length, width = 2.5, type = FloatingWooden)` | Created from the shore-end point |
 | `Pier.FromCenter(id, name, center, length, width, headingDegrees, type)` | Created from the center point |
-| `Start`, `End`, `Center`, `Direction`, `Right`, `Bounds` | Geometry (plan coordinates) |
+| `Start`, `End`, `Center`, `Direction`, `Bounds` | Geometry (plan coordinates) |
+| `LocalX`, `SideNormal(side)`, `Right` | The heading's local +X axis; the direction of a side (where its berths lie); the walker's right (`−LocalX`). See [coordinate conventions](20-coordinate-conventions.md#the-two-meanings-of-right) |
 | `Type` | `PierType`: controls the look and the default deck height |
 | `DeckHeight` | Deck height above water; defaults from `Type` unless set |
 | `PilingSpacing` | Column spacing (`Concrete`) or cleat spacing (`FloatingConcrete`); default 6 m |
@@ -143,7 +146,7 @@ Their colors come from `Style.Piers` (`PedestalColor`, `PowerColor`, `WaterColor
 | `Berth.OnLand(id, landAreaId, position, headingDegrees = 0, length = 12, width = 5)` | A Free [land berth](#land-berths) |
 | `PierId` / `LandAreaId` | Exactly one is set; `IsOnLand` is true for land berths |
 | `Label` / `DisplayName` | Display text (`DisplayName` falls back to `Id`) |
-| `Center`, `HeadingDegrees`, `Length`, `Width`, `Forward`, `Right`, `Bounds` | Geometry of the water area |
+| `Center`, `HeadingDegrees`, `Length`, `Width`, `Forward`, `LocalX` (= `Right`), `Bounds` | Geometry of the water area |
 | `MaxDraft` | Optional; shown in the default tooltip |
 | `Status`, `Boat` | See [Berth status, boats and flags](04-status-and-flags.md) |
 | `HasFingerPiers` | Draw simple finger piers on both long sides (default true) |
@@ -191,9 +194,11 @@ var lawn = new LandArea("lawn", new OrientedRect(new Vector2(95, -24), new Vecto
 |---|---|
 | `Id` | Unique (case-insensitive); land berths reference it |
 | `Name` / `DisplayName` | Optional display name, used in tooltips (`DisplayName` falls back to `Id`) |
-| `Points` | Outline, at least 3 points. Convex or concave, either winding, edges must not cross, don't repeat the first point |
+| `Points` | Outline, at least 3 finite points enclosing some area. Convex or concave, either winding, edges must not cross, don't repeat the first point |
 | `Height` | Top surface above the water, 0–50 m |
 | `Kind` | `LandKind`, see below |
+| `Trees` | `LandTree` records (position, height 1–40 m, crown radius 0.3–15 m, `TreeShape`); see [Designer](12-designer.md) for planting them |
+| `Metadata` | Read-only string attributes you supply |
 | `Area`, `Contains(point)`, `GetAxisAlignedBounds()` | Geometry helpers |
 
 | `LandKind` | Rendering |
@@ -204,7 +209,7 @@ var lawn = new LandArea("lawn", new OrientedRect(new Vector2(95, -24), new Vecto
 
 Each land area gets its own world-space mesh (`MeshIds.ForLand(slot)`, built by `LandMeshFactory`), built when the layout is loaded or the land area is added or updated. Land areas themselves aren't clickable; read them with `GetLandArea(id)` and `GetLandAreas()`, and change them with `AddLandArea`, `UpdateLandArea` and `RemoveLandArea`.
 
-`PolygonMath` has the helpers used for outlines: `SignedArea`, `Contains`, `DistanceToBoundary`, `IsSimple` and `Triangulate`.
+`PolygonMath` has the helpers used for outlines: `SignedArea`, `Contains`, `DistanceToBoundary`, `GetBounds`, `IsSimple`, `Triangulate`, `TriangulateWithHoles`, `ClosestPointOnSegment` and `RemoveRepeatedPoints`. An outline with a point repeated (a double-click, a hand-edited file) is not valid as it is; `RemoveRepeatedPoints` cleans it, and the designer and the [file reader](13-marina-file-format.md) do so before validating.
 
 ## Land berths
 
@@ -242,7 +247,7 @@ IReadOnlyList<Berth> stored = marina.GetBerthsByLandArea("yard");
 |---|---|
 | `AddLandArea(land)`, `UpdateLandArea(land)`, `RemoveLandArea(id, removeBerths = true)` | `GetLandArea`, `GetLandAreas`, `GetBerthsByLandArea` |
 
-`ExportObjects()` returns everything as one array of records (land areas, piers, dividers, berths and multi-berths); `MarinaLayout.FromObjects` turns such an array back into a layout. To draw layouts interactively, see [Designer](12-designer.md).
+`ExportObjects()` returns everything as one array of records (the shoreline when there is one, the passing-traffic settings, land areas, piers, dividers, berths and multi-berths: everything in the layout but its name); `MarinaLayout.FromObjects` turns such an array back into a layout. To draw layouts interactively, see [Designer](12-designer.md).
 
 - **Moving a pier doesn't move its berths.** Berths and dividers have absolute positions, so move them explicitly if needed.
 - **`PierUpdate`** keeps the pier's center when only length or heading changes:
@@ -261,11 +266,11 @@ IReadOnlyList<Berth> stored = marina.GetBerthsByLandArea("yard");
 
 - **`RemovePier`** also removes the pier's dividers. With `removeBerths: false` it throws if berths remain.
 - **`RemoveBerth`** drops the berth from the selection and shrinks or dissolves its multi-berth.
-- **`RenameBerth`** gives a berth another id, keeping its place, boat, status, `ExternalData`, place in the selection and multi-berth, and raises `BerthRenamed`. It throws when the new id is taken. The id is what an ERP stores against a contract, so `Berth.Label` — a display name that leaves the id alone — is often the better answer; the [designer](12-designer.md#renaming) renames berths this way with an undo step.
+- **`RenameBerth`** gives a berth another id, keeping its place, boat, status, `ExternalData`, place in the selection and multi-berth, and raises `LayoutChanged` with `LayoutChangeKind.BerthRenamed`. It throws when the new id is taken. The id is what an ERP stores against a contract, so `Berth.Label` — a display name that leaves the id alone — is often the better answer; the [designer](12-designer.md#renaming) renames berths this way with an undo step.
 
 ## Batching changes
 
-- **`BatchUpdate(IEnumerable<BerthUpdate>)`** applies all updates with one scene rebuild and one `LayoutChanged` (`BatchUpdated`). Failures are returned instead of thrown:
+- **`BatchUpdate(IEnumerable<BerthUpdate>)`** applies all updates with one scene rebuild and one `LayoutChanged` (`BatchUpdated`, whose `Changes` lists what each update did). Failures are returned instead of thrown:
 
   ```csharp
   BatchUpdateResult result = marina.BatchUpdate(updates);
@@ -283,4 +288,4 @@ IReadOnlyList<Berth> stored = marina.GetBerthsByLandArea("yard");
   }   // one LayoutChanged(BatchUpdated) here
   ```
 
-`BerthStatusChanged` is still raised once per affected berth.
+`BerthStatusChanged` is still raised once per affected berth, and at once, as each berth changes: it is not held back to the end of the scope. Handlers that need the whole batch should wait for the `BatchUpdated` notification, whose `LayoutChangedEventArgs.Changes` lists every change in order.

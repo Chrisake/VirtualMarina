@@ -32,22 +32,99 @@ public partial class MainForm : Form
 
     private readonly Random _random = new(7);
 
+    /// <summary>The fonts this form makes itself, let go of with it.</summary>
+    private readonly Font _headerFont;
+    private readonly Font _exportFont = new("Consolas", 9F);
+
+    /// <summary>What the status bar says about the renderer; filled in once OpenGL has started.</summary>
+    private readonly ToolStripStatusLabel _lblRenderer = new() { ForeColor = SystemColors.GrayText };
+
+    // The design file last opened, kept so saving writes back what this host does not understand (another
+    // application's sections, a description, newer properties) instead of dropping it. Null for a marina made here.
+    private MarinaDocument? _document;
+
     public MainForm()
     {
         InitializeComponent();
+        _headerFont = new Font(Font, FontStyle.Bold);
+        Disposed += (_, _) =>
+        {
+            _headerFont.Dispose();
+            _exportFont.Dispose();
+        };
 
         // The MarinaViewControl owns the visualizer; everything goes through marinaView.Marina.
         // Its events (BerthSelected, BerthActionInvoked, ...) are wired in the designer: Properties window → Events → Marina.
         var marina = marinaView.Marina;
         marina.DefaultFocusAngle = CameraAngle.TopDown;        // focus (buttons, actions, double-click) looks straight down
 
+        // The camera list follows the views: a pier added or removed, the view resized, a view switched off.
+        // Let go of it with the form, as a host whose visualizer outlives the form has to.
+        marina.CameraPresetsChanged += OnCameraPresetsChanged;
+        Disposed += (_, _) => marina.CameraPresetsChanged -= OnCameraPresetsChanged;
+        cmbCameraPreset.DisplayMember = nameof(CameraPreset.Name);
+
         // In a real application the layout comes from the ERP database.
         marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+        FillCameraPresets();
 
         cmbLabelMode.SelectedIndex = (int)BerthLabelMode.None;
         ShowBerthDetails();
         SetUpDesignerTab();
+        SetUpMenu();
+        statusStrip.Items.Insert(statusStrip.Items.IndexOf(lblHelp), _lblRenderer);
     }
+
+    // ---- Menu ----------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// A host's own menu with the usual shortcuts. It shows how they live alongside the 3D view: the view takes arrows,
+    /// W/A/S/D and the like, and leaves every Ctrl, Alt and function-key chord to the form, so Ctrl+S, Ctrl+Z and Ctrl+Y
+    /// here work whether the view has the focus or not. Undo and Redo are the designer's own.
+    /// </summary>
+    private void SetUpMenu()
+    {
+        var designer = marinaView.Marina.Designer;
+        var file = new ToolStripMenuItem("&File");
+        file.DropDownItems.Add(MenuItem("&Open design…", Keys.Control | Keys.O, OpenDesign));
+        file.DropDownItems.Add(MenuItem("&Save design…", Keys.Control | Keys.S, SaveDesign));
+        file.DropDownItems.Add(new ToolStripSeparator());
+        file.DropDownItems.Add(MenuItem("E&xit", Keys.Alt | Keys.F4, Close));
+
+        var undo = MenuItem("&Undo", Keys.Control | Keys.Z, () => designer.TryUndo());
+        var redo = MenuItem("&Redo", Keys.Control | Keys.Y, () => designer.TryRedo());
+        var edit = new ToolStripMenuItem("&Edit");
+        edit.DropDownItems.Add(undo);
+        edit.DropDownItems.Add(redo);
+
+        // Enabled only when there is something to take back or put back, and saying what.
+        edit.DropDownOpening += (_, _) =>
+        {
+            undo.Enabled = designer.HasDraft || designer.CanUndo;
+            undo.ToolTipText = designer.UndoDescription;
+            redo.Enabled = designer.CanRedo;
+            redo.ToolTipText = designer.RedoDescription;
+        };
+
+        // A disabled item ignores its key, so they are only disabled while the menu is open, to show there is nothing to
+        // take back; closing the menu enables them again and the keys keep coming here.
+        edit.DropDownClosed += (_, _) =>
+        {
+            undo.Enabled = true;
+            redo.Enabled = true;
+        };
+
+        var view = new ToolStripMenuItem("&View");
+        view.DropDownItems.Add(MenuItem("&Reset view", Keys.Control | Keys.R, () => marinaView.Marina.ResetCamera()));
+
+        var menu = new MenuStrip { ShowItemToolTips = true };
+        menu.Items.AddRange(new ToolStripItem[] { file, edit, view });
+        MainMenuStrip = menu;
+        Controls.Add(menu);
+    }
+
+    private static ToolStripMenuItem MenuItem(string text, Keys keys, Action action) =>
+        new(text, null, (_, _) => action()) { ShortcutKeys = keys, ShowShortcutKeys = true };
 
     // ---- Designer ------------------------------------------------------------------------------------
 
@@ -66,7 +143,7 @@ public partial class MainForm : Form
         panel2.Controls.Remove(grpBerth);
         panel2.Controls.Remove(grpView);
 
-        _tabs = new TabControl { Dock = DockStyle.Top, Height = 540 };
+        _tabs = new TabControl { Dock = DockStyle.Top, Height = LogicalToDeviceUnits(540) };
         var deskPage = new TabPage("Berth desk") { Padding = new Padding(3), AutoScroll = true };
         deskPage.Controls.Add(grpView);
         deskPage.Controls.Add(grpBerth);
@@ -75,7 +152,11 @@ public partial class MainForm : Form
         var designerPanel = new MarinaDesignerPanel { Dock = DockStyle.Fill, Marina = marina };
         var commands = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(0, 0, 0, 4) };
         commands.Controls.Add(CreateButton("New empty marina", (_, _) => StartEmptyMarina()));
-        commands.Controls.Add(CreateButton("Load sample marina", (_, _) => marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina())));
+        commands.Controls.Add(CreateButton("Load sample marina", (_, _) =>
+        {
+            _document = null;
+            marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+        }));
         commands.Controls.Add(CreateButton("Export objects…", (_, _) => ShowExport()));
         commands.Controls.Add(CreateButton("Open design…", (_, _) => OpenDesign()));
         commands.Controls.Add(CreateButton("Save design…", (_, _) => SaveDesign()));
@@ -118,6 +199,7 @@ public partial class MainForm : Form
     private void StartEmptyMarina()
     {
         var marina = marinaView.Marina;
+        _document = null;
         marina.InitializeLayout(new MarinaLayout { Name = "New marina" });
         marina.Designer.IsActive = true;
         marina.Designer.Tool = DesignTool.DrawLandArea;
@@ -137,6 +219,7 @@ public partial class MainForm : Form
         {
             var document = MarinaDocument.Load(dialog.FileName);
             document.ApplyTo(marinaView.Marina);
+            _document = document;
             Log($"Loaded {Path.GetFileName(dialog.FileName)}: {document.Layout.Berths.Count} berths, {document.Layout.Piers.Count} piers, " +
                 $"written by {document.Generator ?? "an unknown tool"} in format {document.Version}");
         }
@@ -147,7 +230,10 @@ public partial class MainForm : Form
         }
     }
 
-    /// <summary>Writes the marina on screen back out as a design file.</summary>
+    /// <summary>
+    /// Writes the marina on screen back out as a design file. A design that was opened is brought up to date with
+    /// UpdateFrom, so what it carried that this host does not know about survives; a marina started here is written fresh.
+    /// </summary>
     private void SaveDesign()
     {
         using var dialog = new SaveFileDialog
@@ -158,8 +244,19 @@ public partial class MainForm : Form
         };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
-        MarinaDocument.FromVisualizer(marinaView.Marina, "VirtualMarina WinForms test host").Save(dialog.FileName);
-        Log($"Saved {Path.GetFileName(dialog.FileName)}");
+        const string generator = "VirtualMarina WinForms test host";
+        try
+        {
+            if (_document is null) _document = MarinaDocument.FromVisualizer(marinaView.Marina, generator);
+            else _document.UpdateFrom(marinaView.Marina, generator);
+            _document.Save(dialog.FileName);
+            Log($"Saved {Path.GetFileName(dialog.FileName)}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log("The design could not be saved: " + ex.Message);
+            MessageBox.Show(this, ex.Message, "Save design", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 
     /// <summary>What an ERP would store: every element of the marina, as returned by ExportObjects.</summary>
@@ -188,7 +285,7 @@ public partial class MainForm : Form
             ScrollBars = ScrollBars.Both,
             WordWrap = false,
             Dock = DockStyle.Fill,
-            Font = new Font("Consolas", 9F),
+            Font = _exportFont,
             Text = text.ToString(),
         });
         dialog.ShowDialog(this);
@@ -280,7 +377,6 @@ public partial class MainForm : Form
 
     private void OnLayoutChanged(object? sender, LayoutChangedEventArgs e)
     {
-        if (e.Kind is LayoutChangeKind.Initialized or LayoutChangeKind.PierAdded or LayoutChangeKind.PierRemoved) FillCameraPresets();
         if (e.Kind is not (LayoutChangeKind.BerthUpdated or LayoutChangeKind.Initialized)) Log($"LayoutChanged: {e.Kind} {e.LandAreaId ?? e.PierId} {e.BerthId}".TrimEnd());
         ShowStatistics();
     }
@@ -317,9 +413,16 @@ public partial class MainForm : Form
     private void OnSelectPierClick(object sender, EventArgs e)
     {
         var marina = marinaView.Marina;
+        var pierId = marina.SelectedBerth?.PierId ?? (marina.GetPiers() is { Count: > 0 } piers ? piers[0].Id : null);
+        if (marina.SelectedBerth?.LandAreaId is null && pierId is null)
+        {
+            Log("There is no pier to select yet.");
+            return;
+        }
+
         var berthIds = marina.SelectedBerth?.LandAreaId is { } landAreaId
             ? marina.GetBerthsByLandArea(landAreaId).Select(s => s.Id)
-            : marina.GetBerthsByPier(marina.SelectedBerth?.PierId ?? marina.GetPiers()[0].Id).Select(s => s.Id);
+            : marina.GetBerthsByPier(pierId!).Select(s => s.Id);
 
         var result = marina.SetSelection(berthIds, focusCamera: true);
         foreach (var rejected in result.Rejected) Log($"Not selected: {rejected.BerthId} ({rejected.Reason})");
@@ -346,18 +449,48 @@ public partial class MainForm : Form
     private void OnLabelModeChanged(object sender, EventArgs e) =>
         marinaView.Marina.BerthLabelMode = (BerthLabelMode)cmbLabelMode.SelectedIndex;
 
-    private void OnCameraPresetSelected(object sender, EventArgs e) =>
-        marinaView.Marina.ApplyCameraPreset((string)cmbCameraPreset.SelectedItem!);
+    /// <summary>
+    /// Goes to the chosen view: an automatic one by its key, which stays the same whatever the language or the pier's
+    /// name, a saved one by its name. Both are asked for afresh, since the list may hold a view worked out for an
+    /// earlier layout.
+    /// </summary>
+    private void OnCameraPresetSelected(object sender, EventArgs e)
+    {
+        if (cmbCameraPreset.SelectedItem is not CameraPreset preset) return;
+        if (preset.IsBuiltIn && preset.Key is { } key) marinaView.Marina.ApplyBuiltInCameraPreset(key);
+        else marinaView.Marina.ApplyCameraPreset(preset.Name);
+    }
+
+    private void OnCameraPresetsChanged(object? sender, EventArgs e)
+    {
+        // Raised on the thread that changed the marina, which in this host is always the UI thread.
+        if (InvokeRequired) BeginInvoke(FillCameraPresets);
+        else FillCameraPresets();
+    }
 
     private void OnResetViewClick(object sender, EventArgs e) => marinaView.Marina.ResetCamera();
 
-    private void OnMarinaViewRenderError(object? sender, ThreadExceptionEventArgs e) =>
-        MessageBox.Show(this, "OpenGL 3.3 could not be initialized:\n\n" + e.Exception.Message, "Render error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    /// <summary>
+    /// The view could not draw: OpenGL would not start, or a frame failed. The view shows a placeholder meanwhile;
+    /// this says why, and offers to try again (after a driver update, say, or with the window on another monitor).
+    /// </summary>
+    private void OnMarinaViewRenderError(object? sender, ThreadExceptionEventArgs e)
+    {
+        Log("Render error: " + e.Exception.Message);
+        var answer = MessageBox.Show(
+            this,
+            $"The 3D view could not draw the marina:\n\n{e.Exception.Message}\n\nTry again?",
+            "Render error",
+            MessageBoxButtons.RetryCancel,
+            MessageBoxIcon.Error);
+        if (answer == DialogResult.Retry) marinaView.RetryRendering();
+    }
 
     private void OnStatusTimerTick(object sender, EventArgs e)
     {
         var pose = marinaView.Marina.Camera.Pose;
         lblCameraPose.Text = $"Camera: yaw {pose.YawDegrees % 360:0}°, pitch {pose.PitchDegrees:0}°, distance {pose.Distance:0} m";
+        if (string.IsNullOrEmpty(_lblRenderer.Text) && marinaView.RendererDescription is { Length: > 0 } renderer) _lblRenderer.Text = renderer;
     }
 
     // ---- Berth commands (what the ERP does) ----------------------------------------------------------
@@ -495,11 +628,23 @@ public partial class MainForm : Form
         lblStatistics.Text = $"{s.TotalBerths} berths · {s.Free} free · {s.Occupied} occupied · {s.Reserved} reserved · {s.TemporarilyFree} temp. free · {s.OccupancyRate:P0} occupancy";
     }
 
+    /// <summary>Lists the views that are switched on, keeping the one chosen (the Overview at first) selected.</summary>
     private void FillCameraPresets()
     {
+        var chosen = cmbCameraPreset.SelectedItem as CameraPreset;
+        bool Same(CameraPreset preset) => chosen is null
+            ? preset.Key == MarinaVisualizer.OverviewPresetName
+            : preset.IsBuiltIn == chosen.IsBuiltIn && (preset.IsBuiltIn ? preset.Key == chosen.Key : preset.Name == chosen.Name);
+
+        cmbCameraPreset.BeginUpdate();
         cmbCameraPreset.Items.Clear();
-        foreach (var preset in marinaView.Marina.CameraPresets) cmbCameraPreset.Items.Add(preset.Name);
-        cmbCameraPreset.SelectedItem = MarinaVisualizer.OverviewPresetName;
+        foreach (var preset in marinaView.Marina.CameraPresets.Where(p => p.IsEnabled))
+        {
+            var index = cmbCameraPreset.Items.Add(preset);
+            if (Same(preset)) cmbCameraPreset.SelectedIndex = index;
+        }
+
+        cmbCameraPreset.EndUpdate();
     }
 
     private void Log(string message)

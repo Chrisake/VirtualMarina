@@ -1,4 +1,4 @@
-# Berth status, boats and flags
+﻿# Berth status, boats and flags
 
 ## Statuses
 
@@ -35,15 +35,15 @@ marina.BatchUpdate(new[]
 });
 ```
 
-Every status or boat change raises `BerthStatusChanged` with `Previous`/`Current` snapshots (`OldStatus`, `NewStatus`, `OldBoat`, `NewBoat`). On a berth that belongs to a multi-berth, a status or boat change applies to the whole berth. See [Multi-berths](05-multi-berths.md).
+Every status or boat change raises `BerthStatusChanged` with `Previous`/`Current` snapshots (`OldStatus`, `NewStatus`, `OldBoat`, `NewBoat`). It is raised at once, as each berth changes — inside `BeginUpdate` or `BatchUpdate` too, where `LayoutChanged` waits for the end of the scope — so a handler may see one berth of a batch changed while the rest of the batch is still to come. On a berth that belongs to a multi-berth, a status or boat change applies to the whole multi-berth. See [Multi-berths](05-multi-berths.md).
 
 ## Boats
 
 ```csharp
 var boat = new Boat("BT-10442", "Aurora", BoatType.MotorYacht)
 {
-    LengthMeters = 18.5f,            // defaults to the type's nominal length
-    BeamMeters = 5.2f,               // defaults to the type's nominal beam
+    LengthMeters = 18.5f,            // unless set, the type's nominal length
+    BeamMeters = 5.2f,               // unless set, the type's nominal beam
     OwnerName = "M. Rossi",
     RegistrationNumber = "GR-PIR-1234",
     ExpectedArrival = DateTimeOffset.Now.AddHours(6),
@@ -60,9 +60,12 @@ var boat = new Boat("BT-10442", "Aurora", BoatType.MotorYacht)
 | `MotorYacht` | Multi-deck motor yacht | 20 × 5.5 m |
 | `FishingBoat` | Boat with wheelhouse | 10 × 3.5 m |
 | `JetSki` | Personal watercraft | 3.2 × 1.2 m |
+| `Ferry` | Small coastal passenger ferry with a funnel; mainly for the [passing traffic](17-sea-and-shore.md) | 45 × 11 m |
 
 - **Size:** the model is scaled to `LengthMeters × BeamMeters` and placed toward the pier end of the berth, bow toward the pier.
-- **Display names:** `BoatTypeCatalog.GetNominalDimensions(type)` and `GetDisplayName(type)` expose the reference data above.
+- **Nominal sizes follow the type:** a boat whose length or beam was never set takes its type's, so `boat with { Type = BoatType.JetSki }` shrinks it. `HasCustomLength` and `HasCustomBeam` say whether a size was given (a saved design writes only those).
+- **Equality:** `Boat` is a record with value equality, `Metadata` included, so the same boat built twice is `Equal`.
+- **Reference data:** `BoatTypeCatalog.GetNominalDimensions(type)` and `GetDisplayName(type)` expose the table above; display names are localized (`Boat.TypeDisplayName`).
 - **Custom models:** to replace a model, see [Appearance](08-appearance.md#replacing-boat-models).
 
 ## Interaction flags

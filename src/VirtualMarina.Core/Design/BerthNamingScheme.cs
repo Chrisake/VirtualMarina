@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using System.Text;
 using VirtualMarina.Core.Domain;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Design;
 
@@ -99,17 +100,25 @@ public sealed record BerthNamingScheme
 
     /// <summary>
     /// Reads a pattern back out of a berth's name: what pattern, applied to this pier and side, would have produced
-    /// it. Null when the name has no running number on the end, which means it was written by hand.
+    /// it. Null when the name has no running number on the end, which means it was written by hand, or when no pattern
+    /// can give back exactly that name.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Worked out from the name rather than simply handing back <see cref="Pattern"/>, because the berths on a pier
     /// may well have been named under an older scheme, and the point of showing it is to say what they look like
     /// now. The number of digits comes back too, so putting the pattern straight back leaves the names untouched.
-    /// </remarks>
-    /// <remarks>
+    /// </para>
+    /// <para>
     /// <see cref="LeftSide"/> and <see cref="RightSide"/> are still read from this scheme, since there is nothing in
     /// a name to say which letter in it stood for the side. A berth named under a scheme whose side letters differed
     /// comes back with that letter as plain text, which still reproduces the name it has.
+    /// </para>
+    /// <para>
+    /// The pier id and the side are only recognised where they are spelled exactly as the pier and the scheme spell
+    /// them, case included: <c>Berth 07</c> on pier <c>BE</c> is plain text, not <c>{pier}rth 07</c>, which would
+    /// name the next berth <c>BErth 08</c>. Whatever comes back gives exactly the name it was read from.
+    /// </para>
     /// </remarks>
     /// <param name="pier">The pier the berth is on.</param>
     /// <param name="side">Which side of it the berth lies on.</param>
@@ -126,6 +135,7 @@ public sealed record BerthNamingScheme
 
         var head = berthId[..start];
         var digits = berthId.Length - start;
+        if (digits > 9 || !int.TryParse(berthId.AsSpan(start), NumberStyles.None, CultureInfo.InvariantCulture, out var number)) return null;
 
         // The side token sits next to the number when it is there at all — "A-L01", "QUAY.P.001" — so it is looked
         // for only in the last couple of characters. Searching the whole name would turn the L of a berth called
@@ -134,17 +144,22 @@ public sealed record BerthNamingScheme
         if (token.Length > 0)
         {
             var from = Math.Max(0, head.Length - token.Length - 2);
-            var at = head.LastIndexOf(token, StringComparison.OrdinalIgnoreCase);
+            var at = head.LastIndexOf(token, StringComparison.Ordinal);
             if (at >= from) head = head[..at] + "{side}" + head[(at + token.Length)..];
         }
 
         // The pier id is the front of the name, and only the front: a later match is part of the name proper.
-        if (pier.Id.Length > 0 && head.StartsWith(pier.Id, StringComparison.OrdinalIgnoreCase))
+        if (pier.Id.Length > 0 && head.StartsWith(pier.Id, StringComparison.Ordinal))
         {
             head = "{pier}" + head[pier.Id.Length..];
         }
 
-        return (head + "{number}", digits);
+        // Text of the name that happens to read like a token ("{number}" typed into a name) would not come back as
+        // itself; a pattern that cannot give back the name is no pattern for it.
+        var pattern = head + "{number}";
+        return string.Equals(Format(pattern, pier.Id, pier.Name, token, number, digits), berthId, StringComparison.Ordinal)
+            ? (pattern, digits)
+            : null;
     }
 
     /// <summary>Where the numbering of the slots ashore starts, and the step between them.</summary>
@@ -153,12 +168,12 @@ public sealed record BerthNamingScheme
     /// <summary>Problems that would stop the scheme from naming anything, empty when it is sound.</summary>
     public IEnumerable<string> Validate()
     {
-        if (string.IsNullOrWhiteSpace(Pattern)) yield return "The berth naming pattern must not be empty.";
-        if (LandPattern is not null && string.IsNullOrWhiteSpace(LandPattern)) yield return "The land berth naming pattern must not be empty.";
-        if (Increment == 0) yield return "The berth numbering increment must not be 0.";
-        if (NumberDigits is < 1 or > 9) yield return "The berth numbering must be padded to between 1 and 9 digits.";
-        if (LandIncrement == 0) yield return "The numbering increment of the slots ashore must not be 0.";
-        if (LandNumberDigits is < 1 or > 9) yield return "The slots ashore must be padded to between 1 and 9 digits.";
+        if (string.IsNullOrWhiteSpace(Pattern)) yield return Strings.NamingPatternEmpty;
+        if (LandPattern is not null && string.IsNullOrWhiteSpace(LandPattern)) yield return Strings.NamingLandPatternEmpty;
+        if (Increment == 0) yield return Strings.NamingIncrementZero;
+        if (NumberDigits is < 1 or > 9) yield return Strings.NamingDigitsOutOfRange;
+        if (LandIncrement == 0) yield return Strings.NamingLandIncrementZero;
+        if (LandNumberDigits is < 1 or > 9) yield return Strings.NamingLandDigitsOutOfRange;
     }
 
     private string Format(string pattern, string pierId, string pierName, string side, int number) =>

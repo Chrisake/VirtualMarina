@@ -9,7 +9,7 @@ namespace VirtualMarina.Core.Picking;
 /// <param name="Boat">The boat.</param>
 /// <param name="Status">Status of the berth(s).</param>
 /// <param name="World">Model-to-world transform.</param>
-/// <param name="Berths">The berth, or the berth's member berths in berth order (the first is the primary berth).</param>
+/// <param name="Berths">The berth, or the multi-berth's member berths in order (the first is the primary berth).</param>
 /// <param name="MultiBerthId">The multi-berth, if any.</param>
 /// <param name="Ground">Height of the land the boat rests on, or null when it floats on the water.</param>
 internal readonly record struct BoatInstance(Boat Boat, BerthStatus Status, Matrix4x4 World, IReadOnlyList<Berth> Berths, string? MultiBerthId, float? Ground = null)

@@ -1,4 +1,4 @@
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Mathematics;
 using VirtualMarina.Core.Picking;
 
@@ -59,13 +59,22 @@ public sealed class OrbitCamera
     /// <summary>Moves to a pose, animating unless <paramref name="immediate"/> is set. Yaw takes the shortest way round.</summary>
     public void SetPose(CameraPose pose, bool immediate = false)
     {
+        var constrained = Settle(pose);
+        _desired = constrained;
+        if (immediate) _current = constrained;
+    }
+
+    /// <summary>True when <see cref="SetPose"/> with this pose would change where the camera is headed.</summary>
+    internal bool WouldMoveTo(CameraPose pose) => Settle(pose) != _desired;
+
+    /// <summary>The pose <see cref="SetPose"/> heads for: constrained, with the yaw taking the shortest way round.</summary>
+    private CameraPose Settle(CameraPose pose)
+    {
         var constrained = Constrain(pose);
-        constrained = constrained with
+        return constrained with
         {
             YawDegrees = _current.YawDegrees + MarinaMath.DeltaAngle(_current.YawDegrees, constrained.YawDegrees),
         };
-        _desired = constrained;
-        if (immediate) _current = constrained;
     }
 
     /// <summary>Rotates the desired pose around its target (pitch is clamped by <see cref="Constraints"/>).</summary>
@@ -80,17 +89,61 @@ public sealed class OrbitCamera
         });
     }
 
-    /// <summary>Drags the scene by a screen-space delta so the ground under the pointer follows it.</summary>
+    /// <summary>
+    /// Drags the scene by a screen-space delta so the ground at the middle of the view follows the pointer. Away from
+    /// the middle of an oblique view the ground moves a little faster or slower than the pointer; use
+    /// <see cref="Pan(Vector2, Vector2, float, float)"/> when the pointer position is known.
+    /// </summary>
     public void Pan(float deltaXPixels, float deltaYPixels, float viewportHeightPixels)
     {
-        if (viewportHeightPixels <= 0f) return;
+        if (!(viewportHeightPixels > 0f) || !float.IsFinite(deltaXPixels) || !float.IsFinite(deltaYPixels)) return;
 
         var metersPerPixel = 2f * _desired.Distance * MathF.Tan(FieldOfViewDegrees * MarinaMath.DegToRad * 0.5f) / viewportHeightPixels;
         var yaw = _desired.YawDegrees * MarinaMath.DegToRad;
         var right = new Vector3(MathF.Cos(yaw), 0f, -MathF.Sin(yaw));
         var groundForward = new Vector3(-MathF.Sin(yaw), 0f, -MathF.Cos(yaw));
-        var move = (-right * deltaXPixels + groundForward * deltaYPixels) * metersPerPixel;
+
+        // A pixel up the screen covers more ground the flatter the view looks across it: 1 / sin(pitch) more.
+        var sinPitch = MathF.Max(MathF.Sin(_desired.PitchDegrees * MarinaMath.DegToRad), MinPanSinPitch);
+        var move = ((-right * deltaXPixels) + (groundForward * (deltaYPixels / sinPitch))) * metersPerPixel;
         _desired = Constrain(_desired with { Target = _desired.Target + move });
+    }
+
+    /// <summary>
+    /// Grab-pans: moves the view so the point of the ground (the horizontal plane through the target) that was under
+    /// <paramref name="fromPixel"/> ends up under <paramref name="toPixel"/>, wherever in an oblique view it is.
+    /// </summary>
+    /// <remarks>
+    /// Where either pointer ray runs above the horizon and never meets the ground, falls back to
+    /// <see cref="Pan(float, float, float)"/>. The move is capped at a few view distances so a pointer skimming the
+    /// horizon cannot fling the camera away.
+    /// </remarks>
+    /// <param name="fromPixel">Pointer position before the move, in view pixels (origin top-left).</param>
+    /// <param name="toPixel">Pointer position after the move.</param>
+    /// <param name="viewportWidth">View width in pixels.</param>
+    /// <param name="viewportHeight">View height in pixels.</param>
+    public void Pan(Vector2 fromPixel, Vector2 toPixel, float viewportWidth, float viewportHeight)
+    {
+        if (!(viewportWidth > 0f && viewportHeight > 0f) || fromPixel == toPixel) return;
+
+        var height = _desired.Target.Y;
+        var from = RayThrough(_desired, fromPixel.X, fromPixel.Y, viewportWidth, viewportHeight);
+        var to = RayThrough(_desired, toPixel.X, toPixel.Y, viewportWidth, viewportHeight);
+        if (from.IntersectHorizontalPlane(height, out var fromDistance) && to.IntersectHorizontalPlane(height, out var toDistance))
+        {
+            var move = from.GetPoint(fromDistance) - to.GetPoint(toDistance);
+            move.Y = 0f;
+            var cap = _desired.Distance * 4f;
+            if (move.Length() > cap) move = Vector3.Normalize(move) * cap;
+            if (float.IsFinite(move.X) && float.IsFinite(move.Z))
+            {
+                _desired = Constrain(_desired with { Target = _desired.Target + move });
+                return;
+            }
+        }
+
+        var delta = toPixel - fromPixel;
+        Pan(delta.X, delta.Y, viewportHeight);
     }
 
     /// <summary>Moves the target along the ground in the camera's own orientation (meters).</summary>
@@ -111,7 +164,8 @@ public sealed class OrbitCamera
         if (factor <= 0f || !float.IsFinite(factor)) return;
 
         var oldDistance = _desired.Distance;
-        var newDistance = Math.Clamp(oldDistance / factor, Constraints.MinDistance, Constraints.MaxDistance);
+        var (minDistance, maxDistance) = DistanceRange(Constraints);
+        var newDistance = Math.Clamp(oldDistance / factor, minDistance, maxDistance);
         var target = _desired.Target;
         if (focusPoint.HasValue && oldDistance > 0f)
         {
@@ -126,7 +180,7 @@ public sealed class OrbitCamera
     /// <param name="deltaSeconds">Time since the previous frame.</param>
     public void Update(float deltaSeconds)
     {
-        if (deltaSeconds <= 0f) return;
+        if (!(deltaSeconds > 0f)) return;
 
         if (Smoothing <= 0f)
         {
@@ -156,13 +210,47 @@ public sealed class OrbitCamera
             FarPlane);
 
     /// <summary>World-space ray through a pixel (origin top-left) of the current view.</summary>
-    public Ray ScreenPointToRay(float x, float y, float viewportWidth, float viewportHeight)
+    public Ray ScreenPointToRay(float x, float y, float viewportWidth, float viewportHeight) =>
+        RayThrough(_current, x, y, viewportWidth, viewportHeight);
+
+    /// <summary>View and projection of <paramref name="pose"/> combined, with this camera's lens and clipping planes.</summary>
+    internal Matrix4x4 GetViewProjectionMatrix(CameraPose pose, float aspectRatio) =>
+        Matrix4x4.CreateLookAt(ComputeEye(pose), pose.Target, Vector3.UnitY) * GetProjectionMatrix(aspectRatio);
+
+    /// <summary>
+    /// Projects a world point with a combined view-projection matrix to normalized device coordinates (−1..1 across
+    /// the view). False when the point is behind the camera, or so close to its plane that the projection means nothing.
+    /// </summary>
+    internal static bool TryProjectToNdc(in Matrix4x4 viewProjection, Vector3 world, out Vector2 ndc)
+    {
+        var clip = Vector4.Transform(new Vector4(world, 1f), viewProjection);
+        if (clip.W <= MinClipW)
+        {
+            ndc = default;
+            return false;
+        }
+
+        ndc = new Vector2(clip.X, clip.Y) / clip.W;
+        return true;
+    }
+
+    /// <summary>Smallest clip-space W a point may have and still count as in front of the camera.</summary>
+    private const float MinClipW = 1e-4f;
+
+    /// <summary>Smallest sine of the pitch a pan divides by, so a view skimming the water does not pan to the horizon.</summary>
+    private const float MinPanSinPitch = 0.25f;
+
+    /// <summary>Closest the camera may ever be to its target, whatever the constraints say: the smoothing works on the logarithm of the distance.</summary>
+    private const float MinimumDistance = 0.01f;
+
+    private Ray RayThrough(CameraPose pose, float x, float y, float viewportWidth, float viewportHeight)
     {
         var aspect = viewportHeight > 0f ? viewportWidth / viewportHeight : 1f;
-        var viewProjection = GetViewMatrix() * GetProjectionMatrix(aspect);
+        var viewProjection = GetViewProjectionMatrix(pose, aspect);
+        var eye = ComputeEye(pose);
         if (!Matrix4x4.Invert(viewProjection, out var inverse))
         {
-            return new Ray(Position, Vector3.Normalize(_current.Target - Position));
+            return new Ray(eye, Vector3.Normalize(pose.Target - eye));
         }
 
         var ndcX = viewportWidth > 0f ? 2f * x / viewportWidth - 1f : 0f;
@@ -177,25 +265,26 @@ public sealed class OrbitCamera
     /// <summary>Projects a world position to view pixels (origin top-left); null when behind the camera.</summary>
     public Vector2? WorldToScreen(Vector3 world, float viewportWidth, float viewportHeight)
     {
-        if (viewportWidth <= 0f || viewportHeight <= 0f) return null;
-        var viewProjection = GetViewMatrix() * GetProjectionMatrix(viewportWidth / viewportHeight);
-        var clip = Vector4.Transform(new Vector4(world, 1f), viewProjection);
-        if (clip.W <= 1e-6f) return null;
-        return new Vector2(
-            (clip.X / clip.W + 1f) * 0.5f * viewportWidth,
-            (1f - clip.Y / clip.W) * 0.5f * viewportHeight);
+        if (!(viewportWidth > 0f && viewportHeight > 0f)) return null;
+        if (!TryProjectToNdc(GetViewProjectionMatrix(_current, viewportWidth / viewportHeight), world, out var ndc)) return null;
+        return new Vector2((ndc.X + 1f) * 0.5f * viewportWidth, (1f - ndc.Y) * 0.5f * viewportHeight);
     }
 
     /// <summary>Applies <see cref="Constraints"/> to a pose.</summary>
+    /// <remarks>
+    /// Never throws, whatever the constraints hold: limits given the wrong way round are taken the right way round,
+    /// limits that are not numbers are ignored, and the distance never drops below a hair above zero.
+    /// </remarks>
     public CameraPose Constrain(CameraPose pose)
     {
         var c = Constraints;
-        var distance = Math.Clamp(float.IsFinite(pose.Distance) ? pose.Distance : c.MaxDistance, c.MinDistance, MathF.Max(c.MinDistance, c.MaxDistance));
-        var maxPitch = MathF.Min(c.MaxPitchDegrees, 89.5f);
-        var pitch = Math.Clamp(float.IsFinite(pose.PitchDegrees) ? pose.PitchDegrees : 45f, MathF.Min(c.MinPitchDegrees, maxPitch), maxPitch);
+        var (minDistance, maxDistance) = DistanceRange(c);
+        var distance = Math.Clamp(float.IsFinite(pose.Distance) ? pose.Distance : maxDistance, minDistance, maxDistance);
+        var maxPitch = MathF.Min(Finite(c.MaxPitchDegrees, 89f), 89.5f);
+        var pitch = Math.Clamp(float.IsFinite(pose.PitchDegrees) ? pose.PitchDegrees : 45f, MathF.Min(Finite(c.MinPitchDegrees, 8f), maxPitch), maxPitch);
 
         // Keep the eye above the water: sin(pitch) * distance >= MinEyeHeight.
-        var minPitchForHeight = MathF.Asin(Math.Clamp(c.MinEyeHeight / distance, 0f, 1f)) * MarinaMath.RadToDeg;
+        var minPitchForHeight = MathF.Asin(Math.Clamp(Finite(c.MinEyeHeight, 0f) / distance, 0f, 1f)) * MarinaMath.RadToDeg;
         pitch = MathF.Min(MathF.Max(pitch, minPitchForHeight), maxPitch);
 
         // Math.Clamp returns NaN for a NaN input, so the finiteness check has to come first; without it
@@ -203,11 +292,31 @@ public sealed class OrbitCamera
         var target = pose.Target;
         if (!float.IsFinite(target.X) || !float.IsFinite(target.Y) || !float.IsFinite(target.Z)) target = Vector3.Zero;
         target = new Vector3(
-            Math.Clamp(target.X, c.TargetBoundsMin.X, c.TargetBoundsMax.X),
-            Math.Clamp(target.Y, 0f, 50f),
-            Math.Clamp(target.Z, c.TargetBoundsMin.Y, c.TargetBoundsMax.Y));
+            SafeClamp(target.X, c.TargetBoundsMin.X, c.TargetBoundsMax.X),
+            SafeClamp(target.Y, c.MinTargetHeight, c.MaxTargetHeight),
+            SafeClamp(target.Z, c.TargetBoundsMin.Y, c.TargetBoundsMax.Y));
 
         var yaw = float.IsFinite(pose.YawDegrees) ? pose.YawDegrees : 0f;
         return new CameraPose(target, yaw, pitch, distance);
     }
+
+    /// <summary>The distance limits, the right way round, finite and above zero.</summary>
+    private static (float Min, float Max) DistanceRange(CameraConstraints c)
+    {
+        var min = MathF.Max(Finite(c.MinDistance, MinimumDistance), MinimumDistance);
+        // A maximum set below the minimum yields to it rather than making Math.Clamp throw.
+        var max = MathF.Max(min, Finite(c.MaxDistance, float.MaxValue));
+        return (min, max);
+    }
+
+    /// <summary>Clamps to the range between two limits, whichever order they come in; a limit that is not a number is no limit.</summary>
+    private static float SafeClamp(float value, float a, float b)
+    {
+        var low = float.IsNaN(a) ? float.NegativeInfinity : a;
+        var high = float.IsNaN(b) ? float.PositiveInfinity : b;
+        if (low > high) (low, high) = (high, low);
+        return Math.Clamp(value, low, high);
+    }
+
+    private static float Finite(float value, float fallback) => float.IsFinite(value) ? value : fallback;
 }

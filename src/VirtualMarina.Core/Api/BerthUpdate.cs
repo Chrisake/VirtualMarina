@@ -63,8 +63,18 @@ public sealed record BerthUpdate(string BerthId)
     /// <summary>Replaces the berth's <see cref="Berth.Metadata"/>.</summary>
     public IReadOnlyDictionary<string, string>? Metadata { get; init; }
 
-    /// <summary>Entries written into the berth's <see cref="Berth.ExternalData"/> (merged; a null value is stored as null).</summary>
+    /// <summary>
+    /// Entries written into the berth's <see cref="Berth.ExternalData"/>. Merged: keys listed here are added or
+    /// overwritten, keys not listed are left as they are, and a null value is stored as null (the key stays). To take a
+    /// key out, list it in <see cref="ExternalDataRemovals"/>.
+    /// </summary>
     public IReadOnlyDictionary<string, object?>? ExternalData { get; init; }
+
+    /// <summary>
+    /// Keys taken out of the berth's <see cref="Berth.ExternalData"/>, before <see cref="ExternalData"/> is merged in (so
+    /// a key both removed and written ends up with the written value). Keys that are not there are ignored.
+    /// </summary>
+    public IReadOnlyCollection<string>? ExternalDataRemovals { get; init; }
 
     /// <summary>Marks the berth Occupied by <paramref name="boat"/>.</summary>
     public static BerthUpdate Occupy(string berthId, Boat boat) => new(berthId) { Status = BerthStatus.Occupied, Boat = boat };
@@ -87,8 +97,6 @@ public sealed record BerthUpdate(string BerthId)
     /// <summary>Moves or resizes the berth; null leaves a value unchanged.</summary>
     public static BerthUpdate Geometry(string berthId, Vector2? center = null, float? headingDegrees = null, float? length = null, float? width = null) =>
         new(berthId) { Center = center, HeadingDegrees = headingDegrees, Length = length, Width = width };
-
-    internal bool ChangesOccupancy => Status.HasValue || Boat is not null || ClearBoat;
 
     internal Berth ApplyTo(Berth berth)
     {

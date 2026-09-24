@@ -92,9 +92,9 @@
         <fieldset>
             <legend>Camera</legend>
             <select value="@_selectedPreset" @onchange="ApplyPreset">
-                @foreach (var preset in _marina.CameraPresets)
+                @foreach (var preset in _marina.CameraPresets.Where(p => p.IsEnabled))
                 {
-                    <option value="@preset.Name" title="@preset.Description">@preset.Name</option>
+                    <option value="@PresetValue(preset)" title="@preset.Description">@preset.Name</option>
                 }
             </select>
             <div class="buttons"><button @onclick="ResetView">Reset view</button></div>
@@ -146,11 +146,15 @@
     private MarinaView? _view;
     private bool _designerTab;
     private string? _designError;
+
+    // The design file last loaded, kept so saving writes back what this host does not understand (another
+    // application's sections, a description, newer properties) instead of dropping it. Null for a marina made here.
+    private MarinaDocument? _document;
     private string? _export;
     private MarinaStatistics _stats = new(0, 0, 0, 0);
     private string _rendererInfo = "Starting WebGL…";
     private string _hoverText = string.Empty;
-    private string _selectedPreset = MarinaVisualizer.OverviewPresetName;
+    private string _selectedPreset = OverviewValue;
     private bool _showFree = true;
     private bool _showOccupied = true;
     private bool _showReserved = true;
@@ -164,6 +168,7 @@
         _marina.BerthHoverChanged += OnBerthHoverChanged;
         _marina.BerthStatusChanged += OnBerthStatusChanged;
         _marina.LayoutChanged += OnLayoutChanged;
+        _marina.CameraPresetsChanged += OnCameraPresetsChanged;
 
         // Fills tooltips and actions, runs actions, and stores ERP objects in Berth.ExternalData.
         _erp = new SampleErpIntegration(_marina, _rng, Log);
@@ -190,6 +195,7 @@
         _marina.BerthHoverChanged -= OnBerthHoverChanged;
         _marina.BerthStatusChanged -= OnBerthStatusChanged;
         _marina.LayoutChanged -= OnLayoutChanged;
+        _marina.CameraPresetsChanged -= OnCameraPresetsChanged;
         var designer = _marina.Designer;
         designer.ActiveChanged -= OnDesignerActiveChanged;
         designer.ToolChanged -= OnDesignToolChanged;
@@ -212,6 +218,7 @@
             using var reader = new StreamReader(stream);
             var document = MarinaDocument.Parse(await reader.ReadToEndAsync());
             document.ApplyTo(_marina);
+            _document = document;
             Log($"Loaded design   {e.File.Name}: {document.Layout.Berths.Count} berths, format {document.Version}");
         }
         catch (Exception ex) when (ex is MarinaFormatException or MarinaLayoutException or IOException)
@@ -220,10 +227,17 @@
         }
     }
 
-    /// <summary>Offers the marina on screen as a .marina.json file the designer (or another host) can open.</summary>
+    /// <summary>
+    /// Offers the marina on screen as a .marina.json file the designer (or another host) can open. A design that was
+    /// loaded is brought up to date with UpdateFrom, so what it carried that this host does not know about survives;
+    /// a marina started here is written fresh with FromVisualizer.
+    /// </summary>
     private async Task DownloadDesign()
     {
-        var json = MarinaDocument.FromVisualizer(_marina, "VirtualMarina Blazor test host").ToJson();
+        const string generator = "VirtualMarina Blazor test host";
+        if (_document is null) _document = MarinaDocument.FromVisualizer(_marina, generator);
+        else _document.UpdateFrom(_marina, generator);
+        var json = _document.ToJson();
         await JS.InvokeVoidAsync("vmDownloadText", Sanitize(_marina.MarinaName) + MarinaDocument.FileExtension, json);
         Log($"Saved design    {_marina.GetBerths().Count} berths");
     }
@@ -240,6 +254,7 @@
     private void StartEmptyMarina()
     {
         _export = null;
+        _document = null;
         _marina.InitializeLayout(new MarinaLayout { Name = "New marina" });
         _marina.Designer.IsActive = true;
         _marina.Designer.Tool = DesignTool.DrawLandArea;
@@ -334,6 +349,9 @@
         Log($"LayoutChanged   {e.Kind} {e.LandAreaId} {e.PierId} {e.BerthId} {e.MultiBerthId}".Replace("  ", " ").TrimEnd());
     }
 
+    /// <summary>The views changed (a pier came or went, the view was resized, a view was switched off): list them again.</summary>
+    private void OnCameraPresetsChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
     // ---- UI actions ----------------------------------------------------------------------------
 
     private void OnRendererReady(string description) => _rendererInfo = description;
@@ -407,15 +425,30 @@
         Log($"BerthLabelMode   {mode}");
     }
 
+    // An automatic view is listed by its key, which stays the same whatever the language or the pier's name; a saved
+    // view by its name. The prefix keeps a saved view called "Overview" apart from the automatic one.
+    private const string AutomaticPrefix = "auto:", SavedPrefix = "saved:";
+    private const string OverviewValue = AutomaticPrefix + MarinaVisualizer.OverviewPresetName;
+
+    private static string PresetValue(CameraPreset preset) =>
+        preset.IsBuiltIn && preset.Key is { } key ? AutomaticPrefix + key : SavedPrefix + preset.Name;
+
     private void ApplyPreset(ChangeEventArgs e)
     {
-        _selectedPreset = e.Value?.ToString() ?? MarinaVisualizer.OverviewPresetName;
-        _marina.ApplyCameraPreset(_selectedPreset);
+        _selectedPreset = e.Value?.ToString() ?? OverviewValue;
+        if (_selectedPreset.StartsWith(AutomaticPrefix, StringComparison.Ordinal))
+        {
+            _marina.ApplyBuiltInCameraPreset(_selectedPreset[AutomaticPrefix.Length..]);
+        }
+        else if (_selectedPreset.StartsWith(SavedPrefix, StringComparison.Ordinal))
+        {
+            _marina.ApplyCameraPreset(_selectedPreset[SavedPrefix.Length..]);
+        }
     }
 
     private void ResetView()
     {
-        _selectedPreset = MarinaVisualizer.OverviewPresetName;
+        _selectedPreset = OverviewValue;
         _marina.ResetCamera();
     }
 
@@ -456,7 +489,8 @@
 
     private void ReloadLayout()
     {
-        _selectedPreset = MarinaVisualizer.OverviewPresetName;
+        _selectedPreset = OverviewValue;
+        _document = null;
         _marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina(_rng.Next()));
     }
 

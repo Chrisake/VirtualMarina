@@ -20,12 +20,18 @@ public sealed class SampleErpIntegration : IDisposable
     private readonly MarinaVisualizer _marina;
     private readonly Random _rng;
     private readonly Action<string> _log;
+    private readonly TimeProvider _clock;
 
-    public SampleErpIntegration(MarinaVisualizer marina, Random rng, Action<string> log)
+    /// <param name="marina">The visualizer whose events this integration answers.</param>
+    /// <param name="rng">Source of the simulated ERP's randomness; seed it for repeatable runs.</param>
+    /// <param name="log">Receives a line per event and action.</param>
+    /// <param name="clock">Dates contracts and expected arrivals; the system clock when left out.</param>
+    public SampleErpIntegration(MarinaVisualizer marina, Random rng, Action<string> log, TimeProvider? clock = null)
     {
         _marina = marina ?? throw new ArgumentNullException(nameof(marina));
         _rng = rng ?? throw new ArgumentNullException(nameof(rng));
         _log = log ?? (_ => { });
+        _clock = clock ?? TimeProvider.System;
         _marina.BerthSelected += OnBerthSelected;
         _marina.MultiBerthSelected += OnMultiBerthSelected;
         _marina.BerthActionInvoked += OnBerthActionInvoked;
@@ -150,7 +156,7 @@ public sealed class SampleErpIntegration : IDisposable
                 _marina.AssignBoat(berth.Id, MockMarinaFactory.CreateBoatForBerth(berth, _rng));
                 break;
             case "reserve":
-                _marina.ReserveBerth(berth.Id, MockMarinaFactory.CreateBoatForBerth(berth, _rng) with { ExpectedArrival = DateTimeOffset.Now.AddHours(_rng.Next(2, 48)) });
+                _marina.ReserveBerth(berth.Id, MockMarinaFactory.CreateBoatForBerth(berth, _rng) with { ExpectedArrival = _clock.GetLocalNow().AddHours(_rng.Next(2, 48)) });
                 break;
             case "arrive":
             case "returned":
@@ -162,7 +168,7 @@ public sealed class SampleErpIntegration : IDisposable
                 _marina.ReleaseBerth(berth.Id);
                 break;
             case "tempfree":
-                _marina.MarkTemporarilyFree(berth.Id, berth.Boat is { } away ? away with { ExpectedArrival = DateTimeOffset.Now.AddDays(7) } : null);
+                _marina.MarkTemporarilyFree(berth.Id, berth.Boat is { } away ? away with { ExpectedArrival = _clock.GetLocalNow().AddDays(7) } : null);
                 break;
             case "launch":
             case "haulout":
@@ -265,9 +271,10 @@ public sealed class SampleErpIntegration : IDisposable
 
     private SampleContract CreateContract(Berth berth)
     {
-        var number = $"CT-{DateTime.Today.Year}-{_rng.Next(1000, 9999)}";
+        var today = _clock.GetLocalNow().Date;
+        var number = $"CT-{today.Year}-{_rng.Next(1000, 9999)}";
         _log($"  -> loaded contract {number} for {berth.Id} into ExternalData");
-        return new SampleContract(number, berth.Boat?.OwnerName ?? "-", _rng.Next(0, 4) == 0 ? _rng.Next(50, 900) : 0m, DateOnly.FromDateTime(DateTime.Today.AddMonths(_rng.Next(1, 12))));
+        return new SampleContract(number, berth.Boat?.OwnerName ?? "-", _rng.Next(0, 4) == 0 ? _rng.Next(50, 900) : 0m, DateOnly.FromDateTime(today.AddMonths(_rng.Next(1, 12))));
     }
 
     private static void Primary(BerthAction action) => action.Style = BerthActionStyle.Primary;

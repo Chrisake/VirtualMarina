@@ -1,6 +1,4 @@
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using VirtualMarina.Core.Tests;
+using VirtualMarina.TestSupport;
 
 namespace VirtualMarina.WinForms.Tests;
 
@@ -11,32 +9,8 @@ namespace VirtualMarina.WinForms.Tests;
 public class PublicApiTests
 {
     [Fact]
-    public void WinFormsApi_MatchesTheApprovedBaseline()
-    {
-        var folder = Path.Combine(Path.GetDirectoryName(Here())!, "ApiBaselines");
-        Directory.CreateDirectory(folder);
-
-        var assembly = typeof(MarinaViewControl).Assembly;
-        var approvedPath = Path.Combine(folder, $"{assembly.GetName().Name}.approved.txt");
-        var receivedPath = Path.Combine(folder, $"{assembly.GetName().Name}.received.txt");
-
-        var actual = Normalize(ApiSurface.Of(assembly));
-        if (File.Exists(approvedPath) && Normalize(File.ReadAllText(approvedPath)) == actual)
-        {
-            if (File.Exists(receivedPath)) File.Delete(receivedPath);
-            return;
-        }
-
-        File.WriteAllText(receivedPath, actual);
-        Assert.Fail($"""
-            The public API of {assembly.GetName().Name} has changed, or has no baseline yet.
-
-            Review {receivedPath}. If the change only adds to the API, approve it by replacing
-            {approvedPath} with it; otherwise it belongs in a new major version (Docs/16-compatibility.md).
-            """);
-    }
-
-    private static string Normalize(string text) => text.Replace("\r\n", "\n").TrimEnd() + "\n";
-
-    private static string Here([CallerFilePath] string path = "") => path;
+    public void WinFormsApi_MatchesTheApprovedBaseline() =>
+        ApiBaseline.AssertUnchanged(
+            typeof(MarinaViewControl).Assembly,
+            Path.Combine("tests", "VirtualMarina.WinForms.Tests", "ApiBaselines"));
 }

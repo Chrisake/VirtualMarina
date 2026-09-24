@@ -1,6 +1,6 @@
-﻿using System.Collections.ObjectModel;
-using System.Numerics;
+﻿using System.Numerics;
 using VirtualMarina.Core.Mathematics;
+using VirtualMarina.Core.Resources;
 
 namespace VirtualMarina.Core.Domain;
 
@@ -11,15 +11,19 @@ namespace VirtualMarina.Core.Domain;
 /// </summary>
 /// <remarks>
 /// The one deliberate exception is <see cref="ExternalData"/>, a mutable bag shared by every snapshot
-/// of the same berth, where host code can keep its own objects.
+/// of the same berth, where host code can keep its own objects. Equality compares everything else by value (the
+/// <see cref="Metadata"/> by its entries) and the bag by reference, so two snapshots of the same berth are equal while
+/// two berths built separately, each with a bag of its own, are not.
 /// </remarks>
 public sealed record Berth
 {
+    private readonly ValueDictionary _metadata = ValueDictionary.Empty;
+
     /// <summary>Creates a Free berth at an explicit position, orientation and size.</summary>
     /// <param name="id">Unique id (case-insensitive), typically the ERP berth number.</param>
     /// <param name="pierId">Id of the pier the berth belongs to.</param>
     /// <param name="center">Center of the berth's water area in plan coordinates (X = world X, Y = world Z).</param>
-    /// <param name="headingDegrees">Direction a moored boat's bow points, normally toward the pier (0° = +Z, 90° = +X).</param>
+    /// <param name="headingDegrees">Direction a moored boat's bow points, normally toward the pier (0° = +Z (south), 90° = +X (east)).</param>
     /// <param name="length">Length along the heading, in meters.</param>
     /// <param name="width">Width across the heading, in meters.</param>
     /// <remarks>To place berths relative to a pier, use <see cref="BerthGenerator.AtPier"/> or <see cref="PierBuilder.AddBerths"/>.</remarks>
@@ -65,14 +69,14 @@ public sealed record Berth
     /// <param name="id">Unique id (case-insensitive), shared with water berths.</param>
     /// <param name="landAreaId">Id of the land area the berth is on.</param>
     /// <param name="position">Center of the spot in plan coordinates (X = world X, Y = world Z).</param>
-    /// <param name="headingDegrees">Direction the stored boat's bow points (0° = +Z, 90° = +X).</param>
+    /// <param name="headingDegrees">Direction the stored boat's bow points (0° = +Z (south), 90° = +X (east)).</param>
     /// <param name="length">Length along the heading, in meters.</param>
     /// <param name="width">Width across the heading, in meters.</param>
     /// <example><code>Berth.OnLand("Y-01", "boatyard", new Vector2(40, -20), headingDegrees: 0, length: 12, width: 5) with { Status = BerthStatus.Occupied, Boat = boat }</code></example>
     public static Berth OnLand(string id, string landAreaId, Vector2 position, float headingDegrees = 0f, float length = 12f, float width = 5f)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(landAreaId);
-        return new Berth(id, position, headingDegrees, length, width) { LandAreaId = landAreaId, Label = id };
+        return new Berth(id, position, headingDegrees, length, width) { LandAreaId = landAreaId };
     }
 
     /// <summary>ERP identifier (unique within the marina, case-insensitive).</summary>
@@ -84,7 +88,10 @@ public sealed record Berth
     /// <summary>Id of the <see cref="LandArea"/> a land berth is on; null for a water berth along a pier.</summary>
     public string? LandAreaId { get; init; }
 
-    /// <summary>Human-readable label, e.g. "A-12". Falls back to <see cref="Id"/>.</summary>
+    /// <summary>
+    /// Human-readable label, e.g. "A-12", or null to show the <see cref="Id"/> (see <see cref="DisplayName"/>). The generators
+    /// (<see cref="OnLand"/>, <see cref="BerthGenerator"/>) leave it null, so a later <c>berth with { Id = ... }</c> shows the new id.
+    /// </summary>
     public string? Label { get; init; }
 
     /// <summary>Center of the berth's water area (or land spot) in plan coordinates (X = world X, Y = world Z).</summary>
@@ -106,9 +113,13 @@ public sealed record Berth
     public BerthStatus Status { get; init; } = BerthStatus.Free;
 
     /// <summary>
-    /// The moored boat (Occupied), expected boat (Reserved) or away boat (TemporarilyFree). Always null when Free.
-    /// For a berth in a <see cref="MultiBerth"/>, every member berth carries the berth's boat.
+    /// The moored boat (Occupied), expected boat (Reserved) or away boat (TemporarilyFree). Null when Free.
+    /// For a berth in a <see cref="MultiBerth"/>, every member berth carries the multi-berth's boat.
     /// </summary>
+    /// <remarks>
+    /// A boat on a Free berth is not an error: the visualizer drops it when the berth is loaded, added or updated, so what it
+    /// hands back always has none. <see cref="MarinaLayout.Validate"/> does not report it.
+    /// </remarks>
     public Boat? Boat { get; init; }
 
     /// <summary>Draw narrow finger piers along both long sides of the berth. Ignored for land berths.</summary>
@@ -141,7 +152,7 @@ public sealed record Berth
     public string? MultiBerthId { get; internal init; }
 
     /// <summary>Read-only string attributes supplied with the berth definition (e.g. power, water). For mutable host objects use <see cref="ExternalData"/>.</summary>
-    public IReadOnlyDictionary<string, string> Metadata { get; init; } = ReadOnlyDictionary<string, string>.Empty;
+    public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ValueDictionary.From(value); }
 
     /// <summary>
     /// Host-owned objects attached to this berth (contract ids, cached ERP records, ...).
@@ -171,31 +182,42 @@ public sealed record Berth
     /// <summary>Unit plan-view vector a moored boat's bow points along (toward the pier end of the berth).</summary>
     public Vector2 Forward => MarinaMath.HeadingToDirection(HeadingDegrees);
 
-    /// <summary>Unit plan-view vector across the berth: the heading's local +X axis, <c>(cos h, −sin h)</c>. For heading 0° it is +X.</summary>
+    /// <summary>
+    /// Unit plan-view vector across the berth: the heading's local +X axis, <c>(cos h, −sin h)</c>, the same as <see cref="LocalX"/>.
+    /// For heading 0° it is +X (east).
+    /// </summary>
+    /// <remarks>
+    /// Despite the name this is the <em>left</em>-hand side of someone standing in the berth facing along <see cref="Forward"/>
+    /// (world +Y up), and it points the opposite way to <see cref="Pier.Right"/> for the same heading. The name is kept for
+    /// compatibility; prefer <see cref="LocalX"/>. See Docs/20-coordinate-conventions.md.
+    /// </remarks>
     public Vector2 Right => MarinaMath.HeadingToRight(HeadingDegrees);
+
+    /// <summary>The heading's local +X axis, <c>(cos h, −sin h)</c>: +X (east) for heading 0°. Equal to <see cref="Right"/>.</summary>
+    public Vector2 LocalX => MarinaMath.HeadingToRight(HeadingDegrees);
 
     internal IEnumerable<string> Validate()
     {
-        if (string.IsNullOrWhiteSpace(Id)) yield return "Berth id must not be empty.";
+        if (string.IsNullOrWhiteSpace(Id)) yield return Strings.ErrorBerthIdEmpty;
         if (LandAreaId is not null)
         {
-            if (string.IsNullOrWhiteSpace(LandAreaId)) yield return $"Berth '{Id}' has an empty land area id.";
-            if (PierId is not null) yield return $"Berth '{Id}' cannot belong to both a pier and a land area.";
+            if (string.IsNullOrWhiteSpace(LandAreaId)) yield return Strings.Format(Strings.ErrorBerthEmptyLandAreaId, Id);
+            if (PierId is not null) yield return Strings.Format(Strings.ErrorBerthPierAndLand, Id);
         }
         else if (string.IsNullOrWhiteSpace(PierId))
         {
-            yield return $"Berth '{Id}' must reference a pier or a land area.";
+            yield return Strings.Format(Strings.ErrorBerthNoPlace, Id);
         }
 
-        if (!(Length > 0f && float.IsFinite(Length))) yield return $"Berth '{Id}' must have a positive, finite length.";
-        if (!(Width > 0f && float.IsFinite(Width))) yield return $"Berth '{Id}' must have a positive, finite width.";
-        if (!float.IsFinite(Center.X) || !float.IsFinite(Center.Y)) yield return $"Berth '{Id}' has a non-finite position.";
-        if (!float.IsFinite(HeadingDegrees)) yield return $"Berth '{Id}' has a non-finite heading.";
-        if (!Enum.IsDefined(Status)) yield return $"Berth '{Id}' has an unknown status '{Status}'.";
-        if (ExternalData is null) yield return $"Berth '{Id}' must have an ExternalData dictionary.";
+        if (!(Length > 0f && float.IsFinite(Length))) yield return Strings.Format(Strings.ErrorBerthLength, Id);
+        if (!(Width > 0f && float.IsFinite(Width))) yield return Strings.Format(Strings.ErrorBerthWidth, Id);
+        if (!float.IsFinite(Center.X) || !float.IsFinite(Center.Y)) yield return Strings.Format(Strings.ErrorBerthPosition, Id);
+        if (!float.IsFinite(HeadingDegrees)) yield return Strings.Format(Strings.ErrorBerthHeading, Id);
+        if (!Enum.IsDefined(Status)) yield return Strings.Format(Strings.ErrorBerthUnknownStatus, Id, Status);
+        if (ExternalData is null) yield return Strings.Format(Strings.ErrorBerthNoExternalData, Id);
         if (Boat is not null)
         {
-            foreach (var error in Boat.Validate()) yield return $"Berth '{Id}': {error}";
+            foreach (var error in Boat.Validate()) yield return Strings.Format(Strings.ErrorBerthBoat, Id, error);
         }
     }
 }

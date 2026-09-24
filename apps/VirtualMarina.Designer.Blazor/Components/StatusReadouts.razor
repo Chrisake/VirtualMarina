@@ -1,0 +1,51 @@
+@namespace VirtualMarina.Designer.Blazor.Components
+@implements IDisposable
+
+@*
+    Where the pointer is and where the camera looks from. Neither raises an event of its own, so they are read ten times
+    a second and redrawn only when the text actually changed; the rest of the window is left alone.
+*@
+<span class="vm-status__readout">@_pointer</span>
+<span class="vm-status__readout">@_camera</span>
+
+@code {
+    private Timer? _timer;
+    private string _pointer = string.Empty;
+    private string _camera = string.Empty;
+    private bool _changed = true;
+
+    /// <summary>The marina to read. Required.</summary>
+    [Parameter, EditorRequired] public MarinaVisualizer Marina { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Read();
+        _timer = new Timer(state => _ = InvokeAsync(Tick), null, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
+    }
+
+    /// <summary>Only a changed readout is worth a render; the parent's own renders pass by.</summary>
+    protected override bool ShouldRender()
+    {
+        var changed = _changed;
+        _changed = false;
+        return changed;
+    }
+
+    private void Tick()
+    {
+        if (Read()) StateHasChanged();
+    }
+
+    private bool Read()
+    {
+        var pointer = DesignerText.PointerText(Marina.Designer.PointerPosition);
+        var camera = DesignerText.CameraText(Marina.Camera.Pose);
+        if (pointer == _pointer && camera == _camera) return false;
+        _pointer = pointer;
+        _camera = camera;
+        _changed = true;
+        return true;
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

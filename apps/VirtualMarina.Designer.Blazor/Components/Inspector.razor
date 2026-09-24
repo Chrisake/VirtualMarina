@@ -1,0 +1,367 @@
+@namespace VirtualMarina.Designer.Blazor.Components
+@implements IDisposable
+
+@*
+    The panel beside the view: the tool in hand, what to do with it, and only the settings that tool needs. Mirrors
+    InspectorPanel, with the same ranges and text from VirtualMarina.Designer.Common. It does not listen to the designer
+    itself: the shell does, and redraws this panel with it.
+*@
+<div class="vm-inspector">
+    <h2 class="vm-panel__title">@DesignerText.ToolTitle(Designer.Tool)</h2>
+    <div class="vm-panel__hint">@Designer.ToolHint</div>
+
+    @if (Designer.Tool == DesignTool.DrawShoreline)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-coast">
+            <h3 id="vm-card-coast" class="vm-card__title">@Strings.CardCoast</h3>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-coast-scenery" title="@Strings.CoastSceneryTip">@Strings.CoastScenery</label>
+                <select id="vm-coast-scenery" value="@Designer.Scenery" @onchange="e => Apply(d => d.Scenery = Parse<HinterlandScenery>(e))">
+                    @foreach (var scenery in DesignerChoices.Sceneries) { <option value="@scenery">@DesignerChoices.Describe(scenery)</option> }
+                </select>
+            </div>
+            <div class="vm-hint">@Strings.CoastHint</div>
+            <div class="vm-hint">@Strings.CoastEndlessHint</div>
+            <div class="vm-hint">@DesignerText.CoastState(Marina)</div>
+            <div class="vm-row"><button class="vm-btn" disabled="@(Marina.Shoreline is null)" @onclick="RemoveShoreline">@Strings.CoastRemove</button></div>
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.DrawLandArea)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-land">
+            <h3 id="vm-card-land" class="vm-card__title">@Strings.CardLandArea</h3>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-land-kind" title="@Strings.LandSurfaceTip">@Strings.LandSurface</label>
+                <select id="vm-land-kind" value="@Designer.LandKind" @onchange="e => Apply(d => d.LandKind = Parse<LandKind>(e))">
+                    @foreach (var kind in DesignerChoices.LandKinds) { <option value="@kind">@DesignerChoices.Describe(kind)</option> }
+                </select>
+                <label class="vm-grid__label" for="vm-land-height" title="@Strings.LandHeightTip">@Strings.LandHeight</label>
+                @Number("vm-land-height", DesignerRanges.LandHeight, Designer.LandHeight, (d, v) => d.LandHeight = v)
+            </div>
+            <div class="vm-hint">@Strings.LandHint</div>
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.PlantTrees || (Designer.Tool == DesignTool.DrawLandArea && Designer.LandKind == LandKind.Grass))
+    {
+        var density = (int)MathF.Round(Designer.TreeDensity);
+        var densityText = density <= 0 ? Strings.TreeNone : density.ToString(CultureInfo.CurrentCulture);
+        <section class="vm-card" aria-labelledby="vm-card-trees">
+            <h3 id="vm-card-trees" class="vm-card__title">@Strings.CardTrees</h3>
+            <div class="vm-slider">
+                <input type="range" aria-labelledby="vm-card-trees" aria-valuetext="@densityText"
+                       min="@DesignerRanges.TreeDensity.MinText" max="@DesignerRanges.TreeDensity.MaxText" step="@DesignerRanges.TreeDensity.StepText"
+                       value="@density" @oninput="e => SetNum(e, (d, v) => d.TreeDensity = v)" />
+                <span class="vm-slider__value" aria-hidden="true">@densityText</span>
+            </div>
+            <div class="vm-hint">@Strings.TreeHint</div>
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.DrawPier)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-pier">
+            <h3 id="vm-card-pier" class="vm-card__title">@Strings.CardPier</h3>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-pier-type" title="@Strings.PierConstructionTip">@Strings.PierConstruction</label>
+                <select id="vm-pier-type" value="@Designer.PierType" @onchange="e => Apply(d => d.PierType = Parse<PierType>(e))">
+                    @foreach (var type in DesignerChoices.PierTypes) { <option value="@type">@DesignerChoices.Describe(type)</option> }
+                </select>
+                <label class="vm-grid__label" for="vm-pier-width">@Strings.PierWidth</label>
+                @Number("vm-pier-width", DesignerRanges.PierWidth, Designer.PierWidth, (d, v) => d.PierWidth = v)
+                <label class="vm-grid__label" for="vm-pier-sides" title="@Strings.PierBerthsTip">@Strings.PierBerths</label>
+                <select id="vm-pier-sides" value="@Designer.PierBerthingSides" @onchange="e => Apply(d => d.PierBerthingSides = Parse<PierSides>(e))">
+                    @foreach (var sides in DesignerChoices.BerthingSides) { <option value="@sides">@DesignerChoices.Describe(sides)</option> }
+                </select>
+                <label class="vm-grid__label" for="vm-pier-name" title="@Strings.PierNameTip">@Strings.PierName</label>
+                <input id="vm-pier-name" type="text" value="@Designer.PierNamePattern" @onchange="OnPierPattern" />
+            </div>
+            <div class="vm-hint">@Strings.PierHint</div>
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.AddBerths)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-berths">
+            <h3 id="vm-card-berths" class="vm-card__title">@Strings.CardBerths</h3>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-berth-width" title="@Strings.BerthWidthTip">@Strings.BerthWidth</label>
+                @Number("vm-berth-width", DesignerRanges.BerthWidth, Designer.BerthWidth, (d, v) => d.BerthWidth = v)
+                <label class="vm-grid__label" for="vm-berth-length" title="@Strings.BerthLengthTip">@Strings.BerthLength</label>
+                @Number("vm-berth-length", DesignerRanges.BerthLength, Designer.BerthLength, (d, v) => d.BerthLength = v)
+                <label class="vm-grid__label" for="vm-berth-depth" title="@Strings.BerthDepthTip">@Strings.BerthDepth</label>
+                @Number("vm-berth-depth", DesignerRanges.BerthDepth, Designer.BerthDepth, (d, v) => d.BerthDepth = v)
+                <label class="vm-grid__label" for="vm-berth-separator">@Strings.BerthSeparator</label>
+                <select id="vm-berth-separator" value="@Designer.BerthSeparators" @onchange="e => Apply(d => d.BerthSeparators = Parse<BerthSeparator>(e))">
+                    @foreach (var separator in DesignerChoices.Separators) { <option value="@separator">@DesignerChoices.Describe(separator)</option> }
+                </select>
+                <label class="vm-grid__label" for="vm-berth-gap" title="@Strings.BerthGapTip">@Strings.BerthGap</label>
+                @Number("vm-berth-gap", DesignerRanges.BerthGap, Designer.BerthGap, (d, v) => d.BerthGap = v)
+                <span class="vm-grid__wide vm-hint">@DesignerText.SeparatorHint(Designer.BerthSeparators, Designer.BerthWidth, Designer.BerthGap)</span>
+                <label class="vm-grid__label" for="vm-berth-services" title="@Strings.BerthServicesTip">@Strings.BerthServices</label>
+                <select id="vm-berth-services" value="@Designer.BerthServices" @onchange="e => Apply(d => d.BerthServices = Parse<PierServices>(e))">
+                    @foreach (var services in DesignerChoices.Services) { <option value="@services">@DesignerChoices.Describe(services)</option> }
+                </select>
+                <label class="vm-grid__wide vm-check"><input type="checkbox" checked="@Designer.AlignBerthsToExisting" @onchange="e => Apply(d => d.AlignBerthsToExisting = e.Value is true)" /> @Strings.AlignBerths</label>
+            </div>
+            <div class="vm-hint">@Strings.BerthHint</div>
+            @BerthNaming(landVariant: false)
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.AddLandBerths)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-ashore">
+            <h3 id="vm-card-ashore" class="vm-card__title">@Strings.CardStorageAshore</h3>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-ashore-width">@Strings.LandBerthWidth</label>
+                @Number("vm-ashore-width", DesignerRanges.BerthWidth, Designer.BerthWidth, (d, v) => d.BerthWidth = v)
+                <label class="vm-grid__label" for="vm-ashore-length">@Strings.LandBerthLength</label>
+                @Number("vm-ashore-length", DesignerRanges.BerthLength, Designer.BerthLength, (d, v) => d.BerthLength = v)
+                <label class="vm-grid__label" for="vm-ashore-heading" title="@Strings.LandBerthHeadingTip">@Strings.LandBerthHeading</label>
+                @Number("vm-ashore-heading", DesignerRanges.LandBerthHeading, Designer.LandBerthHeading, (d, v) => d.LandBerthHeading = v)
+                <span class="vm-grid__wide vm-row">
+                    @foreach (var (text, heading) in DesignerChoices.CompassHeadings) { <button class="vm-btn" @onclick="() => Apply(d => d.LandBerthHeading = heading)">@text</button> }
+                </span>
+            </div>
+            <div class="vm-hint">@Strings.LandBerthHint</div>
+            @BerthNaming(landVariant: true)
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.EditServices)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-services">
+            <h3 id="vm-card-services" class="vm-card__title">@Strings.CardServices</h3>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-services" title="@Strings.BerthServicesTip">@Strings.BerthServices</label>
+                <select id="vm-services" value="@Designer.BerthServices" @onchange="e => Apply(d => d.BerthServices = Parse<PierServices>(e))">
+                    @foreach (var services in DesignerChoices.Services) { <option value="@services">@DesignerChoices.Describe(services)</option> }
+                </select>
+            </div>
+            <div class="vm-hint">@Strings.ServicesHint</div>
+            <div class="vm-hint">@Strings.ServicesInheritHint</div>
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.SelectArea)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-select">
+            <h3 id="vm-card-select" class="vm-card__title">@Strings.CardSelect</h3>
+            <div class="vm-hint">@Strings.SelectHint</div>
+            <div class="vm-hint" aria-live="polite">@Strings.Format(Strings.SelectCount, Marina.SelectedBerths.Count)</div>
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.Erase)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-erase">
+            <h3 id="vm-card-erase" class="vm-card__title">@Strings.CardErase</h3>
+            <div class="vm-hint">@Strings.EraseHint</div>
+            <div class="vm-hint">@Strings.EraseUndoHint</div>
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.Rename)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-rename">
+            <h3 id="vm-card-rename" class="vm-card__title">@Strings.CardRename</h3>
+            <div class="vm-hint">@Strings.RenameHint</div>
+            <div class="vm-hint">@Strings.RenameUndoHint</div>
+        </section>
+    }
+
+    @if (Designer.Tool is DesignTool.Navigate or DesignTool.MoveReferenceImage or DesignTool.MeasureScale)
+    {
+        var hasImage = Designer.ReferenceImage is not null;
+        var opacity = (int)MathF.Round(Designer.ReferenceImageOpacity * 100f);
+        var opacityText = Strings.Format(Strings.Percent, opacity);
+        <section class="vm-card" aria-labelledby="vm-card-image">
+            <h3 id="vm-card-image" class="vm-card__title">@Strings.CardReferenceImage</h3>
+            <div class="vm-row">
+                <button class="vm-btn" @onclick="LoadImage">@Strings.ImageLoad</button>
+                <button class="vm-btn" disabled="@(!hasImage)" @onclick="() => Apply(d => d.FocusReferenceImage())">@Strings.ImageFit</button>
+                <button class="vm-btn" disabled="@(!hasImage)" @onclick="() => Apply(d => d.ClearReferenceImage())">@Strings.ImageRemove</button>
+            </div>
+            <div class="vm-hint">@DesignerText.ImageState(Designer)</div>
+            <div class="vm-row">
+                <button class="vm-btn vm-btn--primary" disabled="@(!hasImage)" aria-pressed="@(Designer.Tool == DesignTool.MeasureScale ? "true" : "false")" @onclick="() => Apply(d => d.Tool = DesignTool.MeasureScale)">@Strings.ImageMeasure</button>
+                <button class="vm-btn" disabled="@(!hasImage)" aria-pressed="@(Designer.Tool == DesignTool.MoveReferenceImage ? "true" : "false")" @onclick="() => Apply(d => d.Tool = DesignTool.MoveReferenceImage)">@Strings.ImageMove</button>
+            </div>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-scale-length">@Strings.ImageRealLength</label>
+                <span class="vm-slider" style="gap:6px">
+                    <input id="vm-scale-length" type="number" min="@DesignerRanges.ScaleLength.MinText" step="@DesignerRanges.ScaleLength.StepText" style="width:84px;flex:none"
+                           disabled="@(Designer.ScaleLine is null)" @bind="_scaleLength" />
+                    <button class="vm-btn" disabled="@(Designer.ScaleLine is null || !(_scaleLength > 0))" @onclick="Calibrate">@Strings.ImageApply</button>
+                </span>
+            </div>
+            <div class="vm-row"><button class="vm-btn" disabled="@(Designer.ScaleLine is null)" title="@Strings.ImageClearScaleLineTip" @onclick="() => Apply(d => d.ClearScaleLine())">@Strings.ImageClearScaleLine</button></div>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-image-opacity">@Strings.ImageOpacity</label>
+                <div class="vm-slider">
+                    <input id="vm-image-opacity" type="range" min="@DesignerRanges.ImageOpacityPercent.MinText" max="@DesignerRanges.ImageOpacityPercent.MaxText"
+                           disabled="@(!hasImage)" value="@opacity" aria-valuetext="@opacityText" @oninput="e => SetNum(e, (d, v) => d.ReferenceImageOpacity = v / 100f)" />
+                    <span class="vm-slider__value" aria-hidden="true">@opacityText</span>
+                </div>
+            </div>
+            <label class="vm-check" style="margin-top:6px"><input type="checkbox" disabled="@(!hasImage)" checked="@Designer.ReferenceImageVisible" @onchange="e => Apply(d => d.ReferenceImageVisible = e.Value is true)" /> @Strings.ImageShown</label>
+            <label class="vm-check" style="margin-top:6px"><input type="checkbox" disabled="@(!hasImage)" checked="@Designer.ReferenceImageAboveScene" @onchange="e => Apply(d => d.ReferenceImageAboveScene = e.Value is true)" /> @Strings.ImageAbove</label>
+        </section>
+    }
+
+    @if (Designer.Tool is DesignTool.Navigate or DesignTool.Erase)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-summary">
+            <h3 id="vm-card-summary" class="vm-card__title">@Strings.CardSummary</h3>
+            <div class="vm-hint vm-hint--pre">@DesignerText.Summary(Marina)</div>
+        </section>
+    }
+</div>
+
+@code {
+    private MarinaVisualizer? _subscribed;
+    private float? _scaleLength;
+    private string? _patternProblem;
+    private string? _landPatternProblem;
+
+    /// <summary>The session whose marina this panel drives. Required.</summary>
+    [Parameter, EditorRequired] public DesignerSession Session { get; set; } = default!;
+
+    /// <summary>Opens the browser's picture picker to load a reference image.</summary>
+    [Parameter] public EventCallback LoadImage { get; set; }
+
+    private MarinaVisualizer Marina => Session.Marina;
+
+    private MarinaDesigner Designer => Session.Designer;
+
+    protected override void OnParametersSet()
+    {
+        if (Session is null) throw new InvalidOperationException($"{nameof(Inspector)} requires the {nameof(Session)} parameter.");
+        if (ReferenceEquals(_subscribed, Marina)) return;
+        Unsubscribe();
+        _subscribed = Marina;
+
+        // The one designer event this panel listens to itself: a new scale line empties the length typed for the last.
+        Marina.Designer.ScaleLineDrawn += OnScaleLineDrawn;
+    }
+
+    /// <summary>Redraws the panel, e.g. after New or Open replaced the marina under it; forgets the fields' complaints.</summary>
+    public void Refresh()
+    {
+        _patternProblem = null;
+        _landPatternProblem = null;
+        StateHasChanged();
+    }
+
+    public void Dispose() => Unsubscribe();
+
+    private void Unsubscribe()
+    {
+        if (_subscribed is null) return;
+        _subscribed.Designer.ScaleLineDrawn -= OnScaleLineDrawn;
+        _subscribed = null;
+    }
+
+    private void OnScaleLineDrawn(object? sender, ScaleLineDrawnEventArgs e)
+    {
+        _scaleLength = null;
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>A number field over one of the shared ranges.</summary>
+    private RenderFragment Number(string id, NumberRange range, float value, Action<MarinaDesigner, float> change) => __builder =>
+    {
+        <input id="@id" type="number" min="@range.MinText" max="@range.MaxText" step="@range.StepText"
+               value="@range.Fit(value).ToString(CultureInfo.InvariantCulture)" @onchange="e => SetNum(e, change)" />
+    };
+
+    private RenderFragment BerthNaming(bool landVariant) => __builder =>
+    {
+        var naming = Designer.BerthNaming;
+        var pattern = landVariant ? naming.LandPattern ?? naming.Pattern : naming.Pattern;
+        var start = landVariant ? naming.LandStartNumber ?? naming.StartNumber : naming.StartNumber;
+        var increment = landVariant ? naming.LandIncrement ?? naming.Increment : naming.Increment;
+        var digits = landVariant ? naming.LandNumberDigits ?? naming.NumberDigits : naming.NumberDigits;
+        var prefix = landVariant ? "vm-ashore-naming" : "vm-berth-naming";
+        var problem = landVariant ? _landPatternProblem : _patternProblem;
+        <h4 class="vm-section">@Strings.BerthNamingHeading</h4>
+        <div class="vm-grid">
+            <label class="vm-grid__label" for="@(prefix + "-pattern")" title="@Strings.BerthNamePatternTip">@Strings.BerthNamePattern</label>
+            <input id="@(prefix + "-pattern")" type="text" value="@pattern" aria-invalid="@(problem is null ? "false" : "true")"
+                   aria-describedby="@(prefix + "-example")" @onchange="e => OnPattern(e, landVariant)" />
+            <label class="vm-grid__label" for="@(prefix + "-start")" title="@Strings.BerthStartNumberTip">@Strings.BerthStartNumber</label>
+            <input id="@(prefix + "-start")" type="number" min="@DesignerRanges.NamingStart.MinText" max="@DesignerRanges.NamingStart.MaxText" step="1" value="@start"
+                   @onchange="e => OnNaming(e, landVariant, (n, v) => landVariant ? n with { LandStartNumber = v } : n with { StartNumber = v })" />
+            <label class="vm-grid__label" for="@(prefix + "-increment")" title="@Strings.BerthIncrementTip">@Strings.BerthIncrement</label>
+            <input id="@(prefix + "-increment")" type="number" min="@DesignerRanges.NamingIncrement.MinText" max="@DesignerRanges.NamingIncrement.MaxText" step="1" value="@increment"
+                   @onchange="e => OnNaming(e, landVariant, (n, v) => landVariant ? n with { LandIncrement = v } : n with { Increment = v })" />
+            <label class="vm-grid__label" for="@(prefix + "-digits")" title="@Strings.BerthNumberDigitsTip">@Strings.BerthNumberDigits</label>
+            <input id="@(prefix + "-digits")" type="number" min="@DesignerRanges.NamingDigits.MinText" max="@DesignerRanges.NamingDigits.MaxText" step="1" value="@digits"
+                   @onchange="e => OnNaming(e, landVariant, (n, v) => landVariant ? n with { LandNumberDigits = v } : n with { NumberDigits = v })" />
+            <span id="@(prefix + "-example")" class="vm-grid__wide @(problem is null ? "vm-hint" : "vm-error")" role="@(problem is null ? null : "alert")">
+                @(problem ?? (landVariant ? DesignerText.AshoreNameExample(Marina, naming) : DesignerText.NamingExample(Marina, naming)))
+            </span>
+        </div>
+    };
+
+    private void OnPierPattern(ChangeEventArgs e)
+    {
+        var text = e.Value?.ToString();
+        if (!string.IsNullOrWhiteSpace(text)) Apply(d => d.PierNamePattern = text);
+    }
+
+    private void OnPattern(ChangeEventArgs e, bool landVariant) =>
+        ApplyNaming(landVariant, n => landVariant ? n with { LandPattern = e.Value?.ToString() ?? string.Empty } : n with { Pattern = e.Value?.ToString() ?? string.Empty });
+
+    private void OnNaming(ChangeEventArgs e, bool landVariant, Func<BerthNamingScheme, int, BerthNamingScheme> change)
+    {
+        if (int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+        {
+            ApplyNaming(landVariant, n => change(n, value));
+        }
+    }
+
+    /// <summary>
+    /// Changes the berth naming scheme. One the designer would refuse (a blank pattern, counting by zero) is not
+    /// applied; the reason shows in place of the example until the field is put right.
+    /// </summary>
+    private void ApplyNaming(bool landVariant, Func<BerthNamingScheme, BerthNamingScheme> change)
+    {
+        var naming = change(Designer.BerthNaming);
+        var problem = DesignerText.NamingProblem(naming);
+        if (landVariant) _landPatternProblem = problem;
+        else _patternProblem = problem;
+        if (problem is null) Apply(d => d.BerthNaming = naming);
+    }
+
+    private void RemoveShoreline() => Session.RemoveShoreline();
+
+    private void Calibrate()
+    {
+        if (_scaleLength is > 0f and var length) Apply(d => d.CalibrateReferenceImage(length));
+    }
+
+    private void Apply(Action<MarinaDesigner> change)
+    {
+        try
+        {
+            change(Designer);
+        }
+        catch (ArgumentException)
+        {
+            // The field ranges match the designer's; a value it still refuses is put back by the next render.
+        }
+    }
+
+    private void SetNum(ChangeEventArgs e, Action<MarinaDesigner, float> change)
+    {
+        if (float.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            Apply(d => change(d, value));
+        }
+    }
+
+    private static T Parse<T>(ChangeEventArgs e) where T : struct, Enum => Enum.Parse<T>(e.Value?.ToString() ?? string.Empty);
+}

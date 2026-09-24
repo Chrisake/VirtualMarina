@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!--
     Displayed text for VirtualMarina.Core. To translate it, copy this file next to it as Strings.<culture>.resx
@@ -186,9 +186,13 @@
   <data name="TooltipReadOnly">
     <value>Read-only</value>
   </data>
-  <data name="TooltipBerthsSelected">
+  <data name="TooltipBerthsSelected_One">
+    <value>{0} berth selected</value>
+    <comment>{0} = number of selected berths (2 or more in practice). Singular form, for a count the display language treats as one.</comment>
+  </data>
+  <data name="TooltipBerthsSelected_Other">
     <value>{0} berths selected</value>
-    <comment>{0} = number of selected berths (always 2 or more).</comment>
+    <comment>{0} = number of selected berths (2 or more in practice). Plural form.</comment>
   </data>
   <data name="TooltipBerthAndBoat">
     <value>{0} · {1}</value>
@@ -234,6 +238,10 @@
   </data>
   <data name="ToolMeasureScale">
     <value>Draw scale line</value>
+  </data>
+  <data name="ToolDrawShoreline">
+    <value>Coast</value>
+    <comment>The tool that draws the coast of the mainland behind the marina.</comment>
   </data>
   <!-- Berth separators -->
   <data name="SeparatorFingerPiers">
@@ -417,9 +425,13 @@
     <value>Add berth {0}</value>
     <comment>{0} = berth name.</comment>
   </data>
-  <data name="UndoAddBerths">
+  <data name="UndoAddBerths_One">
+    <value>Add {0} berth</value>
+    <comment>Undo step; {0} = number of berths added. Singular form, for a count the display language treats as one.</comment>
+  </data>
+  <data name="UndoAddBerths_Other">
     <value>Add {0} berths</value>
-    <comment>{0} = number of berths added.</comment>
+    <comment>Undo step; {0} = number of berths added. Plural form.</comment>
   </data>
   <data name="UndoAddLandBerth">
     <value>Add land berth {0}</value>
@@ -435,9 +447,13 @@
     <value>{0} on {1}</value>
     <comment>{0} = "Plant trees" or "Remove trees", {1} = name of the land area.</comment>
   </data>
-  <data name="UndoEraseBerthsOfPier">
+  <data name="UndoEraseBerthsOfPier_One">
+    <value>Erase {0} berth from {1}</value>
+    <comment>Undo step; {0} = how many, {1} = the pier name. Singular form, for a count the display language treats as one.</comment>
+  </data>
+  <data name="UndoEraseBerthsOfPier_Other">
     <value>Erase {0} berths from {1}</value>
-    <comment>{0} = how many, {1} = the pier name.</comment>
+    <comment>Undo step; {0} = how many, {1} = the pier name. Plural form.</comment>
   </data>
   <data name="UndoErase">
     <value>Erase {0}</value>
@@ -447,13 +463,21 @@
     <value>Rename {0} to {1}</value>
     <comment>{0} = the old berth name, {1} = the new one.</comment>
   </data>
-  <data name="UndoRenumberBerths">
-    <value>Rename {0} berths on {1}</value>
-    <comment>{0} = how many, {1} = the pier name.</comment>
+  <data name="UndoRenumberBerths_One">
+    <value>Rename {0} berth on {1}</value>
+    <comment>Undo step; {0} = how many, {1} = the pier name. Singular form, for a count the display language treats as one.</comment>
   </data>
-  <data name="UndoSetServices">
-    <value>Set {0} on {1} berth(s)</value>
-    <comment>{0} = what the pedestals offer, {1} = how many berths.</comment>
+  <data name="UndoRenumberBerths_Other">
+    <value>Rename {0} berths on {1}</value>
+    <comment>Undo step; {0} = how many, {1} = the pier name. Plural form.</comment>
+  </data>
+  <data name="UndoSetServices_One">
+    <value>Set {0} on {1} berth</value>
+    <comment>Undo step; {0} = what the pedestals offer, {1} = how many berths. Singular form, for a count the display language treats as one.</comment>
+  </data>
+  <data name="UndoSetServices_Other">
+    <value>Set {0} on {1} berths</value>
+    <comment>Undo step; {0} = what the pedestals offer, {1} = how many berths. Plural form.</comment>
   </data>
   <data name="UndoChangePierId">
     <value>Change pier id {0} to {1}</value>
@@ -470,5 +494,493 @@
   <data name="ElementPier">
     <value>pier {0}</value>
     <comment>{0} = pier name. Reads as part of "Erase pier A".</comment>
+  </data>
+  <data name="OverlayMeters">
+    <value>{0} M</value>
+    <comment>A distance beside the pointer; {0} = the number of meters. The overlay font has capitals, digits and a little punctuation only; anything else shows as a question mark.</comment>
+  </data>
+  <data name="OverlayOneBerth">
+    <value>1 BERTH {0} X {1} M</value>
+    <comment>Preview of a single berth; {0} = its width, {1} = its length, in meters. The overlay font has capitals, digits and a little punctuation only; anything else shows as a question mark.</comment>
+  </data>
+  <data name="OverlayBerthCount">
+    <value>{0} BERTHS</value>
+    <comment>Preview of a row of berths; {0} = how many. The overlay font has capitals, digits and a little punctuation only; anything else shows as a question mark.</comment>
+  </data>
+  <data name="OverlayLandBerth">
+    <value>{0} X {1} M AT {2}</value>
+    <comment>Preview of a berth ashore; {0} = width, {1} = length in meters, {2} = the bow heading in degrees. The overlay font has capitals, digits and a little punctuation only; anything else shows as a question mark.</comment>
+  </data>
+  <data name="OverlayNorth">
+    <value>N</value>
+    <comment>The north mark above the reference image. The overlay font has capitals, digits and a little punctuation only; anything else shows as a question mark.</comment>
+  </data>
+  <data name="NamingPatternEmpty">
+    <value>The berth naming pattern must not be empty.</value>
+    <comment>A berth naming scheme cannot be used.</comment>
+  </data>
+  <data name="NamingLandPatternEmpty">
+    <value>The land berth naming pattern must not be empty.</value>
+    <comment>A berth naming scheme cannot be used.</comment>
+  </data>
+  <data name="NamingIncrementZero">
+    <value>The berth numbering increment must not be 0.</value>
+    <comment>A berth naming scheme cannot be used.</comment>
+  </data>
+  <data name="NamingDigitsOutOfRange">
+    <value>The berth numbering must be padded to between 1 and 9 digits.</value>
+    <comment>A berth naming scheme cannot be used.</comment>
+  </data>
+  <data name="NamingLandIncrementZero">
+    <value>The numbering increment of the slots ashore must not be 0.</value>
+    <comment>A berth naming scheme cannot be used.</comment>
+  </data>
+  <data name="NamingLandDigitsOutOfRange">
+    <value>The slots ashore must be padded to between 1 and 9 digits.</value>
+    <comment>A berth naming scheme cannot be used.</comment>
+  </data>
+  <data name="UndoEraseBerths_One">
+    <value>Erase {0} berth</value>
+    <comment>Undo step for erasing the selected berths; {0} = how many. Singular form, for a count the display language treats as one.</comment>
+  </data>
+  <data name="UndoEraseBerths_Other">
+    <value>Erase {0} berths</value>
+    <comment>Undo step for erasing the selected berths; {0} = how many. Plural form.</comment>
+  </data>
+  <data name="UndoFailed">
+    <value>Undo {0}</value>
+    <comment>Reported when an undo from the keyboard could not be done; {0} = the step's description, e.g. "Add 4 berths".</comment>
+  </data>
+  <data name="RedoFailed">
+    <value>Redo {0}</value>
+    <comment>Reported when a redo from the keyboard could not be done; {0} = the step's description.</comment>
+  </data>
+  <data name="CameraPresetOverview">
+    <value>Overview</value>
+    <comment>Name of the automatic camera view of the whole marina.</comment>
+  </data>
+  <data name="CameraPresetOverviewDescription">
+    <value>The whole marina</value>
+    <comment>Description of the automatic Overview camera view.</comment>
+  </data>
+  <data name="CameraPresetTopDown">
+    <value>Top Down</value>
+    <comment>Name of the automatic camera view looking straight down on the marina.</comment>
+  </data>
+  <data name="CameraPresetTopDownDescription">
+    <value>Straight down, north up</value>
+    <comment>Description of the automatic Top Down camera view.</comment>
+  </data>
+  <data name="CameraPresetNorth">
+    <value>North</value>
+    <comment>Name of the automatic camera view from the north.</comment>
+  </data>
+  <data name="CameraPresetNorthDescription">
+    <value>From the north</value>
+    <comment>Description of the automatic North camera view.</comment>
+  </data>
+  <data name="CameraPresetEast">
+    <value>East</value>
+    <comment>Name of the automatic camera view from the east.</comment>
+  </data>
+  <data name="CameraPresetEastDescription">
+    <value>From the east</value>
+    <comment>Description of the automatic East camera view.</comment>
+  </data>
+  <data name="CameraPresetSouth">
+    <value>South</value>
+    <comment>Name of the automatic camera view from the south.</comment>
+  </data>
+  <data name="CameraPresetSouthDescription">
+    <value>From the south</value>
+    <comment>Description of the automatic South camera view.</comment>
+  </data>
+  <data name="CameraPresetWest">
+    <value>West</value>
+    <comment>Name of the automatic camera view from the west.</comment>
+  </data>
+  <data name="CameraPresetWestDescription">
+    <value>From the west</value>
+    <comment>Description of the automatic West camera view.</comment>
+  </data>
+  <data name="CameraPresetPier">
+    <value>Pier: {0}</value>
+    <comment>Name of the automatic close-up camera view of a pier; {0} = the pier's name.</comment>
+  </data>
+  <data name="CameraPresetPierWithId">
+    <value>Pier: {0} ({1})</value>
+    <comment>Name of a pier's close-up view when another pier has the same name; {0} = the pier's name, {1} = its id.</comment>
+  </data>
+  <data name="CameraPresetPierDescription">
+    <value>Close-up of {0}</value>
+    <comment>Description of a pier's close-up camera view; {0} = the pier's name.</comment>
+  </data>
+  <data name="ErrorBoatIdEmpty">
+    <value>Boat id must not be empty.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBoatUnknownType">
+    <value>Boat '{0}' has an unknown type '{1}'.</value>
+    <comment>{0} = boat id, {1} = the type given. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBoatLength">
+    <value>Boat '{0}' must have a positive, finite length.</value>
+    <comment>{0} = boat id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBoatBeam">
+    <value>Boat '{0}' must have a positive, finite beam.</value>
+    <comment>{0} = boat id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDividerIdEmpty">
+    <value>Divider id must not be empty.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDividerLength">
+    <value>Divider '{0}' must have a positive, finite length.</value>
+    <comment>{0} = divider id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDividerWidth">
+    <value>Divider '{0}' must have a positive, finite width.</value>
+    <comment>{0} = divider id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDividerSpacing">
+    <value>Divider '{0}' spacing must be at least 0.5 m and finite.</value>
+    <comment>{0} = divider id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDividerPosition">
+    <value>Divider '{0}' has a non-finite position or heading.</value>
+    <comment>{0} = divider id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDividerUnknownType">
+    <value>Divider '{0}' has an unknown type '{1}'.</value>
+    <comment>{0} = divider id, {1} = the type given. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthIdEmpty">
+    <value>Berth id must not be empty.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthEmptyLandAreaId">
+    <value>Berth '{0}' has an empty land area id.</value>
+    <comment>{0} = berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthPierAndLand">
+    <value>Berth '{0}' cannot belong to both a pier and a land area.</value>
+    <comment>{0} = berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthNoPlace">
+    <value>Berth '{0}' must reference a pier or a land area.</value>
+    <comment>{0} = berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthLength">
+    <value>Berth '{0}' must have a positive, finite length.</value>
+    <comment>{0} = berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthWidth">
+    <value>Berth '{0}' must have a positive, finite width.</value>
+    <comment>{0} = berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthPosition">
+    <value>Berth '{0}' has a non-finite position.</value>
+    <comment>{0} = berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthHeading">
+    <value>Berth '{0}' has a non-finite heading.</value>
+    <comment>{0} = berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthUnknownStatus">
+    <value>Berth '{0}' has an unknown status '{1}'.</value>
+    <comment>{0} = berth id, {1} = the status given. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthNoExternalData">
+    <value>Berth '{0}' must have an ExternalData dictionary.</value>
+    <comment>{0} = berth id. ExternalData is the name of a property; leave it untranslated. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthBoat">
+    <value>Berth '{0}': {1}</value>
+    <comment>A problem with a berth's boat; {0} = berth id, {1} = the boat's problem. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorLandIdEmpty">
+    <value>Land area id must not be empty.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorLandTooFewPoints">
+    <value>Land area '{0}' needs at least three points.</value>
+    <comment>{0} = land area id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorLandNonFinitePoint">
+    <value>Land area '{0}' has a non-finite point.</value>
+    <comment>{0} = land area id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorLandCrossesItself">
+    <value>Land area '{0}' outline must not cross itself or repeat points.</value>
+    <comment>{0} = land area id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorLandNoArea">
+    <value>Land area '{0}' outline has no area.</value>
+    <comment>{0} = land area id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorLandHeight">
+    <value>Land area '{0}' height must be between 0 and 50 m.</value>
+    <comment>{0} = land area id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorLandTree">
+    <value>Land area '{0}' has a tree with a non-finite position, a height outside 1–40 m or a crown radius outside 0.3–15 m.</value>
+    <comment>{0} = land area id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorLandUnknownKind">
+    <value>Land area '{0}' has an unknown kind '{1}'.</value>
+    <comment>{0} = land area id, {1} = the kind given. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficVessels">
+    <value>Marine traffic can show between 1 and {0} vessels at once.</value>
+    <comment>{0} = the most vessels allowed. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficLanes">
+    <value>Marine traffic can run between 1 and {0} lanes.</value>
+    <comment>{0} = the most lanes allowed. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficLaneSpacing">
+    <value>Marine traffic lane spacing must be a positive distance.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficClearance">
+    <value>Marine traffic clearance must not be negative.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficEdgeClearance">
+    <value>Marine traffic edge clearance must not be negative.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficSpeed">
+    <value>Marine traffic speed must be a positive percentage.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficSpawnDelay">
+    <value>Marine traffic spawn delay must not be negative.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficReach">
+    <value>Marine traffic reach must be a positive distance.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorTrafficUnknownVessel">
+    <value>Marine traffic lists an unknown vessel type '{0}'.</value>
+    <comment>{0} = the vessel type given. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthIdEmpty">
+    <value>Multi-berth id must not be empty.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthTooFew">
+    <value>Multi-berth '{0}' must span at least two berths.</value>
+    <comment>{0} = multi-berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthEmptyMember">
+    <value>Multi-berth '{0}' contains an empty berth id.</value>
+    <comment>{0} = multi-berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthDuplicateMember">
+    <value>Multi-berth '{0}' lists a berth more than once.</value>
+    <comment>{0} = multi-berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthNoBoat">
+    <value>Multi-berth '{0}' must have a boat.</value>
+    <comment>{0} = multi-berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthBoat">
+    <value>Multi-berth '{0}': {1}</value>
+    <comment>A problem with a multi-berth's boat; {0} = multi-berth id, {1} = the boat's problem. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthStatus">
+    <value>Multi-berth '{0}' status must be Occupied, Reserved or TemporarilyFree.</value>
+    <comment>{0} = multi-berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthUnknownStyle">
+    <value>Multi-berth '{0}' has an unknown mooring style '{1}'.</value>
+    <comment>{0} = multi-berth id, {1} = the style given. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthWaterAndLand">
+    <value>Multi-berth '{0}' mixes berths on the water and on land; one boat cannot lie across both.</value>
+    <comment>{0} = multi-berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthSeveralLandAreas">
+    <value>Multi-berth '{0}' spans berths on different land areas; its berths must all be on the same one.</value>
+    <comment>{0} = multi-berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthSeveralPiers">
+    <value>Multi-berth '{0}' spans berths along different piers; its berths must all be along the same pier.</value>
+    <comment>{0} = multi-berth id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierIdEmpty">
+    <value>Pier id must not be empty.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierLength">
+    <value>Pier '{0}' must have a positive, finite length.</value>
+    <comment>{0} = pier id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierWidth">
+    <value>Pier '{0}' must have a positive, finite width.</value>
+    <comment>{0} = pier id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierPilingSpacing">
+    <value>Pier '{0}' piling spacing must be greater than 0.5 m and finite.</value>
+    <comment>{0} = pier id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierPosition">
+    <value>Pier '{0}' has a non-finite position or heading.</value>
+    <comment>{0} = pier id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierUnknownType">
+    <value>Pier '{0}' has an unknown type '{1}'.</value>
+    <comment>{0} = pier id, {1} = the type given. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierSides">
+    <value>Pier '{0}' berthing sides must be Left, Right or Both.</value>
+    <comment>{0} = pier id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierUnknownServices">
+    <value>Pier '{0}' has unknown services '{1}'.</value>
+    <comment>{0} = pier id, {1} = the services given. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorPierDeckHeight">
+    <value>Pier '{0}' deck height must be between 0 and 5 m.</value>
+    <comment>{0} = pier id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorNullPier">
+    <value>Piers contains a null entry.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDuplicatePier">
+    <value>Duplicate pier id '{0}'.</value>
+    <comment>{0} = the id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorNullLandArea">
+    <value>LandAreas contains a null entry.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDuplicateLandArea">
+    <value>Duplicate land area id '{0}'.</value>
+    <comment>{0} = the id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorNullBerth">
+    <value>Berths contains a null entry.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDuplicateBerth">
+    <value>Duplicate berth id '{0}'.</value>
+    <comment>{0} = the id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthUnknownPier">
+    <value>Berth '{0}' references unknown pier '{1}'.</value>
+    <comment>{0} = berth id, {1} = the pier id it names. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthUnknownLandArea">
+    <value>Berth '{0}' references unknown land area '{1}'.</value>
+    <comment>{0} = berth id, {1} = the land area id it names. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorNullDivider">
+    <value>Dividers contains a null entry.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDuplicateDivider">
+    <value>Duplicate divider id '{0}'.</value>
+    <comment>{0} = the id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDividerUnknownPier">
+    <value>Divider '{0}' references unknown pier '{1}'.</value>
+    <comment>{0} = divider id, {1} = the pier id it names. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorNullMultiBerth">
+    <value>MultiBerths contains a null entry.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorDuplicateMultiBerth">
+    <value>Duplicate multi-berth id '{0}'.</value>
+    <comment>{0} = the id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthIdIsBerthId">
+    <value>Multi-berth '{0}' has the same id as a berth; they must differ.</value>
+    <comment>{0} = the id. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorMultiBerthUnknownBerth">
+    <value>Multi-berth '{0}' references unknown berth '{1}'.</value>
+    <comment>{0} = multi-berth id, {1} = the berth id it names. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthInTwoMultiBerths">
+    <value>Berth '{0}' belongs to both multi-berth '{1}' and multi-berth '{2}'.</value>
+    <comment>{0} = berth id, {1} and {2} = the two multi-berth ids. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorBerthAlreadyInMultiBerth">
+    <value>Berth '{0}' already belongs to multi-berth '{1}'. Release or update that one first.</value>
+    <comment>{0} = berth id, {1} = the multi-berth it is part of. Thrown when a berth is put in a second multi-berth.</comment>
+  </data>
+  <data name="ErrorUnsupportedMarinaElement">
+    <value>Unsupported marina element: {0}.</value>
+    <comment>{0} = the type name of what was passed, or "null". Thrown when a flat list of elements holds something that is not part of a layout.</comment>
+  </data>
+  <data name="ErrorReservedExtensionKey">
+    <value>'{0}' is a name the marina file format uses itself and can't be used for an extension; choose another, e.g. one starting with your product name.</value>
+    <comment>{0} = the extension key. Thrown when a host names an extension like one of the file's own fields.</comment>
+  </data>
+  <data name="ErrorShorelineTooFewPoints">
+    <value>A shoreline needs at least two points.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorShorelineNonFinitePoint">
+    <value>Shoreline point {0} is not a finite position.</value>
+    <comment>{0} = the point number, counting from 0. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorShorelineTwoPointsTogether">
+    <value>A shoreline's two points must not be in the same place.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorShorelinePointsTogether">
+    <value>Shoreline points {0} and {1} are in the same place.</value>
+    <comment>{0} and {1} = the point numbers, counting from 0. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorShorelineCrossesItself">
+    <value>The shoreline crosses itself (segments {0} and {1}), so neither side of it is the land.</value>
+    <comment>{0} and {1} = the segment numbers, counting from 0. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorShorelineEndsCross">
+    <value>The shoreline's two endless segments cross each other, so neither side of it is the land.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorShorelineStartCrosses">
+    <value>The shoreline's endless segment before its first point runs back across the drawn line, so neither side of it is the land.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorShorelineEndCrosses">
+    <value>The shoreline's endless segment after its last point runs back across the drawn line, so neither side of it is the land.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorFileWrongFormat">
+    <value>This is a '{0}' file, not a {1} file.</value>
+    <comment>{0} = the format the file says it is, {1} = the name of this format. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorFileTooNew">
+    <value>The file was written in format version {0}, which is newer than this application understands ({1}). Update the application to open it.</value>
+    <comment>{0} = the file's format version, {1} = the newest this application reads. A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorFileEmpty">
+    <value>The file is empty.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorFileNotMarina">
+    <value>The file is not a marina file.</value>
+    <comment>A validation or file error shown to the user.</comment>
+  </data>
+  <data name="ErrorFileBadValue">
+    <value>The file holds a value that can't be used: {0}</value>
+    <comment>{0} = the reader's own description of the problem.</comment>
+  </data>
+  <data name="ErrorFileNotJson">
+    <value>The file is not valid JSON: {0}</value>
+    <comment>{0} = the JSON reader's own description of the problem.</comment>
+  </data>
+  <data name="ErrorBerthIdIsMultiBerthId">
+    <value>Berth '{0}' has the same id as a multi-berth; they must differ.</value>
+    <comment>{0} = the id. A validation error shown to the user.</comment>
   </data>
 </root>

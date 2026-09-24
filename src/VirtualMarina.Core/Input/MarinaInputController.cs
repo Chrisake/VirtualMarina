@@ -12,7 +12,8 @@ namespace VirtualMarina.Core.Input;
 /// wheel zooms toward the cursor, click selects and shows the tooltip, Ctrl+click or Shift+click adds/removes berths,
 /// right-click opens the actions window, double-click focuses a berth, Escape closes the popup and then
 /// clears the selection, Home resets the view. The popup stays anchored above its berth while the camera moves.
-/// While <see cref="Design.MarinaDesigner.IsActive"/> is true, clicks, double-clicks, pointer movement and Enter/Backspace/Delete/Escape
+/// Keys pressed with Ctrl or Alt are left to the host's own shortcuts, all but Undo and Redo (see <see cref="MarinaKeyMap"/>).
+/// While <see cref="Design.MarinaDesigner.IsActive"/> is true, clicks, double-clicks, pointer movement and Enter/Backspace/Delete/Escape/Undo/Redo
 /// go to the designer instead (camera dragging, the wheel and navigation keys work as usual).
 /// </remarks>
 public sealed class MarinaInputController
@@ -48,8 +49,21 @@ public sealed class MarinaInputController
     /// <summary>Movement (pixels) below which a press/release counts as a click rather than a drag.</summary>
     public float ClickTolerancePixels { get; set; } = 5f;
 
-    /// <summary>Distance an arrow/WASD key press pans, in meters (default 10).</summary>
+    /// <summary>
+    /// Distance an arrow/WASD key press pans, in meters (default 10). With <see cref="KeyboardPanScalesWithDistance"/>
+    /// on, this is the step when the camera is <see cref="KeyboardPanReferenceDistance"/> from its target, and the step
+    /// grows and shrinks with the zoom.
+    /// </summary>
     public float KeyboardPanMeters { get; set; } = 10f;
+
+    /// <summary>
+    /// Scale the arrow-key step with how far the camera is from its target (default true), so a press moves the
+    /// picture by about the same share of the view zoomed in on one berth as zoomed out over the whole marina.
+    /// </summary>
+    public bool KeyboardPanScalesWithDistance { get; set; } = true;
+
+    /// <summary>Camera distance at which an arrow key pans exactly <see cref="KeyboardPanMeters"/>.</summary>
+    public const float KeyboardPanReferenceDistance = 100f;
 
     /// <summary>Angle a Shift+arrow or PageUp/PageDown press orbits or tilts, in degrees (default 10).</summary>
     public float KeyboardOrbitDegrees { get; set; } = 10f;
@@ -65,9 +79,14 @@ public sealed class MarinaInputController
     /// <param name="y">Pointer Y.</param>
     /// <param name="button">Pressed button.</param>
     /// <param name="modifiers">Modifier keys held.</param>
+    /// <remarks>
+    /// A press while another is still recorded — its release was lost to another window, a dialog, a touch
+    /// cancellation — ends that one without a click and starts afresh, so a missed release never leaves the view stuck.
+    /// </remarks>
     public void PointerDown(float x, float y, PointerButton button, InputModifiers modifiers = InputModifiers.None)
     {
-        if (button == PointerButton.None || _activeButton != PointerButton.None) return;
+        if (button == PointerButton.None) return;
+        if (_activeButton != PointerButton.None) CancelPointer();
         _activeButton = button;
         _activeModifiers = modifiers;
         _downPosition = _lastPosition = new Vector2(x, y);
@@ -110,7 +129,8 @@ public sealed class MarinaInputController
         switch (ResolveDragAction(_activeButton, _activeModifiers))
         {
             case CameraDragAction.Pan:
-                _marina.Camera.Pan(delta.X, delta.Y, _marina.ViewportSize.Y);
+                // The ground that was under the pointer stays under it, wherever on an oblique view it is.
+                _marina.Camera.Pan(position - delta, position, _marina.ViewportSize.X, _marina.ViewportSize.Y);
                 break;
             case CameraDragAction.Orbit:
                 _marina.Camera.Orbit(-delta.X * OrbitDegreesPerPixel, delta.Y * OrbitDegreesPerPixel);
@@ -154,16 +174,30 @@ public sealed class MarinaInputController
         else _marina.HandleClick(x, y, button, isDoubleClick: true, modifiers);
     }
 
-    /// <summary>Wheel input in notches: positive zooms in.</summary>
+    /// <summary>
+    /// Wheel input in notches: positive zooms in, toward what is under the pointer — a boat, a berth, raised land,
+    /// or else the water.
+    /// </summary>
     public void Wheel(float notches, float x, float y)
     {
         if (notches == 0f || !float.IsFinite(notches)) return;
-        var focus = _marina.GetWaterPoint(x, y);
+        var focus = _marina.GetGroundPoint(x, y);
         _marina.Camera.Zoom(MathF.Pow(ZoomStepFactor, Math.Clamp(notches, -10f, 10f)), focus);
     }
 
     /// <summary>Forward the pointer leaving the view: ends any drag and clears the hover.</summary>
     public void PointerLeave()
+    {
+        CancelPointer();
+        _marina.HandlePointerLeave();
+        _marina.Designer.HandlePointerLeave();
+    }
+
+    /// <summary>
+    /// Forgets the press in progress without treating it as a click: ends a drag where it is. For a host that loses
+    /// the pointer without seeing it released (capture lost, a touch cancelled, a window taking the focus).
+    /// </summary>
+    public void CancelPointer()
     {
         _activeButton = PointerButton.None;
         _dragging = false;
@@ -172,9 +206,6 @@ public sealed class MarinaInputController
             _designerDrag = false;
             _marina.Designer.EndImageDrag();
         }
-
-        _marina.HandlePointerLeave();
-        _marina.Designer.HandlePointerLeave();
     }
 
     /// <summary>
@@ -189,10 +220,22 @@ public sealed class MarinaInputController
     /// <param name="modifiers">The modifier keys now held.</param>
     public bool ModifiersChanged(InputModifiers modifiers) => _marina.Designer.SetModifiers(modifiers);
 
-    /// <summary>Returns true when the key was handled.</summary>
+    /// <summary>
+    /// Forward a key press. Returns true when the key did something, so the host can mark it handled; false leaves
+    /// it to the host (a dialog's Cancel or Accept button, the browser, the page).
+    /// </summary>
+    /// <remarks>
+    /// Keys pressed with Ctrl or Alt are never handled except <see cref="MarinaKey.Undo"/> and <see cref="MarinaKey.Redo"/>: those chords belong to the
+    /// host's accelerators (see <see cref="MarinaKeyMap"/>). Escape and Home only count as handled when they changed
+    /// something, so an Escape with nothing to dismiss still reaches the host.
+    /// </remarks>
+    /// <param name="key">The key, as mapped by <see cref="MarinaKeyMap"/>.</param>
+    /// <param name="modifiers">Modifier keys held (Shift orbits instead of panning).</param>
     public bool KeyDown(MarinaKey key, InputModifiers modifiers = InputModifiers.None)
     {
-        if (_marina.Designer.IsActive && key is MarinaKey.Enter or MarinaKey.Backspace or MarinaKey.Delete or MarinaKey.Escape or MarinaKey.Undo &&
+        if (key is not (MarinaKey.Undo or MarinaKey.Redo) && MarinaKeyMap.IsChord(modifiers)) return false;
+
+        if (_marina.Designer.IsActive && key is MarinaKey.Enter or MarinaKey.Backspace or MarinaKey.Delete or MarinaKey.Escape or MarinaKey.Undo or MarinaKey.Redo &&
             _marina.Designer.HandleKey(key))
         {
             return true;
@@ -200,27 +243,66 @@ public sealed class MarinaInputController
 
         var camera = _marina.Camera;
         var orbit = (modifiers & InputModifiers.Shift) != 0;
+        var step = KeyboardPanScalesWithDistance
+            ? KeyboardPanMeters * camera.DesiredPose.Distance / KeyboardPanReferenceDistance
+            : KeyboardPanMeters;
         switch (key)
         {
             case MarinaKey.Left when orbit: camera.Orbit(KeyboardOrbitDegrees, 0f); break;
             case MarinaKey.Right when orbit: camera.Orbit(-KeyboardOrbitDegrees, 0f); break;
             case MarinaKey.Up when orbit: camera.Orbit(0f, KeyboardOrbitDegrees); break;
             case MarinaKey.Down when orbit: camera.Orbit(0f, -KeyboardOrbitDegrees); break;
-            case MarinaKey.Left: camera.PanWorld(-KeyboardPanMeters, 0f); break;
-            case MarinaKey.Right: camera.PanWorld(KeyboardPanMeters, 0f); break;
-            case MarinaKey.Up: camera.PanWorld(0f, KeyboardPanMeters); break;
-            case MarinaKey.Down: camera.PanWorld(0f, -KeyboardPanMeters); break;
+            case MarinaKey.Left: camera.PanWorld(-step, 0f); break;
+            case MarinaKey.Right: camera.PanWorld(step, 0f); break;
+            case MarinaKey.Up: camera.PanWorld(0f, step); break;
+            case MarinaKey.Down: camera.PanWorld(0f, -step); break;
             case MarinaKey.PageUp: camera.Orbit(0f, KeyboardOrbitDegrees); break;
             case MarinaKey.PageDown: camera.Orbit(0f, -KeyboardOrbitDegrees); break;
             case MarinaKey.ZoomIn: camera.Zoom(ZoomStepFactor); break;
             case MarinaKey.ZoomOut: camera.Zoom(1f / ZoomStepFactor); break;
-            case MarinaKey.Home: _marina.ResetCamera(); break;
-            case MarinaKey.Escape: _marina.HandleEscape(); break;
+            case MarinaKey.Home:
+                if (!HomeMovesCamera()) return false;
+                _marina.ResetCamera();
+                break;
+
+            case MarinaKey.Escape:
+                if (!HasSomethingToDismiss()) return false;
+                _marina.HandleEscape();
+                break;
             default: return false;
         }
 
         return true;
     }
+
+    /// <summary>
+    /// True when <see cref="KeyDown"/> would act on the key right now. A host asks before claiming a key its platform
+    /// would otherwise give to dialog navigation — Escape to a Cancel button, Enter to an Accept button — so those
+    /// still work whenever the view has nothing to do with the key.
+    /// </summary>
+    /// <param name="key">The key, as mapped by <see cref="MarinaKeyMap"/>.</param>
+    /// <param name="modifiers">Modifier keys held.</param>
+    public bool WantsKey(MarinaKey key, InputModifiers modifiers = InputModifiers.None)
+    {
+        if (key is not (MarinaKey.Undo or MarinaKey.Redo) && MarinaKeyMap.IsChord(modifiers)) return false;
+
+        var designer = _marina.Designer;
+        return key switch
+        {
+            MarinaKey.Escape => designer.WantsKey(key) || HasSomethingToDismiss(),
+            MarinaKey.Enter or MarinaKey.Backspace or MarinaKey.Delete or MarinaKey.Undo or MarinaKey.Redo => designer.WantsKey(key),
+            MarinaKey.Left or MarinaKey.Right or MarinaKey.Up or MarinaKey.Down or MarinaKey.PageUp or MarinaKey.PageDown
+                or MarinaKey.ZoomIn or MarinaKey.ZoomOut => true,
+            MarinaKey.Home => HomeMovesCamera(),
+            _ => false,
+        };
+    }
+
+    /// <summary>True when Home would move the camera: it is not already at, or heading for, the overview.</summary>
+    private bool HomeMovesCamera() => _marina.Camera.WouldMoveTo(_marina.ResetPose());
+
+    /// <summary>What Escape outside the designer works through: the popup, then the selection.</summary>
+    private bool HasSomethingToDismiss() => _marina.ActivePopup is not null || _marina.SelectedBerth is not null;
 
     private CameraDragAction ResolveDragAction(PointerButton button, InputModifiers modifiers)
     {

@@ -63,6 +63,18 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <!-- Designer panel -->
+  <data name="ViewLabel">
+    <value>Marina view. Drag to pan, right-drag or Shift+drag to orbit, scroll to zoom, arrow keys to pan, Shift+arrow keys to orbit.</value>
+    <comment>Accessible name of the 3D view, read by screen readers. Describes the default mouse mapping (left-drag pans, right-drag orbits, Shift swaps them).</comment>
+  </data>
+  <data name="PopupClose">
+    <value>Close (Esc)</value>
+    <comment>Tooltip and accessible name of the popup's close button.</comment>
+  </data>
+  <data name="RenderingStopped">
+    <value>Rendering stopped: {0}</value>
+    <comment>Shown over the view when drawing keeps failing. {0} = the error message.</comment>
+  </data>
   <data name="SectionDesigner">
     <value>Designer</value>
   </data>
@@ -74,6 +86,16 @@
   </data>
   <data name="NothingToUndo">
     <value>Nothing to undo</value>
+  </data>
+  <data name="UndoLastPoint">
+    <value>The last point placed</value>
+    <comment>Next to Undo while a drawing is in progress: what Undo would take back.</comment>
+  </data>
+  <data name="Redo">
+    <value>Redo (Ctrl+Y)</value>
+  </data>
+  <data name="NothingToRedo">
+    <value>Nothing to redo</value>
   </data>
   <data name="TurnOnDesignMode">
     <value>Turn on design mode to draw land areas, piers and berths.</value>

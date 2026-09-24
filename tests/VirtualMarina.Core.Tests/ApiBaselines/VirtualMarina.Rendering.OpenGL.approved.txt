@@ -2,7 +2,7 @@ sealed class VirtualMarina.Rendering.OpenGL.OpenGlSceneRenderer : IDisposable, V
     .ctor()
     bool IsInitialized { get; }
     string BackendName { get; }
-    string DeviceDescription { get; }
+    string? DeviceDescription { get; }
     void Dispose()
     void Initialize()
     void Render(VirtualMarina.Core.Rendering.RenderFrame frame)

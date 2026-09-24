@@ -1,0 +1,335 @@
+{
+  "format": "virtualmarina.marina",
+  "formatVersion": "2.0",
+  "generator": "VirtualMarina fixtures",
+  "savedUtc": "2025-06-01T12:00:00+00:00",
+  "marina": {
+    "name": "Small Harbor",
+    "description": "Golden file: a small harbor touching most of the format."
+  },
+  "layout": {
+    "landAreas": [
+      {
+        "id": "quay",
+        "name": "Quay",
+        "kind": "Quay",
+        "height": 1.5,
+        "outline": [[-30, -8], [40, -8], [40, -30], [-30, -30]],
+        "trees": [
+          {
+            "position": [-16.1057, -17.6692],
+            "height": 10.88,
+            "crownRadius": 2.31,
+            "shape": "Conifer"
+          },
+          {
+            "position": [-5.591, -21.6409],
+            "height": 7.75,
+            "crownRadius": 1.68,
+            "shape": "Conifer"
+          },
+          {
+            "position": [23.0875, -19.5235],
+            "height": 4.62,
+            "crownRadius": 1.86,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [-25.5371, -14.8149],
+            "height": 7.7,
+            "crownRadius": 1.47,
+            "shape": "Conifer"
+          },
+          {
+            "position": [29.9828, -15.461],
+            "height": 6.58,
+            "crownRadius": 2.31,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [12.906, -19.2463],
+            "height": 6.75,
+            "crownRadius": 2.7,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [0.7934, -16.4079],
+            "height": 5.79,
+            "crownRadius": 2.09,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [-23.0596, -12.4967],
+            "height": 4.35,
+            "crownRadius": 1.72,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [-15.6828, -27.6975],
+            "height": 4.99,
+            "crownRadius": 1.97,
+            "shape": "Broadleaf"
+          }
+        ]
+      }
+    ],
+    "piers": [
+      {
+        "id": "A",
+        "name": "Pier A",
+        "start": [0, 0],
+        "headingDegrees": 0,
+        "length": 40,
+        "width": 3,
+        "type": "FloatingConcrete",
+        "pilingSpacing": 6,
+        "berthingSides": "Both",
+        "services": "PowerAndWater",
+        "metadata": {
+          "erp": "PIER-0001"
+        }
+      }
+    ],
+    "dividers": [],
+    "berths": [
+      {
+        "id": "A-L01",
+        "pierId": "A",
+        "center": [7.5, 2.75],
+        "headingDegrees": -90,
+        "length": 12,
+        "width": 5.5,
+        "hasFingerPiers": true
+      },
+      {
+        "id": "A-R01",
+        "pierId": "A",
+        "center": [-7.5, 2.75],
+        "headingDegrees": 90,
+        "length": 12,
+        "width": 5.5,
+        "hasFingerPiers": true,
+        "metadata": {
+          "power": "32A"
+        }
+      },
+      {
+        "id": "A-L02",
+        "pierId": "A",
+        "center": [7.5, 8.75],
+        "headingDegrees": -90,
+        "length": 12,
+        "width": 5.5,
+        "hasFingerPiers": true
+      },
+      {
+        "id": "A-R02",
+        "pierId": "A",
+        "center": [-7.5, 8.75],
+        "headingDegrees": 90,
+        "length": 12,
+        "width": 5.5,
+        "hasFingerPiers": true,
+        "metadata": {
+          "power": "32A"
+        }
+      },
+      {
+        "id": "A-L03",
+        "pierId": "A",
+        "center": [7.5, 14.75],
+        "headingDegrees": -90,
+        "length": 12,
+        "width": 5.5,
+        "hasFingerPiers": true
+      },
+      {
+        "id": "A-R03",
+        "pierId": "A",
+        "center": [-7.5, 14.75],
+        "headingDegrees": 90,
+        "length": 12,
+        "width": 5.5,
+        "hasFingerPiers": true,
+        "metadata": {
+          "power": "32A"
+        }
+      },
+      {
+        "id": "A-L04",
+        "pierId": "A",
+        "center": [7.5, 20.75],
+        "headingDegrees": -90,
+        "length": 12,
+        "width": 5.5,
+        "hasFingerPiers": true
+      },
+      {
+        "id": "A-R04",
+        "pierId": "A",
+        "center": [-7.5, 20.75],
+        "headingDegrees": 90,
+        "length": 12,
+        "width": 5.5,
+        "hasFingerPiers": true,
+        "metadata": {
+          "power": "32A"
+        }
+      }
+    ],
+    "multiBerths": [
+      {
+        "id": "VIP",
+        "berthIds": [
+          "A-L01",
+          "A-L02"
+        ],
+        "boat": {
+          "id": "B-1",
+          "name": "Aurora",
+          "type": "MotorYacht",
+          "lengthMeters": 16,
+          "beamMeters": 5,
+          "ownerName": "M. Rossi"
+        },
+        "status": "Occupied",
+        "style": "Alongside"
+      }
+    ]
+  },
+  "presentation": {
+    "water": {
+      "size": 4200,
+      "gridResolution": 160,
+      "deepColor": [0.03, 0.2, 0.3],
+      "shallowColor": [0.1, 0.42, 0.48],
+      "waveAmplitude": 0.05,
+      "waveFrequency": 1,
+      "waveSpeed": 1,
+      "skyReflection": 1,
+      "ripples": 1,
+      "sunGlints": 1,
+      "boatMotion": 1
+    },
+    "lighting": {
+      "sunDirection": [0.4581, 0.8144, 0.3563],
+      "sunColor": [1, 0.95, 0.86],
+      "ambientColor": [0.36, 0.4, 0.48],
+      "specularStrength": 0.35,
+      "shininess": 32,
+      "skyColor": [0.56, 0.72, 0.88],
+      "fogColor": [0.76, 0.85, 0.92],
+      "fogDensity": 0.0022
+    },
+    "status": {
+      "free": "#00C853",
+      "occupied": "#E6332E",
+      "reserved": "#3875F5",
+      "temporarilyFree": "#FACC1F",
+      "disabled": "#94999E",
+      "padOpacity": 0.45,
+      "occupiedBoatOpacity": 1,
+      "reservedBoatOpacity": 0.4,
+      "temporarilyFreeBoatOpacity": 0.4,
+      "ghostBoatTint": 0.55,
+      "showStatusMarkers": true,
+      "statusMarkerScale": 1
+    },
+    "land": {
+      "quay": "#BDB8AB",
+      "quayWall": "#9E998F",
+      "grass": "#66944C",
+      "grassBank": "#78664C",
+      "rock": "#87827A",
+      "rockColorVariation": 0.2,
+      "foliage": "#3D7533",
+      "conifer": "#295C38",
+      "trunk": "#61452B",
+      "palm": "#548542",
+      "blossom": "#F2B8CC",
+      "building": "#CCC7BA",
+      "roof": "#965440",
+      "showTrees": true
+    },
+    "structures": {
+      "wood": "#A88054",
+      "concrete": "#BDBAB2",
+      "float": "#33363B",
+      "fender": "#1F1F21",
+      "bollard": "#2B2E33",
+      "steel": "#8F949C",
+      "boomFloat": "#F58F1F",
+      "boomEnd": "#FAD626",
+      "pedestal": "#D1D4D9",
+      "power": "#F2C21C",
+      "water": "#2985D9"
+    },
+    "labels": {
+      "color": "#F7FAFF",
+      "ashore": "#292E33",
+      "highlight": "#FFE659",
+      "disabled": "#9EA3A8",
+      "fontFamily": "Regular",
+      "typeface": "Sans"
+    },
+    "selection": {
+      "showMarker": true,
+      "markerTint": "#FFFFFF",
+      "markerScale": 1,
+      "selectedGlow": 0.45,
+      "hoverGlow": 0.25,
+      "pulse": true
+    },
+    "view": {
+      "fieldOfViewDegrees": 45,
+      "cameraSmoothing": 10
+    },
+    "shadows": {
+      "enabled": true,
+      "strength": 0.25
+    },
+    "berthLabels": "All"
+  },
+  "camera": {
+    "target": [10, 0, -5],
+    "yawDegrees": 30,
+    "pitchDegrees": 40,
+    "distance": 120
+  },
+  "designer": {
+    "landKind": "Quay",
+    "landHeight": 1,
+    "treeDensity": 8,
+    "pierType": "FloatingWooden",
+    "pierWidth": 2.5,
+    "pierBerthingSides": "Both",
+    "berthWidth": 5,
+    "berthLength": 12,
+    "berthDepth": 3,
+    "berthSeparators": "FingerPiers",
+    "berthGap": 0,
+    "alignBerthsToExisting": true,
+    "berthServices": "None",
+    "landBerthHeading": 0,
+    "snapDistancePixels": 12,
+    "pierNamePattern": "Pier {pier}",
+    "berthNaming": {
+      "pattern": "{pier}-{side}{number}",
+      "startNumber": 1,
+      "increment": 1,
+      "numberDigits": 2,
+      "leftSide": "L",
+      "rightSide": "R"
+    }
+  },
+  "cameraPresets": [
+    {
+      "name": "Fuel dock",
+      "description": "Where boats refuel",
+      "target": [0, 0, 20],
+      "yawDegrees": 0,
+      "pitchDegrees": 35,
+      "distance": 60
+    }
+  ]
+}

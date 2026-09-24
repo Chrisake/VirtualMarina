@@ -1,0 +1,2715 @@
+{
+  "format": "virtualmarina.marina",
+  "formatVersion": "2.0",
+  "generator": "VirtualMarina fixtures",
+  "savedUtc": "2025-06-01T12:00:00+00:00",
+  "marina": {
+    "name": "VirtualMarina Test Harbor"
+  },
+  "layout": {
+    "shoreline": {
+      "line": [[-900, -86], [-420, -34], [-130, -6], [150, -6], [360, -30], [880, -104]],
+      "landOnLeft": false,
+      "height": 1,
+      "kind": "Grass",
+      "scenery": "Countryside",
+      "scenerySeed": 41
+    },
+    "marineTraffic": {
+      "enabled": true,
+      "clearance": 260,
+      "edgeClearance": 700,
+      "speedPercent": 100,
+      "spawnDelaySeconds": 25,
+      "reach": 8000,
+      "maximumVessels": 12,
+      "laneCount": 3,
+      "laneSpacing": 160,
+      "seed": 12
+    },
+    "landAreas": [
+      {
+        "id": "quay",
+        "name": "Main quay",
+        "kind": "Quay",
+        "height": 1,
+        "outline": [[-130, -32], [150, -32], [150, -6], [-130, -6]]
+      },
+      {
+        "id": "boatyard",
+        "name": "Boatyard",
+        "kind": "Quay",
+        "height": 1,
+        "outline": [[-130, -32], [-44, -32], [-60, -74], [-130, -74]]
+      },
+      {
+        "id": "east-mole",
+        "name": "East mole (maintenance)",
+        "kind": "Quay",
+        "height": 1,
+        "outline": [[112, -6], [150, -6], [150, 38], [138, 50], [112, 50]]
+      },
+      {
+        "id": "lawn",
+        "name": "Park",
+        "kind": "Grass",
+        "height": 1.15,
+        "outline": [[68, -30], [100, -31], [122, -26], [118, -15], [92, -12], [72, -18]],
+        "trees": [
+          {
+            "position": [97.6053, -17.9871],
+            "height": 12.82,
+            "crownRadius": 2.55,
+            "shape": "Conifer"
+          },
+          {
+            "position": [92.6188, -25.265],
+            "height": 9.11,
+            "crownRadius": 1.97,
+            "shape": "Conifer"
+          },
+          {
+            "position": [101.5295, -15.2726],
+            "height": 5.84,
+            "crownRadius": 1.48,
+            "shape": "Palm"
+          },
+          {
+            "position": [87.75, -25.9263],
+            "height": 7.08,
+            "crownRadius": 2.75,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [91.238, -16.2185],
+            "height": 5.54,
+            "crownRadius": 2,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [79.9705, -22.3523],
+            "height": 5.73,
+            "crownRadius": 1.82,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [78.6757, -26.9165],
+            "height": 6.56,
+            "crownRadius": 2.14,
+            "shape": "Broadleaf"
+          },
+          {
+            "position": [117.1006, -20.155],
+            "height": 7.4,
+            "crownRadius": 1.75,
+            "shape": "Palm"
+          },
+          {
+            "position": [103.3546, -24.5691],
+            "height": 7.88,
+            "crownRadius": 2.53,
+            "shape": "Broadleaf"
+          }
+        ]
+      },
+      {
+        "id": "breakwater-north",
+        "kind": "Breakwater",
+        "height": 2.2,
+        "outline": [[-66.714, 88.443], [-10.463, 97.4761], [50.1174, 100.4985], [106.1595, 94.3481], [142.0581, 76.0018], [137.9419, 67.9982], [103.8405, 85.6519], [49.8826, 91.5015], [-9.537, 88.5239], [-65.286, 79.557]]
+      },
+      {
+        "id": "breakwater-west",
+        "kind": "Breakwater",
+        "height": 2.2,
+        "outline": [[-138.4815, -8.4074], [-141.4944, 25.2247], [-135.0436, 53.9748], [-119.2829, 71.0777], [-112.7171, 64.9223], [-126.9564, 50.0252], [-132.5056, 24.7753], [-129.5185, -7.5926]]
+      }
+    ],
+    "piers": [
+      {
+        "id": "E",
+        "name": "Pier E (along the mole)",
+        "start": [110.75, -6],
+        "headingDegrees": 0,
+        "length": 50,
+        "width": 2.5,
+        "type": "FloatingConcrete",
+        "pilingSpacing": 6,
+        "berthingSides": "Right",
+        "services": "PowerAndWater"
+      },
+      {
+        "id": "W",
+        "name": "Pier W (quay wall)",
+        "start": [-119, -4.5],
+        "headingDegrees": 90,
+        "length": 22,
+        "width": 3,
+        "type": "Concrete",
+        "pilingSpacing": 6,
+        "berthingSides": "Right",
+        "services": "None"
+      },
+      {
+        "id": "A",
+        "name": "Pier A (Concrete)",
+        "start": [80, -6],
+        "headingDegrees": 0,
+        "length": 72,
+        "width": 3.5,
+        "type": "Concrete",
+        "pilingSpacing": 6,
+        "berthingSides": "Both",
+        "services": "None"
+      },
+      {
+        "id": "B",
+        "name": "Pier B",
+        "start": [35, -6],
+        "headingDegrees": 0,
+        "length": 66,
+        "width": 2.5,
+        "type": "FloatingWooden",
+        "pilingSpacing": 6,
+        "berthingSides": "Both",
+        "services": "None"
+      },
+      {
+        "id": "C",
+        "name": "Pier C (Multihulls)",
+        "start": [-12, -6],
+        "headingDegrees": 0,
+        "length": 74,
+        "width": 3,
+        "type": "FloatingConcrete",
+        "pilingSpacing": 6,
+        "berthingSides": "Both",
+        "services": "None"
+      },
+      {
+        "id": "D",
+        "name": "Pier D (Superyacht / PWC)",
+        "start": [-72, -6],
+        "headingDegrees": 0,
+        "length": 72,
+        "width": 3,
+        "type": "FloatingWooden",
+        "pilingSpacing": 6,
+        "berthingSides": "Both",
+        "services": "None"
+      }
+    ],
+    "dividers": [
+      {
+        "id": "E-D01",
+        "pierId": "E",
+        "start": [109.5, -4],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D02",
+        "pierId": "E",
+        "start": [109.5, 1],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D03",
+        "pierId": "E",
+        "start": [109.5, 1.4],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D04",
+        "pierId": "E",
+        "start": [109.5, 6.4],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D05",
+        "pierId": "E",
+        "start": [109.5, 6.8],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D06",
+        "pierId": "E",
+        "start": [109.5, 11.8],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D07",
+        "pierId": "E",
+        "start": [109.5, 12.2],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D08",
+        "pierId": "E",
+        "start": [109.5, 17.2],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D09",
+        "pierId": "E",
+        "start": [109.5, 17.6],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D10",
+        "pierId": "E",
+        "start": [109.5, 22.6],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D11",
+        "pierId": "E",
+        "start": [109.5, 23],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D12",
+        "pierId": "E",
+        "start": [109.5, 28],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D13",
+        "pierId": "E",
+        "start": [109.5, 28.4],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D14",
+        "pierId": "E",
+        "start": [109.5, 33.4],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D15",
+        "pierId": "E",
+        "start": [109.5, 33.8],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D16",
+        "pierId": "E",
+        "start": [109.5, 38.8],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D17",
+        "pierId": "E",
+        "start": [109.5, 39.2],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "E-D18",
+        "pierId": "E",
+        "start": [109.5, 44.2],
+        "headingDegrees": -90,
+        "length": 10,
+        "width": 0.4,
+        "type": "SinglePile",
+        "spacing": 1.6
+      },
+      {
+        "id": "W-D01",
+        "pierId": "W",
+        "start": [-117, -3],
+        "headingDegrees": 2.5044778E-06,
+        "length": 12,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4
+      },
+      {
+        "id": "W-D02",
+        "pierId": "W",
+        "start": [-111, -3],
+        "headingDegrees": 2.5044778E-06,
+        "length": 12,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4
+      },
+      {
+        "id": "W-D03",
+        "pierId": "W",
+        "start": [-105, -3],
+        "headingDegrees": 2.5044778E-06,
+        "length": 12,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4
+      },
+      {
+        "id": "W-D04",
+        "pierId": "W",
+        "start": [-99, -3],
+        "headingDegrees": 2.5044778E-06,
+        "length": 12,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4
+      },
+      {
+        "id": "A-R-D01",
+        "pierId": "A",
+        "start": [78.25, -4],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D02",
+        "pierId": "A",
+        "start": [78.25, 1.5],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D03",
+        "pierId": "A",
+        "start": [78.25, 7],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D04",
+        "pierId": "A",
+        "start": [78.25, 12.5],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D05",
+        "pierId": "A",
+        "start": [78.25, 18],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D06",
+        "pierId": "A",
+        "start": [78.25, 23.5],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D07",
+        "pierId": "A",
+        "start": [78.25, 29],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D08",
+        "pierId": "A",
+        "start": [78.25, 34.5],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D09",
+        "pierId": "A",
+        "start": [78.25, 40],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D10",
+        "pierId": "A",
+        "start": [78.25, 45.5],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D11",
+        "pierId": "A",
+        "start": [78.25, 51],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D12",
+        "pierId": "A",
+        "start": [78.25, 56.5],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "A-R-D13",
+        "pierId": "A",
+        "start": [78.25, 62],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 0.4,
+        "type": "Piles",
+        "spacing": 4.3333335
+      },
+      {
+        "id": "D-R-D01",
+        "pierId": "D",
+        "start": [-73.5, -4],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D02",
+        "pierId": "D",
+        "start": [-73.5, 0],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D03",
+        "pierId": "D",
+        "start": [-73.5, 4],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D04",
+        "pierId": "D",
+        "start": [-73.5, 8],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D05",
+        "pierId": "D",
+        "start": [-73.5, 12],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D06",
+        "pierId": "D",
+        "start": [-73.5, 16],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D07",
+        "pierId": "D",
+        "start": [-73.5, 20],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D08",
+        "pierId": "D",
+        "start": [-73.5, 24],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D09",
+        "pierId": "D",
+        "start": [-73.5, 28],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D10",
+        "pierId": "D",
+        "start": [-73.5, 32],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D11",
+        "pierId": "D",
+        "start": [-73.5, 36],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D12",
+        "pierId": "D",
+        "start": [-73.5, 40],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D13",
+        "pierId": "D",
+        "start": [-73.5, 44],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D14",
+        "pierId": "D",
+        "start": [-73.5, 48],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D15",
+        "pierId": "D",
+        "start": [-73.5, 52],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D16",
+        "pierId": "D",
+        "start": [-73.5, 56],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      },
+      {
+        "id": "D-R-D17",
+        "pierId": "D",
+        "start": [-73.5, 60],
+        "headingDegrees": -90,
+        "length": 8,
+        "width": 0.35,
+        "type": "Boom",
+        "spacing": 1.6
+      }
+    ],
+    "berths": [
+      {
+        "id": "Y-A01",
+        "landAreaId": "boatyard",
+        "center": [-122, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 3.5,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-A02",
+        "landAreaId": "boatyard",
+        "center": [-115.7, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.8,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-A03",
+        "landAreaId": "boatyard",
+        "center": [-109.4, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.5,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-A04",
+        "landAreaId": "boatyard",
+        "center": [-103.1, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-A05",
+        "landAreaId": "boatyard",
+        "center": [-96.8, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 3.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-A06",
+        "landAreaId": "boatyard",
+        "center": [-90.5, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.8,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-A07",
+        "landAreaId": "boatyard",
+        "center": [-84.2, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.1,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-A08",
+        "landAreaId": "boatyard",
+        "center": [-77.9, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 3.9,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-A09",
+        "landAreaId": "boatyard",
+        "center": [-71.6, -40],
+        "headingDegrees": 180,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 3.5,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-B01",
+        "landAreaId": "boatyard",
+        "center": [-122, -64],
+        "headingDegrees": 0,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.1,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-B02",
+        "landAreaId": "boatyard",
+        "center": [-115.7, -64],
+        "headingDegrees": 0,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 3.5,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-B03",
+        "landAreaId": "boatyard",
+        "center": [-109.4, -64],
+        "headingDegrees": 0,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-B04",
+        "landAreaId": "boatyard",
+        "center": [-103.1, -64],
+        "headingDegrees": 0,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.7,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-B05",
+        "landAreaId": "boatyard",
+        "center": [-96.8, -64],
+        "headingDegrees": 0,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.1,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-B06",
+        "landAreaId": "boatyard",
+        "center": [-90.5, -64],
+        "headingDegrees": 0,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-B07",
+        "landAreaId": "boatyard",
+        "center": [-84.2, -64],
+        "headingDegrees": 0,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "Y-B08",
+        "landAreaId": "boatyard",
+        "center": [-77.9, -64],
+        "headingDegrees": 0,
+        "length": 12,
+        "width": 5.5,
+        "maxDraft": 2,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "24 EUR"
+        }
+      },
+      {
+        "id": "M-01",
+        "landAreaId": "east-mole",
+        "center": [137, 2],
+        "headingDegrees": 270,
+        "length": 16,
+        "width": 6.5,
+        "maxDraft": 3.9,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "32 EUR"
+        }
+      },
+      {
+        "id": "M-02",
+        "landAreaId": "east-mole",
+        "center": [137, 9.5],
+        "headingDegrees": 270,
+        "length": 16,
+        "width": 6.5,
+        "maxDraft": 3.9,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "32 EUR"
+        }
+      },
+      {
+        "id": "M-03",
+        "landAreaId": "east-mole",
+        "center": [137, 17],
+        "headingDegrees": 270,
+        "length": 16,
+        "width": 6.5,
+        "maxDraft": 3.7,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "32 EUR"
+        }
+      },
+      {
+        "id": "M-04",
+        "landAreaId": "east-mole",
+        "center": [137, 24.5],
+        "headingDegrees": 270,
+        "length": 16,
+        "width": 6.5,
+        "maxDraft": 3.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "32 EUR"
+        }
+      },
+      {
+        "id": "M-05",
+        "landAreaId": "east-mole",
+        "label": "M-05 (lift)",
+        "center": [137, 32],
+        "headingDegrees": 270,
+        "length": 16,
+        "width": 6.5,
+        "maxDraft": 2.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Kind": "Dry storage",
+          "Power": "16A",
+          "DailyRate": "32 EUR"
+        }
+      },
+      {
+        "id": "E-01",
+        "pierId": "E",
+        "center": [104.5, -1.5],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 3.2,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "E-02",
+        "pierId": "E",
+        "center": [104.5, 3.9],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "E-03",
+        "pierId": "E",
+        "center": [104.5, 9.3],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 2.2,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "E-04",
+        "pierId": "E",
+        "center": [104.5, 14.7],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 3.3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "E-05",
+        "pierId": "E",
+        "center": [104.5, 20.1],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 2.7,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "E-06",
+        "pierId": "E",
+        "center": [104.5, 25.5],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 3.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "E-07",
+        "pierId": "E",
+        "center": [104.5, 30.9],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "E-08",
+        "pierId": "E",
+        "center": [104.5, 36.3],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 2.5,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "E-09",
+        "pierId": "E",
+        "center": [104.5, 41.7],
+        "headingDegrees": 90,
+        "length": 10,
+        "width": 5,
+        "maxDraft": 3.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "45 EUR"
+        }
+      },
+      {
+        "id": "W-01",
+        "pierId": "W",
+        "center": [-114, 3],
+        "headingDegrees": -179.99998,
+        "length": 12,
+        "width": 6,
+        "maxDraft": 3.9,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "54 EUR"
+        }
+      },
+      {
+        "id": "W-02",
+        "pierId": "W",
+        "center": [-108, 3],
+        "headingDegrees": -179.99998,
+        "length": 12,
+        "width": 6,
+        "maxDraft": 2,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "54 EUR"
+        }
+      },
+      {
+        "id": "W-03",
+        "pierId": "W",
+        "center": [-102, 3],
+        "headingDegrees": -179.99998,
+        "length": 12,
+        "width": 6,
+        "maxDraft": 3.9,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "54 EUR"
+        }
+      },
+      {
+        "id": "A-L01",
+        "pierId": "A",
+        "center": [88.25, -1.25],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L02",
+        "pierId": "A",
+        "center": [88.25, 4.25],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L03",
+        "pierId": "A",
+        "center": [88.25, 9.75],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L04",
+        "pierId": "A",
+        "center": [88.25, 15.25],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L05",
+        "pierId": "A",
+        "center": [88.25, 20.75],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3.6,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L06",
+        "pierId": "A",
+        "center": [88.25, 26.25],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.2,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L07",
+        "pierId": "A",
+        "center": [88.25, 31.75],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.1,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L08",
+        "pierId": "A",
+        "center": [88.25, 37.25],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.1,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L09",
+        "pierId": "A",
+        "center": [88.25, 42.75],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3.7,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L10",
+        "pierId": "A",
+        "center": [88.25, 48.25],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.9,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L11",
+        "pierId": "A",
+        "center": [88.25, 53.75],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.1,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-L12",
+        "pierId": "A",
+        "center": [88.25, 59.25],
+        "headingDegrees": -90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R01",
+        "pierId": "A",
+        "center": [71.75, -1.25],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R02",
+        "pierId": "A",
+        "center": [71.75, 4.25],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3.2,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R03",
+        "pierId": "A",
+        "center": [71.75, 9.75],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R04",
+        "pierId": "A",
+        "center": [71.75, 15.25],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.1,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R05",
+        "pierId": "A",
+        "center": [71.75, 20.75],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R06",
+        "pierId": "A",
+        "center": [71.75, 26.25],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.5,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R07",
+        "pierId": "A",
+        "center": [71.75, 31.75],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R08",
+        "pierId": "A",
+        "center": [71.75, 37.25],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3.3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R09",
+        "pierId": "A",
+        "center": [71.75, 42.75],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R10",
+        "pierId": "A",
+        "center": [71.75, 48.25],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R11",
+        "pierId": "A",
+        "center": [71.75, 53.75],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 3.8,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "A-R12",
+        "pierId": "A",
+        "center": [71.75, 59.25],
+        "headingDegrees": 90,
+        "length": 13,
+        "width": 5.5,
+        "maxDraft": 2,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "58 EUR"
+        }
+      },
+      {
+        "id": "B-L01",
+        "pierId": "B",
+        "center": [41.75, -1.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L02",
+        "pierId": "B",
+        "center": [41.75, 3.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.6,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L03",
+        "pierId": "B",
+        "center": [41.75, 8.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L04",
+        "pierId": "B",
+        "center": [41.75, 13.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.9,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L05",
+        "pierId": "B",
+        "center": [41.75, 18.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.4,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L06",
+        "pierId": "B",
+        "center": [41.75, 23.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 2.4,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L07",
+        "pierId": "B",
+        "center": [41.75, 28.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L08",
+        "pierId": "B",
+        "center": [41.75, 33.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.7,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L09",
+        "pierId": "B",
+        "center": [41.75, 38.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.9,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L10",
+        "pierId": "B",
+        "center": [41.75, 43.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L11",
+        "pierId": "B",
+        "center": [41.75, 48.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-L12",
+        "pierId": "B",
+        "center": [41.75, 53.5],
+        "headingDegrees": -90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R01",
+        "pierId": "B",
+        "center": [28.25, -1.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R02",
+        "pierId": "B",
+        "center": [28.25, 3.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 4,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R03",
+        "pierId": "B",
+        "center": [28.25, 8.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.2,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R04",
+        "pierId": "B",
+        "center": [28.25, 13.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R05",
+        "pierId": "B",
+        "center": [28.25, 18.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R06",
+        "pierId": "B",
+        "center": [28.25, 23.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.1,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R07",
+        "pierId": "B",
+        "center": [28.25, 28.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R08",
+        "pierId": "B",
+        "center": [28.25, 33.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.7,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R09",
+        "pierId": "B",
+        "center": [28.25, 38.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 2.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R10",
+        "pierId": "B",
+        "center": [28.25, 43.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R11",
+        "pierId": "B",
+        "center": [28.25, 48.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3.9,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "B-R12",
+        "pierId": "B",
+        "center": [28.25, 53.5],
+        "headingDegrees": 90,
+        "length": 11,
+        "width": 5,
+        "maxDraft": 3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "50 EUR"
+        }
+      },
+      {
+        "id": "C-L01",
+        "pierId": "C",
+        "center": [-3, 0.25],
+        "headingDegrees": -90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-L02",
+        "pierId": "C",
+        "center": [-3, 8.75],
+        "headingDegrees": -90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 3.7,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-L03",
+        "pierId": "C",
+        "center": [-3, 17.25],
+        "headingDegrees": -90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.1,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-L04",
+        "pierId": "C",
+        "center": [-3, 25.75],
+        "headingDegrees": -90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 3.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-L05",
+        "pierId": "C",
+        "center": [-3, 34.25],
+        "headingDegrees": -90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 3.9,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-L06",
+        "pierId": "C",
+        "center": [-3, 42.75],
+        "headingDegrees": -90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 3.9,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-L07",
+        "pierId": "C",
+        "center": [-3, 51.25],
+        "headingDegrees": -90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.7,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-L08",
+        "pierId": "C",
+        "center": [-3, 59.75],
+        "headingDegrees": -90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-R01",
+        "pierId": "C",
+        "center": [-21, 0.25],
+        "headingDegrees": 90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 3.1,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-R02",
+        "pierId": "C",
+        "center": [-21, 8.75],
+        "headingDegrees": 90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-R03",
+        "pierId": "C",
+        "center": [-21, 17.25],
+        "headingDegrees": 90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-R04",
+        "pierId": "C",
+        "center": [-21, 25.75],
+        "headingDegrees": 90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 3.2,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-R05",
+        "pierId": "C",
+        "center": [-21, 34.25],
+        "headingDegrees": 90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-R06",
+        "pierId": "C",
+        "center": [-21, 42.75],
+        "headingDegrees": 90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 3.7,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-R07",
+        "pierId": "C",
+        "label": "C-R07 (maintenance)",
+        "center": [-21, 51.25],
+        "headingDegrees": 90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.5,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "C-R08",
+        "pierId": "C",
+        "label": "C-R08 (maintenance)",
+        "center": [-21, 59.75],
+        "headingDegrees": 90,
+        "length": 15,
+        "width": 8.5,
+        "maxDraft": 2.6,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "68 EUR"
+        }
+      },
+      {
+        "id": "D-L01",
+        "pierId": "D",
+        "center": [-59, -0.25],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 2.9,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-L02",
+        "pierId": "D",
+        "center": [-59, 7.25],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 2.7,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-L03",
+        "pierId": "D",
+        "center": [-59, 14.75],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 3.5,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-L04",
+        "pierId": "D",
+        "center": [-59, 22.25],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 3.8,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-L05",
+        "pierId": "D",
+        "center": [-59, 29.75],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 3.4,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-L06",
+        "pierId": "D",
+        "center": [-59, 37.25],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 3,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-L07",
+        "pierId": "D",
+        "center": [-59, 44.75],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 2.4,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-L08",
+        "pierId": "D",
+        "center": [-59, 52.25],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 3.7,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-L09",
+        "pierId": "D",
+        "center": [-59, 59.75],
+        "headingDegrees": -90,
+        "length": 23,
+        "width": 7.5,
+        "maxDraft": 3.1,
+        "hasFingerPiers": true,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "104 EUR"
+        }
+      },
+      {
+        "id": "D-R01",
+        "pierId": "D",
+        "center": [-77.5, -2],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.2,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R02",
+        "pierId": "D",
+        "center": [-77.5, 2],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R03",
+        "pierId": "D",
+        "center": [-77.5, 6],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 3.3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R04",
+        "pierId": "D",
+        "center": [-77.5, 10],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R05",
+        "pierId": "D",
+        "center": [-77.5, 14],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 3.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R06",
+        "pierId": "D",
+        "center": [-77.5, 18],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 3.2,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R07",
+        "pierId": "D",
+        "center": [-77.5, 22],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 3.6,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R08",
+        "pierId": "D",
+        "center": [-77.5, 26],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "16A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R09",
+        "pierId": "D",
+        "center": [-77.5, 30],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R10",
+        "pierId": "D",
+        "center": [-77.5, 34],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.1,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R11",
+        "pierId": "D",
+        "center": [-77.5, 38],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.9,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R12",
+        "pierId": "D",
+        "center": [-77.5, 42],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 3.9,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R13",
+        "pierId": "D",
+        "center": [-77.5, 46],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R14",
+        "pierId": "D",
+        "center": [-77.5, 50],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R15",
+        "pierId": "D",
+        "center": [-77.5, 54],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 2.4,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      },
+      {
+        "id": "D-R16",
+        "pierId": "D",
+        "center": [-77.5, 58],
+        "headingDegrees": 90,
+        "length": 8,
+        "width": 4,
+        "maxDraft": 3,
+        "hasFingerPiers": false,
+        "metadata": {
+          "Power": "32A",
+          "Water": "Yes",
+          "DailyRate": "36 EUR"
+        }
+      }
+    ],
+    "multiBerths": [
+      {
+        "id": "BERTH-B-L10",
+        "berthIds": [
+          "B-L10",
+          "B-L11",
+          "B-L12"
+        ],
+        "boat": {
+          "id": "BT-70001",
+          "name": "Meltemi Star",
+          "type": "MotorYacht",
+          "lengthMeters": 14.5,
+          "beamMeters": 4.2,
+          "ownerName": "Aegean Charters Ltd.",
+          "registrationNumber": "REG-70001"
+        },
+        "status": "Occupied",
+        "style": "Alongside"
+      }
+    ]
+  },
+  "presentation": {
+    "water": {
+      "size": 4200,
+      "gridResolution": 160,
+      "deepColor": [0.03, 0.2, 0.3],
+      "shallowColor": [0.1, 0.42, 0.48],
+      "waveAmplitude": 0.08,
+      "waveFrequency": 1,
+      "waveSpeed": 1,
+      "skyReflection": 1,
+      "ripples": 1,
+      "sunGlints": 1,
+      "boatMotion": 1
+    },
+    "lighting": {
+      "sunDirection": [0.4581, 0.8144, 0.3563],
+      "sunColor": [1, 0.95, 0.86],
+      "ambientColor": [0.36, 0.4, 0.48],
+      "specularStrength": 0.35,
+      "shininess": 32,
+      "skyColor": [0.56, 0.72, 0.88],
+      "fogColor": [0.76, 0.85, 0.92],
+      "fogDensity": 0.0022
+    },
+    "status": {
+      "free": "#33C752",
+      "occupied": "#E6332E",
+      "reserved": "#3875F5",
+      "temporarilyFree": "#FACC1F",
+      "disabled": "#94999E",
+      "padOpacity": 0.45,
+      "occupiedBoatOpacity": 1,
+      "reservedBoatOpacity": 0.4,
+      "temporarilyFreeBoatOpacity": 0.4,
+      "ghostBoatTint": 0.55,
+      "showStatusMarkers": true,
+      "statusMarkerScale": 1
+    },
+    "land": {
+      "quay": "#BDB8AB",
+      "quayWall": "#9E998F",
+      "grass": "#66944C",
+      "grassBank": "#78664C",
+      "rock": "#87827A",
+      "rockColorVariation": 0.2,
+      "foliage": "#3D7533",
+      "conifer": "#295C38",
+      "trunk": "#61452B",
+      "palm": "#548542",
+      "blossom": "#F2B8CC",
+      "building": "#CCC7BA",
+      "roof": "#965440",
+      "showTrees": true
+    },
+    "structures": {
+      "wood": "#A88054",
+      "concrete": "#BDBAB2",
+      "float": "#33363B",
+      "fender": "#1F1F21",
+      "bollard": "#2B2E33",
+      "steel": "#8F949C",
+      "boomFloat": "#F58F1F",
+      "boomEnd": "#FAD626",
+      "pedestal": "#D1D4D9",
+      "power": "#F2C21C",
+      "water": "#2985D9"
+    },
+    "labels": {
+      "color": "#F7FAFF",
+      "ashore": "#292E33",
+      "highlight": "#FFE659",
+      "disabled": "#9EA3A8",
+      "fontFamily": "Regular",
+      "typeface": "Sans"
+    },
+    "selection": {
+      "showMarker": true,
+      "markerTint": "#FFFFFF",
+      "markerScale": 1,
+      "selectedGlow": 0.45,
+      "hoverGlow": 0.25,
+      "pulse": true
+    },
+    "view": {
+      "fieldOfViewDegrees": 45,
+      "cameraSmoothing": 10
+    },
+    "shadows": {
+      "enabled": true,
+      "strength": 0.25
+    },
+    "berthLabels": "None"
+  },
+  "designer": {
+    "landKind": "Quay",
+    "landHeight": 1,
+    "treeDensity": 8,
+    "pierType": "FloatingWooden",
+    "pierWidth": 2.5,
+    "pierBerthingSides": "Both",
+    "berthWidth": 5,
+    "berthLength": 12,
+    "berthDepth": 3,
+    "berthSeparators": "FingerPiers",
+    "berthGap": 0,
+    "alignBerthsToExisting": true,
+    "berthServices": "None",
+    "landBerthHeading": 0,
+    "snapDistancePixels": 12,
+    "pierNamePattern": "Pier {pier}",
+    "berthNaming": {
+      "pattern": "{pier}-{side}{number}",
+      "startNumber": 1,
+      "increment": 1,
+      "numberDigits": 2,
+      "leftSide": "L",
+      "rightSide": "R"
+    }
+  }
+}

@@ -35,6 +35,14 @@ public sealed record CameraPreset(string Name, CameraPose Pose, string? Descript
     public bool IsBuiltIn { get; init; }
 
     /// <summary>
+    /// A stable identifier of an automatic view, which unlike <see cref="Name"/> does not change with the language or
+    /// a pier's name: <c>Overview</c>, <c>Top Down</c>, <c>North</c>, <c>East</c>, <c>South</c>, <c>West</c>, and
+    /// <c>Pier:</c> followed by the pier's id (see <c>MarinaVisualizer.PierPresetKey</c>). Null for saved views.
+    /// </summary>
+    /// <remarks>Lookups by name (<c>ApplyCameraPreset</c>, <c>SetCameraPresetEnabled</c>) accept a key too, and try it first.</remarks>
+    public string? Key { get; init; }
+
+    /// <summary>
     /// False when this view has been switched off, so a host should leave it out of the list it offers. Switched-off
     /// views are still in <c>CameraPresets</c> and can still be applied by name; see
     /// <c>IMarinaVisualizer.SetCameraPresetEnabled</c>.
@@ -43,6 +51,10 @@ public sealed record CameraPreset(string Name, CameraPose Pose, string? Descript
 }
 
 /// <summary>Limits that keep the camera usable: no flipping, no dipping under water, no flying away.</summary>
+/// <remarks>
+/// Any values can be set: <see cref="OrbitCamera.Constrain"/> takes a pair of limits given the wrong way round the right
+/// way round, ignores limits that are not numbers, and never lets the distance reach zero.
+/// </remarks>
 public sealed class CameraConstraints
 {
     /// <summary>Lowest elevation angle. Keeps the view above the horizon.</summary>
@@ -65,4 +77,10 @@ public sealed class CameraConstraints
 
     /// <summary>Maximum corner of the plan-view region (X, Z) the target may move within.</summary>
     public Vector2 TargetBoundsMax { get; set; } = new(600f, 600f);
+
+    /// <summary>Lowest height the target may sit at, in meters above the water (default 0).</summary>
+    public float MinTargetHeight { get; set; }
+
+    /// <summary>Highest height the target may sit at, in meters above the water (default 50).</summary>
+    public float MaxTargetHeight { get; set; } = 50f;
 }

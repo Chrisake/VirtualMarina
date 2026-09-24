@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    What the two Designer apps have in common, and nothing that draws: the file / dirty / title workflow, the rename
+    questions, the activity log, the display text, the one table of commands and their keys, and the liveness watch
+    the desktop launcher shuts down by. The WinForms designer (apps/VirtualMarina.Designer) and the Blazor designer
+    (apps/VirtualMarina.Designer.Blazor) each supply only their own dialogs through IDesignerDialogs.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>VirtualMarina.Designer</RootNamespace>
+    <AssemblyName>VirtualMarina.Designer.Common</AssemblyName>
+    <Product>VirtualMarina Designer</Product>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\VirtualMarina.Core\VirtualMarina.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- One copy of the resource lookup, compiled into each assembly that shows text. See shared/ResourceText.cs. -->
+    <Compile Include="..\..\shared\ResourceText.cs" Link="Resources\ResourceText.cs" />
+
+    <!--
+      The Designer's displayed text, used by both apps. The logical name pins the embedded resource to the base name
+      Strings passes to its ResourceManager.
+    -->
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <LogicalName>VirtualMarina.Designer.Resources.Strings.resources</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The text is shown by the apps but owned here; it is not part of what this library offers. -->
+    <InternalsVisibleTo Include="VirtualMarina.Designer" />
+    <InternalsVisibleTo Include="VirtualMarina.Designer.Blazor" />
+    <InternalsVisibleTo Include="VirtualMarina.Designer.Common.Tests" />
+  </ItemGroup>
+
+</Project>

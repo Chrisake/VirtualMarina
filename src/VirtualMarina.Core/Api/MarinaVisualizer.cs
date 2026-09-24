@@ -57,16 +57,19 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
 {
     private static readonly StringComparer IdComparer = StringComparer.OrdinalIgnoreCase;
 
-    private readonly Dictionary<string, Pier> _piers = new(IdComparer);
-    private readonly List<string> _pierOrder = [];
-    private readonly Dictionary<string, Berth> _berths = new(IdComparer);
-    private readonly List<string> _berthOrder = [];
-    private readonly Dictionary<string, Divider> _dividers = new(IdComparer);
-    private readonly List<string> _dividerOrder = [];
-    private readonly Dictionary<string, MultiBerth> _multiBerths = new(IdComparer);
-    private readonly List<string> _multiBerthOrder = [];
-    private readonly Dictionary<string, LandArea> _landAreas = new(IdComparer);
-    private readonly List<string> _landOrder = [];
+    /// <summary>Secondary index of <see cref="_berths"/> by pier id, and of <see cref="_dividers"/> by pier id.</summary>
+    private const int ByPier = 0;
+
+    /// <summary>Secondary index of <see cref="_berths"/> by land area id.</summary>
+    private const int ByLandArea = 1;
+
+    // Every element in the order it was added, with lookups, removals and "the berths of this pier" that do not walk
+    // the whole marina: a pier removed from a marina of thousands of berths no longer scans them once per berth.
+    private readonly OrderedStore<Pier> _piers = new(IdComparer);
+    private readonly OrderedStore<Berth> _berths = new(IdComparer, berth => berth.PierId, berth => berth.LandAreaId);
+    private readonly OrderedStore<Divider> _dividers = new(IdComparer, divider => divider.PierId);
+    private readonly OrderedStore<MultiBerth> _multiBerths = new(IdComparer);
+    private readonly OrderedStore<LandArea> _landAreas = new(IdComparer);
     private Shoreline? _shoreline;
     private MarineTraffic _traffic = MarineTraffic.None;
     private MarineTrafficField? _trafficField;
@@ -74,28 +77,27 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private bool _showTrafficLanes;
     private LabelFontDefinition? _registeredLabelFont;
     private bool _trafficDirty = true;
-    private readonly List<RenderObject> _frameObjects = [];
-    private int _staticObjectCount = -1;
+    private readonly SceneLayers _scene = new();
+    private readonly List<RenderObject> _trafficObjects = [];
     private readonly Dictionary<string, int> _landMeshSlots = new(IdComparer);
-    private int _nextLandMeshSlot;
+    private readonly Dictionary<string, RenderObject[]> _landScenery = new(IdComparer);
+    private RenderObject[] _shorelineScenery = [];
     private readonly List<CameraPreset> _presets = [];
-    private readonly List<RenderObject> _renderObjects = [];
     private MarinaStyle _style;
 
     private string? _hoveredBerthId;
     private BerthStatusFilter _statusFilter = BerthStatusFilter.All;
     private BerthLabelMode _berthLabelMode = BerthLabelMode.None;
-    private bool _sceneDirty = true;
-    private int _sceneVersion;
+    private bool _redrawRequested = true;
+    private (Matrix4x4 View, Matrix4x4 Projection, FrameLighting Lighting, FrameWater Water) _drawn;
     private int _updateDepth;
-    private bool _layoutChangePending;
+    private readonly List<LayoutChange> _pendingChanges = [];
     private double _time;
     private Vector2 _viewportSize = new(1280f, 720f);
     private Vector2 _waterCenter;
     private Vector2 _marinaCenter;
     private float _waterSize;
     private float _requestedWaterSize;
-    private Vector3 _shadowSun = Vector3.UnitY;
     private string _marinaName = "Marina";
 
     /// <summary>Creates an empty marina with default water and lighting. Load one with <see cref="InitializeLayout"/>.</summary>
@@ -114,11 +116,10 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         _waterCenter = options.WaterCenter;
         _waterSize = Water.Size;
         _requestedWaterSize = Water.Size;
-        Camera = new OrbitCamera();
+        _camera = new OrbitCamera();
         AttachStyle(_style);
         Input = new MarinaInputController(this);
         Designer = new MarinaDesigner(this);
-        RebuildBuiltInPresets();
     }
 
     /// <inheritdoc/>
@@ -151,6 +152,17 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// <inheritdoc/>
     public event EventHandler<LayoutChangedEventArgs>? LayoutChanged;
 
+    /// <summary>
+    /// Raised when something changed that the view has to draw: the layout, a status, the hover or selection, the style,
+    /// the designer's drawing. Raised once until the next <see cref="BuildRenderFrame"/>, however much changes in between,
+    /// so a view that stops drawing while nothing changes (see <see cref="NeedsRedraw"/>) knows to start again.
+    /// </summary>
+    /// <remarks>
+    /// Raised on the thread that made the change, which for a WinForms or Blazor view has to be its UI thread: the
+    /// visualizer is not thread-safe.
+    /// </remarks>
+    public event EventHandler? RedrawRequested;
+
     /// <inheritdoc/>
     public string MarinaName
     {
@@ -159,7 +171,20 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     }
 
     /// <inheritdoc/>
-    public OrbitCamera Camera { get; }
+    /// <remarks>
+    /// Its <see cref="OrbitCamera.Constraints"/> (how far it may wander and pull back) follow the layout; they are
+    /// brought up to date whenever the camera is fetched from here, not on every change to the layout.
+    /// </remarks>
+    public OrbitCamera Camera
+    {
+        get
+        {
+            EnsureCameraBounds();
+            return _camera;
+        }
+    }
+
+    private readonly OrbitCamera _camera;
 
     /// <summary>
     /// Platform-neutral input handling. Host views forward pointer and keyboard events here; configure drag bindings,
@@ -218,11 +243,11 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             if (!Enum.IsDefined(value)) throw new ArgumentOutOfRangeException(nameof(value), value, null);
             if (value == _berthLabelMode) return;
             _berthLabelMode = value;
-            MarkSceneDirty();
+            MarkBerthsDirty();
         }
     }
 
-    /// <summary>Seconds of animation time accumulated through <see cref="Update"/>.</summary>
+    /// <summary>Seconds of animation time accumulated through <see cref="Update(double, bool)"/>.</summary>
     public double Time => _time;
 
     /// <summary>View size in pointer units (usually pixels), as last set with <see cref="SetViewportSize"/>. Defaults to 1280 × 720.</summary>
@@ -241,77 +266,99 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         _viewportSize = size;
         RefitFocusAfterResize();
 
-        // How wide the view is decides how far back the automatic views have to stand.
-        RebuildBuiltInPresets();
+        // How wide the view is decides how far back the automatic views have to stand. They are worked out again
+        // when next asked for, not on every step of a window being dragged to a new size.
+        InvalidatePresets();
     }
 
     /// <summary>Advances animation time and camera smoothing.</summary>
-    public void Update(double deltaSeconds)
+    public void Update(double deltaSeconds) => Update(deltaSeconds, animate: true);
+
+    /// <summary>
+    /// Advances camera smoothing and, when <paramref name="animate"/> is true, animation time. With it false the waves,
+    /// floating boats, pulses and traffic stay where they are while the camera still eases to where it was sent: what a
+    /// view does when its animation is switched off.
+    /// </summary>
+    /// <param name="deltaSeconds">Seconds since the last update. Long gaps are capped, so a view left alone does not jump.</param>
+    /// <param name="animate">False to leave animation time where it is.</param>
+    public void Update(double deltaSeconds, bool animate)
     {
         if (!double.IsFinite(deltaSeconds) || deltaSeconds <= 0d) return;
         var dt = Math.Min(deltaSeconds, 0.25d); // Avoid jumps after the window was suspended.
-        _time += dt;
+        if (animate) _time += dt;
         Camera.Update((float)dt);
     }
 
-    /// <summary>Builds the frame description for a renderer. Rebuilds instance data only when the scene changed.</summary>
+    /// <summary>
+    /// True when the view has to draw a frame to be up to date: something changed since the last <see cref="BuildRenderFrame"/>
+    /// (the scene, the camera or the view size, the lighting, the water) or the camera is still easing toward where it was sent.
+    /// Leaves out what moves by itself; see <see cref="IsAnimating"/>.
+    /// </summary>
+    /// <remarks>
+    /// A view that draws only when this or <see cref="IsAnimating"/> is true costs nothing while the marina sits still. Changes
+    /// made through the visualizer, and to <see cref="Lighting"/>, <see cref="Water"/> and the rest of <see cref="Style"/>,
+    /// also raise <see cref="RedrawRequested"/>; changes made to the camera directly are only seen here, so poll it now and then.
+    /// </remarks>
+    public bool NeedsRedraw =>
+        _redrawRequested || _scene.IsDirty || Camera.IsMoving || Designer.OverlayNeedsRefresh() ||
+        Camera.GetViewMatrix() != _drawn.View ||
+        Camera.GetProjectionMatrix(_viewportSize.X / _viewportSize.Y) != _drawn.Projection ||
+        FrameLighting.FromLightingSettings(FrameLightingSource()) != _drawn.Lighting ||
+        FrameWater.FromWaterSettings(Water) != _drawn.Water;
+
+    /// <summary>
+    /// True when the picture moves by itself, so the view has to keep drawing even though nothing changed: waves (and the boats
+    /// riding them), a pulsing selection, a spinning selection marker, or passing traffic.
+    /// </summary>
+    public bool IsAnimating =>
+        FrameWater.FromWaterSettings(Water).IsMoving || _scene.HasMarkers || _scene.HasPulse || _trafficField is { Vessels.Count: > 0 };
+
+    /// <summary>Asks the view for a new frame: sets <see cref="NeedsRedraw"/> and raises <see cref="RedrawRequested"/>.</summary>
+    public void RequestRedraw()
+    {
+        if (_redrawRequested) return;
+        _redrawRequested = true;
+        RedrawRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Builds the frame description for a renderer. Only the parts of the scene that changed are built again, each in a
+    /// layer of its own (see <see cref="RenderFrame.Layers"/>), so the renderer uploads only those.
+    /// </summary>
     public RenderFrame BuildRenderFrame()
     {
         // Water.Size can be set at any time; the grid is rebuilt when it actually changes, not when the grid has
-        // merely been grown to cover the layout.
-        if (MathF.Abs(Water.Size - _requestedWaterSize) > 0.5f) SetWaterGrid(_waterCenter, MathF.Max(50f, Water.Size));
-
-        // Shadows are worked out where the scene is built, so moving the sun has to rebuild it. Lighting otherwise
-        // only feeds uniforms, so this is the one thing about it the scene cares about.
-        if (_style.Shadows.IsEnabled && Vector3.DistanceSquared(Lighting.SunDirection, _shadowSun) > 1e-8f)
+        // merely been grown to cover the layout. Only looked at after the water section said it changed.
+        if (_waterChanged)
         {
-            _shadowSun = Lighting.SunDirection;
-            _sceneDirty = true;
+            _waterChanged = false;
+            if (MathF.Abs(Water.Size - _requestedWaterSize) > 0.5f) SetWaterGrid(_waterCenter, MathF.Max(50f, Water.Size));
         }
 
-        if (Designer.OverlayNeedsRefresh()) _sceneDirty = true;
-        if (_sceneDirty)
-        {
-            SceneBuilder.Build(_renderObjects, new SceneState
-            {
-                Piers = OrderedPiers(),
-                Berths = OrderedBerths().ToList(),
-                Dividers = OrderedDividers(),
-                Land = OrderedLandAreas(),
-                HasShoreline = _shoreline is not null,
-                LandMeshId = land => MeshIds.ForLand(_landMeshSlots.TryGetValue(land.Id, out var slot) ? slot : -1),
-                LandTreesMeshId = land => MeshIds.ForLandTrees(_landMeshSlots.TryGetValue(land.Id, out var slot) ? slot : -1),
-                ShorelineGroundHeight = _shoreline is { } shore ? LandMeshFactory.ShorelineGroundHeight(shore) : 0f,
-                LandLookup = GetLandArea,
-                BerthLookup = GetBerth,
-                PierLookup = GetPier,
-                MultiBerthLookup = GetMultiBerth,
-                Filter = _statusFilter,
-                Selected = new HashSet<string>(_selection, IdComparer),
-                PrimarySelectedId = _selection.Count > 0 ? _selection[^1] : null,
-                HoveredBerthId = _hoveredBerthId,
-                LabelMode = _berthLabelMode,
-                Style = _style,
-                Meshes = Meshes,
-                Overlay = Designer.AppendOverlay,
-            });
-            _sceneVersion++;
-            _sceneDirty = false;
-            _staticObjectCount = -1;   // the scene changed under the traffic, so the whole list is rebuilt below
-        }
+        EnsureCameraBounds();
 
-        var objects = AppendTraffic();
+        if (Designer.OverlayNeedsRefresh()) _scene.Invalidate(SceneChanges.Overlay);
+        _scene.Update(_style, CreateSceneState, Designer.AppendOverlay);
+        UpdateTraffic();
+
+        var view = Camera.GetViewMatrix();
+        var projection = Camera.GetProjectionMatrix(_viewportSize.X / _viewportSize.Y);
+        var lighting = FrameLighting.FromLightingSettings(FrameLightingSource());
+        var water = FrameWater.FromWaterSettings(Water);
+        _drawn = (view, projection, lighting, water);
+        _redrawRequested = false;
 
         return new RenderFrame
         {
-            View = Camera.GetViewMatrix(),
-            Projection = Camera.GetProjectionMatrix(_viewportSize.X / _viewportSize.Y),
+            View = view,
+            Projection = projection,
             CameraPosition = Camera.Position,
             Time = (float)(_time % 3600d),
-            Lighting = Designer.IsActive && Designer.FogFactor < 1f ? DesignLighting() : Lighting,
-            Water = Water,
-            Objects = objects,
-            SceneVersion = _sceneVersion,
+            Lighting = lighting,
+            Water = water,
+            Layers = _scene.All,
+            Objects = _scene.Flat,
+            SceneVersion = _scene.Version,
             MarinaCenter = _marinaCenter,
             WaterCenter = _waterCenter,
             WaterDetailRadius = _waterSize * 0.5f,
@@ -320,40 +367,47 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         };
     }
 
-    /// <summary>Forces the render object list to be rebuilt on the next frame.</summary>
-    public void InvalidateScene() => _sceneDirty = true;
+    /// <summary>Forces every layer of the scene to be rebuilt on the next frame.</summary>
+    public void InvalidateScene() => Invalidate(SceneChanges.All);
 
-    /// <summary>
-    /// The scene with the passing traffic put back on top of it. The still part is copied only when the scene itself
-    /// changed; the traffic is a short tail that is rewritten every frame.
-    /// </summary>
-    private List<RenderObject> AppendTraffic()
+    /// <summary>Where the frame's lighting comes from: the style's, with the fog thinned while designing (see <see cref="DesignLighting"/>).</summary>
+    private LightingSettings FrameLightingSource() => Designer.IsActive && Designer.FogFactor < 1f ? DesignLighting() : Lighting;
+
+    private SceneState CreateSceneState() => new()
+    {
+        Piers = OrderedPiers(),
+        Berths = OrderedBerths().ToList(),
+        Dividers = OrderedDividers(),
+        Land = OrderedLandAreas(),
+        HasShoreline = _shoreline is not null,
+        LandMeshId = land => _landMeshSlots.TryGetValue(land.Id, out var slot) ? MeshIds.ForLand(slot) : -1,
+        LandScenery = land => _landScenery.TryGetValue(land.Id, out var scenery) ? scenery : [],
+        ShorelineScenery = _shorelineScenery,
+        ShorelineGroundHeight = _shoreline is { } shore ? LandMeshFactory.ShorelineGroundHeight(shore) : 0f,
+        LandLookup = GetLandArea,
+        BerthLookup = GetBerth,
+        PierLookup = GetPier,
+        MultiBerthLookup = GetMultiBerth,
+        Filter = _statusFilter,
+        Selected = new HashSet<string>(_selection, IdComparer),
+        PrimarySelectedId = _selection.Count > 0 ? _selection[^1] : null,
+        HoveredBerthId = _hoveredBerthId,
+        LabelMode = _berthLabelMode,
+        Style = _style,
+        Meshes = Meshes,
+    };
+
+    /// <summary>Moves the passing traffic on and puts it in its layer, the one part of the scene rewritten every frame.</summary>
+    private void UpdateTraffic()
     {
         if (_trafficDirty && (_traffic.IsEnabled || _trafficField is not null)) ReplanTraffic();
         AdvanceTraffic();
-        if (_trafficField is null || _trafficField.Vessels.Count == 0)
-        {
-            // Nothing moving: the renderer can have the scene list itself and keep its uploaded instance data.
-            _staticObjectCount = -1;
-            return _renderObjects;
-        }
-
-        if (_staticObjectCount < 0)
-        {
-            _frameObjects.Clear();
-            _frameObjects.AddRange(_renderObjects);
-            _staticObjectCount = _renderObjects.Count;
-        }
-        else
-        {
-            _frameObjects.RemoveRange(_staticObjectCount, _frameObjects.Count - _staticObjectCount);
-        }
-
-        foreach (var vessel in _trafficField.Vessels)
+        _trafficObjects.Clear();
+        foreach (var vessel in _trafficField?.Vessels ?? [])
         {
             if (vessel.Opacity <= 0.004f) continue;
             var world = MarinaMath.CreatePlacement(Vector3.One, vessel.HeadingDegrees, MarinaMath.ToWorld(vessel.Position));
-            _frameObjects.Add(new RenderObject(
+            _trafficObjects.Add(new RenderObject(
                 MeshIds.ForBoat(vessel.Type),
                 world,
                 new Vector4(1f, 1f, 1f, vessel.Opacity),
@@ -362,22 +416,37 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
                 vessel.Position.X * 0.11f + vessel.Position.Y * 0.07f));
         }
 
-        // The instance data moved, so the backend has to re-upload it.
-        _sceneVersion++;
-        return _frameObjects;
+        _scene.SetTraffic(_trafficObjects);
     }
 
     /// <summary>
     /// Hit-tests a point in view pixels (origin top-left) against visible, unfiltered berths and boats.
     /// Disabled berths are hit (so they block what's behind them), but input ignores them.
     /// </summary>
-    public BerthHit? HitTest(float x, float y)
+    /// <remarks>
+    /// Answered from a pick set kept until the scene changes — the boats with their placements, the pads in a grid over
+    /// the plan — so hovering over a large marina tests only what stands under the pointer.
+    /// </remarks>
+    public BerthHit? HitTest(float x, float y) => HitTest(Camera.ScreenPointToRay(x, y, _viewportSize.X, _viewportSize.Y));
+
+    private BerthHit? HitTest(Ray ray)
     {
-        var ray = Camera.ScreenPointToRay(x, y, _viewportSize.X, _viewportSize.Y);
-        var berths = OrderedBerths().Where(IsShown).ToList();
-        var boats = BerthPlacement.EnumerateBoats(berths, GetBerth, GetMultiBerth, _statusFilter, GroundHeight, Meshes);
-        return ScenePicker.Pick(ray, berths, boats, Meshes, GroundHeight);
+        var version = ((long)_pickVersion << 32) | (uint)Meshes.Version;
+        if (_pickSet is null || _pickSet.Version != version)
+        {
+            var berths = OrderedBerths().Where(IsShown).ToList();
+            var boats = BerthPlacement.EnumerateBoats(berths, GetBerth, GetMultiBerth, _statusFilter, GroundHeight, Meshes);
+            _pickSet = new PickSet(berths, boats, Meshes, GroundHeight, version);
+        }
+
+        return _pickSet.Pick(ray);
     }
+
+    /// <summary>What a pointer can hit changed (a berth, a boat, the filter): the pick set is built again when next needed.</summary>
+    private void InvalidatePickSet() => _pickVersion++;
+
+    private PickSet? _pickSet;
+    private int _pickVersion;
 
     /// <summary>Point on the water plane under a view pixel, if the ray hits it.</summary>
     public Vector3? GetWaterPoint(float x, float y)
@@ -386,20 +455,40 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         return ray.IntersectHorizontalPlane(0f, out var distance) ? ray.GetPoint(distance) : null;
     }
 
+    /// <summary>
+    /// What is under a view pixel: the nearest boat or berth, else the top of a land area or the mainland, else the
+    /// water. Null when the pixel shows only sky. What the wheel zooms toward.
+    /// </summary>
+    internal Vector3? GetGroundPoint(float x, float y)
+    {
+        var ray = Camera.ScreenPointToRay(x, y, _viewportSize.X, _viewportSize.Y);
+        if (HitTest(ray) is { } hit) return hit.WorldPoint;
+
+        float? nearest = null;
+        foreach (var land in OrderedLandAreas())
+        {
+            if (ray.IntersectHorizontalPlane(land.Height, out var distance) && (nearest is null || distance < nearest) &&
+                land.Contains(MarinaMath.ToPlan(ray.GetPoint(distance))))
+            {
+                nearest = distance;
+            }
+        }
+
+        if (_shoreline is { } shore && ray.IntersectHorizontalPlane(LandMeshFactory.ShorelineGroundHeight(shore), out var ashore) &&
+            (nearest is null || ashore < nearest) && shore.Contains(MarinaMath.ToPlan(ray.GetPoint(ashore))))
+        {
+            nearest = ashore;
+        }
+
+        if (nearest is { } found) return ray.GetPoint(found);
+        return ray.IntersectHorizontalPlane(0f, out var water) ? ray.GetPoint(water) : null;
+    }
+
     /// <summary>Projects a world point to view pixels (origin top-left). False when the point is behind the camera.</summary>
     public bool TryProjectToScreen(Vector3 worldPoint, out Vector2 screenPoint)
     {
-        var viewProjection = Camera.GetViewMatrix() * Camera.GetProjectionMatrix(_viewportSize.X / _viewportSize.Y);
-        var clip = Vector4.Transform(new Vector4(worldPoint, 1f), viewProjection);
-        if (clip.W <= 1e-4f)
-        {
-            screenPoint = default;
-            return false;
-        }
-
-        var ndc = new Vector2(clip.X, clip.Y) / clip.W;
-        screenPoint = new Vector2((ndc.X + 1f) * 0.5f * _viewportSize.X, (1f - ndc.Y) * 0.5f * _viewportSize.Y);
-        return float.IsFinite(screenPoint.X) && float.IsFinite(screenPoint.Y);
+        screenPoint = _camera.WorldToScreen(worldPoint, _viewportSize.X, _viewportSize.Y) ?? default;
+        return screenPoint != default && float.IsFinite(screenPoint.X) && float.IsFinite(screenPoint.Y);
     }
 
     /// <summary>
@@ -420,28 +509,59 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
 
     private void AttachStyle(MarinaStyle style)
     {
-        foreach (var section in style.SceneSections) section.Changed += OnSceneStyleChanged;
+        // Each section of the style feeds only some of the layers, so a change to it rebuilds only those.
+        style.Piers.Changed += OnPierStyleChanged;
+        style.Selection.Changed += OnBerthStyleChanged;
+        style.Shadows.Changed += OnShadowStyleChanged;
         style.Status.Changed += OnStatusStyleChanged;
         style.Land.Changed += OnLandStyleChanged;
         style.Labels.Changed += OnLabelStyleChanged;
         style.View.Changed += OnViewStyleChanged;
+        style.Lighting.Changed += OnLightingChanged;
+        style.Water.Changed += OnWaterChanged;
+        _waterChanged = true;
         ApplyViewStyle(style.View);
         RegisterLabelFont(style.Labels.Font);
     }
 
     private void DetachStyle(MarinaStyle style)
     {
-        foreach (var section in style.SceneSections) section.Changed -= OnSceneStyleChanged;
+        style.Piers.Changed -= OnPierStyleChanged;
+        style.Selection.Changed -= OnBerthStyleChanged;
+        style.Shadows.Changed -= OnShadowStyleChanged;
         style.Status.Changed -= OnStatusStyleChanged;
         style.Land.Changed -= OnLandStyleChanged;
         style.Labels.Changed -= OnLabelStyleChanged;
         style.View.Changed -= OnViewStyleChanged;
+        style.Lighting.Changed -= OnLightingChanged;
+        style.Water.Changed -= OnWaterChanged;
     }
 
-    private void OnSceneStyleChanged(object? sender, EventArgs e) => MarkSceneDirty();
+    /// <summary>The lighting goes straight into the frame, so a change needs no rebuilding, only a new frame.</summary>
+    private void OnLightingChanged(object? sender, EventArgs e) => RequestRedraw();
+
+    /// <summary>As the lighting; and the next frame checks whether the water's size changed with it.</summary>
+    private void OnWaterChanged(object? sender, EventArgs e)
+    {
+        _waterChanged = true;
+        RequestRedraw();
+    }
+
+    /// <summary>The water section changed since the last frame (or the style was replaced), so its size is worth comparing.</summary>
+    private bool _waterChanged = true;
+
+    private void OnPierStyleChanged(object? sender, EventArgs e) => Invalidate(SceneChanges.Structure);
+
+    private void OnBerthStyleChanged(object? sender, EventArgs e) => MarkBerthsDirty();
+
+    private void OnShadowStyleChanged(object? sender, EventArgs e) => Invalidate(SceneChanges.Shadows);
 
     /// <summary>Status colors also appear in the popup's accent.</summary>
-    private void OnStatusStyleChanged(object? sender, EventArgs e) => RequestPopupRefresh();
+    private void OnStatusStyleChanged(object? sender, EventArgs e)
+    {
+        MarkBerthsDirty();
+        RequestPopupRefresh();
+    }
 
     private void OnLandStyleChanged(object? sender, EventArgs e)
     {
@@ -450,7 +570,11 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         MarkSceneDirty();
     }
 
-    private void OnLabelStyleChanged(object? sender, EventArgs e) => RegisterLabelFont(_style.Labels.Font);
+    private void OnLabelStyleChanged(object? sender, EventArgs e)
+    {
+        RegisterLabelFont(_style.Labels.Font);
+        MarkBerthsDirty();
+    }
 
     /// <summary>
     /// Puts the glyphs of a captured font into the mesh library, and takes the previous font's out again. Called
@@ -472,15 +596,21 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         }
 
         _registeredLabelFont = font;
-        MarkSceneDirty();
+        MarkBerthsDirty();
     }
 
     private void OnViewStyleChanged(object? sender, EventArgs e) => ApplyViewStyle(_style.View);
 
     private void ApplyViewStyle(ViewStyle view)
     {
-        Camera.FieldOfViewDegrees = view.FieldOfViewDegrees;
-        Camera.Smoothing = view.CameraSmoothing;
+        var fieldOfViewChanged = _camera.FieldOfViewDegrees != view.FieldOfViewDegrees;
+        _camera.FieldOfViewDegrees = view.FieldOfViewDegrees;
+        _camera.Smoothing = view.CameraSmoothing;
+
+        // A wider or narrower lens changes how far back every automatic view and the camera limit have to be.
+        if (!fieldOfViewChanged) return;
+        _boundsDirty = true;
+        InvalidatePresets();
     }
 
     /// <summary>Rebuilds the water grid around <paramref name="center"/>.</summary>
@@ -488,7 +618,10 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     {
         _requestedWaterSize = Water.Size;
         // Keep the cell size of the configured grid as it grows (within limits).
-        var resolution = Math.Clamp((int)MathF.Round(Water.GridResolution * size / Water.Size), Water.GridResolution, 400);
+        // Clamped as a float first: a grid grown far past the configured size would overflow the int. The configured
+        // resolution is itself held within the maximum, so the bounds never cross.
+        var grown = MathF.Min(MathF.Round(Water.GridResolution * size / Water.Size), WaterSettings.MaxGridResolution);
+        var resolution = Math.Clamp(float.IsFinite(grown) ? (int)grown : Water.GridResolution, Water.GridResolution, Math.Max(Water.GridResolution, WaterSettings.MaxGridResolution));
         Meshes.Register(MarinaMeshFactory.CreateWaterGrid(MeshIds.Water, size, resolution, center));
         _waterCenter = center;
         _waterSize = size;
@@ -535,35 +668,32 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// <summary>Land height under a land berth; null for water berths.</summary>
     private float? GroundHeight(Berth berth) => SceneBuilder.GroundHeight(berth, GetLandArea);
 
-    private IEnumerable<LandArea> OrderedLandAreas() => _landOrder.Select(id => _landAreas[id]);
+    private IEnumerable<LandArea> OrderedLandAreas() => _landAreas.Values;
 
     /// <summary>Drops every land mesh and builds one per current land area, in layout order (slots 0, 1, ...).</summary>
     private void RebuildLandMeshes()
     {
-        foreach (var slot in _landMeshSlots.Values)
-        {
-            Meshes.Unregister(MeshIds.ForLand(slot));
-            Meshes.Unregister(MeshIds.ForLandTrees(slot));
-        }
-
+        foreach (var slot in _landMeshSlots.Values) Meshes.Unregister(MeshIds.ForLand(slot));
         _landMeshSlots.Clear();
-        _nextLandMeshSlot = 0;
+        _landScenery.Clear();
         foreach (var land in OrderedLandAreas()) RegisterLandMesh(land);
         RegisterShorelineMesh();
     }
 
-    /// <summary>Builds the mainland's mesh, or drops it when there is no shoreline.</summary>
+    /// <summary>
+    /// Builds the mainland's ground mesh and the instances of what stands on it, or drops them when there is no shoreline.
+    /// </summary>
     private void RegisterShorelineMesh()
     {
         if (_shoreline is null)
         {
             Meshes.Unregister(MeshIds.Shoreline);
-            Meshes.Unregister(MeshIds.ShorelineScenery);
+            _shorelineScenery = [];
             return;
         }
 
         Meshes.Register(LandMeshFactory.CreateShorelineGround(MeshIds.Shoreline, _shoreline, _style.Land));
-        Meshes.Register(LandMeshFactory.CreateShorelineScenery(MeshIds.ShorelineScenery, _shoreline, _style.Land));
+        _shorelineScenery = LandMeshFactory.CreateShorelineSceneryInstances(_shoreline, _style.Land);
     }
 
     /// <summary>
@@ -582,40 +712,66 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         // for, so its ends are far outside the detailed water while its middle runs through the part anyone is
         // watching.
         var lanes = MarineTrafficPlanner.Plan(_traffic, bounds, _shoreline);
-        _trafficField = lanes.Count == 0 ? null : new MarineTrafficField(_traffic, lanes);
+
+        // The same settings on new lanes (a pier moved, land was drawn) keep the vessels already out there where they are:
+        // starting them all over from the seed would send every one of them jumping back to where it began. Only new
+        // settings start the traffic afresh.
+        _trafficField = lanes.Count == 0 ? null
+            : _trafficField is { } current && current.Settings == _traffic ? new MarineTrafficField(current, lanes)
+            : new MarineTrafficField(_traffic, lanes);
         _trafficTime = _time;
         _trafficDirty = false;
-        _staticObjectCount = -1;
     }
 
-    /// <summary>Builds (or rebuilds) the mesh of one land area, keeping its slot so other land meshes are untouched.</summary>
-    private void RegisterLandMesh(LandArea land)
+    /// <summary>
+    /// Builds (or rebuilds) the ground mesh of one land area, keeping its slot so other land meshes are untouched, and the
+    /// instances of the rocks and trees that stand on it.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">There are already <see cref="MeshIds.MaxLandSlots"/> land areas.</exception>
+    /// <param name="land">The land area.</param>
+    /// <param name="rebuildGround">False when only what stands on it changed (its trees), so the ground mesh is kept.</param>
+    private void RegisterLandMesh(LandArea land, bool rebuildGround = true)
     {
         if (!_landMeshSlots.TryGetValue(land.Id, out var slot))
         {
-            slot = _nextLandMeshSlot++;
+            // The lowest slot free, so adding and removing land areas over and over never walks the ids into another range.
+            var used = new HashSet<int>(_landMeshSlots.Values);
+            slot = 0;
+            while (used.Contains(slot)) slot++;
+            if (slot >= MeshIds.MaxLandSlots) throw new InvalidOperationException($"A marina can have at most {MeshIds.MaxLandSlots} land areas.");
             _landMeshSlots[land.Id] = slot;
         }
 
-        // Ground and trees are separate meshes: the trees are squashed onto the ground to cast their shadow.
-        Meshes.Register(LandMeshFactory.CreateGround(MeshIds.ForLand(slot), land, _style.Land));
-        Meshes.Register(LandMeshFactory.CreateTrees(MeshIds.ForLandTrees(slot), land, _style.Land));
+        // Rocks and trees are instances of a few shared meshes rather than part of the ground: far less to build and
+        // upload, and each can be squashed onto the ground for its shadow.
+        if (rebuildGround || !Meshes.TryGet(MeshIds.ForLand(slot), out _))
+        {
+            Meshes.Register(LandMeshFactory.CreateGroundBase(MeshIds.ForLand(slot), land, _style.Land));
+        }
+
+        _landScenery[land.Id] = LandMeshFactory.CreateSceneryInstances(land, _style.Land);
     }
 
     private void UnregisterLandMesh(string landAreaId)
     {
+        _landScenery.Remove(landAreaId);
         if (!_landMeshSlots.Remove(landAreaId, out var slot)) return;
         Meshes.Unregister(MeshIds.ForLand(slot));
-        Meshes.Unregister(MeshIds.ForLandTrees(slot));
     }
 
-    private IEnumerable<Pier> OrderedPiers() => _pierOrder.Select(id => _piers[id]);
+    private IEnumerable<Pier> OrderedPiers() => _piers.Values;
 
-    private IEnumerable<Berth> OrderedBerths() => _berthOrder.Select(id => _berths[id]);
+    private IEnumerable<Berth> OrderedBerths() => _berths.Values;
 
-    private IEnumerable<Divider> OrderedDividers() => _dividerOrder.Select(id => _dividers[id]);
+    private IEnumerable<Divider> OrderedDividers() => _dividers.Values;
 
-    private IEnumerable<MultiBerth> OrderedMultiBerths() => _multiBerthOrder.Select(id => _multiBerths[id]);
+    private IEnumerable<MultiBerth> OrderedMultiBerths() => _multiBerths.Values;
+
+    /// <summary>The berths along a pier, in layout order, from the index rather than a walk over every berth.</summary>
+    private IEnumerable<Berth> BerthsOfPier(string pierId) => _berths.WithKey(ByPier, pierId);
+
+    /// <summary>The berths ashore on a land area, in layout order.</summary>
+    private IEnumerable<Berth> BerthsOfLandArea(string landAreaId) => _berths.WithKey(ByLandArea, landAreaId);
 
     /// <summary>Drawn with its status visuals: visible and not excluded by the status filter.</summary>
     private bool IsShown(Berth berth) => berth.IsVisible && _statusFilter.Includes(berth.Status);
@@ -623,15 +779,40 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     /// <summary>Can be part of the selection.</summary>
     private bool IsSelectable(Berth berth) => berth.IsInteractive && _statusFilter.Includes(berth.Status);
 
-    internal void MarkSceneDirty() => _sceneDirty = true;
+    /// <summary>True when replacing a berth changes the structure it stands in, not just what its status shows.</summary>
+    private static bool ShapesStructure(Berth before, Berth after) => SceneBuilder.ShapesStructure(before, after);
+
+    /// <summary>Something about the layout or its style changed: everything is built again.</summary>
+    internal void MarkSceneDirty() => Invalidate(SceneChanges.All);
+
+    /// <summary>Only the designer's overlay (or the traffic lanes) changed.</summary>
+    internal void MarkOverlayDirty() => Invalidate(SceneChanges.Overlay);
+
+    /// <summary>A berth's status, boat or label, the status filter or the label mode changed; the piers stay as they are.</summary>
+    internal void MarkBerthsDirty() => Invalidate(SceneChanges.Berths);
+
+    /// <summary>The hover or the selection changed: only the berths concerned and the markers are drawn again.</summary>
+    internal void MarkHighlightDirty() => Invalidate(SceneChanges.Highlight);
+
+    private void Invalidate(SceneChanges changes)
+    {
+        _scene.Invalidate(changes);
+        RequestRedraw();
+    }
 
     private void RaiseLayoutChanged(LayoutChangeKind kind, string? pierId = null, string? berthId = null, string? dividerId = null, string? multiBerthId = null, string? landAreaId = null)
     {
         // Anything that moves a pier, a land area or the shore can change where a lane is allowed to run.
         _trafficDirty = true;
+
+        // What is under the pointer may have changed: a berth moved, a boat arrived or left, one was hidden.
+        InvalidatePickSet();
+
+        var change = new LayoutChange(kind, pierId, berthId, dividerId, multiBerthId, landAreaId);
         if (_updateDepth > 0)
         {
-            _layoutChangePending = true;
+            // Told once, when the scope ends, as one BatchUpdated listing every change in the order made.
+            _pendingChanges.Add(change);
             return;
         }
 
@@ -647,7 +828,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     }
 
     private BerthEventArgs CreateBerthArgs(Berth berth, PointerButton button = PointerButton.None, bool isDoubleClick = false, Vector3? worldPoint = null) =>
-        new(berth, berth.PierId is null ? null : _piers.GetValueOrDefault(berth.PierId), button, isDoubleClick, worldPoint)
+        new(berth, berth.PierId is null ? null : GetPier(berth.PierId), button, isDoubleClick, worldPoint)
         {
             LandArea = berth.LandAreaId is null ? null : GetLandArea(berth.LandAreaId),
         };

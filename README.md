@@ -5,24 +5,43 @@ A modular 3D marina visualization library for .NET 8. The same core DLL drives a
 ## Documentation
 
 **[Docs/](Docs/README.md)** has the full documentation:
-- [getting started](Docs/01-getting-started.md) and [conventions](Docs/02-coordinates-and-conventions.md)
-- guides for [layout](Docs/03-layout.md), [the designer](Docs/12-designer.md), [the designer application](Docs/14-designer-app.md), [marina files](Docs/13-marina-file-format.md), [status and flags](Docs/04-status-and-flags.md), [multi-berths](Docs/05-multi-berths.md), [selection, tooltips and actions](Docs/06-selection-tooltips-actions.md), [camera and focus](Docs/07-camera-and-focus.md), [appearance](Docs/08-appearance.md), [events](Docs/09-events-reference.md), [hosting](Docs/10-hosting-and-custom-views.md), [localization](Docs/15-localization.md) and [compatibility](Docs/16-compatibility.md)
+- [getting started](Docs/01-getting-started.md), [conventions](Docs/02-coordinates-and-conventions.md) and the [coordinate conventions](Docs/20-coordinate-conventions.md) in detail
+- guides for [layout](Docs/03-layout.md), [the sea and the shore](Docs/17-sea-and-shore.md), [the designer](Docs/12-designer.md), [the designer applications](Docs/14-designer-app.md), [marina files](Docs/13-marina-file-format.md) (with a [JSON schema](Docs/schema/marina.schema.json)), [status and flags](Docs/04-status-and-flags.md), [multi-berths](Docs/05-multi-berths.md), [selection, tooltips and actions](Docs/06-selection-tooltips-actions.md), [camera and focus](Docs/07-camera-and-focus.md), [appearance](Docs/08-appearance.md), [events](Docs/09-events-reference.md), [hosting](Docs/10-hosting-and-custom-views.md), [localization](Docs/15-localization.md), [samples](Docs/18-samples-and-use-cases.md), [compatibility](Docs/16-compatibility.md) and [static analysis](Docs/19-static-analysis.md)
 - a generated [API reference](Docs/11-api-reference.md)
 
-Every public type and member also has XML documentation comments, so Visual Studio shows them in IntelliSense. The libraries emit `VirtualMarina.*.xml` next to their DLLs (`src/Directory.Build.props`), and a missing comment on a public member is a build warning. After changing the public API, regenerate the reference with `dotnet run --project Docs/tools/ApiDocGen -- Docs/11-api-reference.md`.
+Every public type and member also has XML documentation comments, so Visual Studio shows them in IntelliSense. The libraries emit `VirtualMarina.*.xml` next to their DLLs (`src/Directory.Build.props`), and a missing comment on a public member is a build error. After changing the public API, regenerate the reference on Windows (the generator loads the WinForms library) with `dotnet run --project Docs/tools/ApiDocGen`; with no argument it rewrites `Docs/11-api-reference.md` in place. CI fails when the committed copy is out of date.
 
 ## Quick start
 
+The solution builds on Windows, Linux and macOS. The WinForms projects target `net8.0-windows`: Linux and macOS compile them with `-p:EnableWindowsTargeting=true` but cannot run them, so the WinForms test host, designer and tests are Windows-only.
+
+**Windows**
+
 ```powershell
 dotnet build VirtualMarina.sln
-dotnet test                                                      # Core unit tests
+dotnet test VirtualMarina.sln                                    # every test project, the WinForms ones included
 dotnet run --project samples/VirtualMarina.TestHost.WinForms     # desktop, OpenGL 3.3
 dotnet run --project samples/VirtualMarina.TestHost.Blazor       # then open http://localhost:5280
 ```
 
-Requirements: .NET 8 SDK or newer (`global.json` rolls forward), and a GPU/driver with OpenGL 3.3 (desktop) or WebGL 2 (browser). The WinForms host accepts `--preset "Top Down"` and `--select A-L03`.
+**Linux and macOS**
 
-Every build runs the .NET and SonarAnalyzer static analysers, and `tools/sonar-scan.ps1` sends the same build to SonarQube Cloud. See [static analysis](Docs/19-static-analysis.md) for which rules are on, which are deliberately off, and why.
+```bash
+dotnet build VirtualMarina.sln -p:EnableWindowsTargeting=true
+for project in tests/*.Tests/*.Tests.csproj; do                  # every test project except the WinForms one
+  case "$project" in *WinForms.Tests*) continue ;; esac
+  dotnet test "$project" --no-build
+done
+dotnet run --project samples/VirtualMarina.TestHost.Blazor       # then open http://localhost:5280
+```
+
+The designer runs in the browser too: `dotnet run --project apps/VirtualMarina.Designer.Blazor` (then open http://localhost:5290), or as a windowed app through the desktop launcher, `dotnet run --project apps/VirtualMarina.Designer.Desktop`. See [the designer applications](Docs/14-designer-app.md).
+
+Requirements: a .NET 8 SDK (`global.json` accepts any 8.0 feature band, so the analysers stay the same everywhere), and a GPU/driver with OpenGL 3.3 (desktop) or WebGL 2 (browser). The JavaScript checks CI runs need Node 20 or newer: `npm ci && npx eslint . && npx tsc -p jsconfig.json`.
+
+Every build runs the .NET and SonarAnalyzer static analysers with every finding an error, and `tools/sonar-scan.ps1` sends the same build to SonarQube Cloud. See [static analysis](Docs/19-static-analysis.md) for which rules are on, which are deliberately off, and why, and for what CI checks.
+
+The libraries are licensed GPL-3.0-only. Versions come from git tags (MinVer); pushing a `v*` tag packs the four libraries (`.github/workflows/release.yml`).
 
 ## Solution layout
 
@@ -30,32 +49,42 @@ Every build runs the .NET and SonarAnalyzer static analysers, and `tools/sonar-s
 VirtualMarina.sln
 ├─ src/
 │  ├─ VirtualMarina.Core/                 net8.0 – no graphics/UI dependencies
-│  │  ├─ Domain/      Pier, Berth, Boat, BoatType, BerthStatus, OrientedRect, LandArea (polygon),
-│  │  │               MarinaLayout (+Validate), MarinaLayoutBuilder, LandAreaBuilder, BerthGenerator
-│  │  ├─ Design/      MarinaDesigner (draw land/piers/berths/land berths, trees, undo, reference image, calibration),
-│  │  │               ReferenceImage, DesignerSettings
-│  │  ├─ Api/         IMarinaVisualizer, MarinaVisualizer (Layout/Status/View partials),
+│  │  ├─ Domain/      Pier, Berth, Boat, BoatType, BerthStatus, OrientedRect, LandArea (polygon), Shoreline,
+│  │  │               MarineTraffic, MarinaLayout (+Validate), MarinaLayoutBuilder, LandAreaBuilder, BerthGenerator
+│  │  ├─ Design/      MarinaDesigner (draw land/piers/berths/land berths, trees, undo/redo, reference image, calibration;
+│  │  │               split into partial files, one handler per tool under Tools/), ReferenceImage, DesignerSettings
+│  │  ├─ Api/         IMarinaVisualizer, MarinaVisualizer (Layout/Status/Selection/View partials),
 │  │  │               BerthUpdate, BatchUpdateResult, MarinaStatistics, events, StatusColorScheme
 │  │  ├─ Camera/      OrbitCamera (smoothed pan/zoom/orbit), CameraConstraints, CameraPreset
-│  │  ├─ Input/       MarinaInputController (platform-neutral pointer/keyboard → camera/picking)
+│  │  ├─ Input/       MarinaInputController (platform-neutral pointer/keyboard → camera/picking), MarinaKeyMap
 │  │  ├─ Picking/     Ray, CPU ScenePicker (berth footprints + boat triangles)
-│  │  ├─ Geometry/    MeshBuilder, BoatMeshFactory (7 low-poly boats), MarinaMeshFactory,
-│  │  │               LandMeshFactory (polygon slabs, rock breakwaters), MeshLibrary
-│  │  ├─ Rendering/   ISceneRenderer, RenderFrame, RenderObject, Lighting/WaterSettings,
+│  │  ├─ Geometry/    MeshBuilder, BoatMeshFactory (low-poly boats), MarinaMeshFactory,
+│  │  │               LandMeshFactory (polygon slabs, rock breakwaters, trees), MeshLibrary
+│  │  ├─ Rendering/   ISceneRenderer, RenderFrame, RenderLayer/RenderBatch/InstanceData, MarinaStyle,
 │  │  │               ShaderSources (shared GLSL 330 / GLSL ES 300), SceneBuilder
-│  │  ├─ Serialization/ MarinaDocument (.marina.json: layout + look + motion + camera), MarinaJson
+│  │  ├─ Serialization/ MarinaDocument (.marina.json: layout + look + motion + camera), MarinaJson, migrations
 │  │  └─ Mathematics/ MarinaMath, PolygonMath
 │  ├─ VirtualMarina.Rendering.OpenGL/     net8.0 – ISceneRenderer for OpenGL 3.3 (OpenTK bindings only)
-│  ├─ VirtualMarina.WinForms/             net8.0-windows – MarinaViewControl (GLControl host), MarinaDesignerPanel
-│  └─ VirtualMarina.Blazor/               Razor class library – <MarinaView>, <MarinaDesignerPanel>, WebGlSceneRenderer, marinaWebGL.js
+│  ├─ VirtualMarina.WinForms/             net8.0-windows – MarinaViewControl (GLControl host), MarinaDesignerPanel, ReferenceImageLoader
+│  └─ VirtualMarina.Blazor/               Razor class library – <MarinaView>, <MarinaDesignerPanel>, WebGlSceneRenderer,
+│                                         marinaWebGL.js, marinaView.css
 ├─ apps/
-│  └─ VirtualMarina.Designer/             WinExe – the marina designer tool (draws to scale, saves .marina.json)
+│  ├─ VirtualMarina.Designer/             net8.0-windows WinExe – the marina designer tool (draws to scale, saves .marina.json)
+│  ├─ VirtualMarina.Designer.Blazor/      Blazor WebAssembly – the same designer in the browser
+│  ├─ VirtualMarina.Designer.Common/      net8.0 – what both designers share: session, command table, dialogs contract, strings
+│  └─ VirtualMarina.Designer.Desktop/     net8.0 – launcher that serves the Blazor designer and opens it in an app window
 ├─ samples/
 │  ├─ VirtualMarina.SampleData/           mock marina + simulated ERP activity (shared by both hosts)
 │  ├─ VirtualMarina.TestHost.WinForms/    WinExe test harness
 │  └─ VirtualMarina.TestHost.Blazor/      Blazor WebAssembly test harness
-└─ tests/
-   └─ VirtualMarina.Core.Tests/           xUnit tests: API, events, picking, camera, geometry
+├─ tests/
+│  ├─ VirtualMarina.Core.Tests/           xUnit: API, events, picking, camera, geometry, designer, file format (golden
+│  │                                      files, property-based tests), shaders; API baselines for Core and OpenGL
+│  ├─ VirtualMarina.Blazor.Tests/         <MarinaView>, <MarinaDesignerPanel> and the WebGL renderer against a fake JS runtime
+│  ├─ VirtualMarina.Designer.Common.Tests/ the shared designer session, commands, renaming and launcher liveness
+│  ├─ VirtualMarina.WinForms.Tests/       net8.0-windows – the WinForms view and panel (Windows only)
+│  └─ VirtualMarina.TestSupport/          shared helpers: API baselines, a fixed clock, the repository root
+└─ Docs/tools/ApiDocGen/                  generates Docs/11-api-reference.md
 ```
 
 ## Architecture
@@ -67,9 +96,10 @@ VirtualMarina.sln
  ┌──────────────────── VirtualMarina.Core (portable) ─────────────────────┐
  │ MarinaVisualizer ── domain state, selection, filter, color scheme      │
  │   ├─ MarinaInputController ── raw pointer/keys → OrbitCamera / picking │
- │   ├─ SceneBuilder ── domain → RenderObject list (rebuilt only on change)│
- │   └─ BuildRenderFrame() → RenderFrame (matrices, lights, water, objects)│
- │ ShaderSources ── one GLSL body, desktop + WebGL headers                 │
+ │   ├─ SceneBuilder ── domain → layered RenderObject instances           │
+ │   │    (each layer rebuilt only when what it shows changes)            │
+ │   └─ BuildRenderFrame() → RenderFrame (matrices, lights, water, layers)│
+ │ ShaderSources ── one GLSL body, desktop + WebGL headers                │
  └──────────────────────────────┬─────────────────────────────────────────┘
                                 │ ISceneRenderer.Render(frame)
              ┌──────────────────┴───────────────────┐
@@ -77,9 +107,10 @@ VirtualMarina.sln
    hosted by MarinaViewControl             hosted by <MarinaView>
 ```
 
-- **Backends only draw.** Camera math, hit testing, scene composition and animation logic live in Core. A new backend (WebGPU, Vulkan, Avalonia, MAUI) implements `ISceneRenderer` and forwards input to `marina.Input`.
-- **GPU-side animation.** Water waves, boats bobbing and rolling, the selection marker's spin, and highlight pulses are computed in the shaders from `uTime`. Instance data is re-sent only when `RenderFrame.SceneVersion` changes, so the browser renderer sends about 63 floats per frame.
-- **Immutable snapshots.** `Berth`, `Pier` and `Boat` are records. Events carry snapshots, so host code can't change marina state without going through the API.
+- **Backends only draw.** Camera math, hit testing, scene composition and animation logic live in Core. A new backend (WebGPU, Vulkan, Avalonia, MAUI) implements `ISceneRenderer` and forwards input to `marina.Input`; see [hosting and custom views](Docs/10-hosting-and-custom-views.md).
+- **Layered, instanced scene.** `RenderFrame.Layers` splits the scene by what changes it (structure, shadows, berths and boats, selection markers, designer overlay), and both backends draw each layer's batches instanced. A layer is uploaded again only when its versions say so, and a hover or status change patches just the instances it touched.
+- **GPU-side animation, on-demand frames.** Water waves, boats bobbing and rolling, the selection marker's spin, and highlight pulses are computed in the shaders from `uTime`. The views draw only while something changes or moves (`MarinaVisualizer.NeedsRedraw`, `IsAnimating`); a still marina costs nothing, and `ContinuousRendering` on either view draws every frame regardless.
+- **Immutable snapshots.** `Berth`, `Pier`, `Boat` and the other domain types are records with value equality. Events carry snapshots, so host code can't change marina state without going through the API.
 
 ## Using the API
 
@@ -108,7 +139,8 @@ var result = marina.BatchUpdate(updatesFromErp);   // one scene rebuild and one 
 marina.SetStatusFilter(BerthStatusFilter.Free | BerthStatusFilter.Reserved);
 marina.ClearSelection();
 marina.ResetCamera();
-marina.ApplyCameraPreset("Pier: Pier A");
+marina.ApplyCameraPreset(MarinaVisualizer.PierPresetKey("A"));   // by key: preset names are localized
+marina.ShowPierCloseUp("A");                        // the same close-up, directly
 marina.FocusBerths(new[] { "C-R02", "C-R05" }, CameraAngle.TopDown);
 marina.SetStatusColor(BerthStatus.Reserved, ColorRgba.FromHex("#8A4FFF"));
 marina.Lighting.SetSunAngles(azimuthDegrees: 220, elevationDegrees: 35);
@@ -234,7 +266,7 @@ CameraPose preview = marina.ComputeFocusPose(berths, CameraAngle.TopDown);   // 
 
 **Custom views.** `MarinaViewControl` and `<MarinaView>` render the popup for you. Another host can subscribe to `PopupChanged`, render `ActivePopup`, and call `TryGetPopupAnchor(out screenPoint)` every frame to position it.
 
-**Threading.** `MarinaVisualizer` is UI-thread affine. Marshal calls from background threads with `Control.BeginInvoke` (WinForms) or `InvokeAsync` (Blazor). Events are raised synchronously, after the state change has been applied.
+**Threading.** `MarinaVisualizer` is UI-thread affine. Marshal calls from background threads with `Control.BeginInvoke` (WinForms) or `InvokeAsync` (Blazor). Events are raised synchronously, after the state change has been applied. If an update reaches a `MarinaViewControl`'s visualizer from another thread anyway, the control marshals its own response (redraw, popup, forwarded events) onto the UI thread, but the visualizer itself is still not thread-safe.
 
 ### Hosting
 
@@ -245,18 +277,22 @@ Controls.Add(view);
 view.Marina.InitializeLayout(layout);
 ```
 
+If OpenGL 3.3 is not available (a VM, a remote desktop), the control retries without anti-aliasing, then shows a placeholder and raises `RenderError`; `RetryRendering()` tries again once the cause is gone.
+
 **Blazor WebAssembly** (reference `VirtualMarina.Blazor`)
 ```razor
-<MarinaView Marina="_marina" OnRendererReady="info => ..." />
+<MarinaView Marina="_marina" OnRendererReady="info => ..." OnRendererError="message => ..." AriaLabel="Marina map" />
 ```
+
+The script and the popup CSS (`marinaView.css`, in the `virtualmarina` cascade layer so any host rule wins) are linked automatically. `<MarinaDesignerPanel>` uses scoped CSS, so the host page needs the usual `<link rel="stylesheet" href="{YourApp}.styles.css" />`.
 
 ### Default controls
 
 | Input | Action |
 |---|---|
-| Left-drag / middle-drag | Pan (map-style) |
+| Left-drag / middle-drag | Pan (map-style: the point under the pointer stays under it) |
 | Right-drag, or Shift+left-drag | Orbit |
-| Mouse wheel | Zoom toward the cursor |
+| Mouse wheel | Zoom toward what is under the cursor |
 | Hover | Highlight the berth or boat under the cursor (exact shape); the cursor becomes a pointer |
 | Click | Select the berth or boat and show its tooltip (raises `BerthClicked` and `BerthSelected`) |
 | Right-click | Select and open the actions window |
@@ -264,6 +300,8 @@ view.Marina.InitializeLayout(layout);
 | Double-click | Focus the camera on the berth |
 | Arrows / WASD, Shift+arrows, PageUp/PageDown, +/- | Pan, orbit, tilt, zoom |
 | Esc / Home | Close the popup, then clear the selection / reset the camera |
+
+The view only takes unmodified navigation and editing keys (plus Shift, which orbits). Chords with Ctrl, Alt or Cmd go to the host application or the browser, so its own shortcuts always win; the one exception is Undo (Ctrl/Cmd+Z) and Redo (Ctrl+Shift+Z, Ctrl+Y, Cmd+Shift+Z) for the designer, and only when the host has no accelerator of its own for them. Esc is claimed only when there is something to close, so a dialog's Cancel button still gets it. `MarinaKeyMap` holds the table both views use.
 
 Drag bindings are configurable through `marina.Input.LeftDragAction` and the related properties. `CameraConstraints` limits pitch (8°–89°, so the view never flips), eye height above the water, zoom distance, and how far the target can move.
 

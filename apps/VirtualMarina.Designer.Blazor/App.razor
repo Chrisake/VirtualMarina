@@ -1,0 +1,398 @@
+@inject IJSRuntime JS
+@implements IDisposable
+@using VirtualMarina.Core.Input
+
+<PageTitle>@_session.Title</PageTitle>
+
+<div class="vm-shell">
+    @* ---- Menu: a menubar of buttons; the arrow keys, Home, End and Esc are handled by designer.js. ---- *@
+    @if (_openMenu.Length > 0)
+    {
+        <div class="vm-menu__backdrop" @onclick="CloseMenu"></div>
+    }
+    <nav class="vm-menu" role="menubar" aria-label="@Strings.AppName" @ref="_menubar">
+        @foreach (var menu in _menus)
+        {
+            var open = _openMenu == menu.Title;
+            var id = "vm-menu-" + menu.Key;
+            <div class="vm-menu__item @(open ? "vm-menu__item--open" : null)">
+                <button type="button" id="@id" class="vm-menu__label" role="menuitem" aria-haspopup="menu" aria-expanded="@(open ? "true" : "false")"
+                        tabindex="@(menu == _menus[0] ? "0" : "-1")" @onclick="() => ToggleMenu(menu.Title)">@DesignerText.StripMnemonic(menu.Title)</button>
+                @if (open)
+                {
+                    <div class="vm-menu__drop" role="menu" aria-labelledby="@id">
+                        @foreach (var entry in menu.Entries)
+                        {
+                            if (entry is null)
+                            {
+                                <div class="vm-menu__sep" role="separator"></div>
+                                continue;
+                            }
+
+                            var command = entry.Value;
+                            var definition = DesignerCommands.Get(command);
+                            var isChecked = IsChecked(command);
+                            var ariaChecked = isChecked switch { true => "true", false => "false", null => null };
+                            <button type="button" class="vm-menu__entry" tabindex="-1" role="@(isChecked is null ? "menuitem" : "menuitemcheckbox")"
+                                    aria-checked="@ariaChecked"
+                                    disabled="@(!IsEnabled(command))" title="@Tooltip(command)" @onclick="() => RunFromMenuAsync(command)">
+                                <span class="vm-menu__check" aria-hidden="true">@(isChecked == true ? "✓" : null)</span>
+                                <span class="vm-menu__text">@definition.PlainLabel</span>
+                                @if (definition.ShortcutText(DesignerPlatform.Browser) is { } shortcut)
+                                {
+                                    <span class="vm-menu__shortcut" aria-hidden="true">@shortcut</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </nav>
+
+    @* ---- Toolbar ---- *@
+    <div class="vm-toolbar" role="toolbar" aria-label="@Strings.ToolbarLabel">
+        @ToolButton(DesignTool.Navigate, Strings.ToolNavigate, Strings.ToolNavigateTip)
+        @ToolButton(DesignTool.SelectArea, Strings.ToolSelect, Strings.ToolSelectTip)
+        <span class="vm-toolbar__sep" role="separator"></span>
+        @ToolButton(DesignTool.DrawShoreline, Strings.ToolCoast, Strings.ToolCoastTip)
+        @ToolButton(DesignTool.DrawLandArea, Strings.ToolLand, Strings.ToolLandTip)
+        @ToolButton(DesignTool.DrawPier, Strings.ToolPier, Strings.ToolPierTip)
+        @ToolButton(DesignTool.AddBerths, Strings.ToolBerths, Strings.ToolBerthsTip)
+        @ToolButton(DesignTool.AddLandBerths, Strings.ToolAshore, Strings.ToolAshoreTip)
+        <span class="vm-toolbar__sep" role="separator"></span>
+        @ToolButton(DesignTool.PlantTrees, Strings.ToolTrees, Strings.ToolTreesTip)
+        @ToolButton(DesignTool.EditServices, Strings.ToolServices, Strings.ToolServicesTip)
+        <span class="vm-toolbar__sep" role="separator"></span>
+        @ToolButton(DesignTool.Rename, Strings.ToolRename, Strings.ToolRenameTip)
+        @ToolButton(DesignTool.Erase, Strings.ToolErase, Strings.ToolEraseTip)
+        <span class="vm-toolbar__sep" role="separator"></span>
+        <button type="button" class="vm-tool @(_session.SidePanel == DesignerSidePanel.Look ? "vm-tool--active" : null)" title="@Strings.ToolLookTip"
+                aria-pressed="@(_session.SidePanel == DesignerSidePanel.Look ? "true" : "false")" @onclick="() => RunAsync(DesignerCommandId.Appearance)">@Strings.ToolLook</button>
+        <button type="button" class="vm-tool @(_session.SidePanel == DesignerSidePanel.Cameras ? "vm-tool--active" : null)" title="@Strings.ToolCamerasTip"
+                aria-pressed="@(_session.SidePanel == DesignerSidePanel.Cameras ? "true" : "false")" @onclick="() => RunAsync(DesignerCommandId.Cameras)">@Strings.ToolCameras</button>
+        <span class="vm-toolbar__sep" role="separator"></span>
+        <button type="button" class="vm-tool" title="@Strings.Format(Strings.CommandTopViewTip, Shortcut(DesignerCommandId.TopView))" @onclick="() => RunAsync(DesignerCommandId.TopView)">@Strings.CommandTopView</button>
+        <button type="button" class="vm-tool" title="@Strings.CommandFitMarinaTip" @onclick="() => RunAsync(DesignerCommandId.FitMarina)">@Strings.CommandFitMarina</button>
+        <span class="vm-toolbar__sep" role="separator"></span>
+        <button type="button" class="vm-tool" disabled="@(!_session.CanUndo)" title="@Tooltip(DesignerCommandId.Undo)" @onclick="() => RunAsync(DesignerCommandId.Undo)">@Strings.ToolUndo</button>
+        <button type="button" class="vm-tool" disabled="@(!Designer.CanRedo)" title="@Tooltip(DesignerCommandId.Redo)" @onclick="() => RunAsync(DesignerCommandId.Redo)">@Strings.ToolRedo</button>
+    </div>
+
+    @* ---- Body ---- *@
+    <div class="vm-body">
+        <main class="vm-view">
+            <ViewHost @ref="_view" Marina="Marina" OnRendererReady="OnRendererReady" OnRendererError="OnRendererError" />
+            @if (_logVisible)
+            {
+                <LogPanel Log="_session.Log" />
+            }
+        </main>
+        <aside class="vm-side" aria-label="@DesignerText.ToolTitle(Designer.Tool)">
+            <Inspector @ref="_inspector" Session="_session" LoadImage="LoadReferenceImage" />
+            @if (_session.SidePanel == DesignerSidePanel.Look)
+            {
+                <Appearance @ref="_appearance" Marina="Marina" Dialogs="_dialogs" Log="_session.Log.Add" StyleChanged="_session.MarkDirty" />
+            }
+            @if (_session.SidePanel == DesignerSidePanel.Cameras)
+            {
+                <Cameras @ref="_cameras" Marina="Marina" Dialogs="_dialogs" Log="_session.Log.Add" ViewsChanged="_session.MarkDirty" />
+            }
+        </aside>
+    </div>
+
+    @* ---- Status bar ---- *@
+    <footer class="vm-status">
+        <span class="vm-status__hint">@Designer.ToolHint</span>
+        <span class="vm-status__notice" role="status" aria-live="polite">
+            @if (_notice is not null)
+            {
+                <span>@_notice</span>
+                <button type="button" class="vm-status__dismiss" title="@Strings.NoticeDismiss" aria-label="@Strings.NoticeDismiss" @onclick="DismissNotice">&#x2715;</button>
+            }
+        </span>
+        <StatusReadouts Marina="Marina" />
+    </footer>
+</div>
+
+@* The picture picker, triggered from the menu and the inspector. Designs are picked through designer.js. *@
+<div style="display:none">
+    <InputFile id="vmOpenImage" OnChange="OnImageFilePicked" accept="image/png,image/jpeg,image/webp" />
+</div>
+
+<DesignerModal Dialogs="_dialogs" />
+
+@code {
+    private const string Author = "Christoforos Sakellaris";
+
+    /// <summary>How long a notice stays in the status bar.</summary>
+    private static readonly TimeSpan NoticeTime = TimeSpan.FromSeconds(8);
+
+    private readonly MarinaVisualizer _marina = new();
+    private BlazorDialogs _dialogs = default!;
+    private DesignerSession _session = default!;
+    private ViewHost? _view;
+    private Inspector? _inspector;
+    private Appearance? _appearance;
+    private Cameras? _cameras;
+    private DotNetObjectReference<App>? _self;
+    private ElementReference _menubar;
+
+    private bool _logVisible;
+    private string? _rendererDescription;
+    private string _openMenu = string.Empty;
+    private string? _notice;
+    private int _noticeVersion;
+
+    private MarinaVisualizer Marina => _marina;
+
+    private MarinaDesigner Designer => _marina.Designer;
+
+    protected override void OnInitialized()
+    {
+        _dialogs = new BlazorDialogs(JS);
+        _session = new DesignerSession(_marina, _dialogs, DesignerText.Generator(typeof(App)));
+        Designer.IsActive = true;
+        Designer.Tool = DesignTool.Navigate;
+
+        // The shell is the one component that listens to the designer; the inspector is redrawn with it.
+        Designer.StateChanged += OnStateChanged;
+        Marina.SelectionChanged += OnStateChanged;
+        _session.TitleChanged += OnTitleChanged;
+        _session.SidePanelChanged += OnStateChanged;
+        _session.DocumentReplaced += OnDocumentReplaced;
+        _session.Notice += OnNotice;
+
+        _ = _session.NewAsync(askToSave: false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _self = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("vmDesigner.registerShortcuts", _self, DesignerCommands.ForBrowser());
+        await JS.InvokeVoidAsync("vmDesigner.attachMenuKeys", _menubar);
+    }
+
+    public void Dispose()
+    {
+        Designer.StateChanged -= OnStateChanged;
+        Marina.SelectionChanged -= OnStateChanged;
+        _session.TitleChanged -= OnTitleChanged;
+        _session.SidePanelChanged -= OnStateChanged;
+        _session.DocumentReplaced -= OnDocumentReplaced;
+        _session.Notice -= OnNotice;
+        _session.Dispose();
+        _dialogs.Dispose();
+        if (_self is not null) ((IJSInProcessRuntime)JS).InvokeVoid("vmDesigner.unregisterShortcuts");
+        _self?.Dispose();
+    }
+
+    // ---- Menus ----------------------------------------------------------------------------------
+
+    /// <summary>One menu: its title and its commands, a null being a separator.</summary>
+    private sealed record MenuColumn(string Key, string Title, IReadOnlyList<DesignerCommandId?> Entries);
+
+    private readonly IReadOnlyList<MenuColumn> _menus =
+    [
+        new("file", Strings.MenuFile, [DesignerCommandId.New, DesignerCommandId.Open, null, DesignerCommandId.Save, DesignerCommandId.SaveAs, null, DesignerCommandId.LoadImage]),
+        new("edit", Strings.MenuEdit, [DesignerCommandId.Undo, DesignerCommandId.Redo, DesignerCommandId.CancelDraft, null, DesignerCommandId.Rename, null, DesignerCommandId.MarinaProperties]),
+        new("view", Strings.MenuView, [DesignerCommandId.TopView, DesignerCommandId.FitMarina, DesignerCommandId.FitImage, null, DesignerCommandId.ShowLog]),
+        new("marina", Strings.MenuMarina, [DesignerCommandId.Appearance, DesignerCommandId.Cameras, DesignerCommandId.BerthLabels]),
+        new("help", Strings.MenuHelp, [DesignerCommandId.Shortcuts, DesignerCommandId.About]),
+    ];
+
+    private void ToggleMenu(string title) => _openMenu = _openMenu == title ? string.Empty : title;
+
+    private void CloseMenu() => _openMenu = string.Empty;
+
+    private async Task RunFromMenuAsync(DesignerCommandId command)
+    {
+        CloseMenu();
+        await RunAsync(command);
+    }
+
+    /// <summary>True or false for the items that show or hide something; null for the rest.</summary>
+    private bool? IsChecked(DesignerCommandId command) => command switch
+    {
+        DesignerCommandId.ShowLog => _logVisible,
+        DesignerCommandId.Appearance => _session.SidePanel == DesignerSidePanel.Look,
+        DesignerCommandId.Cameras => _session.SidePanel == DesignerSidePanel.Cameras,
+        DesignerCommandId.BerthLabels => Marina.BerthLabelMode != BerthLabelMode.None,
+        _ => null,
+    };
+
+    private bool IsEnabled(DesignerCommandId command) => command switch
+    {
+        DesignerCommandId.Undo => _session.CanUndo,
+        DesignerCommandId.Redo => Designer.CanRedo,
+        DesignerCommandId.CancelDraft => Designer.HasDraft,
+        _ => true,
+    };
+
+    private string? Tooltip(DesignerCommandId command) => command switch
+    {
+        DesignerCommandId.Undo => $"{DesignerText.UndoTip(Designer)} ({Shortcut(command)})",
+        DesignerCommandId.Redo => $"{DesignerText.RedoTip(Designer)} ({Shortcut(command)})",
+        _ => null,
+    };
+
+    private static string Shortcut(DesignerCommandId command) => DesignerCommands.Get(command).ShortcutText(DesignerPlatform.Browser) ?? string.Empty;
+
+    private RenderFragment ToolButton(DesignTool tool, string text, string tip) => __builder =>
+    {
+        var active = Designer.IsActive && Designer.Tool == tool;
+        var key = DesignerCommands.ForTool(tool)?.ShortcutText(DesignerPlatform.Browser);
+        <button type="button" class="vm-tool @(active ? "vm-tool--active" : null)" title="@(key is null ? tip : $"{tip} ({key})")"
+                aria-pressed="@(active ? "true" : "false")" aria-keyshortcuts="@key" @onclick="() => SelectTool(tool)">@text</button>
+    };
+
+    private void SelectTool(DesignTool tool)
+    {
+        Designer.IsActive = true;
+        Designer.Tool = tool;
+    }
+
+    // ---- Commands -------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Called from designer.js when a key of the command table is pressed, after any field being typed in has handed
+    /// over its value. Not for direct use.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnShortcut(string name)
+    {
+        // A question is being asked: a second New or Open now would stack another on top of it.
+        if (_session.IsBusy || _dialogs.Current is not null) return;
+        if (DesignerCommands.Find(name) is not { } command) return;
+
+        if (command.Tool is { } tool) SelectTool(tool);
+        else await RunAsync(command.Id);
+        StateHasChanged();
+    }
+
+    private async Task RunAsync(DesignerCommandId command)
+    {
+        if (_session.IsBusy) return;
+        switch (command)
+        {
+            case DesignerCommandId.New: await _session.NewAsync(); break;
+            case DesignerCommandId.Open: await _session.OpenAsync(); break;
+            case DesignerCommandId.Save: await _session.SaveAsync(); break;
+            case DesignerCommandId.SaveAs: await _session.SaveAsync(saveAs: true); break;
+            case DesignerCommandId.LoadImage: await LoadReferenceImage(); break;
+            case DesignerCommandId.Undo: _session.Undo(); break;
+            case DesignerCommandId.Redo: _session.Redo(); break;
+            case DesignerCommandId.CancelDraft: Designer.CancelDraft(); break;
+            case DesignerCommandId.Rename: SelectTool(DesignTool.Rename); break;
+            case DesignerCommandId.MarinaProperties: await _session.EditMarinaPropertiesAsync(); break;
+            case DesignerCommandId.TopView: _session.ViewTopDown(); break;
+            case DesignerCommandId.FitMarina: Marina.ResetCamera(); break;
+            case DesignerCommandId.FitImage: Designer.FocusReferenceImage(); break;
+            case DesignerCommandId.ShowLog: _logVisible = !_logVisible; break;
+            case DesignerCommandId.Appearance: _session.ToggleSidePanel(DesignerSidePanel.Look); break;
+            case DesignerCommandId.Cameras: _session.ToggleSidePanel(DesignerSidePanel.Cameras); break;
+            case DesignerCommandId.BerthLabels: _session.ToggleBerthLabels(); break;
+            case DesignerCommandId.Shortcuts: await _dialogs.ShowTextAsync(Strings.ShortcutsTitle, ShortcutHelp.Build(DesignerPlatform.Browser)); break;
+            case DesignerCommandId.About: await ShowAboutAsync(); break;
+            case DesignerCommandId.Escape: Escape(); break;
+            default: break;
+        }
+    }
+
+    /// <summary>
+    /// Esc pressed anywhere but in the view (which deals with its own) or a field: closes an open menu, otherwise
+    /// does what Esc does in the view — drop the drawing, then go back to Navigate, then close the popup.
+    /// </summary>
+    private void Escape()
+    {
+        if (_openMenu.Length > 0)
+        {
+            CloseMenu();
+            return;
+        }
+
+        Marina.Input.KeyDown(MarinaKey.Escape);
+    }
+
+    // ---- Session and designer events -------------------------------------------------------------
+
+    private void OnStateChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    private void OnTitleChanged(object? sender, EventArgs e)
+    {
+        ((IJSInProcessRuntime)JS).InvokeVoid("vmDesigner.setDirty", _session.IsDirty);
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>A new or opened design brings its own style, traffic and views; the panels still show the old ones.</summary>
+    private void OnDocumentReplaced(object? sender, EventArgs e)
+    {
+        _inspector?.Refresh();
+        _appearance?.Refresh();
+        _cameras?.Refresh();
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>A change the designer refused: said in the status bar for a few seconds, and read out by a screen reader.</summary>
+    private void OnNotice(object? sender, DesignerNoticeEventArgs e)
+    {
+        _notice = e.Message;
+        var version = ++_noticeVersion;
+        InvokeAsync(StateHasChanged);
+        _ = HideNoticeLaterAsync(version);
+    }
+
+    private async Task HideNoticeLaterAsync(int version)
+    {
+        await Task.Delay(NoticeTime);
+        if (version != _noticeVersion) return;
+        _notice = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void DismissNotice()
+    {
+        _noticeVersion++;
+        _notice = null;
+    }
+
+    private void OnRendererReady(string description) => _rendererDescription = description;
+
+    private void OnRendererError(string message) => _session.Log.Add(Strings.Format(Strings.LogRendererError, message));
+
+    // ---- Reference image ------------------------------------------------------------------------
+
+    private async Task LoadReferenceImage() => await JS.InvokeVoidAsync("vmDesigner.clickElement", "vmOpenImage");
+
+    private async Task OnImageFilePicked(InputFileChangeEventArgs e)
+    {
+        if (_view?.View is not { } view) return;
+        try
+        {
+            await using var stream = e.File.OpenReadStream(25 * 1024 * 1024);
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer);
+            var contentType = string.IsNullOrWhiteSpace(e.File.ContentType) ? "image/png" : e.File.ContentType;
+            if (await view.LoadReferenceImageAsync(buffer.ToArray(), contentType) is null)
+            {
+                await _session.WarnAsync(Strings.ImageLoadFailed, new InvalidOperationException(Strings.ImageStateEmpty));
+                return;
+            }
+
+            Designer.IsActive = true;
+            Designer.FocusReferenceImage();
+            Designer.Tool = DesignTool.MeasureScale;
+            _session.Log.Add(Strings.Format(Strings.LogImageLoaded, e.File.Name));
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException)
+        {
+            await _session.WarnAsync(Strings.ImageLoadFailed, ex);
+        }
+    }
+
+    // ---- Help -----------------------------------------------------------------------------------
+
+    private Task ShowAboutAsync() =>
+        _dialogs.ShowTextAsync(Strings.AboutTitle, DesignerText.About(typeof(App), _rendererDescription ?? "WebGL", Author, DateTime.Now.Year));
+}

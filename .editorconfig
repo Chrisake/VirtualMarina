@@ -85,7 +85,7 @@ dotnet_diagnostic.CA1303.severity = none
 # renaming Shore, Stop and friends for the benefit of Visual Basic is not worth a breaking change.
 dotnet_diagnostic.CA1716.severity = none
 
-# -- .NET analyzer rules kept, but at suggestion while the backlog is worked down ---------------
+# -- .NET analyzer rules raised to warning (so an error) in shipped code ------------------------
 
 # CA1861 "prefer static readonly for constant arrays" rebuilds a constant array on every call; in a
 # scene rebuilt per frame that is worth the static field.
@@ -182,6 +182,11 @@ dotnet_diagnostic.CA1861.severity = none
 dotnet_diagnostic.CA1062.severity = none
 dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1515.severity = none
+
+# S3011 "accessibility bypass". Reading protected members through reflection is what the public API
+# baseline (tests/VirtualMarina.TestSupport/ApiSurface.cs) exists to do; a derived class can bind to
+# them, so they are part of the published surface.
+dotnet_diagnostic.S3011.severity = none
 
 # ---------------------------------------------------------------------------------------------
 # Applications and samples: executables, not libraries with a public surface to defend.

@@ -16,12 +16,11 @@
       satisfies references without rebuilding or binding redirects. FileVersion and InformationalVersion
       carry the real version for support and the file properties dialog.
 
-      Bump AssemblyVersion only together with the major version, i.e. only for a release that is allowed to
-      break the API. See Docs/16-compatibility.md.
+      All three come from MinVer (see the root Directory.Build.props), which derives them from the git tag and
+      sets AssemblyVersion to <major>.0.0.0 by default. FileVersion is the numeric <major>.<minor>.<patch>.0,
+      so a pre-release such as 1.3.0-alpha.0.4 still yields a valid four-part file version. The major version
+      moves only with a release that is allowed to break the API. See Docs/16-compatibility.md.
     -->
-    <AssemblyVersion>$(Version.Split('.')[0]).0.0.0</AssemblyVersion>
-    <FileVersion>$(Version).0</FileVersion>
-    <InformationalVersion>$(Version)</InformationalVersion>
 
     <!--
       A public type or member that is not documented is a promise made by accident: CS1591 (missing XML
@@ -29,4 +28,29 @@
     -->
     <WarningsAsErrors>$(WarningsAsErrors);CS1591;CS1573;CS1571;CS1572</WarningsAsErrors>
   </PropertyGroup>
+
+  <!-- NuGet packaging: `dotnet pack -c Release` produces a .nupkg and a .snupkg per library. -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>$(MSBuildProjectName)</PackageId>
+    <Authors>Christoforos Sakellaris</Authors>
+    <Copyright>Copyright (c) Christoforos Sakellaris</Copyright>
+    <Description>VirtualMarina: an interactive 3D marina visualization library for .NET. Renders a marina's piers, berths and vessels from a live data model, with picking, tooltips, context actions and a designer.</Description>
+    <PackageTags>marina;berth;3d;visualization;opengl;webgl;blazor;winforms</PackageTags>
+    <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/chrisake/VirtualMarina</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/chrisake/VirtualMarina.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Symbols go to a separate .snupkg for the NuGet symbol server; the PDB is not in the main package. -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
 </Project>

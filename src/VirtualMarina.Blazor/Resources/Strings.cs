@@ -23,6 +23,17 @@ internal static class Strings
     /// <summary>The neutral language plus every culture a Strings.&lt;culture&gt;.resx (or a host satellite assembly) supplies.</summary>
     internal static IReadOnlyList<CultureInfo> AvailableCultures() => Text.AvailableCultures();
 
+    // ---- Marina view ---------------------------------------------------------------------------------
+
+    /// <summary>"Marina view. Drag to pan, right-drag or Shift+drag to orbit, scroll to zoom, arrow keys to pan, Shift+arrow keys to orbit."</summary>
+    internal static string ViewLabel => Get("ViewLabel");
+
+    /// <summary>"Close (Esc)"</summary>
+    internal static string PopupClose => Get("PopupClose");
+
+    /// <summary>"Rendering stopped: {0}"</summary>
+    internal static string RenderingStopped => Get("RenderingStopped");
+
     // ---- Designer panel ------------------------------------------------------------------------------
 
     /// <summary>"Designer"</summary>
@@ -36,6 +47,15 @@ internal static class Strings
 
     /// <summary>"Nothing to undo"</summary>
     internal static string NothingToUndo => Get("NothingToUndo");
+
+    /// <summary>"The last point placed"</summary>
+    internal static string UndoLastPoint => Get("UndoLastPoint");
+
+    /// <summary>"Redo (Ctrl+Y)"</summary>
+    internal static string Redo => Get("Redo");
+
+    /// <summary>"Nothing to redo"</summary>
+    internal static string NothingToRedo => Get("NothingToRedo");
 
     /// <summary>"Turn on design mode to draw land areas, piers and berths."</summary>
     internal static string TurnOnDesignMode => Get("TurnOnDesignMode");

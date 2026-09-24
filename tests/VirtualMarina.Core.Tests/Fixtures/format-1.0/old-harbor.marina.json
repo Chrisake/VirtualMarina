@@ -1,0 +1,26 @@
+{
+  "format": "virtualmarina.marina",
+  "formatVersion": "1.0",
+  "generator": "VirtualMarina Designer 1.0",
+  "savedUtc": "2024-05-14T09:30:00+00:00",
+  "marina": { "name": "Old Harbor", "description": "Written before piers and berths had their names: docks, slips, and berths for the multi-berth groups." },
+  "layout": {
+    "docks": [
+      { "id": "A", "name": "Dock A", "start": [0, 0], "headingDegrees": 0, "length": 40, "width": 3, "services": "PowerAndWater" },
+      { "id": "B", "name": "Dock B", "start": [30, 0], "headingDegrees": 0, "length": 30, "width": 2.5 }
+    ],
+    "slips": [
+      { "id": "A-1", "dockId": "A", "center": [6, 10], "headingDegrees": -90, "length": 12, "width": 5, "status": "Occupied",
+        "boat": { "id": "B-1", "name": "Aurora", "type": "MotorYacht" } },
+      { "id": "A-2", "dockId": "A", "center": [6, 16], "headingDegrees": -90, "length": 12, "width": 5, "status": "Occupied",
+        "boat": { "id": "B-1", "name": "Aurora", "type": "MotorYacht" } },
+      { "id": "A-3", "dockId": "A", "center": [6, 22], "headingDegrees": -90, "length": 12, "width": 5, "status": "Reserved" },
+      { "id": "B-1", "dockId": "B", "center": [36, 10], "headingDegrees": -90, "length": 10, "width": 4 }
+    ],
+    "dividers": [ { "id": "A-D1", "dockId": "A", "start": [1.5, 8], "headingDegrees": 90, "length": 9, "type": "Piles" } ],
+    "berths": [ { "id": "VIP", "slipIds": ["A-1", "A-2"], "style": "Alongside", "status": "Occupied",
+                  "boat": { "id": "B-1", "name": "Aurora", "type": "MotorYacht" } } ]
+  },
+  "presentation": { "slipLabels": "All" },
+  "designer": { "slipWidth": 6.5, "slipSeparators": "Piles", "dockWidth": 4 }
+}

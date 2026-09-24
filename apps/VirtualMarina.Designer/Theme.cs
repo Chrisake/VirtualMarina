@@ -14,15 +14,24 @@ internal static class Theme
     public static readonly Color TextSoft = Color.FromArgb(0x5C, 0x6B, 0x7A);
     public static readonly Color Danger = Color.FromArgb(0xC0, 0x39, 0x2B);
 
-    public static readonly Font Title = new("Segoe UI Semibold", 11f);
+    // Every font the designer uses, made once. They live as long as the application, so they are never disposed.
+
+    /// <summary>The heading of a side panel: the tool's name, "Look", "Cameras".</summary>
+    public static readonly Font PanelTitle = new("Segoe UI Semibold", 13f);
     public static readonly Font Body = new("Segoe UI", 9f);
     public static readonly Font Small = new("Segoe UI", 8.25f);
     public static readonly Font Caption = new("Segoe UI Semibold", 8.25f);
 
+    /// <summary>The toolbar's labels, a little larger than the body so the tools read at a glance.</summary>
+    public static readonly Font Toolbar = new("Segoe UI", 9.5f);
+
+    /// <summary>The activity log, where the columns line up.</summary>
+    public static readonly Font Mono = new("Consolas", 8.5f);
+
     /// <summary>A titled white card: the panels of the inspector are all made of these.</summary>
     public static Panel Card(string title, out TableLayoutPanel content)
     {
-        var card = new Panel
+        var card = new CardPanel
         {
             BackColor = Surface,
             Dock = DockStyle.Top,
@@ -30,11 +39,6 @@ internal static class Theme
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             Padding = new Padding(12, 10, 12, 12),
             Margin = new Padding(0, 0, 0, 10),
-        };
-        card.Paint += (_, e) =>
-        {
-            using var pen = new Pen(Border);
-            e.Graphics.DrawRectangle(pen, 0, 0, card.Width - 1, card.Height - 1);
         };
 
         content = new TableLayoutPanel
@@ -112,32 +116,31 @@ internal static class Theme
         Margin = new Padding(0, 2, 0, 2),
     };
 
-    public static NumericUpDown Number(decimal min, decimal max, decimal step, int decimals = 2) => new()
+    /// <summary>A number field over one of the shared ranges, so both designers offer the same numbers. Its height follows its font.</summary>
+    public static NumericUpDown Number(NumberRange range) => new()
     {
-        Minimum = min,
-        Maximum = max,
-        Increment = step,
-        DecimalPlaces = decimals,
+        Minimum = range.Min,
+        Maximum = range.Max,
+        Increment = range.Step,
+        DecimalPlaces = range.Decimals,
         TextAlign = HorizontalAlignment.Right,
         Font = Body,
         BorderStyle = BorderStyle.FixedSingle,
-        Height = 24,
     };
 
+    /// <summary>A drop-down list; its height follows its font.</summary>
     public static ComboBox Choice() => new()
     {
         DropDownStyle = ComboBoxStyle.DropDownList,
         Font = Body,
         FlatStyle = FlatStyle.Flat,
-        Height = 24,
     };
 
-    /// <summary>A single-line text field, for names and patterns.</summary>
+    /// <summary>A single-line text field, for names and patterns; its height follows its font.</summary>
     public static TextBox Field() => new()
     {
         Font = Body,
         BorderStyle = BorderStyle.FixedSingle,
-        Height = 24,
     };
 
     /// <summary>Adds a heading that divides one card into sections, spanning both columns.</summary>
@@ -290,6 +293,25 @@ internal static class Theme
     }
 
     public static readonly ToolTip Tips = new() { AutoPopDelay = 12000, InitialDelay = 350, ReshowDelay = 120 };
+
+    /// <summary>
+    /// A card's panel. It repaints whole when resized, so the border drawn round its edge moves with it instead of
+    /// leaving a trail of old edges behind when the column is dragged wider or narrower.
+    /// </summary>
+    private sealed class CardPanel : Panel
+    {
+        public CardPanel()
+        {
+            SetStyle(ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            using var pen = new Pen(Border);
+            e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        }
+    }
 
     /// <summary>Flat, light look for the top toolbar with a clear "this tool is active" state.</summary>
     public sealed class ToolbarRenderer : ToolStripProfessionalRenderer
