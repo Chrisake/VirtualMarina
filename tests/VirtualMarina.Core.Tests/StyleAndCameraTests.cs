@@ -256,11 +256,77 @@ public class StyleAndCameraTests
 
         Assert.Equal(1f, ray.Direction.Length(), 3);
 
-        // The ray starts on the near plane rather than at the eye, so it is NearPlane in front of it.
-        Assert.Equal(camera.NearPlane, Vector3.Distance(ray.Origin, camera.Position), 2);
+        // The ray starts on the near plane rather than at the eye, so it is the near plane's distance in front of it.
+        Assert.Equal(camera.NearPlaneFor(camera.Pose), Vector3.Distance(ray.Origin, camera.Position), 2);
 
         // A ray through the middle of the viewport heads towards what the camera is looking at.
         Assert.True(Vector3.Dot(Vector3.Normalize(camera.Pose.Target - camera.Position), ray.Direction) > 0.99f);
+    }
+
+    [Fact]
+    public void TheNearPlane_StaysPut_CloseIn()
+    {
+        var camera = new OrbitCamera();
+        camera.SetPose(new CameraPose(Vector3.Zero, 0f, 30f, 20f), immediate: true);
+
+        Assert.Equal(camera.NearPlane, camera.NearPlaneFor(camera.Pose));
+    }
+
+    [Fact]
+    public void TheNearPlane_FollowsTheCameraOut_ButNeverCutsAwayWhatIsBelowIt()
+    {
+        var camera = new OrbitCamera();
+        camera.Constraints.MaxDistance = 2000f;
+        camera.SetPose(new CameraPose(Vector3.Zero, 0f, 8f, 2000f), immediate: true);
+
+        var near = camera.NearPlaneFor(camera.Pose);
+
+        Assert.True(near > camera.NearPlane * 10f, $"near plane {near}");
+        Assert.True(near <= camera.Position.Y * 0.25f + 1e-3f, $"near plane {near} against an eye {camera.Position.Y} m up");
+    }
+
+    /// <summary>
+    /// Zoomed all the way out, a quay a meter above the water lands many steps of a 24-bit depth buffer away from the
+    /// water beneath it — at the marina, and on the mainland far behind it — so the two cannot fight. With the near plane
+    /// fixed at half a meter they were barely a step apart, and the water showed through the land in stripes.
+    /// </summary>
+    /// <remarks>
+    /// Looking lower still, towards the horizon, a meter of height is a sliver of depth whatever the planes; there the
+    /// renderers' depth bias on the water pass, which grows with the slope of the surface, keeps the land in front.
+    /// </remarks>
+    [Theory]
+    [InlineData(0f)]        // the marina itself, where the camera looks
+    [InlineData(-3000f)]    // the mainland, far off behind it
+    public void ZoomedAllTheWayOut_TheLandAndTheWaterStayApartInDepth(float along)
+    {
+        var camera = new OrbitCamera { FarPlane = 8000f };
+        camera.Constraints.MaxDistance = 2000f;
+        camera.SetPose(new CameraPose(Vector3.Zero, 0f, 30f, 2000f), immediate: true);
+        var view = camera.GetViewMatrix();
+
+        // The eye is on +Z, so it looks towards -Z.
+        var water = new Vector3(0f, 0f, along);
+        var quay = new Vector3(0f, 1f, along);
+
+        Assert.True(DepthStepsApart(view, water, quay, 0.5f, camera.FarPlane) < 2.0, "the old fixed near plane already kept them apart");
+        var apart = DepthStepsApart(view, water, quay, camera.NearPlaneFor(camera.Pose), camera.FarPlane);
+        Assert.True(apart > 8.0, $"only {apart:0.00} depth steps apart");
+    }
+
+    /// <summary>
+    /// How many steps of a 24-bit depth buffer lie between two points, for a perspective projection with these planes.
+    /// Worked out in double precision: in single precision the depth near the far end is no finer than the buffer.
+    /// </summary>
+    private static double DepthStepsApart(Matrix4x4 view, Vector3 a, Vector3 b, double near, double far)
+    {
+        double Depth(Vector3 point)
+        {
+            var distance = -(double)Vector3.Transform(point, view).Z;   // the camera looks down -Z in view space
+            return (far + near) / (far - near) - 2.0 * far * near / ((far - near) * distance);
+        }
+
+        const double step = 2.0 / (1 << 24);   // NDC depth runs -1..1 across 2^24 steps
+        return Math.Abs(Depth(a) - Depth(b)) / step;
     }
 
     [Fact]

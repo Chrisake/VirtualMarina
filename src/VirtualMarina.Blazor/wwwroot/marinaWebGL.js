@@ -29,6 +29,11 @@ const PASS = { OPAQUE: 0, TRANSPARENT: 1 };
 // by code, the lighting changed). Changes made through the visualizer wake it at once.
 const IDLE_POLL_MS = 250;
 
+// The depth bias of the water pass (glPolygonOffset): by the surface's slope in depth, and in steps of the depth buffer.
+// The same values as OpenGlSceneRenderer.
+const WATER_DEPTH_SLOPE = 1;
+const WATER_DEPTH_UNITS = 4;
+
 // How much one wheel event scrolls, in notches, by WheelEvent.deltaMode: 1 is lines, 2 is pages; pixels (0) and
 // anything else count 100 to the notch.
 const WHEEL_UNITS = { 1: 3, 2: 1 };
@@ -530,7 +535,12 @@ export function renderFrame(id, frame) {
         setVec3(gl, wp, 'uWaterDeep', f, FRAME.DEEP);
         setVec3(gl, wp, 'uWaterShallow', f, FRAME.SHALLOW);
         gl.bindVertexArray(water.vao);
+        // Pushed a hair back in depth, so where the land and the water meet at nearly the same depth — a quay seen
+        // from far off, or low towards the horizon — the land wins rather than the two fighting in stripes.
+        gl.enable(gl.POLYGON_OFFSET_FILL);
+        gl.polygonOffset(WATER_DEPTH_SLOPE, WATER_DEPTH_UNITS);
         gl.drawElements(gl.TRIANGLES, water.count, gl.UNSIGNED_INT, 0);
+        gl.disable(gl.POLYGON_OFFSET_FILL);
     }
 
     // 3. Reference image (designer), then the transparent instances (status pads, ghost boats,

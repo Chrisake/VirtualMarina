@@ -1079,7 +1079,7 @@ Smoothed orbit/pan/zoom camera. Input changes the `OrbitCamera.DesiredPose`; `Or
 | `OrbitCamera()` | Creates an instance with default values. |
 | `CameraConstraints Constraints { get; }` | Limits on pitch, distance, eye height and target area. The visualizer updates the distance and target limits when the layout changes. |
 | `float FieldOfViewDegrees { get; set; }` | Vertical field of view in degrees (default 45). |
-| `float NearPlane { get; set; }` | Near clipping plane in meters. |
+| `float NearPlane { get; set; }` | Near clipping plane in meters when the camera is close in. Further out it moves away with the camera, so the depth buffer keeps the land apart from the water at every zoom (see `OrbitCamera.NearPlaneFor`). |
 | `float FarPlane { get; set; }` | Far clipping plane in meters (raised automatically for large marinas). |
 | `float Smoothing { get; set; }` | Exponential smoothing rate (1/s). Higher is snappier; 0 or less disables smoothing. |
 | `CameraPose Pose { get; }` | The pose currently on screen. |

@@ -19,7 +19,10 @@ public sealed class OrbitCamera
     /// <summary>Vertical field of view in degrees (default 45).</summary>
     public float FieldOfViewDegrees { get; set; } = 45f;
 
-    /// <summary>Near clipping plane in meters.</summary>
+    /// <summary>
+    /// Near clipping plane in meters when the camera is close in. Further out it moves away with the camera, so the depth
+    /// buffer keeps the land apart from the water at every zoom (see <see cref="NearPlaneFor"/>).
+    /// </summary>
     public float NearPlane { get; set; } = 0.5f;
 
     /// <summary>Far clipping plane in meters (raised automatically for large marinas).</summary>
@@ -202,12 +205,38 @@ public sealed class OrbitCamera
     public Matrix4x4 GetViewMatrix() => Matrix4x4.CreateLookAt(Position, _current.Target, Vector3.UnitY);
 
     /// <summary>OpenGL-style perspective projection (clip Z in −1..1) for the given width/height ratio.</summary>
-    public Matrix4x4 GetProjectionMatrix(float aspectRatio) =>
+    public Matrix4x4 GetProjectionMatrix(float aspectRatio) => GetProjectionMatrix(_current, aspectRatio);
+
+    private Matrix4x4 GetProjectionMatrix(CameraPose pose, float aspectRatio) =>
         MarinaMath.CreatePerspectiveGL(
             FieldOfViewDegrees * MarinaMath.DegToRad,
             aspectRatio > 0f && float.IsFinite(aspectRatio) ? aspectRatio : 1f,
-            NearPlane,
+            NearPlaneFor(pose),
             FarPlane);
+
+    /// <summary>How far the near plane moves out with the camera's distance from its target.</summary>
+    private const float NearPlanePerDistance = 0.02f;
+
+    /// <summary>The largest share of the eye's height above the water the near plane may reach, so nothing below is cut.</summary>
+    private const float NearPlanePerEyeHeight = 0.25f;
+
+    /// <summary>
+    /// The near clipping plane of a pose: <see cref="NearPlane"/> close in, and further out as the camera backs away.
+    /// </summary>
+    /// <remarks>
+    /// A depth buffer's precision at a distance falls with the square of that distance divided by the near plane. With the
+    /// near plane fixed at half a meter, a camera zoomed all the way out could no longer tell a quay a meter above the
+    /// water from the water itself, and the water showed through the land in stripes. The near plane follows the camera
+    /// out instead — a fiftieth of its distance to the target — but never past a quarter of the eye's height above the
+    /// water, so the ground, the boats and the piers below are never cut away.
+    /// </remarks>
+    internal float NearPlaneFor(CameraPose pose)
+    {
+        var eyeHeight = ComputeEye(pose).Y;
+        var adaptive = MathF.Min(pose.Distance * NearPlanePerDistance, eyeHeight * NearPlanePerEyeHeight);
+        var near = float.IsFinite(adaptive) ? MathF.Max(NearPlane, adaptive) : NearPlane;
+        return MathF.Min(near, FarPlane * 0.5f);
+    }
 
     /// <summary>World-space ray through a pixel (origin top-left) of the current view.</summary>
     public Ray ScreenPointToRay(float x, float y, float viewportWidth, float viewportHeight) =>
@@ -215,7 +244,7 @@ public sealed class OrbitCamera
 
     /// <summary>View and projection of <paramref name="pose"/> combined, with this camera's lens and clipping planes.</summary>
     internal Matrix4x4 GetViewProjectionMatrix(CameraPose pose, float aspectRatio) =>
-        Matrix4x4.CreateLookAt(ComputeEye(pose), pose.Target, Vector3.UnitY) * GetProjectionMatrix(aspectRatio);
+        Matrix4x4.CreateLookAt(ComputeEye(pose), pose.Target, Vector3.UnitY) * GetProjectionMatrix(pose, aspectRatio);
 
     /// <summary>
     /// Projects a world point with a combined view-projection matrix to normalized device coordinates (−1..1 across

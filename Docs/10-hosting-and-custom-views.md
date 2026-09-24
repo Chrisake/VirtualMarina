@@ -356,7 +356,10 @@ Transforms are affine, so the fourth column is always (0, 0, 0, 1) and is not st
    layout: `MeshData.VertexStride` (9) floats — position, normal, color — at attribute locations 0, 1 and 2; indices are
    `uint` triangles. The mesh with `IsWater` is drawn by the water pass.
 2. **Opaque pass:** draw the `Opaque` batches with depth test and writes on.
-3. **Water pass:** draw the water grid with the water shader.
+3. **Water pass:** draw the water grid with the water shader, with a small depth bias pushing it back
+   (`glPolygonOffset(1, 4)` with `POLYGON_OFFSET_FILL`), so where land and water meet at nearly the same depth — a quay
+   seen from far off, or low towards the horizon — the land wins instead of the two fighting in stripes. Use
+   `frame.Projection` as given: its near plane moves out as the camera backs away, for the same reason.
 4. **Reference image** (when `frame.ReferenceImage` is set): upload a texture once per `Image.Key` and draw
    `ShaderSources.ImageQuadCorners` with the image shaders (`uView`, `uProjection`, `uImageMin`, `uImageMax`,
    `uImageHeight`, `uOpacity`, `uImage` on unit 0). Blending is on and depth writes off; the depth test is off when

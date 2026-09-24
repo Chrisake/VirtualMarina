@@ -22,6 +22,12 @@ namespace VirtualMarina.Rendering.OpenGL;
 /// </remarks>
 public sealed class OpenGlSceneRenderer : ISceneRenderer
 {
+    /// <summary>The depth bias of the water pass (glPolygonOffset), by the surface's slope in depth. The same in marinaWebGL.js.</summary>
+    private const float WaterDepthSlope = 1f;
+
+    /// <summary>The depth bias of the water pass, in steps of the depth buffer.</summary>
+    private const float WaterDepthUnits = 4f;
+
     private readonly Dictionary<int, GpuMesh> _meshes = [];
     private readonly Dictionary<RenderLayerKind, GpuLayer> _layers = [];
     private readonly LayerUploadTracker _uploads = new();
@@ -150,7 +156,13 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
             ApplyFrameUniforms(waterProgram, _waterUniforms, frame);
             GlShaderProgram.Set(_waterColors.WaterDeep, frame.Water.DeepColor);
             GlShaderProgram.Set(_waterColors.WaterShallow, frame.Water.ShallowColor);
+
+            // Pushed a hair back in depth, so where the land and the water meet at nearly the same depth — a quay seen
+            // from far off, or low towards the horizon — the land wins rather than the two fighting in stripes.
+            GL.Enable(EnableCap.PolygonOffsetFill);
+            GL.PolygonOffset(WaterDepthSlope, WaterDepthUnits);
             water.Draw();
+            GL.Disable(EnableCap.PolygonOffsetFill);
         }
 
         // 3. Reference image (designer), then the transparent instances (status pads, ghost boats,
