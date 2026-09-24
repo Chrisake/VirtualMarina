@@ -3346,10 +3346,12 @@ The format is `{ "format": "virtualmarina.marina", "formatVersion": "1.0", ... }
 | `T? GetExtension<T>(string key)` | Reads back data stored with `MarinaDocument.SetExtension` (or written by another application), or the default when missing or unreadable. |
 | `T? GetExtension<T>(string key, JsonTypeInfo<T?> typeInfo)` | Reads back data stored under `key` with metadata you supply, or the default when missing or unreadable. |
 | `static MarinaDocument Load(string path, bool allowNewerVersion = false)` | Reads a document from a file. |
+| `static MarinaDocument Load(byte[] data, bool allowNewerVersion = false)` | Reads a document from the bytes of a marina file, such as a database column or a download. |
 | `static Task<MarinaDocument> LoadAsync(Stream utf8Json, bool allowNewerVersion = false, CancellationToken cancellationToken = default)` | Reads a document from a stream of UTF-8 JSON, such as an open file or an HTTP response body. |
 | `static MarinaDocument Parse(string json, bool allowNewerVersion = false)` | Reads a document from JSON text. |
 | `static MarinaDocument Parse(ReadOnlySpan<byte> utf8Json, bool allowNewerVersion = false)` | Reads a document from UTF-8 JSON, such as the bytes of a file, a database column or a download. |
 | `void Save(string path, bool indented = true)` | Writes the document to a file (UTF-8), and stamps `MarinaDocument.SavedUtc` once it is safely written. |
+| `byte[] Save(bool indented = true)` | Writes the document as the bytes of a marina file (UTF-8), and stamps `MarinaDocument.SavedUtc`. |
 | `Task SaveAsync(Stream utf8Json, bool indented = true, CancellationToken cancellationToken = default)` | Writes the document to a stream as UTF-8 JSON, and stamps `MarinaDocument.SavedUtc` once it is written. |
 | `void SetExtension<T>(string key, T? value)` | Stores your own data in the file under `key` (serialized with reflection, in the marina file's JSON style). |
 | `void SetExtension<T>(string key, T? value, JsonTypeInfo<T?> typeInfo)` | Stores your own data in the file under `key`, serialized with metadata you supply. |

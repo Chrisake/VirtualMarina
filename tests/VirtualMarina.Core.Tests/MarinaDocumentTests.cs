@@ -281,6 +281,43 @@ public class MarinaDocumentTests
     }
 
     [Fact]
+    public void Document_SavesToBytes_AndLoadsThemBack()
+    {
+        var marina = new MarinaVisualizer();
+        marina.InitializeLayout(MockMarinaFactory.CreateSampleMarina());
+        var original = MarinaDocument.FromVisualizer(marina, generator: "tests");
+        Assert.Null(original.SavedUtc);
+
+        var bytes = original.Save(indented: false);
+
+        Assert.NotNull(original.SavedUtc);
+        var document = MarinaDocument.Load(bytes);
+        Assert.Equal("tests", document.Generator);
+        Assert.Equal(original.SavedUtc, document.SavedUtc);
+        Assert.Equal(marina.GetBerths().Count, document.Layout.Berths.Count);
+        Assert.Equal(MarinaDocument.CurrentVersion, document.Version);
+    }
+
+    [Fact]
+    public void LoadFromBytes_ReadsUtf16WithItsByteOrderMark_AsLoadingAFileDoes()
+    {
+        var json = new MarinaDocument { Name = "Sixteen" }.ToJson();
+        var utf16 = System.Text.Encoding.Unicode.GetPreamble().Concat(System.Text.Encoding.Unicode.GetBytes(json)).ToArray();
+
+        Assert.Equal("Sixteen", MarinaDocument.Load(utf16).Name);
+    }
+
+    [Fact]
+    public void LoadFromBytes_KeepsTheNewerVersionGate()
+    {
+        var newer = System.Text.Encoding.UTF8.GetBytes(
+            new MarinaDocument().ToJson().Replace($"\"{MarinaDocument.CurrentVersion}\"", "\"99.0\"", StringComparison.Ordinal));
+
+        Assert.Throws<MarinaFormatException>(() => MarinaDocument.Load(newer));
+        Assert.True(MarinaDocument.Load(newer, allowNewerVersion: true).IsFromNewerVersion);
+    }
+
+    [Fact]
     public void DesignerSettings_RoundTripAndClampOutOfRangeValues()
     {
         var marina = new MarinaVisualizer();

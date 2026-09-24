@@ -377,15 +377,28 @@ public sealed class MarinaDocument
     public static MarinaDocument Load(string path, bool allowNewerVersion = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        var bytes = File.ReadAllBytes(path);
-        if (bytes.Length >= 2 && ((bytes[0] == 0xFF && bytes[1] == 0xFE) || (bytes[0] == 0xFE && bytes[1] == 0xFF)))
+        return Load(File.ReadAllBytes(path), allowNewerVersion);
+    }
+
+    /// <summary>Reads a document from the bytes of a marina file, such as a database column or a download.</summary>
+    /// <param name="data">The file contents.</param>
+    /// <param name="allowNewerVersion">Accept a file from a newer major version of the format.</param>
+    /// <exception cref="MarinaFormatException">The data is not a valid marina file.</exception>
+    /// <remarks>
+    /// The bytes are read as <see cref="Load(string, bool)"/> reads a file: as UTF-8, or as UTF-16 when they start with its
+    /// byte-order mark.
+    /// </remarks>
+    public static MarinaDocument Load(byte[] data, bool allowNewerVersion = false)
+    {
+        ArgumentNullException.ThrowIfNull(data);
+        if (data.Length >= 2 && ((data[0] == 0xFF && data[1] == 0xFE) || (data[0] == 0xFE && data[1] == 0xFF)))
         {
             // UTF-16 with its byte-order mark, as some editors save: decoded the slow way, since it is rare.
-            using var reader = new StreamReader(new MemoryStream(bytes), detectEncodingFromByteOrderMarks: true);
+            using var reader = new StreamReader(new MemoryStream(data), detectEncodingFromByteOrderMarks: true);
             return Parse(reader.ReadToEnd(), allowNewerVersion);
         }
 
-        return Parse(bytes, allowNewerVersion);
+        return Parse(data, allowNewerVersion);
     }
 
     /// <summary>Writes the document to a file (UTF-8), and stamps <see cref="SavedUtc"/> once it is safely written.</summary>
@@ -420,6 +433,21 @@ public sealed class MarinaDocument
         }
 
         SavedUtc = savedUtc;
+    }
+
+    /// <summary>Writes the document as the bytes of a marina file (UTF-8), and stamps <see cref="SavedUtc"/>.</summary>
+    /// <param name="indented">Lay the JSON out over several lines (default true).</param>
+    /// <returns>The file contents, ready to store in a database or send; <see cref="Load(byte[], bool)"/> reads them back.</returns>
+    /// <remarks>
+    /// Unlike <see cref="ToUtf8Bytes"/>, which leaves the document as it is, this counts as saving it: the bytes carry the
+    /// time of this save, and <see cref="SavedUtc"/> is set to it.
+    /// </remarks>
+    public byte[] Save(bool indented = true)
+    {
+        var savedUtc = DateTimeOffset.UtcNow;
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(ToDto(savedUtc), TypeInfo(indented));
+        SavedUtc = savedUtc;
+        return bytes;
     }
 
     /// <summary>Writes the document to a stream as UTF-8 JSON, and stamps <see cref="SavedUtc"/> once it is written.</summary>

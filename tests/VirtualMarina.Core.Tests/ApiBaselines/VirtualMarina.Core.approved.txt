@@ -2162,6 +2162,7 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     VirtualMarina.Core.Rendering.MarinaStyle Style { get; set; }
     VirtualMarina.Core.Serialization.ReferenceImageRecord? ReferenceImage { get; set; }
     bool IsFromNewerVersion { get; }
+    byte[] Save(bool indented = true)
     byte[] ToUtf8Bytes(bool indented = true)
     const string FileDialogFilter = "Marina design (*.marina.json)|*.marina.json|JSON files (*.json)|*.json|All files (*.*)|*.*"
     const string FileExtension = ".marina.json"
@@ -2169,6 +2170,7 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     static Task<VirtualMarina.Core.Serialization.MarinaDocument> LoadAsync(Stream utf8Json, bool allowNewerVersion = false, CancellationToken cancellationToken = null)
     static Version CurrentVersion { get; }
     static VirtualMarina.Core.Serialization.MarinaDocument FromVisualizer(VirtualMarina.Core.Api.MarinaVisualizer marina, string? generator = null, bool includeCamera = true, bool includeDesignerSettings = true, bool includeReferenceImage = true)
+    static VirtualMarina.Core.Serialization.MarinaDocument Load(byte[] data, bool allowNewerVersion = false)
     static VirtualMarina.Core.Serialization.MarinaDocument Load(string path, bool allowNewerVersion = false)
     static VirtualMarina.Core.Serialization.MarinaDocument Parse(ReadOnlySpan<byte> utf8Json, bool allowNewerVersion = false)
     static VirtualMarina.Core.Serialization.MarinaDocument Parse(string json, bool allowNewerVersion = false)
