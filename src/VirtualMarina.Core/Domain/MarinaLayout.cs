@@ -135,6 +135,21 @@ public sealed record MarinaLayout
     public IReadOnlyList<string> Validate()
     {
         var errors = new List<string>();
+        var pierIds = ValidatePiers(errors);
+
+        if (Shoreline is not null) errors.AddRange(Shoreline.Validate());
+        if (MarineTraffic is not null) errors.AddRange(MarineTraffic.Validate());
+
+        var landIds = ValidateLandAreas(errors);
+        var berthIds = ValidateBerths(errors, pierIds, landIds);
+        ValidateDividers(errors, pierIds);
+        ValidateMultiBerths(errors, berthIds);
+        return errors;
+    }
+
+    /// <summary>Checks each pier and that no two share an id. Returns the ids seen.</summary>
+    private HashSet<string> ValidatePiers(List<string> errors)
+    {
         var pierIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var pier in Piers)
         {
@@ -148,9 +163,12 @@ public sealed record MarinaLayout
             if (!pierIds.Add(pier.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicatePier, pier.Id));
         }
 
-        if (Shoreline is not null) errors.AddRange(Shoreline.Validate());
-        if (MarineTraffic is not null) errors.AddRange(MarineTraffic.Validate());
+        return pierIds;
+    }
 
+    /// <summary>Checks each land area and that no two share an id. Returns the ids seen.</summary>
+    private HashSet<string> ValidateLandAreas(List<string> errors)
+    {
         var landIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var land in LandAreas)
         {
@@ -164,6 +182,12 @@ public sealed record MarinaLayout
             if (!landIds.Add(land.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicateLandArea, land.Id));
         }
 
+        return landIds;
+    }
+
+    /// <summary>Checks each berth, that no two share an id, and that each names a pier or land area that exists. Returns the ids seen.</summary>
+    private HashSet<string> ValidateBerths(List<string> errors, HashSet<string> pierIds, HashSet<string> landIds)
+    {
         var berthIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var berth in Berths)
         {
@@ -179,6 +203,12 @@ public sealed record MarinaLayout
             if (berth.LandAreaId is not null && !landIds.Contains(berth.LandAreaId)) errors.Add(Strings.Format(Strings.ErrorBerthUnknownLandArea, berth.Id, berth.LandAreaId));
         }
 
+        return berthIds;
+    }
+
+    /// <summary>Checks each divider, that no two share an id, and that each names a pier that exists.</summary>
+    private void ValidateDividers(List<string> errors, HashSet<string> pierIds)
+    {
         var dividerIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var divider in Dividers)
         {
@@ -192,7 +222,14 @@ public sealed record MarinaLayout
             if (!dividerIds.Add(divider.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicateDivider, divider.Id));
             if (divider.PierId is not null && !pierIds.Contains(divider.PierId)) errors.Add(Strings.Format(Strings.ErrorDividerUnknownPier, divider.Id, divider.PierId));
         }
+    }
 
+    /// <summary>
+    /// Checks each multi-berth, that no two share an id or share a berth, that none takes a berth's id, and that its
+    /// members exist and lie together.
+    /// </summary>
+    private void ValidateMultiBerths(List<string> errors, HashSet<string> berthIds)
+    {
         var multiBerthIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var berthsInMultiBerths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var berthsById = Berths.Where(berth => berth is not null).GroupBy(berth => berth.Id, StringComparer.OrdinalIgnoreCase)
@@ -209,25 +246,34 @@ public sealed record MarinaLayout
             if (!multiBerthIds.Add(multiBerth.Id)) errors.Add(Strings.Format(Strings.ErrorDuplicateMultiBerth, multiBerth.Id));
             if (berthIds.Contains(multiBerth.Id)) errors.Add(Strings.Format(Strings.ErrorMultiBerthIdIsBerthId, multiBerth.Id));
 
-            var members = new List<Berth>();
-            foreach (var berthId in multiBerth.BerthIds)
-            {
-                if (string.IsNullOrWhiteSpace(berthId)) continue;
-                if (berthsById.TryGetValue(berthId, out var member)) members.Add(member);
-                else errors.Add(Strings.Format(Strings.ErrorMultiBerthUnknownBerth, multiBerth.Id, berthId));
-
-                if (berthsInMultiBerths.TryGetValue(berthId, out var other) && !string.Equals(other, multiBerth.Id, StringComparison.OrdinalIgnoreCase))
-                {
-                    errors.Add(Strings.Format(Strings.ErrorBerthInTwoMultiBerths, berthId, other, multiBerth.Id));
-                }
-
-                berthsInMultiBerths[berthId] = multiBerth.Id;
-            }
-
+            var members = MultiBerthMembers(multiBerth, berthsById, berthsInMultiBerths, errors);
             errors.AddRange(multiBerth.ValidateMembers(members));
         }
+    }
 
-        return errors;
+    /// <summary>
+    /// The berths a multi-berth names that exist. An unknown one, or one another multi-berth already claimed, is reported;
+    /// <paramref name="claimed"/> records which multi-berth each berth was last claimed by.
+    /// </summary>
+    private static List<Berth> MultiBerthMembers(
+        MultiBerth multiBerth, Dictionary<string, Berth> berthsById, Dictionary<string, string> claimed, List<string> errors)
+    {
+        var members = new List<Berth>();
+        foreach (var berthId in multiBerth.BerthIds)
+        {
+            if (string.IsNullOrWhiteSpace(berthId)) continue;
+            if (berthsById.TryGetValue(berthId, out var member)) members.Add(member);
+            else errors.Add(Strings.Format(Strings.ErrorMultiBerthUnknownBerth, multiBerth.Id, berthId));
+
+            if (claimed.TryGetValue(berthId, out var other) && !string.Equals(other, multiBerth.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add(Strings.Format(Strings.ErrorBerthInTwoMultiBerths, berthId, other, multiBerth.Id));
+            }
+
+            claimed[berthId] = multiBerth.Id;
+        }
+
+        return members;
     }
 }
 

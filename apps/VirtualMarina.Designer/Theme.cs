@@ -251,20 +251,22 @@ internal static class Theme
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlatStyle = FlatStyle.Flat,
             Font = Body,
-            BackColor = primary ? Accent : Surface,
-            ForeColor = primary ? Color.White : Text,
             Padding = new Padding(10, 5, 10, 5),
             Cursor = Cursors.Hand,
         };
-        button.FlatAppearance.BorderColor = primary ? Accent : Border;
+        PaintButton(button, primary);
         button.Click += onClick;
-        button.EnabledChanged += (_, _) =>
-        {
-            button.BackColor = button.Enabled ? (primary ? Accent : Surface) : Background;
-            button.ForeColor = button.Enabled ? (primary ? Color.White : Text) : TextSoft;
-            button.FlatAppearance.BorderColor = button.Enabled && primary ? Accent : Border;
-        };
+        button.EnabledChanged += (_, _) => PaintButton(button, primary);
         return button;
+    }
+
+    /// <summary>The colours of an action button: the accent for the primary one, greyed out while it is disabled.</summary>
+    private static void PaintButton(Button button, bool primary)
+    {
+        var enabled = button.Enabled;
+        button.BackColor = !enabled ? Background : primary ? Accent : Surface;
+        button.ForeColor = !enabled ? TextSoft : primary ? Color.White : Text;
+        button.FlatAppearance.BorderColor = enabled && primary ? Accent : Border;
     }
 
     /// <summary>A slider with the value written beside it; <paramref name="format"/> turns the value into that text.</summary>

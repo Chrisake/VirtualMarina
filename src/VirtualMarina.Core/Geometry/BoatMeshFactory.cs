@@ -53,7 +53,7 @@ public static class BoatMeshFactory
 
     private static void BuildMonohullSailboat(MeshBuilder b)
     {
-        AddHull(b, 0f, length: 12f, beam: 4f, freeboard: 1.1f, draft: 0.5f, White, Teak, Navy);
+        AddHull(b, 0f, length: 12f, beam: 4f, freeboard: 1.1f, draft: 0.5f, new HullPaint(White, Teak, Navy));
         b.AddBox(new(0f, 1.45f, -0.6f), new(2.4f, 0.7f, 4.6f), OffWhite);      // coachroof
         b.AddBox(new(0f, 1.55f, -0.6f), new(2.46f, 0.22f, 4.66f), Glass);      // portlights band
         b.AddCylinder(new(0f, 1.1f, 1.3f), new(0f, 15.5f, 1.3f), 0.10f, 0.07f, 6, Metal);  // mast
@@ -66,7 +66,7 @@ public static class BoatMeshFactory
     {
         foreach (var x in new[] { -2.7f, 2.7f })
         {
-            AddHull(b, x, length: 12f, beam: 1.6f, freeboard: 1.0f, draft: 0.4f, White, OffWhite, Navy);
+            AddHull(b, x, length: 12f, beam: 1.6f, freeboard: 1.0f, draft: 0.4f, new HullPaint(White, OffWhite, Navy));
         }
 
         b.AddBox(new(0f, 1.2f, -0.8f), new(5.6f, 0.35f, 8.5f), OffWhite);      // bridge deck
@@ -81,7 +81,7 @@ public static class BoatMeshFactory
 
     private static void BuildDayMotorBoat(MeshBuilder b)
     {
-        AddHull(b, 0f, length: 7f, beam: 2.5f, freeboard: 0.85f, draft: 0.35f, White, LightGrey, Red);
+        AddHull(b, 0f, length: 7f, beam: 2.5f, freeboard: 0.85f, draft: 0.35f, new HullPaint(White, LightGrey, Red));
         b.AddBox(new(0f, 1.2f, 0.1f), new(0.9f, 0.7f, 0.7f), OffWhite);                       // console
         b.AddPrismX(-1.0f, 1.0f, new[] { (0.85f, 0.95f), (0.85f, 0.55f), (1.45f, 0.5f) }, Glass); // windshield
         b.AddBox(new(0f, 1.05f, -1.4f), new(1.7f, 0.45f, 0.9f), Beige);                         // bench seat
@@ -95,7 +95,7 @@ public static class BoatMeshFactory
     {
         foreach (var x in new[] { -2.45f, 2.45f })
         {
-            AddHull(b, x, length: 13f, beam: 1.6f, freeboard: 1.2f, draft: 0.5f, White, OffWhite, Charcoal);
+            AddHull(b, x, length: 13f, beam: 1.6f, freeboard: 1.2f, draft: 0.5f, new HullPaint(White, OffWhite, Charcoal));
         }
 
         b.AddBox(new(0f, 1.3f, -0.4f), new(6.2f, 0.35f, 11.5f), OffWhite);   // main deck
@@ -108,7 +108,7 @@ public static class BoatMeshFactory
 
     private static void BuildMotorYacht(MeshBuilder b)
     {
-        AddHull(b, 0f, length: 20f, beam: 5.5f, freeboard: 1.9f, draft: 0.8f, White, Teak, Navy);
+        AddHull(b, 0f, length: 20f, beam: 5.5f, freeboard: 1.9f, draft: 0.8f, new HullPaint(White, Teak, Navy));
         b.AddBox(new(0f, 0.45f, -10.5f), new(5.0f, 0.2f, 1.2f), Teak);        // swim platform
         b.AddBox(new(0f, 2.9f, -1.8f), new(4.7f, 2.0f, 11f), White);          // main superstructure
         b.AddBox(new(0f, 3.05f, -1.8f), new(4.78f, 0.75f, 11.08f), Glass);    // main windows
@@ -130,7 +130,7 @@ public static class BoatMeshFactory
 
     private static void BuildFishingBoat(MeshBuilder b)
     {
-        AddHull(b, 0f, length: 10f, beam: 3.5f, freeboard: 1.35f, draft: 0.5f, SeaBlue, OffWhite, Red);
+        AddHull(b, 0f, length: 10f, beam: 3.5f, freeboard: 1.35f, draft: 0.5f, new HullPaint(SeaBlue, OffWhite, Red));
         b.AddBox(new(0f, 2.3f, 0.9f), new(2.4f, 1.9f, 2.6f), White);          // wheelhouse
         b.AddBox(new(0f, 2.75f, 0.9f), new(2.48f, 0.55f, 2.68f), Glass);      // wheelhouse windows
         b.AddBox(new(0f, 3.33f, 0.8f), new(2.8f, 0.15f, 3.0f), White);        // roof
@@ -145,7 +145,7 @@ public static class BoatMeshFactory
 
     private static void BuildJetSki(MeshBuilder b)
     {
-        AddHull(b, 0f, length: 3.2f, beam: 1.2f, freeboard: 0.5f, draft: 0.2f, Yellow, Yellow, Dark);
+        AddHull(b, 0f, length: 3.2f, beam: 1.2f, freeboard: 0.5f, draft: 0.2f, new HullPaint(Yellow, Yellow, Dark));
         b.AddBox(new(0f, 0.65f, -0.55f), new(0.5f, 0.3f, 1.3f), Dark);                        // seat
         b.AddPrismX(-0.45f, 0.45f, new[] { (0.5f, 0.1f), (0.9f, 0.1f), (0.5f, 1.2f) }, Yellow); // hood
         b.AddCylinder(new(0f, 0.8f, 0.3f), new(0f, 1.05f, 0.15f), 0.05f, 0.05f, 5, Dark);       // steering column
@@ -157,7 +157,7 @@ public static class BoatMeshFactory
     {
         const float length = 45f;
         const float beam = 11f;
-        AddHull(b, 0f, length, beam, freeboard: 3.4f, draft: 2.2f, White, LightGrey, Navy);
+        AddHull(b, 0f, length, beam, freeboard: 3.4f, draft: 2.2f, new HullPaint(White, LightGrey, Navy));
 
         // Two decks, the upper one set in, so it reads as a ferry rather than a barge at any distance.
         b.AddBox(new(0f, 5.2f, -2f), new(beam * 0.86f, 3.2f, length * 0.66f), OffWhite);
@@ -183,17 +183,19 @@ public static class BoatMeshFactory
     /// The lower band uses the stripe (antifouling/boot-top) color.
     /// </summary>
     private static void AddHull(
-        MeshBuilder b, float centerX, float length, float beam, float freeboard, float draft,
-        Vector3 hullColor, Vector3 deckColor, Vector3 stripeColor)
+        MeshBuilder b, float centerX, float length, float beam, float freeboard, float draft, HullPaint paint)
     {
         var keel = HullOutline(centerX, beam * 0.55f, length * 0.9f, -draft);
         var deck = HullOutline(centerX, beam, length, freeboard);
         var stripeFraction = (draft + 0.15f) / (draft + freeboard);
         var stripe = keel.Select((p, i) => Vector3.Lerp(p, deck[i], stripeFraction)).ToArray();
 
-        b.AddLoft(keel, stripe, stripeColor, stripeColor, null);
-        b.AddLoft(stripe, deck, hullColor, null, deckColor);
+        b.AddLoft(keel, stripe, paint.Stripe, paint.Stripe, null);
+        b.AddLoft(stripe, deck, paint.Hull, null, paint.Deck);
     }
+
+    /// <summary>The colours of a hull: its sides, its deck, and the band along the waterline.</summary>
+    private readonly record struct HullPaint(Vector3 Hull, Vector3 Deck, Vector3 Stripe);
 
     private static Vector3[] HullOutline(float cx, float beam, float length, float y)
     {

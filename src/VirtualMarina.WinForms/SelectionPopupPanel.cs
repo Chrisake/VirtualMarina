@@ -148,21 +148,37 @@ internal sealed class SelectionPopupPanel : Control
         }
 
         g.SmoothingMode = SmoothingMode.None;
-        var tooltip = popup.Tooltip;
-        if (_titleRect.Width > 0) TextRenderer.DrawText(g, TitleText(popup), _titleFont, _titleRect, TextColor, SingleLine);
-        if (_subtitleRect.Width > 0) TextRenderer.DrawText(g, tooltip.Subtitle, _smallFont, _subtitleRect, MutedColor, SingleLine);
-        if (_closeRect.Width > 0)
-        {
-            if (_hoverClose || (Focused && _focusIndex == _actions.Count))
-            {
-                using var hover = new SolidBrush(HoverColor);
-                g.FillRectangle(hover, _closeRect);
-            }
+        PaintHeader(g, popup);
+        PaintLines(g, popup.Tooltip);
 
-            TextRenderer.DrawText(g, "✕", _smallFont, _closeRect, _hoverClose ? TextColor : MutedColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        if (Focused && FocusBounds() is { IsEmpty: false } focus) ControlPaint.DrawFocusRectangle(g, focus);
+
+        using var separatorPen = new Pen(SeparatorColor);
+        foreach (var y in _separators) g.DrawLine(separatorPen, S(10), y, Width - S(10), y);
+
+        for (var i = 0; i < _actions.Count; i++) PaintAction(g, i);
+    }
+
+    /// <summary>The title, subtitle and close button.</summary>
+    private void PaintHeader(Graphics g, BerthPopup popup)
+    {
+        if (_titleRect.Width > 0) TextRenderer.DrawText(g, TitleText(popup), _titleFont, _titleRect, TextColor, SingleLine);
+        if (_subtitleRect.Width > 0) TextRenderer.DrawText(g, popup.Tooltip.Subtitle, _smallFont, _subtitleRect, MutedColor, SingleLine);
+        if (_closeRect.Width == 0) return;
+
+        if (_hoverClose || (Focused && _focusIndex == _actions.Count))
+        {
+            using var hover = new SolidBrush(HoverColor);
+            g.FillRectangle(hover, _closeRect);
         }
 
+        TextRenderer.DrawText(g, "✕", _smallFont, _closeRect, _hoverClose ? TextColor : MutedColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+    }
+
+    /// <summary>The tooltip's rows of label and value, and its footer.</summary>
+    private void PaintLines(Graphics g, BerthTooltip tooltip)
+    {
         foreach (var (line, labelRect, valueRect) in _lines)
         {
             if (labelRect.Width > 0) TextRenderer.DrawText(g, line.Label, _textFont, labelRect, MutedColor, SingleLine);
@@ -170,43 +186,39 @@ internal sealed class SelectionPopupPanel : Control
         }
 
         if (_footerRect.Width > 0) TextRenderer.DrawText(g, tooltip.Footer, _smallFont, _footerRect, MutedColor, Wrapped);
+    }
 
-        if (Focused && FocusBounds() is { IsEmpty: false } focus) ControlPaint.DrawFocusRectangle(g, focus);
-
-        using var separatorPen = new Pen(SeparatorColor);
-        foreach (var y in _separators) g.DrawLine(separatorPen, S(10), y, Width - S(10), y);
-
-        for (var i = 0; i < _actions.Count; i++)
+    /// <summary>One row of the actions window: its highlight, icon, caption and shortcut.</summary>
+    private void PaintAction(Graphics g, int index)
+    {
+        var (action, bounds) = _actions[index];
+        if ((index == _hoverAction || (Focused && index == _focusIndex)) && action.Enabled)
         {
-            var (action, bounds) = _actions[i];
-            if ((i == _hoverAction || (Focused && i == _focusIndex)) && action.Enabled)
-            {
-                using var hover = new SolidBrush(action.Style == BerthActionStyle.Danger ? DangerHoverColor : HoverColor);
-                g.FillRectangle(hover, bounds);
-            }
+            using var hover = new SolidBrush(action.Style == BerthActionStyle.Danger ? DangerHoverColor : HoverColor);
+            g.FillRectangle(hover, bounds);
+        }
 
-            var color = action.Style switch
-            {
-                BerthActionStyle.Primary => PrimaryColor,
-                BerthActionStyle.Danger => DangerColor,
-                _ => TextColor,
-            };
-            if (!action.Enabled) color = Blend(color, CardColor, 0.55f);
+        var color = action.Style switch
+        {
+            BerthActionStyle.Primary => PrimaryColor,
+            BerthActionStyle.Danger => DangerColor,
+            _ => TextColor,
+        };
+        if (!action.Enabled) color = Blend(color, CardColor, 0.55f);
 
-            var iconRect = new Rectangle(bounds.X + S(6), bounds.Y, S(20), bounds.Height);
-            if (!string.IsNullOrEmpty(action.Icon))
-            {
-                TextRenderer.DrawText(g, action.Icon, _iconFont, iconRect, color, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-            }
+        var iconRect = new Rectangle(bounds.X + S(6), bounds.Y, S(20), bounds.Height);
+        if (!string.IsNullOrEmpty(action.Icon))
+        {
+            TextRenderer.DrawText(g, action.Icon, _iconFont, iconRect, color, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
 
-            var shortcutWidth = string.IsNullOrEmpty(action.ShortcutText) ? 0 : TextRenderer.MeasureText(action.ShortcutText, _smallFont).Width;
-            var captionRect = Rectangle.FromLTRB(iconRect.Right + S(6), bounds.Y, bounds.Right - S(8) - shortcutWidth, bounds.Bottom);
-            TextRenderer.DrawText(g, action.Caption, action.Style == BerthActionStyle.Primary ? _boldFont : _textFont, captionRect, color, SingleLine | TextFormatFlags.VerticalCenter);
-            if (shortcutWidth > 0)
-            {
-                var shortcutRect = Rectangle.FromLTRB(bounds.Right - S(8) - shortcutWidth, bounds.Y, bounds.Right - S(8), bounds.Bottom);
-                TextRenderer.DrawText(g, action.ShortcutText, _smallFont, shortcutRect, MutedColor, SingleLine | TextFormatFlags.VerticalCenter);
-            }
+        var shortcutWidth = string.IsNullOrEmpty(action.ShortcutText) ? 0 : TextRenderer.MeasureText(action.ShortcutText, _smallFont).Width;
+        var captionRect = Rectangle.FromLTRB(iconRect.Right + S(6), bounds.Y, bounds.Right - S(8) - shortcutWidth, bounds.Bottom);
+        TextRenderer.DrawText(g, action.Caption, action.Style == BerthActionStyle.Primary ? _boldFont : _textFont, captionRect, color, SingleLine | TextFormatFlags.VerticalCenter);
+        if (shortcutWidth > 0)
+        {
+            var shortcutRect = Rectangle.FromLTRB(bounds.Right - S(8) - shortcutWidth, bounds.Y, bounds.Right - S(8), bounds.Bottom);
+            TextRenderer.DrawText(g, action.ShortcutText, _smallFont, shortcutRect, MutedColor, SingleLine | TextFormatFlags.VerticalCenter);
         }
     }
 
@@ -416,66 +428,93 @@ internal sealed class SelectionPopupPanel : Control
 
         var tooltip = popup.Tooltip;
         var showTooltip = tooltip.IsVisible;
-        var pad = S(12);
-        var minWidth = S(230);
-        var maxWidth = S(340);
-        var gap = S(12);
-
-        // Width: widest of title row, label + value pairs and action captions.
+        var hasHead = popup.Kind == BerthPopupKind.Actions || (showTooltip && (!string.IsNullOrWhiteSpace(tooltip.Title) || !string.IsNullOrWhiteSpace(tooltip.Subtitle)));
         var labelWidth = showTooltip
             ? tooltip.Lines.Where(l => !string.IsNullOrEmpty(l.Label)).Select(l => TextRenderer.MeasureText(l.Label, _textFont).Width).DefaultIfEmpty(0).Max()
             : 0;
-        var wanted = minWidth;
-        var title = TitleText(popup);
-        var hasHead = popup.Kind == BerthPopupKind.Actions || (showTooltip && (!string.IsNullOrWhiteSpace(tooltip.Title) || !string.IsNullOrWhiteSpace(tooltip.Subtitle)));
+        var width = Math.Clamp(WantedWidth(popup, hasHead, labelWidth), S(230), S(340));
+
+        var y = S(4);
+        y = hasHead ? LayoutHeader(popup, width, y) : y + S(6);
+        if (showTooltip) y = LayoutTooltip(tooltip, width, labelWidth, y);
+        y = popup.Kind == BerthPopupKind.Actions && popup.Actions.Count > 0 ? LayoutActions(popup, width, y) : y + S(10);
+
+        _cardHeight = y;
+        Size = new Size(width, _cardHeight + CaretHeight);
+        UpdateRegion();
+    }
+
+    /// <summary>The width the content asks for: the widest of the title row, the label and value pairs and the action captions.</summary>
+    private int WantedWidth(BerthPopup popup, bool hasHead, int labelWidth)
+    {
+        var tooltip = popup.Tooltip;
+        var showTooltip = tooltip.IsVisible;
+        var pad = S(12);
+        var wanted = S(230);
         if (hasHead)
         {
-            wanted = Math.Max(wanted, pad * 2 + TextRenderer.MeasureText(title, _titleFont).Width + S(28));
+            wanted = Math.Max(wanted, pad * 2 + TextRenderer.MeasureText(TitleText(popup), _titleFont).Width + S(28));
             if (showTooltip && !string.IsNullOrWhiteSpace(tooltip.Subtitle)) wanted = Math.Max(wanted, pad * 2 + TextRenderer.MeasureText(tooltip.Subtitle, _smallFont).Width + S(28));
         }
 
-        if (showTooltip)
+        if (showTooltip) wanted = Math.Max(wanted, LinesWidth(tooltip, labelWidth));
+        return Math.Max(wanted, ActionsWidth(popup));
+    }
+
+    /// <summary>The width the widest label and value pair asks for.</summary>
+    private int LinesWidth(BerthTooltip tooltip, int labelWidth)
+    {
+        var wanted = 0;
+        foreach (var line in tooltip.Lines)
         {
-            foreach (var line in tooltip.Lines)
-            {
-                var font = line.IsEmphasized ? _boldFont : _textFont;
-                var valueWidth = TextRenderer.MeasureText(line.Value ?? string.Empty, font).Width;
-                wanted = Math.Max(wanted, pad * 2 + (string.IsNullOrEmpty(line.Label) ? 0 : labelWidth + gap) + valueWidth);
-            }
+            var font = line.IsEmphasized ? _boldFont : _textFont;
+            var valueWidth = TextRenderer.MeasureText(line.Value ?? string.Empty, font).Width;
+            wanted = Math.Max(wanted, S(12) * 2 + (string.IsNullOrEmpty(line.Label) ? 0 : labelWidth + S(12)) + valueWidth);
         }
 
+        return wanted;
+    }
+
+    /// <summary>The width the widest action row asks for: icon, caption and shortcut.</summary>
+    private int ActionsWidth(BerthPopup popup)
+    {
+        var wanted = 0;
         foreach (var action in popup.Actions)
         {
             var shortcut = string.IsNullOrEmpty(action.ShortcutText) ? 0 : TextRenderer.MeasureText(action.ShortcutText, _smallFont).Width + S(12);
             wanted = Math.Max(wanted, S(4) * 2 + S(6) + S(20) + S(6) + TextRenderer.MeasureText(action.Caption, _boldFont).Width + shortcut + S(12));
         }
 
-        var width = Math.Clamp(wanted, minWidth, maxWidth);
-        var y = S(4);
+        return wanted;
+    }
 
-        if (hasHead)
+    /// <summary>Places the title, the close button and the subtitle from <paramref name="y"/> down; returns where they end.</summary>
+    private int LayoutHeader(BerthPopup popup, int width, int y)
+    {
+        var pad = S(12);
+        y += S(9);
+        var titleHeight = TextRenderer.MeasureText("Ag", _titleFont).Height;
+        _closeRect = new Rectangle(width - S(8) - S(22), y - S(2), S(22), S(22));
+        _titleRect = new Rectangle(pad, y, _closeRect.Left - S(4) - pad, titleHeight);
+        y += titleHeight;
+        if (popup.Tooltip.IsVisible && !string.IsNullOrWhiteSpace(popup.Tooltip.Subtitle))
         {
-            y += S(9);
-            var titleHeight = TextRenderer.MeasureText("Ag", _titleFont).Height;
-            _closeRect = new Rectangle(width - S(8) - S(22), y - S(2), S(22), S(22));
-            _titleRect = new Rectangle(pad, y, _closeRect.Left - S(4) - pad, titleHeight);
-            y += titleHeight;
-            if (showTooltip && !string.IsNullOrWhiteSpace(tooltip.Subtitle))
-            {
-                var subtitleHeight = TextRenderer.MeasureText("Ag", _smallFont).Height;
-                _subtitleRect = new Rectangle(pad, y, width - pad * 2, subtitleHeight);
-                y += subtitleHeight;
-            }
-        }
-        else
-        {
-            y += S(6);
+            var subtitleHeight = TextRenderer.MeasureText("Ag", _smallFont).Height;
+            _subtitleRect = new Rectangle(pad, y, width - pad * 2, subtitleHeight);
+            y += subtitleHeight;
         }
 
-        if (showTooltip && tooltip.Lines.Count > 0)
+        return y;
+    }
+
+    /// <summary>Places the tooltip's rows and footer from <paramref name="y"/> down; returns where they end.</summary>
+    private int LayoutTooltip(BerthTooltip tooltip, int width, int labelWidth, int y)
+    {
+        var pad = S(12);
+        if (tooltip.Lines.Count > 0)
         {
             y += S(8);
-            var valueLeft = pad + (labelWidth > 0 ? labelWidth + gap : 0);
+            var valueLeft = pad + (labelWidth > 0 ? labelWidth + S(12) : 0);
             foreach (var line in tooltip.Lines)
             {
                 var font = line.IsEmphasized ? _boldFont : _textFont;
@@ -491,7 +530,7 @@ internal sealed class SelectionPopupPanel : Control
             y -= S(3);
         }
 
-        if (showTooltip && !string.IsNullOrWhiteSpace(tooltip.Footer))
+        if (!string.IsNullOrWhiteSpace(tooltip.Footer))
         {
             y += S(6);
             var size = TextRenderer.MeasureText(tooltip.Footer, _smallFont, new Size(width - pad * 2, int.MaxValue), Wrapped);
@@ -499,36 +538,31 @@ internal sealed class SelectionPopupPanel : Control
             y += size.Height;
         }
 
-        if (popup.Kind == BerthPopupKind.Actions && popup.Actions.Count > 0)
-        {
-            y += S(8);
-            _separators.Add(y);
-            y += S(4);
-            var rowHeight = S(28);
-            for (var i = 0; i < popup.Actions.Count; i++)
-            {
-                var action = popup.Actions[i];
-                if (action.BeginGroup && i > 0)
-                {
-                    y += S(4);
-                    _separators.Add(y);
-                    y += S(4);
-                }
+        return y;
+    }
 
-                _actions.Add((action, new Rectangle(S(4), y, width - S(8), rowHeight)));
-                y += rowHeight;
+    /// <summary>Places the action rows, with a separator above them and before each group, from <paramref name="y"/> down; returns where they end.</summary>
+    private int LayoutActions(BerthPopup popup, int width, int y)
+    {
+        y += S(8);
+        _separators.Add(y);
+        y += S(4);
+        var rowHeight = S(28);
+        for (var i = 0; i < popup.Actions.Count; i++)
+        {
+            var action = popup.Actions[i];
+            if (action.BeginGroup && i > 0)
+            {
+                y += S(4);
+                _separators.Add(y);
+                y += S(4);
             }
 
-            y += S(4);
-        }
-        else
-        {
-            y += S(10);
+            _actions.Add((action, new Rectangle(S(4), y, width - S(8), rowHeight)));
+            y += rowHeight;
         }
 
-        _cardHeight = y;
-        Size = new Size(width, _cardHeight + CaretHeight);
-        UpdateRegion();
+        return y + S(4);
     }
 
     private static string TitleText(BerthPopup popup) =>

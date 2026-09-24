@@ -146,23 +146,32 @@ public static class RenamePlanner
         ArgumentNullException.ThrowIfNull(designer);
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(answer);
+        return ClashProblem(designer, request, answer) ?? TakenProblem(designer, request, answer);
+    }
 
-        if (request.IsWholeRow || (request.IsPier && answer.Pattern.Length > 0 && !string.Equals(answer.Pattern, request.BerthPattern, StringComparison.Ordinal)))
-        {
-            // A pier whose id moves as well has its berths renamed under the new id, which the plan cannot see yet;
-            // the designer refuses those as one step if they clash, and says so through ActionFailed.
-            var plan = designer.PlanBerthNames(request.PierId!, request.IsWholeRow ? answer.Name : answer.Pattern);
-            if (!plan.IsClear && !IdMoves(request, answer))
-            {
-                var clashes = string.Join(", ", plan.Clashes.Take(ClashesShown));
-                if (plan.Clashes.Count > ClashesShown) clashes += Strings.Format(Strings.RenameClashMore, plan.Clashes.Count - ClashesShown);
-                return new RenameProblem(
-                    Strings.RenameClashTitle,
-                    Strings.Format(Strings.RenameClashBody, clashes),
-                    Strings.Format(Strings.LogRenameClash, request.PierId, clashes));
-            }
-        }
+    /// <summary>A new berth pattern, or a whole row renamed, that would give berths names already in use.</summary>
+    private static RenameProblem? ClashProblem(MarinaDesigner designer, RenameRequest request, RenameAnswer answer)
+    {
+        var renamesRow = request.IsWholeRow
+            || (request.IsPier && answer.Pattern.Length > 0 && !string.Equals(answer.Pattern, request.BerthPattern, StringComparison.Ordinal));
+        if (!renamesRow) return null;
 
+        // A pier whose id moves as well has its berths renamed under the new id, which the plan cannot see yet;
+        // the designer refuses those as one step if they clash, and says so through ActionFailed.
+        var plan = designer.PlanBerthNames(request.PierId!, request.IsWholeRow ? answer.Name : answer.Pattern);
+        if (plan.IsClear || IdMoves(request, answer)) return null;
+
+        var clashes = string.Join(", ", plan.Clashes.Take(ClashesShown));
+        if (plan.Clashes.Count > ClashesShown) clashes += Strings.Format(Strings.RenameClashMore, plan.Clashes.Count - ClashesShown);
+        return new RenameProblem(
+            Strings.RenameClashTitle,
+            Strings.Format(Strings.RenameClashBody, clashes),
+            Strings.Format(Strings.LogRenameClash, request.PierId, clashes));
+    }
+
+    /// <summary>A berth name or pier id that belongs to something else already.</summary>
+    private static RenameProblem? TakenProblem(MarinaDesigner designer, RenameRequest request, RenameAnswer answer)
+    {
         string? taken = null;
         if (request.IsBerth && !designer.IsBerthNameAvailable(answer.Name, request.BerthId)) taken = answer.Name;
         else if (request.IsPier && answer.PierId.Length > 0 && !designer.IsPierIdAvailable(answer.PierId, request.PierId)) taken = answer.PierId;
@@ -208,13 +217,18 @@ public static class RenamePlanner
             return new RenameOutcome(messages);
         }
 
-        if (!request.IsPier) return new RenameOutcome(messages);
+        if (request.IsPier) ApplyToPier(designer, request, answer, messages);
+        return new RenameOutcome(messages);
+    }
 
+    /// <summary>A pier's new id, name and berth pattern, as one step; says in <paramref name="messages"/> what changed.</summary>
+    private static void ApplyToPier(MarinaDesigner designer, RenameRequest request, RenameAnswer answer, List<string> messages)
+    {
         var pierId = request.PierId!;
         var moving = IdMoves(request, answer);
         var nameChanged = !string.Equals(answer.Name, request.CurrentName, StringComparison.Ordinal);
         var patternChanged = request.AsksPattern && answer.Pattern.Length > 0 && !string.Equals(answer.Pattern, request.BerthPattern, StringComparison.Ordinal);
-        if (!moving && !nameChanged && !patternChanged) return new RenameOutcome(messages);
+        if (!moving && !nameChanged && !patternChanged) return;
 
         // The same order as the designer's own rename: the id moves first (its berths come along), then the display
         // name goes on under the new id, then the berths are named again.
@@ -230,8 +244,6 @@ public static class RenamePlanner
             if (patternChanged) messages.Add(Strings.Format(Strings.LogBerthPattern, current, answer.Pattern));
             if (nameChanged) messages.Add(Strings.Format(Strings.LogRenamed, request.CurrentName, answer.Name));
         }
-
-        return new RenameOutcome(messages);
     }
 
     private static bool IdMoves(RenameRequest request, RenameAnswer answer) =>

@@ -69,7 +69,28 @@ public sealed class SampleErpIntegration : IDisposable
 
         // Actions depend on the berth's state.
         var a = e.Actions;
-        switch (berth.Status)
+        AddStatusActions(a, berth.Status);
+
+        if (e.MultiBerth is not null) Danger(a.Add("release-berth", $"Release multi-berth ({e.MultiBerth.BerthIds.Count} berths)", icon: "⛓"));
+
+        // Moving boats between the water and the boatyard.
+        if (berth.Boat is { } stored && berth.Status == BerthStatus.Occupied && e.MultiBerth is null) AddMoveAction(a, berth, stored);
+
+        var contractAction = a.Add("contract", "Open contract…", enabled: berth.Boat is not null, icon: "📄");
+        contractAction.BeginGroup = true;
+        contractAction.ShortcutText = "Ctrl+O";
+        if (berth.Boat is null) contractAction.Description = "No boat is assigned to this berth.";
+
+        a.Add("focus", "Focus camera (top down)", icon: "🎯");
+        a.Add("readonly", "Lock berth (read-only)", icon: "🔒").BeginGroup = true;
+        Danger(a.Add("maintenance", "Put under maintenance (disable)", icon: "🛠"));
+        a.Add("hide", "Hide berth", icon: "🙈");
+    }
+
+    /// <summary>What can be done with a berth in its current state.</summary>
+    private static void AddStatusActions(BerthActionCollection a, BerthStatus status)
+    {
+        switch (status)
         {
             case BerthStatus.Free:
                 Primary(a.Add("checkin", "Check in walk-in boat", icon: "⚓"));
@@ -88,35 +109,23 @@ public sealed class SampleErpIntegration : IDisposable
                 a.Add("checkout", "End contract (free berth)", icon: "⇥");
                 break;
         }
+    }
 
-        if (e.MultiBerth is not null) Danger(a.Add("release-berth", $"Release multi-berth ({e.MultiBerth.BerthIds.Count} berths)", icon: "⛓"));
-
-        // Moving boats between the water and the boatyard.
-        if (berth.Boat is { } stored && berth.Status == BerthStatus.Occupied && e.MultiBerth is null)
+    /// <summary>Launching a boat stored ashore, or hauling one out into the boatyard, when there is a free berth that fits.</summary>
+    private void AddMoveAction(BerthActionCollection a, Berth berth, Boat stored)
+    {
+        if (berth.IsOnLand)
         {
-            if (berth.IsOnLand)
-            {
-                var target = MockMarinaFactory.FindFreeWaterBerth(_marina, stored);
-                var launch = a.Add("launch", target is null ? "Launch (no free berth fits)" : $"Launch to {target.DisplayName}", enabled: target is not null, icon: "🌊");
-                launch.BeginGroup = true;
-            }
-            else
-            {
-                var target = MockMarinaFactory.FindFreeLandBerth(_marina, stored);
-                var haulOut = a.Add("haulout", target is null ? "Haul out (boatyard full)" : $"Haul out to {target.DisplayName}", enabled: target is not null, icon: "🏗");
-                haulOut.BeginGroup = true;
-            }
+            var target = MockMarinaFactory.FindFreeWaterBerth(_marina, stored);
+            var launch = a.Add("launch", target is null ? "Launch (no free berth fits)" : $"Launch to {target.DisplayName}", enabled: target is not null, icon: "🌊");
+            launch.BeginGroup = true;
         }
-
-        var contractAction = a.Add("contract", "Open contract…", enabled: berth.Boat is not null, icon: "📄");
-        contractAction.BeginGroup = true;
-        contractAction.ShortcutText = "Ctrl+O";
-        if (berth.Boat is null) contractAction.Description = "No boat is assigned to this berth.";
-
-        a.Add("focus", "Focus camera (top down)", icon: "🎯");
-        a.Add("readonly", "Lock berth (read-only)", icon: "🔒").BeginGroup = true;
-        Danger(a.Add("maintenance", "Put under maintenance (disable)", icon: "🛠"));
-        a.Add("hide", "Hide berth", icon: "🙈");
+        else
+        {
+            var target = MockMarinaFactory.FindFreeLandBerth(_marina, stored);
+            var haulOut = a.Add("haulout", target is null ? "Haul out (boatyard full)" : $"Haul out to {target.DisplayName}", enabled: target is not null, icon: "🏗");
+            haulOut.BeginGroup = true;
+        }
     }
 
     private void OnMultiBerthSelected(object? sender, MultiBerthSelectedEventArgs e)

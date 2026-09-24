@@ -191,20 +191,11 @@ public sealed class RenderLayer
 
         if (previousBatches.AsSpan().SequenceEqual(_batches.ToArray()) && Version != 0)
         {
-            var version = 0;
-            var start = -1;
-            for (var i = 0; i <= _count; i++)
-            {
-                var differs = i < _count && !previous[i].Equals(_instances[i]);
-                if (differs && start < 0) start = i;
-                if (differs || start < 0) continue;
+            var ranges = ChangedRanges(previous);
+            if (ranges.Count == 0) return false;
 
-                if (version == 0) version = NextVersion();
-                LogChange(version, new InstanceRange(start, i - start));
-                start = -1;
-            }
-
-            if (version == 0) return false;
+            var version = NextVersion();
+            foreach (var range in ranges) LogChange(version, range);
             Version = version;
             return true;
         }
@@ -221,6 +212,24 @@ public sealed class RenderLayer
     /// <see cref="Instances"/>.
     /// </summary>
     internal int PlacementOf(int emittedIndex) => _placement[emittedIndex];
+
+    /// <summary>The runs of instances that differ from <paramref name="previous"/>, which has the same batches.</summary>
+    private List<InstanceRange> ChangedRanges(RenderObject[] previous)
+    {
+        var ranges = new List<InstanceRange>();
+        var start = -1;
+        for (var i = 0; i <= _count; i++)
+        {
+            var differs = i < _count && !previous[i].Equals(_instances[i]);
+            if (differs && start < 0) start = i;
+            if (differs || start < 0) continue;
+
+            ranges.Add(new InstanceRange(start, i - start));
+            start = -1;
+        }
+
+        return ranges;
+    }
 
     /// <summary>
     /// Rewrites instances in place, as long as each keeps its mesh and pass. Returns false, changing nothing, when one
@@ -258,10 +267,14 @@ public sealed class RenderLayer
 
     private void LogChange(int version, InstanceRange range)
     {
-        if (_changes.Count > 0 && _changes[^1] is var (lastVersion, last) && lastVersion == version && last.Start + last.Count == range.Start)
+        if (_changes.Count > 0)
         {
-            _changes[^1] = (version, last with { Count = last.Count + range.Count });
-            return;
+            var (lastVersion, last) = _changes[^1];
+            if (lastVersion == version && last.Start + last.Count == range.Start)
+            {
+                _changes[^1] = (version, last with { Count = last.Count + range.Count });
+                return;
+            }
         }
 
         _changes.Add((version, range));

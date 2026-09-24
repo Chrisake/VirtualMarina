@@ -41,32 +41,40 @@ internal static class ScenePicker
         // 2. Boats, which may rise far above the pads and overhang neighbouring berths.
         foreach (var boat in boats)
         {
-            if (!meshes.TryGet(MeshIds.ForBoat(boat.Boat.Type), out var mesh) ||
-                !Matrix4x4.Invert(boat.World, out var toLocal))
-            {
-                continue;
-            }
-
-            // The local direction isn't normalized, so distances along it equal world distances along the world ray.
-            var localOrigin = Vector3.Transform(ray.Origin, toLocal);
-            var localDirection = Vector3.TransformNormal(ray.Direction, toLocal);
-
-            // Broad phase: skip boats whose bounding box is missed or can't beat the current best hit.
-            if (!mesh.Bounds.IntersectRay(localOrigin, localDirection, out var boxDistance) ||
-                (best is not null && boxDistance >= best.Value.Distance))
-            {
-                continue;
-            }
-
-            if (TryIntersectMesh(mesh, localOrigin, localDirection, out var boatDistance) &&
-                (best is null || boatDistance < best.Value.Distance))
-            {
-                var hitPoint = ray.GetPoint(boatDistance);
-                best = new BerthHit(ResolveBerth(boat, MarinaMath.ToPlan(hitPoint)), boatDistance, hitPoint, HitBoat: true);
-            }
+            if (!meshes.TryGet(MeshIds.ForBoat(boat.Boat.Type), out var mesh) || !Matrix4x4.Invert(boat.World, out var toLocal)) continue;
+            best = HitBoat(ray, boat, mesh, toLocal, best) ?? best;
         }
 
         return best;
+    }
+
+    /// <summary>Where the ray meets the boat, when that is nearer than <paramref name="best"/>; otherwise null.</summary>
+    /// <param name="ray">World-space pick ray.</param>
+    /// <param name="boat">The boat.</param>
+    /// <param name="mesh">Its mesh.</param>
+    /// <param name="toLocal">World to the boat's model space: the inverse of its placement.</param>
+    /// <param name="best">The nearest hit so far, if any.</param>
+    internal static BerthHit? HitBoat(Ray ray, BoatInstance boat, MeshData mesh, Matrix4x4 toLocal, BerthHit? best)
+    {
+        // The local direction isn't normalized, so distances along it equal world distances along the world ray.
+        var localOrigin = Vector3.Transform(ray.Origin, toLocal);
+        var localDirection = Vector3.TransformNormal(ray.Direction, toLocal);
+
+        // Broad phase: skip boats whose bounding box is missed or can't beat the current best hit.
+        if (!mesh.Bounds.IntersectRay(localOrigin, localDirection, out var boxDistance) ||
+            (best is not null && boxDistance >= best.Value.Distance))
+        {
+            return null;
+        }
+
+        if (!TryIntersectMesh(mesh, localOrigin, localDirection, out var boatDistance) ||
+            (best is not null && boatDistance >= best.Value.Distance))
+        {
+            return null;
+        }
+
+        var hitPoint = ray.GetPoint(boatDistance);
+        return new BerthHit(ResolveBerth(boat, MarinaMath.ToPlan(hitPoint)), boatDistance, hitPoint, HitBoat: true);
     }
 
     /// <summary>Nearest intersection of a ray with any triangle of the mesh (both faces count; sails are thin plates).</summary>

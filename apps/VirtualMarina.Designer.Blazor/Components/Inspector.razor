@@ -279,32 +279,60 @@
 
     private RenderFragment BerthNaming(bool landVariant) => __builder =>
     {
-        var naming = Designer.BerthNaming;
-        var pattern = landVariant ? naming.LandPattern ?? naming.Pattern : naming.Pattern;
-        var start = landVariant ? naming.LandStartNumber ?? naming.StartNumber : naming.StartNumber;
-        var increment = landVariant ? naming.LandIncrement ?? naming.Increment : naming.Increment;
-        var digits = landVariant ? naming.LandNumberDigits ?? naming.NumberDigits : naming.NumberDigits;
-        var prefix = landVariant ? "vm-ashore-naming" : "vm-berth-naming";
-        var problem = landVariant ? _landPatternProblem : _patternProblem;
+        var view = NamingViewOf(landVariant);
+        var prefix = view.Prefix;
+        var valid = view.Problem is null;
         <h4 class="vm-section">@Strings.BerthNamingHeading</h4>
         <div class="vm-grid">
             <label class="vm-grid__label" for="@(prefix + "-pattern")" title="@Strings.BerthNamePatternTip">@Strings.BerthNamePattern</label>
-            <input id="@(prefix + "-pattern")" type="text" value="@pattern" aria-invalid="@(problem is null ? "false" : "true")"
+            <input id="@(prefix + "-pattern")" type="text" value="@view.Pattern" aria-invalid="@(valid ? "false" : "true")"
                    aria-describedby="@(prefix + "-example")" @onchange="e => OnPattern(e, landVariant)" />
             <label class="vm-grid__label" for="@(prefix + "-start")" title="@Strings.BerthStartNumberTip">@Strings.BerthStartNumber</label>
-            <input id="@(prefix + "-start")" type="number" min="@DesignerRanges.NamingStart.MinText" max="@DesignerRanges.NamingStart.MaxText" step="1" value="@start"
-                   @onchange="e => OnNaming(e, landVariant, (n, v) => landVariant ? n with { LandStartNumber = v } : n with { StartNumber = v })" />
+            <input id="@(prefix + "-start")" type="number" min="@DesignerRanges.NamingStart.MinText" max="@DesignerRanges.NamingStart.MaxText" step="1" value="@view.Start"
+                   @onchange="e => OnNaming(e, landVariant, (n, v) => WithStart(n, v, landVariant))" />
             <label class="vm-grid__label" for="@(prefix + "-increment")" title="@Strings.BerthIncrementTip">@Strings.BerthIncrement</label>
-            <input id="@(prefix + "-increment")" type="number" min="@DesignerRanges.NamingIncrement.MinText" max="@DesignerRanges.NamingIncrement.MaxText" step="1" value="@increment"
-                   @onchange="e => OnNaming(e, landVariant, (n, v) => landVariant ? n with { LandIncrement = v } : n with { Increment = v })" />
+            <input id="@(prefix + "-increment")" type="number" min="@DesignerRanges.NamingIncrement.MinText" max="@DesignerRanges.NamingIncrement.MaxText" step="1" value="@view.Increment"
+                   @onchange="e => OnNaming(e, landVariant, (n, v) => WithIncrement(n, v, landVariant))" />
             <label class="vm-grid__label" for="@(prefix + "-digits")" title="@Strings.BerthNumberDigitsTip">@Strings.BerthNumberDigits</label>
-            <input id="@(prefix + "-digits")" type="number" min="@DesignerRanges.NamingDigits.MinText" max="@DesignerRanges.NamingDigits.MaxText" step="1" value="@digits"
-                   @onchange="e => OnNaming(e, landVariant, (n, v) => landVariant ? n with { LandNumberDigits = v } : n with { NumberDigits = v })" />
-            <span id="@(prefix + "-example")" class="vm-grid__wide @(problem is null ? "vm-hint" : "vm-error")" role="@(problem is null ? null : "alert")">
-                @(problem ?? (landVariant ? DesignerText.AshoreNameExample(Marina, naming) : DesignerText.NamingExample(Marina, naming)))
+            <input id="@(prefix + "-digits")" type="number" min="@DesignerRanges.NamingDigits.MinText" max="@DesignerRanges.NamingDigits.MaxText" step="1" value="@view.Digits"
+                   @onchange="e => OnNaming(e, landVariant, (n, v) => WithDigits(n, v, landVariant))" />
+            <span id="@(prefix + "-example")" class="vm-grid__wide @(valid ? "vm-hint" : "vm-error")" role="@(valid ? null : "alert")">
+                @(view.Problem ?? view.Example)
             </span>
         </div>
     };
+
+    /// <summary>What the naming fields show, for berths on the water or (<paramref name="landVariant"/>) ashore.</summary>
+    private readonly record struct NamingView(string Pattern, int Start, int Increment, int Digits, string Prefix, string? Problem, string Example);
+
+    /// <summary>The naming fields' values: ashore, each falls back to the water's own when no separate one is set.</summary>
+    private NamingView NamingViewOf(bool landVariant)
+    {
+        var naming = Designer.BerthNaming;
+        if (!landVariant)
+        {
+            return new NamingView(naming.Pattern, naming.StartNumber, naming.Increment, naming.NumberDigits, "vm-berth-naming",
+                _patternProblem, DesignerText.NamingExample(Marina, naming));
+        }
+
+        return new NamingView(
+            naming.LandPattern ?? naming.Pattern,
+            naming.LandStartNumber ?? naming.StartNumber,
+            naming.LandIncrement ?? naming.Increment,
+            naming.LandNumberDigits ?? naming.NumberDigits,
+            "vm-ashore-naming",
+            _landPatternProblem,
+            DesignerText.AshoreNameExample(Marina, naming));
+    }
+
+    private static BerthNamingScheme WithStart(BerthNamingScheme n, int v, bool land) =>
+        land ? n with { LandStartNumber = v } : n with { StartNumber = v };
+
+    private static BerthNamingScheme WithIncrement(BerthNamingScheme n, int v, bool land) =>
+        land ? n with { LandIncrement = v } : n with { Increment = v };
+
+    private static BerthNamingScheme WithDigits(BerthNamingScheme n, int v, bool land) =>
+        land ? n with { LandNumberDigits = v } : n with { NumberDigits = v };
 
     private void OnPierPattern(ChangeEventArgs e)
     {

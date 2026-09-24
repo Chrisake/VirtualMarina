@@ -67,16 +67,17 @@ public sealed class WebGlSceneRenderer : ISceneRenderer
     /// <exception cref="InvalidOperationException">A shader failed to compile or link in the browser.</exception>
     public void Initialize()
     {
-        var error = _module.Invoke<string?>(
-            "initRenderer",
-            _viewId,
-            ShaderSources.InstancedModelVertex(ShaderDialect.WebGL2),
-            ShaderSources.InstancedModelFragment(ShaderDialect.WebGL2),
-            ShaderSources.WaterVertex(ShaderDialect.WebGL2),
-            ShaderSources.WaterFragment(ShaderDialect.WebGL2),
-            ShaderSources.ImageVertex(ShaderDialect.WebGL2),
-            ShaderSources.ImageFragment(ShaderDialect.WebGL2),
-            ShaderSources.ImageQuadCorners);
+        // By name, as the script keeps them to build the programs again after a lost context.
+        var shaders = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["modelVertex"] = ShaderSources.InstancedModelVertex(ShaderDialect.WebGL2),
+            ["modelFragment"] = ShaderSources.InstancedModelFragment(ShaderDialect.WebGL2),
+            ["waterVertex"] = ShaderSources.WaterVertex(ShaderDialect.WebGL2),
+            ["waterFragment"] = ShaderSources.WaterFragment(ShaderDialect.WebGL2),
+            ["imageVertex"] = ShaderSources.ImageVertex(ShaderDialect.WebGL2),
+            ["imageFragment"] = ShaderSources.ImageFragment(ShaderDialect.WebGL2),
+        };
+        var error = _module.Invoke<string?>("initRenderer", _viewId, shaders, ShaderSources.ImageQuadCorners);
         if (error is not null) throw new InvalidOperationException("WebGL initialization failed: " + error);
 
         DeviceDescription = _module.Invoke<string?>("getDeviceDescription", _viewId);

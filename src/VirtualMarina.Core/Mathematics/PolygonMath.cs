@@ -114,16 +114,26 @@ public static class PolygonMath
             // The neighbour sharing a2 must leave it without running back over this edge.
             var a3 = points[(i + 2) % n];
             if (DistanceToSegment(a3, a1, a2) < TouchTolerance || DistanceToSegment(a1, a2, a3) < TouchTolerance) return false;
-
-            for (var j = i + 1; j < n; j++)
-            {
-                // Adjacent edges share a vertex, and were checked above.
-                if (j == i + 1 || (i == 0 && j == n - 1)) continue;
-                if (SegmentsTouch(a1, a2, points[j], points[(j + 1) % n])) return false;
-            }
+            if (TouchesLaterEdge(points, i)) return false;
         }
 
         return true;
+    }
+
+    /// <summary>True when edge <paramref name="i"/> touches an edge after it that is not its neighbour.</summary>
+    private static bool TouchesLaterEdge(IReadOnlyList<Vector2> points, int i)
+    {
+        var n = points.Count;
+        var a1 = points[i];
+        var a2 = points[(i + 1) % n];
+        for (var j = i + 1; j < n; j++)
+        {
+            // Adjacent edges share a vertex, and are checked on their own.
+            if (j == i + 1 || (i == 0 && j == n - 1)) continue;
+            if (SegmentsTouch(a1, a2, points[j], points[(j + 1) % n])) return true;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -478,33 +488,28 @@ public static class PolygonMath
             foreach (var index in _blockers)
             {
                 if (index == prev || index == vertex || index == next) continue;
-
-                // Bridging a hole into an outline leaves vertices duplicated on purpose. A copy sitting on a corner of
-                // the ear is not inside it, but the ring may still run from it into the ear, or open out around it
-                // across the ear, and clipping then lays one triangle over another. Only that blocks the ear: counting
-                // every copy as a blocker would stop every ear near a bridge being clipped and lose whole wedges.
-                var point = _points[index];
-                var before = _points[_previous[index]];
-                var after = _points[_next[index]];
-                if (Same(point, a))
-                {
-                    if (CopyOverlapsCorner(a, b, c, before, after)) return false;
-                }
-                else if (Same(point, b))
-                {
-                    if (CopyOverlapsCorner(b, c, a, before, after)) return false;
-                }
-                else if (Same(point, c))
-                {
-                    if (CopyOverlapsCorner(c, a, b, before, after)) return false;
-                }
-                else if (InTriangle(point, a, b, c))
-                {
-                    return false;
-                }
+                if (BlocksEar(index, a, b, c)) return false;
             }
 
             return true;
+        }
+
+        /// <summary>True when the vertex at <paramref name="index"/> stops the ear <paramref name="a"/>, <paramref name="b"/>, <paramref name="c"/> being cut off.</summary>
+        /// <remarks>
+        /// Bridging a hole into an outline leaves vertices duplicated on purpose. A copy sitting on a corner of the ear is
+        /// not inside it, but the ring may still run from it into the ear, or open out around it across the ear, and
+        /// clipping then lays one triangle over another. Only that blocks the ear: counting every copy as a blocker would
+        /// stop every ear near a bridge being clipped and lose whole wedges.
+        /// </remarks>
+        private bool BlocksEar(int index, Vector2 a, Vector2 b, Vector2 c)
+        {
+            var point = _points[index];
+            var before = _points[_previous[index]];
+            var after = _points[_next[index]];
+            if (Same(point, a)) return CopyOverlapsCorner(a, b, c, before, after);
+            if (Same(point, b)) return CopyOverlapsCorner(b, c, a, before, after);
+            if (Same(point, c)) return CopyOverlapsCorner(c, a, b, before, after);
+            return InTriangle(point, a, b, c);
         }
 
         /// <summary>The vertex whose corner encloses the least area: the one losing the least when it is dropped.</summary>

@@ -88,9 +88,14 @@ public class WebGlSceneRendererTests
 
         var init = Assert.Single(module.CallsTo("initRenderer"));
         Assert.Equal(ViewId, init.Args[0]);
-        Assert.Equal(ShaderSources.InstancedModelVertex(ShaderDialect.WebGL2), init.Args[1]);
-        Assert.Equal(ShaderSources.InstancedModelFragment(ShaderDialect.WebGL2), init.Args[2]);
-        Assert.Equal(ShaderSources.ImageFragment(ShaderDialect.WebGL2), init.Args[6]);
+        var shaders = Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(init.Args[1]);
+        Assert.Equal(ShaderSources.InstancedModelVertex(ShaderDialect.WebGL2), shaders["modelVertex"]);
+        Assert.Equal(ShaderSources.InstancedModelFragment(ShaderDialect.WebGL2), shaders["modelFragment"]);
+        Assert.Equal(ShaderSources.WaterVertex(ShaderDialect.WebGL2), shaders["waterVertex"]);
+        Assert.Equal(ShaderSources.WaterFragment(ShaderDialect.WebGL2), shaders["waterFragment"]);
+        Assert.Equal(ShaderSources.ImageVertex(ShaderDialect.WebGL2), shaders["imageVertex"]);
+        Assert.Equal(ShaderSources.ImageFragment(ShaderDialect.WebGL2), shaders["imageFragment"]);
+        Assert.Equal(ShaderSources.ImageQuadCorners, Assert.IsType<float[]>(init.Args[2]));
         Assert.Equal("WebGL 2.0 | Test GPU", renderer.DeviceDescription);
         Assert.Equal("WebGL 2 (Blazor WebAssembly)", renderer.BackendName);
     }

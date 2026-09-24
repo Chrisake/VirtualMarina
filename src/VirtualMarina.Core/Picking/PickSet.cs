@@ -89,11 +89,11 @@ internal sealed class PickSet
 
         _pads = pads.ToArray();
         _boats = entries.ToArray();
-        _seen = new int[_pads.Length + _boats.Length];
+        var count = _pads.Length + _boats.Length;
+        _seen = new int[count];
         // A little slack, so a ray meeting a pad exactly at its height is not lost to rounding at the box's face.
         _worldBounds = new BoundingBox(worldMin - new Vector3(0.05f), worldMax + new Vector3(0.05f));
 
-        var count = _seen.Length;
         if (count == 0)
         {
             _cellStart = [0];
@@ -138,9 +138,15 @@ internal sealed class PickSet
         if (_seen.Length == 0 || !IsFinite(ray.Origin) || !IsFinite(ray.Direction) || !ClipToBounds(ray, out var enter, out var exit)) return null;
 
         CollectCandidates(MarinaMath.ToPlan(ray.GetPoint(enter)), MarinaMath.ToPlan(ray.GetPoint(exit)));
-        BerthHit? best = null;
 
-        // 1. Berth areas (the colored pads), on the water or on land.
+        // Berth areas (the colored pads) first, then boats, which may rise far above the pads and overhang neighbouring berths.
+        return PickBoat(ray, PickPad(ray));
+    }
+
+    /// <summary>The nearest berth area (a colored pad), on the water or on land, among the candidates.</summary>
+    private BerthHit? PickPad(Ray ray)
+    {
+        BerthHit? best = null;
         foreach (var index in _padCandidates)
         {
             var pad = _pads[index];
@@ -153,28 +159,16 @@ internal sealed class PickSet
             }
         }
 
-        // 2. Boats, which may rise far above the pads and overhang neighbouring berths.
+        return best;
+    }
+
+    /// <summary>The nearest boat among the candidates when it is nearer than <paramref name="best"/>; otherwise <paramref name="best"/>.</summary>
+    private BerthHit? PickBoat(Ray ray, BerthHit? best)
+    {
         foreach (var index in _boatCandidates)
         {
             var entry = _boats[index];
-
-            // The local direction isn't normalized, so distances along it equal world distances along the world ray.
-            var localOrigin = Vector3.Transform(ray.Origin, entry.ToLocal);
-            var localDirection = Vector3.TransformNormal(ray.Direction, entry.ToLocal);
-
-            // Broad phase: skip boats whose bounding box is missed or can't beat the current best hit.
-            if (!entry.Mesh.Bounds.IntersectRay(localOrigin, localDirection, out var boxDistance) ||
-                (best is not null && boxDistance >= best.Value.Distance))
-            {
-                continue;
-            }
-
-            if (ScenePicker.TryIntersectMesh(entry.Mesh, localOrigin, localDirection, out var boatDistance) &&
-                (best is null || boatDistance < best.Value.Distance))
-            {
-                var hitPoint = ray.GetPoint(boatDistance);
-                best = new BerthHit(ScenePicker.ResolveBerth(entry.Boat, MarinaMath.ToPlan(hitPoint)), boatDistance, hitPoint, HitBoat: true);
-            }
+            best = ScenePicker.HitBoat(ray, entry.Boat, entry.Mesh, entry.ToLocal, best) ?? best;
         }
 
         return best;
@@ -239,10 +233,10 @@ internal sealed class PickSet
         var delta = b - a;
         var stepX = Math.Sign(delta.X);
         var stepY = Math.Sign(delta.Y);
-        var tDeltaX = stepX != 0 ? MathF.Abs(1f / delta.X) : float.MaxValue;
-        var tDeltaY = stepY != 0 ? MathF.Abs(1f / delta.Y) : float.MaxValue;
-        var tMaxX = stepX > 0 ? (MathF.Floor(a.X) + 1f - a.X) * tDeltaX : stepX < 0 ? (a.X - MathF.Floor(a.X)) * tDeltaX : float.MaxValue;
-        var tMaxY = stepY > 0 ? (MathF.Floor(a.Y) + 1f - a.Y) * tDeltaY : stepY < 0 ? (a.Y - MathF.Floor(a.Y)) * tDeltaY : float.MaxValue;
+        var tDeltaX = CellCrossing(delta.X, stepX);
+        var tDeltaY = CellCrossing(delta.Y, stepY);
+        var tMaxX = FirstCrossing(a.X, stepX, tDeltaX);
+        var tMaxY = FirstCrossing(a.Y, stepY, tDeltaY);
 
         for (var steps = _columns + _rows + 2; steps > 0; steps--)
         {
@@ -265,6 +259,15 @@ internal sealed class PickSet
         _padCandidates.Sort();
         _boatCandidates.Sort();
     }
+
+    /// <summary>How far along the segment it takes to cross one whole cell on an axis; never, when it does not move on that axis.</summary>
+    private static float CellCrossing(float delta, int step) => step != 0 ? MathF.Abs(1f / delta) : float.MaxValue;
+
+    /// <summary>How far along the segment it first crosses a cell boundary on an axis, starting from <paramref name="start"/>.</summary>
+    private static float FirstCrossing(float start, int step, float cellCrossing) =>
+        step > 0 ? (MathF.Floor(start) + 1f - start) * cellCrossing
+        : step < 0 ? (start - MathF.Floor(start)) * cellCrossing
+        : float.MaxValue;
 
     /// <summary>Cuts the segment from <paramref name="a"/> to <paramref name="b"/> to the grid (Liang and Barsky). False when it misses it.</summary>
     private bool ClipToGrid(ref Vector2 a, ref Vector2 b)

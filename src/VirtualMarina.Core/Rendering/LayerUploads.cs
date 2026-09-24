@@ -109,6 +109,15 @@ public sealed class TransparentSorter
         _sortedVersion = sceneVersion;
         _sortedFrom = camera;
 
+        CollectKeys(layers, camera);
+        _keys.Sort(FarthestFirst);
+        FillSorted(layers);
+        return true;
+    }
+
+    /// <summary>Every transparent instance of the frame, keyed by its squared distance from the camera.</summary>
+    private void CollectKeys(IReadOnlyList<RenderLayer> layers, Vector3 camera)
+    {
         _keys.Clear();
         for (var l = 0; l < layers.Count; l++)
         {
@@ -122,10 +131,17 @@ public sealed class TransparentSorter
                 }
             }
         }
+    }
 
-        // Farthest first; ties keep the order the scene gave them, so the result is the same frame after frame.
-        _keys.Sort((a, b) => b.Distance != a.Distance ? b.Distance.CompareTo(a.Distance) : a.Layer != b.Layer ? a.Layer.CompareTo(b.Layer) : a.Index.CompareTo(b.Index));
+    /// <summary>Farthest first; ties keep the order the scene gave them, so the result is the same frame after frame.</summary>
+    private static int FarthestFirst((float Distance, int Layer, int Index) a, (float Distance, int Layer, int Index) b) =>
+        b.Distance != a.Distance ? b.Distance.CompareTo(a.Distance)
+        : a.Layer != b.Layer ? a.Layer.CompareTo(b.Layer)
+        : a.Index.CompareTo(b.Index);
 
+    /// <summary>Copies the instances in key order into <see cref="Sorted"/>, and groups runs of the same mesh.</summary>
+    private void FillSorted(IReadOnlyList<RenderLayer> layers)
+    {
         if (_sorted.Length < _keys.Count) _sorted = new RenderObject[Math.Max(_keys.Count, _sorted.Length * 2)];
         _count = 0;
         _runs.Clear();
@@ -143,7 +159,5 @@ public sealed class TransparentSorter
 
             _sorted[_count++] = instance;
         }
-
-        return true;
     }
 }

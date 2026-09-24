@@ -82,6 +82,13 @@ internal static class BrowserLauncher
     /// <summary>Environment variable naming a browser executable to use instead of looking for one.</summary>
     public const string BrowserVariable = "VIRTUALMARINA_BROWSER";
 
+    // The browsers looked for, by the names they are known by on every system, and the switch that opens a page as an app window.
+    private const string Chrome = "Google Chrome";
+    private const string Edge = "Microsoft Edge";
+    private const string Chromium = "Chromium";
+    private const string Brave = "Brave";
+    private const string AppFlag = "--app=";
+
     /// <summary>A browser executable and how it can be started.</summary>
     /// <param name="Name">What to call it on the console.</param>
     /// <param name="Path">The executable.</param>
@@ -94,7 +101,7 @@ internal static class BrowserLauncher
     {
         foreach (var candidate in Candidates())
         {
-            var window = candidate.Dedicated ? StartDedicated(candidate, url) : StartShared(candidate.Name, candidate.Path, ["--app=" + url]);
+            var window = candidate.Dedicated ? StartDedicated(candidate, url) : StartShared(candidate.Name, candidate.Path, [AppFlag + url]);
             if (window is not null) return window;
         }
 
@@ -104,7 +111,7 @@ internal static class BrowserLauncher
             foreach (var (name, id) in FlatpakBrowsers)
             {
                 if (!FlatpakHas(flatpak, id)) continue;
-                var window = StartShared($"{name} (Flatpak)", flatpak, ["run", id, "--app=" + url]);
+                var window = StartShared($"{name} (Flatpak)", flatpak, ["run", id, AppFlag + url]);
                 if (window is not null) return window;
             }
         }
@@ -134,14 +141,14 @@ internal static class BrowserLauncher
     /// </summary>
     private static BrowserWindow? StartDedicated(Candidate candidate, string url)
     {
-        if (Profiles.For(candidate.Name) is not { } profile) return StartShared(candidate.Name, candidate.Path, ["--app=" + url]);
+        if (Profiles.For(candidate.Name) is not { } profile) return StartShared(candidate.Name, candidate.Path, [AppFlag + url]);
 
         var process = TryStart(new ProcessStartInfo(candidate.Path)
         {
             UseShellExecute = false,
             ArgumentList =
             {
-                "--app=" + url,
+                AppFlag + url,
                 "--user-data-dir=" + profile,
                 "--no-first-run",
                 "--no-default-browser-check",
@@ -184,10 +191,10 @@ internal static class BrowserLauncher
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         (string Name, string Relative)[] browsers =
         [
-            ("Google Chrome", @"Google\Chrome\Application\chrome.exe"),
-            ("Microsoft Edge", @"Microsoft\Edge\Application\msedge.exe"),
-            ("Chromium", @"Chromium\Application\chrome.exe"),
-            ("Brave", @"BraveSoftware\Brave-Browser\Application\brave.exe"),
+            (Chrome, @"Google\Chrome\Application\chrome.exe"),
+            (Edge, @"Microsoft\Edge\Application\msedge.exe"),
+            (Chromium, @"Chromium\Application\chrome.exe"),
+            (Brave, @"BraveSoftware\Brave-Browser\Application\brave.exe"),
         ];
 
         foreach (var (name, relative) in browsers)
@@ -206,10 +213,10 @@ internal static class BrowserLauncher
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         (string Name, string Bundle, string Executable)[] browsers =
         [
-            ("Google Chrome", "Google Chrome.app", "Google Chrome"),
-            ("Microsoft Edge", "Microsoft Edge.app", "Microsoft Edge"),
-            ("Chromium", "Chromium.app", "Chromium"),
-            ("Brave", "Brave Browser.app", "Brave Browser"),
+            (Chrome, "Google Chrome.app", "Google Chrome"),
+            (Edge, "Microsoft Edge.app", "Microsoft Edge"),
+            (Chromium, "Chromium.app", "Chromium"),
+            (Brave, "Brave Browser.app", "Brave Browser"),
         ];
 
         foreach (var (name, bundle, executable) in browsers)
@@ -226,14 +233,14 @@ internal static class BrowserLauncher
     {
         (string Name, string Executable)[] browsers =
         [
-            ("Google Chrome", "google-chrome"),
-            ("Google Chrome", "google-chrome-stable"),
-            ("Microsoft Edge", "microsoft-edge"),
-            ("Microsoft Edge", "microsoft-edge-stable"),
-            ("Chromium", "chromium"),
-            ("Chromium", "chromium-browser"),
-            ("Brave", "brave-browser"),
-            ("Brave", "brave"),
+            (Chrome, "google-chrome"),
+            (Chrome, "google-chrome-stable"),
+            (Edge, "microsoft-edge"),
+            (Edge, "microsoft-edge-stable"),
+            (Chromium, "chromium"),
+            (Chromium, "chromium-browser"),
+            (Brave, "brave-browser"),
+            (Brave, "brave"),
         ];
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -254,10 +261,10 @@ internal static class BrowserLauncher
 
     private static readonly (string Name, string Id)[] FlatpakBrowsers =
     [
-        ("Google Chrome", "com.google.Chrome"),
-        ("Microsoft Edge", "com.microsoft.Edge"),
-        ("Chromium", "org.chromium.Chromium"),
-        ("Brave", "com.brave.Browser"),
+        (Chrome, "com.google.Chrome"),
+        (Edge, "com.microsoft.Edge"),
+        (Chromium, "org.chromium.Chromium"),
+        (Brave, "com.brave.Browser"),
     ];
 
     /// <summary>

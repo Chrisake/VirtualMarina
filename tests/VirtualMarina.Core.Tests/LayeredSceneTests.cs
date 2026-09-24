@@ -170,7 +170,7 @@ public class LayeredSceneTests
         var shadows = Layer(CreateMarina().BuildRenderFrame(), RenderLayerKind.StructureShadows);
 
         Assert.NotEqual(0, shadows.Count);
-        Assert.All(shadows.Instances.ToArray(), o => Assert.True((o.Animation & RenderAnimation.Unlit) != 0));
+        Assert.All(shadows.Instances.ToArray(), o => Assert.NotEqual(RenderAnimation.None, o.Animation & RenderAnimation.Unlit));
         Assert.All(shadows.Batches, b => Assert.Equal(RenderPass.Shadow, b.Pass));
     }
 

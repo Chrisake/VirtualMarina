@@ -134,6 +134,17 @@ internal sealed class DesignPicker
     {
         var search = new SnapSearch(this, x, y, point, pixels);
 
+        TryLayoutPoints(ref search);
+        foreach (var drafted in draft) search.Try(drafted, draftHeight);
+        if (!search.Found) TryLayoutEdges(ref search);
+
+        snapped = search.Found;
+        return search.Result;
+    }
+
+    /// <summary>The points <see cref="Snap"/> tries first: land corners, pier ends, coast points and berth corners.</summary>
+    private void TryLayoutPoints(ref SnapSearch search)
+    {
         foreach (var land in _marina.GetLandAreas())
         {
             if (!search.MayReach(land.Height, Bounds(land))) continue;
@@ -152,21 +163,18 @@ internal sealed class DesignPicker
         }
 
         foreach (var berth in _marina.GetBerths()) TryBerthCorners(ref search, berth);
-        foreach (var drafted in draft) search.Try(drafted, draftHeight);
+    }
 
-        if (!search.Found)
+    /// <summary>What <see cref="Snap"/> falls back on when no point is near: anywhere along a land edge or the coast.</summary>
+    private void TryLayoutEdges(ref SnapSearch search)
+    {
+        foreach (var land in _marina.GetLandAreas())
         {
-            foreach (var land in _marina.GetLandAreas())
-            {
-                if (!search.MayReach(land.Height, Bounds(land))) continue;
-                TryEdges(ref search, land.Points, land.Height, closed: true);
-            }
-
-            if (_marina.Shoreline is { } shore) TryEdges(ref search, shore.Points, shore.Height, closed: false);
+            if (!search.MayReach(land.Height, Bounds(land))) continue;
+            TryEdges(ref search, land.Points, land.Height, closed: true);
         }
 
-        snapped = search.Found;
-        return search.Result;
+        if (_marina.Shoreline is { } shore) TryEdges(ref search, shore.Points, shore.Height, closed: false);
     }
 
     /// <summary>

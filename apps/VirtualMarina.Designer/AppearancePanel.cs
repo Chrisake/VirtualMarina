@@ -117,13 +117,13 @@ internal sealed class AppearancePanel : SidePanel
     private Panel BuildWaterCard()
     {
         var card = Theme.Card(Strings.CardWater, out var table);
-        Percent(table, Strings.WaveHeight, 0, 60, () => Water.WaveAmplitude * 100f, v => Water.WaveAmplitude = v / 100f, Defaults.Water.WaveAmplitude * 100f, v => Meters(v / 100f));
-        Percent(table, Strings.WaveLength, 20, 300, () => Water.WaveFrequency * 100f, v => Water.WaveFrequency = v / 100f, Defaults.Water.WaveFrequency * 100f, v => Times(v / 100f));
-        Percent(table, Strings.WaveSpeed, 0, 300, () => Water.WaveSpeed * 100f, v => Water.WaveSpeed = v / 100f, Defaults.Water.WaveSpeed * 100f, v => v == 0 ? Strings.ValueStill : Times(v / 100f));
-        Percent(table, Strings.Reflections, 0, 100, () => Water.SkyReflection * 100f, v => Water.SkyReflection = v / 100f, Defaults.Water.SkyReflection * 100f, Percentage);
-        Percent(table, Strings.Ripples, 0, 200, () => Water.Ripples * 100f, v => Water.Ripples = v / 100f, Defaults.Water.Ripples * 100f, Percentage);
-        Percent(table, Strings.SunGlints, 0, 200, () => Water.SunGlints * 100f, v => Water.SunGlints = v / 100f, Defaults.Water.SunGlints * 100f, Percentage);
-        Percent(table, Strings.WaterArea, 800, 12000, () => Water.Size, v => Water.Size = v, Defaults.Water.Size, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.WaterAreaTip);
+        Percent(table, Strings.WaveHeight, (0, 60, Defaults.Water.WaveAmplitude * 100f), () => Water.WaveAmplitude * 100f, v => Water.WaveAmplitude = v / 100f, v => Meters(v / 100f));
+        Percent(table, Strings.WaveLength, (20, 300, Defaults.Water.WaveFrequency * 100f), () => Water.WaveFrequency * 100f, v => Water.WaveFrequency = v / 100f, v => Times(v / 100f));
+        Percent(table, Strings.WaveSpeed, (0, 300, Defaults.Water.WaveSpeed * 100f), () => Water.WaveSpeed * 100f, v => Water.WaveSpeed = v / 100f, v => v == 0 ? Strings.ValueStill : Times(v / 100f));
+        Percent(table, Strings.Reflections, (0, 100, Defaults.Water.SkyReflection * 100f), () => Water.SkyReflection * 100f, v => Water.SkyReflection = v / 100f, Percentage);
+        Percent(table, Strings.Ripples, (0, 200, Defaults.Water.Ripples * 100f), () => Water.Ripples * 100f, v => Water.Ripples = v / 100f, Percentage);
+        Percent(table, Strings.SunGlints, (0, 200, Defaults.Water.SunGlints * 100f), () => Water.SunGlints * 100f, v => Water.SunGlints = v / 100f, Percentage);
+        Percent(table, Strings.WaterArea, (800, 12000, Defaults.Water.Size), () => Water.Size, v => Water.Size = v, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.WaterAreaTip);
         Color(table, Strings.DeepWater, () => Vector(Water.DeepColor), c => Water.DeepColor = Value(c), Vector(Defaults.Water.DeepColor));
         Color(table, Strings.ShallowWater, () => Vector(Water.ShallowColor), c => Water.ShallowColor = Value(c), Vector(Defaults.Water.ShallowColor));
         return card;
@@ -132,7 +132,7 @@ internal sealed class AppearancePanel : SidePanel
     private Panel BuildBoatsCard()
     {
         var card = Theme.Card(Strings.CardBoats, out var table);
-        Percent(table, Strings.BoatMovement, 0, 300, () => Water.BoatMotion * 100f, v => Water.BoatMotion = v / 100f, Defaults.Water.BoatMotion * 100f, v => v == 0 ? Strings.ValueStill : Percentage(v));
+        Percent(table, Strings.BoatMovement, (0, 300, Defaults.Water.BoatMotion * 100f), () => Water.BoatMotion * 100f, v => Water.BoatMotion = v / 100f, v => v == 0 ? Strings.ValueStill : Percentage(v));
         Theme.FullRow(table, Theme.Hint(Strings.BoatMovementHint));
         return card;
     }
@@ -142,13 +142,13 @@ internal sealed class AppearancePanel : SidePanel
         var card = Theme.Card(Strings.CardLight, out var table);
 
         // Read from the sun itself rather than from numbers kept beside it, so an opened design moves the sliders.
-        Percent(table, Strings.SunDirection, 0, 359, () => SunAzimuth,
-            v => Lighting.SetSunAngles(v, SunElevation), 0f, v => Strings.Format(Strings.ValueDegreesFromNorth, v));
+        Percent(table, Strings.SunDirection, (0, 359, 0f), () => SunAzimuth,
+            v => Lighting.SetSunAngles(v, SunElevation), v => Strings.Format(Strings.ValueDegreesFromNorth, v));
 
-        Percent(table, Strings.SunHeight, 5, 89, () => SunElevation,
-            v => Lighting.SetSunAngles(SunAzimuth, v), 40f, v => Strings.Format(Strings.ValueDegreesAboveHorizon, v));
+        Percent(table, Strings.SunHeight, (5, 89, 40f), () => SunElevation,
+            v => Lighting.SetSunAngles(SunAzimuth, v), v => Strings.Format(Strings.ValueDegreesAboveHorizon, v));
 
-        Percent(table, Strings.Haze, 0, 100, () => Lighting.FogDensity * 20000f, v => Lighting.FogDensity = v / 20000f, Defaults.Lighting.FogDensity * 20000f, Percentage);
+        Percent(table, Strings.Haze, (0, 100, Defaults.Lighting.FogDensity * 20000f), () => Lighting.FogDensity * 20000f, v => Lighting.FogDensity = v / 20000f, Percentage);
         Color(table, Strings.Sky, () => Vector(Lighting.SkyColor), c => Lighting.SkyColor = Value(c), Vector(Defaults.Lighting.SkyColor));
         Color(table, Strings.Horizon, () => Vector(Lighting.FogColor), c => Lighting.FogColor = Value(c), Vector(Defaults.Lighting.FogColor));
         return card;
@@ -161,7 +161,7 @@ internal sealed class AppearancePanel : SidePanel
         Color(table, Strings.ColorOccupied, () => Status.OccupiedColor, c => Status.OccupiedColor = c, Defaults.Status.OccupiedColor);
         Color(table, Strings.ColorReserved, () => Status.ReservedColor, c => Status.ReservedColor = c, Defaults.Status.ReservedColor);
         Color(table, Strings.ColorOwnerAway, () => Status.TemporarilyFreeColor, c => Status.TemporarilyFreeColor = c, Defaults.Status.TemporarilyFreeColor);
-        Percent(table, Strings.PadStrength, 0, 100, () => Status.PadOpacity * 100f, v => Status.PadOpacity = v / 100f, Defaults.Status.PadOpacity * 100f, Percentage);
+        Percent(table, Strings.PadStrength, (0, 100, Defaults.Status.PadOpacity * 100f), () => Status.PadOpacity * 100f, v => Status.PadOpacity = v / 100f, Percentage);
 
         Check(table, Strings.ShowStatusBuoys, () => Status.ShowStatusMarkers, v => Status.ShowStatusMarkers = v);
         return card;
@@ -175,7 +175,7 @@ internal sealed class AppearancePanel : SidePanel
         Color(table, Strings.LandGrass, () => Land.GrassColor, c => Land.GrassColor = c, Defaults.Land.GrassColor);
         Color(table, Strings.LandGrassBank, () => Land.GrassBankColor, c => Land.GrassBankColor = c, Defaults.Land.GrassBankColor);
         Color(table, Strings.LandRock, () => Land.RockColor, c => Land.RockColor = c, Defaults.Land.RockColor);
-        Percent(table, Strings.LandRockVariation, 0, 50, () => Land.RockColorVariation * 100f, v => Land.RockColorVariation = v / 100f, Defaults.Land.RockColorVariation * 100f, Percentage, Strings.LandRockVariationTip);
+        Percent(table, Strings.LandRockVariation, (0, 50, Defaults.Land.RockColorVariation * 100f), () => Land.RockColorVariation * 100f, v => Land.RockColorVariation = v / 100f, Percentage, Strings.LandRockVariationTip);
 
         Theme.Section(table, Strings.CardTrees);
         Color(table, Strings.LandFoliage, () => Land.FoliageColor, c => Land.FoliageColor = c, Defaults.Land.FoliageColor);
@@ -197,8 +197,8 @@ internal sealed class AppearancePanel : SidePanel
 
         Check(table, Strings.ShadowsShow, () => Shadows.IsEnabled, v => Shadows.IsEnabled = v, Strings.ShadowsShowTip);
 
-        Percent(table, Strings.ShadowStrength, 0, 100, () => Shadows.Strength * 100f,
-            v => Shadows.Strength = v / 100f, Defaults.Shadows.Strength * 100f, Percentage, Strings.ShadowStrengthTip);
+        Percent(table, Strings.ShadowStrength, (0, 100, Defaults.Shadows.Strength * 100f), () => Shadows.Strength * 100f,
+            v => Shadows.Strength = v / 100f, Percentage, Strings.ShadowStrengthTip);
         Theme.FullRow(table, Theme.Hint(Strings.ShadowHint));
         return card;
     }
@@ -214,20 +214,20 @@ internal sealed class AppearancePanel : SidePanel
 
         Check(table, Strings.TrafficShow, () => Traffic.IsEnabled, v => SetTraffic(t => t with { IsEnabled = v }), Strings.TrafficShowTip);
 
-        Percent(table, Strings.TrafficClearance, 50, 1200, () => Traffic.Clearance,
-            v => SetTraffic(t => t with { Clearance = v }), MarineTraffic.None.Clearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip);
-        Percent(table, Strings.TrafficEdgeClearance, 50, 4000, () => Traffic.EdgeClearance,
-            v => SetTraffic(t => t with { EdgeClearance = v }), MarineTraffic.None.EdgeClearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficEdgeClearanceTip);
-        Percent(table, Strings.TrafficLanes, 1, MarineTraffic.LaneLimit, () => Traffic.LaneCount,
-            v => SetTraffic(t => t with { LaneCount = (int)v }), MarineTraffic.None.LaneCount, v => Strings.Format(Strings.ValueLanes, v), Strings.TrafficLanesTip);
-        Percent(table, Strings.TrafficLaneSpacing, 40, 600, () => Traffic.LaneSpacing,
-            v => SetTraffic(t => t with { LaneSpacing = v }), MarineTraffic.None.LaneSpacing, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficLaneSpacingTip);
-        Percent(table, Strings.TrafficMaximum, 1, MarineTraffic.VesselLimit, () => Traffic.MaximumVessels,
-            v => SetTraffic(t => t with { MaximumVessels = (int)v }), MarineTraffic.None.MaximumVessels, v => Strings.Format(Strings.ValueVessels, v), Strings.TrafficMaximumTip);
-        Percent(table, Strings.TrafficSpeed, 10, 400, () => Traffic.SpeedPercent,
-            v => SetTraffic(t => t with { SpeedPercent = v }), MarineTraffic.None.SpeedPercent, Percentage, Strings.TrafficSpeedTip);
-        Percent(table, Strings.TrafficSpawnDelay, 1, 180, () => Traffic.SpawnDelaySeconds,
-            v => SetTraffic(t => t with { SpawnDelaySeconds = v }), MarineTraffic.None.SpawnDelaySeconds, v => Strings.Format(Strings.ValueSeconds, v), Strings.TrafficSpawnDelayTip);
+        Percent(table, Strings.TrafficClearance, (50, 1200, MarineTraffic.None.Clearance), () => Traffic.Clearance,
+            v => SetTraffic(t => t with { Clearance = v }), v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip);
+        Percent(table, Strings.TrafficEdgeClearance, (50, 4000, MarineTraffic.None.EdgeClearance), () => Traffic.EdgeClearance,
+            v => SetTraffic(t => t with { EdgeClearance = v }), v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficEdgeClearanceTip);
+        Percent(table, Strings.TrafficLanes, (1, MarineTraffic.LaneLimit, MarineTraffic.None.LaneCount), () => Traffic.LaneCount,
+            v => SetTraffic(t => t with { LaneCount = (int)v }), v => Strings.Format(Strings.ValueLanes, v), Strings.TrafficLanesTip);
+        Percent(table, Strings.TrafficLaneSpacing, (40, 600, MarineTraffic.None.LaneSpacing), () => Traffic.LaneSpacing,
+            v => SetTraffic(t => t with { LaneSpacing = v }), v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficLaneSpacingTip);
+        Percent(table, Strings.TrafficMaximum, (1, MarineTraffic.VesselLimit, MarineTraffic.None.MaximumVessels), () => Traffic.MaximumVessels,
+            v => SetTraffic(t => t with { MaximumVessels = (int)v }), v => Strings.Format(Strings.ValueVessels, v), Strings.TrafficMaximumTip);
+        Percent(table, Strings.TrafficSpeed, (10, 400, MarineTraffic.None.SpeedPercent), () => Traffic.SpeedPercent,
+            v => SetTraffic(t => t with { SpeedPercent = v }), Percentage, Strings.TrafficSpeedTip);
+        Percent(table, Strings.TrafficSpawnDelay, (1, 180, MarineTraffic.None.SpawnDelaySeconds), () => Traffic.SpawnDelaySeconds,
+            v => SetTraffic(t => t with { SpawnDelaySeconds = v }), v => Strings.Format(Strings.ValueSeconds, v), Strings.TrafficSpawnDelayTip);
 
         // Drawing the lanes is a designer aid, not part of the design, so it does not count as a change to save.
         Check(table, Strings.TrafficShowLanes, () => _marina.ShowTrafficLanes, v => Changed(() => _marina.ShowTrafficLanes = v, saved: false), Strings.TrafficShowLanesTip);
@@ -421,9 +421,10 @@ internal sealed class AppearancePanel : SidePanel
 
     // ---- Row helpers --------------------------------------------------------------------------
 
-    /// <summary>A slider row that can be put back to its default on its own.</summary>
-    private void Percent(TableLayoutPanel table, string label, int min, int max, Func<float> read, Action<float> write, float fallback, Func<int, string> format, string? tooltip = null)
+    /// <summary>A slider row over <paramref name="range"/>, which can be put back to the range's default on its own.</summary>
+    private void Percent(TableLayoutPanel table, string label, (int Min, int Max, float Default) range, Func<float> read, Action<float> write, Func<int, string> format, string? tooltip = null)
     {
+        var (min, max, fallback) = range;
         var bar = new TrackBar { Minimum = min, Maximum = max, Value = Clamp(read(), min, max) };
         bar.ValueChanged += (_, _) => Changed(() => write(bar.Value));
         _refresh.Add(() => bar.Value = Clamp(read(), min, max));

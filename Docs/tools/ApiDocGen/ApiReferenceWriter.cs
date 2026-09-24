@@ -125,7 +125,17 @@ internal sealed class ApiReferenceWriter(XmlDocumentation docs)
     private List<(string Signature, string Summary)> MemberRows(Type type)
     {
         var rows = new List<(string Signature, string Summary)>();
+        rows.AddRange(ConstructorRows(type));
+        rows.AddRange(FieldRows(type));
+        rows.AddRange(PropertyRows(type));
+        rows.AddRange(type.GetEvents(DocIds.AllDeclared).Where(e => IsVisible(e.AddMethod))
+            .Select(ev => ($"event {TypeName(ev.EventHandlerType!, _nullability.Create(ev))} {ev.Name}", docs.For(ev).Summary)));
+        rows.AddRange(MethodRows(type));
+        return rows;
+    }
 
+    private IEnumerable<(string Signature, string Summary)> ConstructorRows(Type type)
+    {
         foreach (var ctor in type.GetConstructors(DocIds.AllDeclared).Where(IsVisible).Where(c => !IsRecordCopyConstructor(c)))
         {
             var summary = docs.For(ctor).Summary;
@@ -136,16 +146,22 @@ internal sealed class ApiReferenceWriter(XmlDocumentation docs)
                     : IsRecord(type) ? "Positional constructor; the parameters are described on the properties below." : "";
             }
 
-            rows.Add(($"{Access(ctor)}{DisplayTypeName(type).Split('<')[0]}({Parameters(ctor)})", summary));
+            yield return ($"{Access(ctor)}{DisplayTypeName(type).Split('<')[0]}({Parameters(ctor)})", summary);
         }
+    }
 
+    private IEnumerable<(string Signature, string Summary)> FieldRows(Type type)
+    {
         foreach (var field in type.GetFields(DocIds.AllDeclared).Where(f => f.IsPublic || f.IsFamily).Where(f => !f.IsSpecialName))
         {
             var modifier = field.IsLiteral ? "const " : field.IsStatic ? "static readonly " : "";
             var constant = field.IsLiteral ? $" = {FormatValue(field.GetRawConstantValue())}" : "";
-            rows.Add(($"{modifier}{TypeName(field.FieldType, _nullability.Create(field))} {field.Name}{constant}", docs.For(field).Summary));
+            yield return ($"{modifier}{TypeName(field.FieldType, _nullability.Create(field))} {field.Name}{constant}", docs.For(field).Summary);
         }
+    }
 
+    private IEnumerable<(string Signature, string Summary)> PropertyRows(Type type)
+    {
         foreach (var property in type.GetProperties(DocIds.AllDeclared).Where(p => IsVisible(p.GetMethod) || IsVisible(p.SetMethod)))
         {
             if (property.Name == "EqualityContract") continue;
@@ -157,27 +173,33 @@ internal sealed class ApiReferenceWriter(XmlDocumentation docs)
             var name = indexParameters.Length > 0
                 ? $"this[{string.Join(", ", indexParameters.Select(p => $"{TypeName(p.ParameterType, _nullability.Create(p))} {p.Name}"))}]"
                 : property.Name;
-            rows.Add(($"{isStatic}{TypeName(property.PropertyType, _nullability.Create(property))} {name} {{ {string.Join(" ", accessors)} }}", docs.For(property).Summary));
+            yield return ($"{isStatic}{TypeName(property.PropertyType, _nullability.Create(property))} {name} {{ {string.Join(" ", accessors)} }}", docs.For(property).Summary);
         }
+    }
 
-        foreach (var ev in type.GetEvents(DocIds.AllDeclared).Where(e => IsVisible(e.AddMethod)))
-        {
-            rows.Add(($"event {TypeName(ev.EventHandlerType!, _nullability.Create(ev))} {ev.Name}", docs.For(ev).Summary));
-        }
-
+    private IEnumerable<(string Signature, string Summary)> MethodRows(Type type)
+    {
         var isComponent = typeof(Microsoft.AspNetCore.Components.ComponentBase).IsAssignableFrom(type);
-        foreach (var method in type.GetMethods(DocIds.AllDeclared).Where(IsVisible).Where(m => !m.IsSpecialName).OrderBy(m => m.Name, StringComparer.Ordinal))
-        {
-            if (IsRecord(type) && RecordMethods.Contains(method.Name)) continue;
-            if (isComponent && method.Name == "BuildRenderTree") continue; // Razor-generated
-            if (method.Name is "Equals" or "GetHashCode" && method.DeclaringType!.IsValueType) continue;
-            var generic = method.IsGenericMethodDefinition ? "<" + string.Join(", ", method.GetGenericArguments().Select(a => a.Name)) + ">" : "";
-            var modifiers = (method.IsStatic ? "static " : "") + (method.IsFamily ? "protected " : "") + (IsOverride(method) ? "override " : "");
-            var returnType = TypeName(method.ReturnType, _nullability.Create(method.ReturnParameter));
-            rows.Add(($"{modifiers}{returnType} {method.Name}{generic}({Parameters(method)})", docs.For(method).Summary));
-        }
+        var isRecord = IsRecord(type);
+        return type.GetMethods(DocIds.AllDeclared)
+            .Where(IsVisible)
+            .Where(m => !m.IsSpecialName && !IsCompilerMade(m, isRecord, isComponent))
+            .OrderBy(m => m.Name, StringComparer.Ordinal)
+            .Select(m => (MethodSignature(m), docs.For(m).Summary));
+    }
 
-        return rows;
+    /// <summary>A method the compiler writes rather than the author: a record's members, Razor's render tree, a struct's equality.</summary>
+    private static bool IsCompilerMade(MethodInfo method, bool isRecord, bool isComponent) =>
+        (isRecord && RecordMethods.Contains(method.Name))
+        || (isComponent && method.Name == "BuildRenderTree")
+        || (method.Name is "Equals" or "GetHashCode" && method.DeclaringType!.IsValueType);
+
+    private string MethodSignature(MethodInfo method)
+    {
+        var generic = method.IsGenericMethodDefinition ? "<" + string.Join(", ", method.GetGenericArguments().Select(a => a.Name)) + ">" : "";
+        var modifiers = (method.IsStatic ? "static " : "") + (method.IsFamily ? "protected " : "") + (IsOverride(method) ? "override " : "");
+        var returnType = TypeName(method.ReturnType, _nullability.Create(method.ReturnParameter));
+        return $"{modifiers}{returnType} {method.Name}{generic}({Parameters(method)})";
     }
 
     private string Parameters(MethodBase method) => string.Join(", ", method.GetParameters().Select(p =>

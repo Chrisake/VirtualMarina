@@ -63,6 +63,7 @@ What the fixes changed:
 | `CA1508` dead condition | 7 | The dataflow cannot follow a variable assigned inside an event-handler lambda |
 | `S1244` float equality | 6 | Every hit is a "did this value change?" guard, where a tolerance would drop real changes |
 | `S4136`, `S2365`, `S3267`, `CA1819`, `CA1700`, `CA1710`, `CA1720`, `CA1721` | 21 | Public naming this domain owns, arrays handed to the GPU, and LINQ that would allocate in per-frame loops |
+| `S107` too many parameters, in `MarinaLayoutBuilder.cs` only | 5 | The builder's `AddPier`, `AddBerths`, `AlongPier` and `DividersAlongPier` are the published fluent API: a few required values, then optional ones named at the call site. An options object would be a breaking change and a longer call. Everywhere else the limit holds |
 
 `CA1812` was the last finding standing, and it was right: `AppearanceForm` was a whole dialog
 nothing opened, superseded by `AppearancePanel`. It is deleted rather than suppressed.
@@ -93,6 +94,16 @@ Already done. `TreatWarningsAsErrors` and `CodeAnalysisTreatWarningsAsErrors` ar
 
 To check the wiring is live, add an unused private field to any file and build: it should come back
 as `CS0414`, `CA1823` and `S1144`, all three as errors.
+
+Four rules SonarQube Cloud's profile turns on are off by default in the SonarAnalyzer package, so for a
+while they only showed up after a push: `S3776` cognitive complexity (at most 15 per method), `S107`
+parameter count (at most 7), `S1192` a string literal repeated instead of named, and `S2589` a condition
+that is always true. `.editorconfig` names them, so they fail the local build like everything else.
+
+Two kinds of finding still only appear on the server. `.razor` files are not reached by `.editorconfig`
+(see above), so a Razor component's methods are held to the same limits by review rather than by the
+build. And the browser JavaScript is analysed by SonarJS, which ESLint does not run; its cognitive
+complexity can be checked before a push with `eslint-plugin-sonarjs`.
 
 ## Coverage
 

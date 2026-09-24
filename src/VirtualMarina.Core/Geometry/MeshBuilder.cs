@@ -41,45 +41,17 @@ public sealed class MeshBuilder
     /// </summary>
     internal void AddFace(IReadOnlyList<Vector3> corners, Vector3 color, Vector3 interior)
     {
-        // Corners that coincide (the apex of a cone) add nothing.
-        Span<Vector3> points = stackalloc Vector3[corners.Count];
-        var n = 0;
-        foreach (var corner in corners)
-        {
-            if (n > 0 && Vector3.DistanceSquared(points[n - 1], corner) < 1e-18f) continue;
-            points[n++] = corner;
-        }
-
-        while (n > 1 && Vector3.DistanceSquared(points[n - 1], points[0]) < 1e-18f) n--;
+        Span<Vector3> buffer = stackalloc Vector3[corners.Count];
+        var n = DistinctCorners(corners, buffer);
         if (n < 3) return;
-        points = points[..n];
+        ReadOnlySpan<Vector3> points = buffer[..n];
 
-        // Newell's method: the normal of the whole polygon, however its corners are spaced.
-        var normal = Vector3.Zero;
-        var centroid = Vector3.Zero;
-        for (var i = 0; i < n; i++)
-        {
-            var p = points[i];
-            var q = points[(i + 1) % n];
-            normal += new Vector3((p.Y - q.Y) * (p.Z + q.Z), (p.Z - q.Z) * (p.X + q.X), (p.X - q.X) * (p.Y + q.Y));
-            centroid += p;
-        }
-
-        centroid /= n;
+        var (normal, centroid) = NewellNormal(points);
         var length = normal.Length();
         if (length < 1e-9f) return;
         normal /= length;
 
-        // Flat means every triangle of the fan faces the same way as the whole; otherwise fall back to separate triangles.
-        var flat = true;
-        for (var i = 1; i < n - 1 && flat; i++)
-        {
-            var edge = Vector3.Cross(points[i] - points[0], points[i + 1] - points[0]);
-            var edgeLength = edge.Length();
-            flat = edgeLength < 1e-9f || Vector3.Dot(edge / edgeLength, normal) > 0.9999f;
-        }
-
-        if (!flat)
+        if (!IsFlat(points, normal))
         {
             for (var i = 1; i < n - 1; i++) AddTriangleFacingAway(points[0], points[i], points[i + 1], color, interior);
             return;
@@ -98,6 +70,52 @@ public sealed class MeshBuilder
             _indices.Add(start + (uint)(reversed ? i + 1 : i));
             _indices.Add(start + (uint)(reversed ? i : i + 1));
         }
+    }
+
+    /// <summary>
+    /// Copies the corners into <paramref name="points"/>, leaving out any that coincide with the one before (the apex of
+    /// a cone) or, at the end, with the first. Returns how many were kept.
+    /// </summary>
+    private static int DistinctCorners(IReadOnlyList<Vector3> corners, Span<Vector3> points)
+    {
+        var n = 0;
+        foreach (var corner in corners)
+        {
+            if (n > 0 && Vector3.DistanceSquared(points[n - 1], corner) < 1e-18f) continue;
+            points[n++] = corner;
+        }
+
+        while (n > 1 && Vector3.DistanceSquared(points[n - 1], points[0]) < 1e-18f) n--;
+        return n;
+    }
+
+    /// <summary>Newell's method: the (unnormalized) normal of the whole polygon, however its corners are spaced, and its centroid.</summary>
+    private static (Vector3 Normal, Vector3 Centroid) NewellNormal(ReadOnlySpan<Vector3> points)
+    {
+        var normal = Vector3.Zero;
+        var centroid = Vector3.Zero;
+        for (var i = 0; i < points.Length; i++)
+        {
+            var p = points[i];
+            var q = points[(i + 1) % points.Length];
+            normal += new Vector3((p.Y - q.Y) * (p.Z + q.Z), (p.Z - q.Z) * (p.X + q.X), (p.X - q.X) * (p.Y + q.Y));
+            centroid += p;
+        }
+
+        return (normal, centroid / points.Length);
+    }
+
+    /// <summary>Flat means every triangle of the fan faces the same way as the whole polygon.</summary>
+    private static bool IsFlat(ReadOnlySpan<Vector3> points, Vector3 normal)
+    {
+        for (var i = 1; i < points.Length - 1; i++)
+        {
+            var edge = Vector3.Cross(points[i] - points[0], points[i + 1] - points[0]);
+            var edgeLength = edge.Length();
+            if (edgeLength >= 1e-9f && Vector3.Dot(edge / edgeLength, normal) <= 0.9999f) return false;
+        }
+
+        return true;
     }
 
     /// <summary>Adds a triangle wound so its normal points away from <paramref name="interior"/>.</summary>

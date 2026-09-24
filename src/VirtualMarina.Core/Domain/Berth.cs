@@ -199,15 +199,7 @@ public sealed record Berth
     internal IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Id)) yield return Strings.ErrorBerthIdEmpty;
-        if (LandAreaId is not null)
-        {
-            if (string.IsNullOrWhiteSpace(LandAreaId)) yield return Strings.Format(Strings.ErrorBerthEmptyLandAreaId, Id);
-            if (PierId is not null) yield return Strings.Format(Strings.ErrorBerthPierAndLand, Id);
-        }
-        else if (string.IsNullOrWhiteSpace(PierId))
-        {
-            yield return Strings.Format(Strings.ErrorBerthNoPlace, Id);
-        }
+        foreach (var error in ValidatePlace()) yield return error;
 
         if (!(Length > 0f && float.IsFinite(Length))) yield return Strings.Format(Strings.ErrorBerthLength, Id);
         if (!(Width > 0f && float.IsFinite(Width))) yield return Strings.Format(Strings.ErrorBerthWidth, Id);
@@ -218,6 +210,20 @@ public sealed record Berth
         if (Boat is not null)
         {
             foreach (var error in Boat.Validate()) yield return Strings.Format(Strings.ErrorBerthBoat, Id, error);
+        }
+    }
+
+    /// <summary>A berth belongs to exactly one place: a pier, or a land area.</summary>
+    private IEnumerable<string> ValidatePlace()
+    {
+        if (LandAreaId is not null)
+        {
+            if (string.IsNullOrWhiteSpace(LandAreaId)) yield return Strings.Format(Strings.ErrorBerthEmptyLandAreaId, Id);
+            if (PierId is not null) yield return Strings.Format(Strings.ErrorBerthPierAndLand, Id);
+        }
+        else if (string.IsNullOrWhiteSpace(PierId))
+        {
+            yield return Strings.Format(Strings.ErrorBerthNoPlace, Id);
         }
     }
 }

@@ -163,32 +163,38 @@ internal sealed class DesignHistory
         {
             using (_marina.BeginUpdate())
             {
-                for (; done < entry.Commands.Count; done++)
-                {
-                    var command = entry.Commands[undo ? entry.Commands.Count - 1 - done : done];
-                    if (undo) command.Undo(_marina);
-                    else command.Redo(_marina);
-                }
+                for (; done < entry.Commands.Count; done++) Run(CommandAt(entry, done, undo), undo);
             }
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or KeyNotFoundException or MarinaLayoutException)
         {
-            using (_marina.BeginUpdate())
-            {
-                for (var i = done - 1; i >= 0; i--)
-                {
-                    var command = entry.Commands[undo ? entry.Commands.Count - 1 - i : i];
-                    TryRun(() =>
-                    {
-                        if (undo) command.Redo(_marina);
-                        else command.Undo(_marina);
-                    });
-                }
-            }
-
+            Unwind(entry, done, undo);
             var verb = undo ? "undone" : "redone";
             throw new MarinaLayoutException($"'{entry.Description}' could not be {verb}: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>Takes back the first <paramref name="done"/> commands of a step that failed part-way, last first.</summary>
+    private void Unwind(Entry entry, int done, bool undo)
+    {
+        using (_marina.BeginUpdate())
+        {
+            for (var i = done - 1; i >= 0; i--)
+            {
+                var command = CommandAt(entry, i, undo);
+                TryRun(() => Run(command, !undo));
+            }
+        }
+    }
+
+    /// <summary>The <paramref name="index"/>th command to run: counted from the end when undoing, from the start when redoing.</summary>
+    private static IDesignCommand CommandAt(Entry entry, int index, bool undo) =>
+        entry.Commands[undo ? entry.Commands.Count - 1 - index : index];
+
+    private void Run(IDesignCommand command, bool undo)
+    {
+        if (undo) command.Undo(_marina);
+        else command.Redo(_marina);
     }
 
     /// <summary>Takes back the commands of an action that was abandoned, newest first.</summary>

@@ -170,8 +170,7 @@ public sealed class DesignerCommand
         IReadOnlyList<KeyGesture> desktop,
         IReadOnlyList<KeyGesture>? browser = null,
         bool yieldsToTextFields = false,
-        bool repeats = false,
-        DesignTool? tool = null)
+        bool repeats = false)
     {
         Id = id;
         Name = name;
@@ -180,7 +179,6 @@ public sealed class DesignerCommand
         BrowserGestures = browser ?? desktop;
         YieldsToTextFields = yieldsToTextFields;
         Repeats = repeats;
-        Tool = tool;
     }
 
     /// <summary>Which command this is. Every tool shares <see cref="DesignerCommandId.Tool"/>; <see cref="Tool"/> tells them apart.</summary>
@@ -214,7 +212,7 @@ public sealed class DesignerCommand
     /// The tool a single-letter key picks, or null for a menu command. Tool keys only work while the 3D view has the
     /// focus, never while a field is being typed in or the focus is anywhere else.
     /// </summary>
-    public DesignTool? Tool { get; }
+    public DesignTool? Tool { get; internal init; }
 
     /// <summary>True for a tool's single-letter key, which only the 3D view listens for.</summary>
     public bool ViewOnly => Tool is not null;
@@ -347,8 +345,10 @@ public static class DesignerCommands
             "tool" + tool.ToString(),
             label,
             [new KeyGesture(key)],
-            yieldsToTextFields: true,
-            tool: tool);
+            yieldsToTextFields: true)
+        {
+            Tool = tool,
+        };
 
     private static KeyGesture[] Parse(string[] gestures) =>
         gestures.Length == 0 ? None : gestures.Select(KeyGesture.Parse).ToArray();

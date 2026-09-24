@@ -13,28 +13,28 @@
 
     <div class="vm-card">
         <h3 class="vm-card__title">@Strings.CardWater</h3>
-        @Percent(Strings.WaveHeight, 0, 60, () => Water.WaveAmplitude * 100f, v => Water.WaveAmplitude = v / 100f, Defaults.Water.WaveAmplitude * 100f, v => Meters(v / 100f))
-        @Percent(Strings.WaveLength, 20, 300, () => Water.WaveFrequency * 100f, v => Water.WaveFrequency = v / 100f, Defaults.Water.WaveFrequency * 100f, v => Times(v / 100f))
-        @Percent(Strings.WaveSpeed, 0, 300, () => Water.WaveSpeed * 100f, v => Water.WaveSpeed = v / 100f, Defaults.Water.WaveSpeed * 100f, v => v == 0 ? Strings.ValueStill : Times(v / 100f))
-        @Percent(Strings.Reflections, 0, 100, () => Water.SkyReflection * 100f, v => Water.SkyReflection = v / 100f, Defaults.Water.SkyReflection * 100f, Percentage)
-        @Percent(Strings.Ripples, 0, 200, () => Water.Ripples * 100f, v => Water.Ripples = v / 100f, Defaults.Water.Ripples * 100f, Percentage)
-        @Percent(Strings.SunGlints, 0, 200, () => Water.SunGlints * 100f, v => Water.SunGlints = v / 100f, Defaults.Water.SunGlints * 100f, Percentage)
-        @Percent(Strings.WaterArea, 800, 12000, () => Water.Size, v => Water.Size = v, Defaults.Water.Size, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.WaterAreaTip)
+        @Percent(Strings.WaveHeight, (0, 60, Defaults.Water.WaveAmplitude * 100f), () => Water.WaveAmplitude * 100f, v => Water.WaveAmplitude = v / 100f, v => Meters(v / 100f))
+        @Percent(Strings.WaveLength, (20, 300, Defaults.Water.WaveFrequency * 100f), () => Water.WaveFrequency * 100f, v => Water.WaveFrequency = v / 100f, v => Times(v / 100f))
+        @Percent(Strings.WaveSpeed, (0, 300, Defaults.Water.WaveSpeed * 100f), () => Water.WaveSpeed * 100f, v => Water.WaveSpeed = v / 100f, v => v == 0 ? Strings.ValueStill : Times(v / 100f))
+        @Percent(Strings.Reflections, (0, 100, Defaults.Water.SkyReflection * 100f), () => Water.SkyReflection * 100f, v => Water.SkyReflection = v / 100f, Percentage)
+        @Percent(Strings.Ripples, (0, 200, Defaults.Water.Ripples * 100f), () => Water.Ripples * 100f, v => Water.Ripples = v / 100f, Percentage)
+        @Percent(Strings.SunGlints, (0, 200, Defaults.Water.SunGlints * 100f), () => Water.SunGlints * 100f, v => Water.SunGlints = v / 100f, Percentage)
+        @Percent(Strings.WaterArea, (800, 12000, Defaults.Water.Size), () => Water.Size, v => Water.Size = v, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.WaterAreaTip)
         @Color(Strings.DeepWater, () => V(Water.DeepColor), c => Water.DeepColor = V3(c), V(Defaults.Water.DeepColor))
         @Color(Strings.ShallowWater, () => V(Water.ShallowColor), c => Water.ShallowColor = V3(c), V(Defaults.Water.ShallowColor))
     </div>
 
     <div class="vm-card">
         <h3 class="vm-card__title">@Strings.CardBoats</h3>
-        @Percent(Strings.BoatMovement, 0, 300, () => Water.BoatMotion * 100f, v => Water.BoatMotion = v / 100f, Defaults.Water.BoatMotion * 100f, v => v == 0 ? Strings.ValueStill : Percentage(v))
+        @Percent(Strings.BoatMovement, (0, 300, Defaults.Water.BoatMotion * 100f), () => Water.BoatMotion * 100f, v => Water.BoatMotion = v / 100f, v => v == 0 ? Strings.ValueStill : Percentage(v))
         <div class="vm-hint">@Strings.BoatMovementHint</div>
     </div>
 
     <div class="vm-card">
         <h3 class="vm-card__title">@Strings.CardLight</h3>
-        @Percent(Strings.SunDirection, 0, 359, () => SunAzimuth, v => Lighting.SetSunAngles(v, SunElevation), 0f, v => Strings.Format(Strings.ValueDegreesFromNorth, v))
-        @Percent(Strings.SunHeight, 5, 89, () => SunElevation, v => Lighting.SetSunAngles(SunAzimuth, v), 40f, v => Strings.Format(Strings.ValueDegreesAboveHorizon, v))
-        @Percent(Strings.Haze, 0, 100, () => Lighting.FogDensity * 20000f, v => Lighting.FogDensity = v / 20000f, Defaults.Lighting.FogDensity * 20000f, Percentage)
+        @Percent(Strings.SunDirection, (0, 359, 0f), () => SunAzimuth, v => Lighting.SetSunAngles(v, SunElevation), v => Strings.Format(Strings.ValueDegreesFromNorth, v))
+        @Percent(Strings.SunHeight, (5, 89, 40f), () => SunElevation, v => Lighting.SetSunAngles(SunAzimuth, v), v => Strings.Format(Strings.ValueDegreesAboveHorizon, v))
+        @Percent(Strings.Haze, (0, 100, Defaults.Lighting.FogDensity * 20000f), () => Lighting.FogDensity * 20000f, v => Lighting.FogDensity = v / 20000f, Percentage)
         @Color(Strings.Sky, () => V(Lighting.SkyColor), c => Lighting.SkyColor = V3(c), V(Defaults.Lighting.SkyColor))
         @Color(Strings.Horizon, () => V(Lighting.FogColor), c => Lighting.FogColor = V3(c), V(Defaults.Lighting.FogColor))
     </div>
@@ -45,7 +45,7 @@
         @Color(Strings.ColorOccupied, () => Status.OccupiedColor, c => Status.OccupiedColor = c, Defaults.Status.OccupiedColor)
         @Color(Strings.ColorReserved, () => Status.ReservedColor, c => Status.ReservedColor = c, Defaults.Status.ReservedColor)
         @Color(Strings.ColorOwnerAway, () => Status.TemporarilyFreeColor, c => Status.TemporarilyFreeColor = c, Defaults.Status.TemporarilyFreeColor)
-        @Percent(Strings.PadStrength, 0, 100, () => Status.PadOpacity * 100f, v => Status.PadOpacity = v / 100f, Defaults.Status.PadOpacity * 100f, Percentage)
+        @Percent(Strings.PadStrength, (0, 100, Defaults.Status.PadOpacity * 100f), () => Status.PadOpacity * 100f, v => Status.PadOpacity = v / 100f, Percentage)
         @Check(Strings.ShowStatusBuoys, () => Status.ShowStatusMarkers, v => Status.ShowStatusMarkers = v)
     </div>
 
@@ -56,7 +56,7 @@
         @Color(Strings.LandGrass, () => Land.GrassColor, c => Land.GrassColor = c, Defaults.Land.GrassColor)
         @Color(Strings.LandGrassBank, () => Land.GrassBankColor, c => Land.GrassBankColor = c, Defaults.Land.GrassBankColor)
         @Color(Strings.LandRock, () => Land.RockColor, c => Land.RockColor = c, Defaults.Land.RockColor)
-        @Percent(Strings.LandRockVariation, 0, 50, () => Land.RockColorVariation * 100f, v => Land.RockColorVariation = v / 100f, Defaults.Land.RockColorVariation * 100f, Percentage, Strings.LandRockVariationTip)
+        @Percent(Strings.LandRockVariation, (0, 50, Defaults.Land.RockColorVariation * 100f), () => Land.RockColorVariation * 100f, v => Land.RockColorVariation = v / 100f, Percentage, Strings.LandRockVariationTip)
         <h4 class="vm-section">@Strings.CardTrees</h4>
         @Color(Strings.LandFoliage, () => Land.FoliageColor, c => Land.FoliageColor = c, Defaults.Land.FoliageColor)
         @Color(Strings.LandConifer, () => Land.ConiferColor, c => Land.ConiferColor = c, Defaults.Land.ConiferColor)
@@ -71,20 +71,20 @@
     <div class="vm-card">
         <h3 class="vm-card__title">@Strings.CardShadows</h3>
         @Check(Strings.ShadowsShow, () => Shadows.IsEnabled, v => Shadows.IsEnabled = v, Strings.ShadowsShowTip)
-        @Percent(Strings.ShadowStrength, 0, 100, () => Shadows.Strength * 100f, v => Shadows.Strength = v / 100f, Defaults.Shadows.Strength * 100f, Percentage, Strings.ShadowStrengthTip)
+        @Percent(Strings.ShadowStrength, (0, 100, Defaults.Shadows.Strength * 100f), () => Shadows.Strength * 100f, v => Shadows.Strength = v / 100f, Percentage, Strings.ShadowStrengthTip)
         <div class="vm-hint">@Strings.ShadowHint</div>
     </div>
 
     <div class="vm-card">
         <h3 class="vm-card__title">@Strings.CardTraffic</h3>
         @Check(Strings.TrafficShow, () => Traffic.IsEnabled, v => SetTraffic(t => t with { IsEnabled = v }), Strings.TrafficShowTip)
-        @Percent(Strings.TrafficClearance, 50, 1200, () => Traffic.Clearance, v => SetTraffic(t => t with { Clearance = v }), MarineTraffic.None.Clearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip)
-        @Percent(Strings.TrafficEdgeClearance, 50, 4000, () => Traffic.EdgeClearance, v => SetTraffic(t => t with { EdgeClearance = v }), MarineTraffic.None.EdgeClearance, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficEdgeClearanceTip)
-        @Percent(Strings.TrafficLanes, 1, MarineTraffic.LaneLimit, () => Traffic.LaneCount, v => SetTraffic(t => t with { LaneCount = (int)v }), MarineTraffic.None.LaneCount, v => Strings.Format(Strings.ValueLanes, v), Strings.TrafficLanesTip)
-        @Percent(Strings.TrafficLaneSpacing, 40, 600, () => Traffic.LaneSpacing, v => SetTraffic(t => t with { LaneSpacing = v }), MarineTraffic.None.LaneSpacing, v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficLaneSpacingTip)
-        @Percent(Strings.TrafficMaximum, 1, MarineTraffic.VesselLimit, () => Traffic.MaximumVessels, v => SetTraffic(t => t with { MaximumVessels = (int)v }), MarineTraffic.None.MaximumVessels, v => Strings.Format(Strings.ValueVessels, v), Strings.TrafficMaximumTip)
-        @Percent(Strings.TrafficSpeed, 10, 400, () => Traffic.SpeedPercent, v => SetTraffic(t => t with { SpeedPercent = v }), MarineTraffic.None.SpeedPercent, Percentage, Strings.TrafficSpeedTip)
-        @Percent(Strings.TrafficSpawnDelay, 1, 180, () => Traffic.SpawnDelaySeconds, v => SetTraffic(t => t with { SpawnDelaySeconds = v }), MarineTraffic.None.SpawnDelaySeconds, v => Strings.Format(Strings.ValueSeconds, v), Strings.TrafficSpawnDelayTip)
+        @Percent(Strings.TrafficClearance, (50, 1200, MarineTraffic.None.Clearance), () => Traffic.Clearance, v => SetTraffic(t => t with { Clearance = v }), v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip)
+        @Percent(Strings.TrafficEdgeClearance, (50, 4000, MarineTraffic.None.EdgeClearance), () => Traffic.EdgeClearance, v => SetTraffic(t => t with { EdgeClearance = v }), v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficEdgeClearanceTip)
+        @Percent(Strings.TrafficLanes, (1, MarineTraffic.LaneLimit, MarineTraffic.None.LaneCount), () => Traffic.LaneCount, v => SetTraffic(t => t with { LaneCount = (int)v }), v => Strings.Format(Strings.ValueLanes, v), Strings.TrafficLanesTip)
+        @Percent(Strings.TrafficLaneSpacing, (40, 600, MarineTraffic.None.LaneSpacing), () => Traffic.LaneSpacing, v => SetTraffic(t => t with { LaneSpacing = v }), v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficLaneSpacingTip)
+        @Percent(Strings.TrafficMaximum, (1, MarineTraffic.VesselLimit, MarineTraffic.None.MaximumVessels), () => Traffic.MaximumVessels, v => SetTraffic(t => t with { MaximumVessels = (int)v }), v => Strings.Format(Strings.ValueVessels, v), Strings.TrafficMaximumTip)
+        @Percent(Strings.TrafficSpeed, (10, 400, MarineTraffic.None.SpeedPercent), () => Traffic.SpeedPercent, v => SetTraffic(t => t with { SpeedPercent = v }), Percentage, Strings.TrafficSpeedTip)
+        @Percent(Strings.TrafficSpawnDelay, (1, 180, MarineTraffic.None.SpawnDelaySeconds), () => Traffic.SpawnDelaySeconds, v => SetTraffic(t => t with { SpawnDelaySeconds = v }), v => Strings.Format(Strings.ValueSeconds, v), Strings.TrafficSpawnDelayTip)
         @Check(Strings.TrafficShowLanes, () => Marina.ShowTrafficLanes, v => Changed(() => Marina.ShowTrafficLanes = v, saved: false), Strings.TrafficShowLanesTip)
         <div class="vm-hint">@Strings.TrafficHint</div>
         <div class="vm-hint">@TrafficLanesNote()</div>
@@ -219,8 +219,9 @@
 
     // ---- Row helpers ----------------------------------------------------------------------------
 
-    private RenderFragment Percent(string label, int min, int max, Func<float> read, Action<float> write, float fallback, Func<int, string> format, string? tooltip = null) => __builder =>
+    private RenderFragment Percent(string label, (int Min, int Max, float Default) range, Func<float> read, Action<float> write, Func<int, string> format, string? tooltip = null) => __builder =>
     {
+        var (min, max, fallback) = range;
         var value = Clamp(read(), min, max);
         <div class="vm-grid">
             <span class="vm-grid__label" title="@tooltip" aria-hidden="true">@label</span>

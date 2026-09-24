@@ -99,31 +99,14 @@ public sealed partial class MarinaVisualizer
             errors.Add(Strings.Format(Strings.ErrorMultiBerthIdIsBerthId, group.Id));
         }
 
-        var canonicalIds = new List<string>();
-        var members = new List<Berth>();
-        foreach (var berthId in group.BerthIds ?? Array.Empty<string>())
-        {
-            if (string.IsNullOrWhiteSpace(berthId)) continue;
-            if (!_berths.TryGetValue(berthId, out var berth))
-            {
-                errors.Add(Strings.Format(Strings.ErrorMultiBerthUnknownBerth, group.Id, berthId));
-                continue;
-            }
-
-            canonicalIds.Add(berth.Id);
-            members.Add(berth);
-            if (berth.MultiBerthId is { } other && !IdComparer.Equals(other, group.Id))
-            {
-                throw new InvalidOperationException(Strings.Format(Strings.ErrorBerthAlreadyInMultiBerth, berth.Id, other));
-            }
-        }
+        var members = ResolveMembers(group, errors);
 
         // The same checks a layout gets when it is loaded: one boat lies across the members, so they have to be
         // together — all on the water along one pier, or all ashore on one land area.
         errors.AddRange(group.ValidateMembers(members));
         ThrowIfInvalid(errors);
 
-        var stored = group with { BerthIds = canonicalIds.ToArray() };
+        var stored = group with { BerthIds = members.Select(berth => berth.Id).ToArray() };
         using (BeginUpdate())
         {
             _multiBerths[stored.Id] = stored;
@@ -151,6 +134,32 @@ public sealed partial class MarinaVisualizer
         }
 
         return stored;
+    }
+
+    /// <summary>
+    /// The stored berths a multi-berth names, in its order and under their stored ids. An unknown id is added to
+    /// <paramref name="errors"/>; a berth already in another multi-berth throws at once.
+    /// </summary>
+    private List<Berth> ResolveMembers(MultiBerth group, List<string> errors)
+    {
+        var members = new List<Berth>();
+        foreach (var berthId in group.BerthIds ?? Array.Empty<string>())
+        {
+            if (string.IsNullOrWhiteSpace(berthId)) continue;
+            if (!_berths.TryGetValue(berthId, out var berth))
+            {
+                errors.Add(Strings.Format(Strings.ErrorMultiBerthUnknownBerth, group.Id, berthId));
+                continue;
+            }
+
+            members.Add(berth);
+            if (berth.MultiBerthId is { } other && !IdComparer.Equals(other, group.Id))
+            {
+                throw new InvalidOperationException(Strings.Format(Strings.ErrorBerthAlreadyInMultiBerth, berth.Id, other));
+            }
+        }
+
+        return members;
     }
 
     /// <summary>Called when a member berth is removed: shrinks the multi-berth, or dissolves it when fewer than two berths remain.</summary>

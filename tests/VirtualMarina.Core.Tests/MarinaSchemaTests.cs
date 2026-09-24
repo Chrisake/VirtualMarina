@@ -1,6 +1,6 @@
-using System.Runtime.CompilerServices;
 using System.Text.Json.Nodes;
 using VirtualMarina.Core.Serialization;
+using VirtualMarina.TestSupport;
 
 namespace VirtualMarina.Core.Tests;
 
@@ -91,9 +91,10 @@ public class MarinaSchemaTests
         return node;
     }
 
-    private static JsonObject LoadSchema([CallerFilePath] string testFile = "")
+    private static JsonObject LoadSchema()
     {
-        var path = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "..", "Docs", "schema", "marina.schema.json"));
+        // Not [CallerFilePath]: a CI build maps source paths to /_/, which is nowhere on disk.
+        var path = Path.Combine(RepositoryRoot.Path, "Docs", "schema", "marina.schema.json");
         return JsonNode.Parse(File.ReadAllText(path))!.AsObject();
     }
 }

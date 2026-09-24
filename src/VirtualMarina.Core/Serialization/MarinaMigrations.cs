@@ -70,6 +70,11 @@ internal static class MarinaMigrations
 /// </summary>
 internal sealed class PiersAndBerthsMigration : IMarinaMigration
 {
+    // The 1.x names that turn up in more than one place below.
+    private const string SlipIds = "slipIds";
+    private const string Berths = "berths";
+    private const string DockId = "dockId";
+
     /// <summary>The designer settings renamed in 2.0, old name first.</summary>
     private static readonly (string Old, string New)[] DesignerRenames =
     {
@@ -97,17 +102,16 @@ internal sealed class PiersAndBerthsMigration : IMarinaMigration
     /// </summary>
     public static bool LooksLegacy(DocumentDto document)
     {
-        if (document.Layout is { } layout)
-        {
-            if (Has(layout.Extra, "docks") || Has(layout.Extra, "slips")) return true;
-            if ((layout.Berths ?? []).Any(entry => entry is not null && (Has(entry.Extra, "slipIds") || Has(entry.Extra, "berthIds") || Has(entry.Extra, "dockId")))) return true;
-            if ((layout.Dividers ?? []).Any(entry => entry is not null && Has(entry.Extra, "dockId"))) return true;
-            if ((layout.MultiBerths ?? []).Any(entry => entry is not null && Has(entry.Extra, "slipIds"))) return true;
-        }
-
+        if (document.Layout is { } layout && LayoutLooksLegacy(layout)) return true;
         if (Has(document.Presentation?.Extra, "slipLabels")) return true;
         return document.Designer?.Extra is { } designer && DesignerRenames.Any(rename => Has(designer, rename.Old));
     }
+
+    private static bool LayoutLooksLegacy(LayoutDto layout) =>
+        Has(layout.Extra, "docks") || Has(layout.Extra, "slips") ||
+        (layout.Berths ?? []).Any(entry => entry is not null && (Has(entry.Extra, SlipIds) || Has(entry.Extra, "berthIds") || Has(entry.Extra, DockId))) ||
+        (layout.Dividers ?? []).Any(entry => entry is not null && Has(entry.Extra, DockId)) ||
+        (layout.MultiBerths ?? []).Any(entry => entry is not null && Has(entry.Extra, SlipIds));
 
     public void Apply(JsonObject root, MigrationContext context)
     {
@@ -128,8 +132,8 @@ internal sealed class PiersAndBerthsMigration : IMarinaMigration
         var berthsAreGroups =
             (context.DeclaredVersion is { Major: < 2 }) ||
             Has(layout, "slips") ||
-            Items(layout, "berths").Any(entry => Has(entry, "slipIds") || Has(entry, "berthIds"));
-        if (berthsAreGroups && Take(layout, "berths") is JsonArray groups)
+            Items(layout, Berths).Any(entry => Has(entry, SlipIds) || Has(entry, "berthIds"));
+        if (berthsAreGroups && Take(layout, Berths) is JsonArray groups)
         {
             var key = FindKey(layout, "multiBerths");
             if (key is null)
@@ -147,10 +151,10 @@ internal sealed class PiersAndBerthsMigration : IMarinaMigration
             }
         }
 
-        Rename(layout, "slips", "berths");
+        Rename(layout, "slips", Berths);
 
-        foreach (var entry in Items(layout, "berths").Concat(Items(layout, "dividers"))) Rename(entry, "dockId", "pierId");
-        foreach (var group in Items(layout, "multiBerths")) Rename(group, "slipIds", "berthIds");
+        foreach (var entry in Items(layout, Berths).Concat(Items(layout, "dividers"))) Rename(entry, DockId, "pierId");
+        foreach (var group in Items(layout, "multiBerths")) Rename(group, SlipIds, "berthIds");
     }
 
     /// <summary>Moves a property to its new name; when both are there, the new one wins and the old one goes.</summary>

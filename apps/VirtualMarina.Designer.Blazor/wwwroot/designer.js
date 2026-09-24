@@ -71,106 +71,98 @@
 
     // ---- Marching squares ------------------------------------------------------------------------
 
+    // Which edge midpoints each of the sixteen cell cases joins, indexed by (tl << 3) | (tr << 2) | (br << 1) | bl.
+    // The two saddles, 5 and 10, join two pairs, grouped by their two inside corners.
+    const CELL_LINKS = [
+        [], [["B", "L"]], [["R", "B"]], [["R", "L"]],
+        [["T", "R"]], [["T", "R"], ["B", "L"]], [["T", "B"]], [["T", "L"]],
+        [["T", "L"]], [["T", "B"]], [["T", "L"], ["R", "B"]], [["T", "R"]],
+        [["R", "L"]], [["R", "B"]], [["B", "L"]], [],
+    ];
+
+    const nodeKey = (x, y) => `${x},${y}`;
+    const edgeKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+
     // Traces every closed boundary in a binary grid. Each boundary is one loop of points on the half-grid,
     // outer shapes and the holes inside them alike; which is which is left to the C# side to work out.
     function traceContours(grid, width, height) {
-        // Segments between edge midpoints, keyed by a quantised endpoint so they can be stitched into loops.
-        const nodes = new Map();       // key -> { x, y, links: [key, key, ...] }
-        const key = (x, y) => `${x},${y}`;
+        return stitchLoops(collectSegments(grid, width, height));
+    }
 
-        function point(x2, y2) {        // coordinates are held doubled, so half-grid midpoints stay integers
-            const k = key(x2, y2);
+    // Segments between edge midpoints, keyed by a quantised endpoint so they can be stitched into loops:
+    // key -> { x, y, links: [key, key, ...] }. Coordinates are held doubled, so half-grid midpoints stay integers.
+    function collectSegments(grid, width, height) {
+        const nodes = new Map();
+        const point = (x2, y2) => {
+            const k = nodeKey(x2, y2);
             let node = nodes.get(k);
             if (!node) {
                 node = { x: x2, y: y2, links: [] };
                 nodes.set(k, node);
             }
             return node;
-        }
-
-        function segment(ax, ay, bx, by) {
-            const a = point(ax, ay);
-            const b = point(bx, by);
-            a.links.push(key(bx, by));
-            b.links.push(key(ax, ay));
-        }
-
+        };
+        const segment = ([ax, ay], [bx, by]) => {
+            point(ax, ay).links.push(nodeKey(bx, by));
+            point(bx, by).links.push(nodeKey(ax, ay));
+        };
         const at = (x, y) => (x < 0 || y < 0 || x >= width || y >= height ? 0 : grid[y * width + x]);
 
         for (let y = -1; y < height; y++) {
             for (let x = -1; x < width; x++) {
-                const tl = at(x, y);
-                const tr = at(x + 1, y);
-                const br = at(x + 1, y + 1);
-                const bl = at(x, y + 1);
-                const idx = (tl << 3) | (tr << 2) | (br << 1) | bl;
-                if (idx === 0 || idx === 15) continue;
+                const idx = (at(x, y) << 3) | (at(x + 1, y) << 2) | (at(x + 1, y + 1) << 1) | at(x, y + 1);
 
                 // Edge midpoints, doubled: T=(2x+1,2y) R=(2x+2,2y+1) B=(2x+1,2y+2) L=(2x,2y+1).
-                const T = [2 * x + 1, 2 * y];
-                const R = [2 * x + 2, 2 * y + 1];
-                const B = [2 * x + 1, 2 * y + 2];
-                const L = [2 * x, 2 * y + 1];
-
-                const link = (e1, e2) => segment(e1[0], e1[1], e2[0], e2[1]);
-                switch (idx) {
-                    case 1: link(B, L); break;
-                    case 2: link(R, B); break;
-                    case 3: link(R, L); break;
-                    case 4: link(T, R); break;
-                    case 5: link(T, R); link(B, L); break;      // saddle: group by the two inside corners
-                    case 6: link(T, B); break;
-                    case 7: link(T, L); break;
-                    case 8: link(T, L); break;
-                    case 9: link(T, B); break;
-                    case 10: link(T, L); link(R, B); break;     // saddle
-                    case 11: link(T, R); break;
-                    case 12: link(R, L); break;
-                    case 13: link(R, B); break;
-                    case 14: link(B, L); break;
-                    default: break;
-                }
+                const mid = { T: [2 * x + 1, 2 * y], R: [2 * x + 2, 2 * y + 1], B: [2 * x + 1, 2 * y + 2], L: [2 * x, 2 * y + 1] };
+                for (const [from, to] of CELL_LINKS[idx]) segment(mid[from], mid[to]);
             }
         }
 
-        // Stitch the segments into closed loops.
+        return nodes;
+    }
+
+    // Stitches the segments into closed loops, each edge used once.
+    function stitchLoops(nodes) {
         const loops = [];
         const used = new Set();
-        const edgeKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-
-        for (const start of nodes.keys()) {
-            const startNode = nodes.get(start);
+        for (const [start, startNode] of nodes) {
             for (const first of startNode.links) {
                 if (used.has(edgeKey(start, first))) continue;
-
-                const loop = [];
-                let prev = start;
-                let cur = first;
-                used.add(edgeKey(prev, cur));
-                loop.push([startNode.x, startNode.y]);
-
-                while (cur !== start) {
-                    const node = nodes.get(cur);
-                    if (!node) break;
-                    loop.push([node.x, node.y]);
-                    let next = null;
-                    for (const candidate of node.links) {
-                        if (candidate !== prev && !used.has(edgeKey(cur, candidate))) {
-                            next = candidate;
-                            break;
-                        }
-                    }
-                    if (next === null) break;
-                    used.add(edgeKey(cur, next));
-                    prev = cur;
-                    cur = next;
-                }
-
+                const loop = followLoop(nodes, used, start, first);
                 if (loop.length >= 3) loops.push(loop);
             }
         }
-
         return loops;
+    }
+
+    // Walks from start along first until it comes back round, or runs out of unused edges.
+    function followLoop(nodes, used, start, first) {
+        const startNode = nodes.get(start);
+        const loop = [[startNode.x, startNode.y]];
+        let prev = start;
+        let cur = first;
+        used.add(edgeKey(prev, cur));
+
+        while (cur !== start) {
+            const node = nodes.get(cur);
+            if (!node) break;
+            loop.push([node.x, node.y]);
+            const next = nextLink(node, prev, cur, used);
+            if (next === null) break;
+            used.add(edgeKey(cur, next));
+            prev = cur;
+            cur = next;
+        }
+
+        return loop;
+    }
+
+    // The first way on from a node that is not straight back and not already walked.
+    function nextLink(node, prev, cur, used) {
+        for (const candidate of node.links) {
+            if (candidate !== prev && !used.has(edgeKey(cur, candidate))) return candidate;
+        }
+        return null;
     }
 
     // Ramer–Douglas–Peucker: drops the points that sit on the line between the ones that matter.
@@ -230,7 +222,7 @@
 
         // Cap height, from the drawn height of a capital letter — what a label's height is measured against.
         const capHeight = measureCapHeight(ctx, canvas, weight, family, margin);
-        if (!(capHeight > 1)) return null;
+        if (!Number.isFinite(capHeight) || capHeight <= 1) return null;
 
         const baselineY = margin + capHeight * 1.4;   // room for descenders below the baseline
         const originX = margin;
@@ -320,7 +312,6 @@
     window.addEventListener("beforeunload", (e) => {
         if (dirty) {
             e.preventDefault();
-            e.returnValue = "";
         }
     });
 
@@ -332,7 +323,7 @@
         "date", "datetime-local", "month", "time", "week"]);
 
     function isTyping(element) {
-        if (!element || element.nodeType !== 1) return false;
+        if (element?.nodeType !== 1) return false;
         if (element.isContentEditable) return true;
         switch (element.tagName) {
             case "TEXTAREA":
@@ -361,11 +352,39 @@
     }
 
     function inView(element) {
-        return !!(element && element.closest && element.closest(".vm-view"));
+        return !!element?.closest?.(".vm-view");
     }
 
     function modalOpen() {
         return document.querySelector("dialog.vm-modal[open]") !== null;
+    }
+
+    // The first shortcut of the table with these modifiers and this key, or undefined.
+    function findShortcut(shortcuts, e) {
+        const ctrl = e.ctrlKey || e.metaKey;
+        return shortcuts.find((s) => s.ctrl === ctrl && s.alt === e.altKey && s.shift === e.shiftKey && keyMatches(s, e));
+    }
+
+    // False when the page keeps the key for itself rather than handing it to the shortcut.
+    function shortcutApplies(s, typing, target) {
+        // A field being typed in keeps the keys it edits with.
+        if (typing && !s.editing) return false;
+        // An Alt+letter chord types a character on some layouts (a Mac's Option key), so a text box keeps it.
+        if (typing && !s.ctrl && s.key.length === 1) return false;
+        // A tool's letter is only a tool while the view has the focus; anywhere else it is just a letter.
+        return !s.viewOnly || inView(target);
+    }
+
+    // A field being typed in only hands its value over when it loses the focus, so it is made to now, and the
+    // command waits a turn for Blazor to take the change in: Ctrl+S straight after typing a name saves the new
+    // name, not the old one.
+    function runShortcut(dotNet, s, typing, target) {
+        if (typing && typeof target.blur === "function") {
+            target.blur();
+            setTimeout(() => dotNet.invokeMethodAsync("OnShortcut", s.name), 0);
+        } else {
+            dotNet.invokeMethodAsync("OnShortcut", s.name);
+        }
     }
 
     let shortcutHandler = null;
@@ -390,7 +409,7 @@
         const focusEntry = (tries) => {
             const entries = menuEntries(menubar);
             if (entries.length > 0) {
-                (last ? entries[entries.length - 1] : entries[0]).focus();
+                (last ? entries.at(-1) : entries[0]).focus();
             } else if (tries > 0) {
                 requestAnimationFrame(() => focusEntry(tries - 1));
             }
@@ -401,6 +420,85 @@
     function roveTo(labels, index) {
         labels.forEach((label, i) => label.setAttribute("tabindex", i === index ? "0" : "-1"));
         labels[index].focus();
+    }
+
+    // The menu bar around a key press: its titles, the open menu's entries, and which of them has the focus.
+    function menuState(menubar, target) {
+        const labels = menuLabels(menubar);
+        const entries = menuEntries(menubar);
+        const labelIndex = labels.indexOf(target);
+        const openLabel = labels.find((label) => label.getAttribute("aria-expanded") === "true");
+        return {
+            menubar, target, labels, entries, labelIndex, openLabel,
+            entryIndex: entries.indexOf(target),
+            current: labelIndex >= 0 ? labelIndex : labels.indexOf(openLabel),
+        };
+    }
+
+    // Left and Right: the next menu title, carrying an open menu along.
+    function moveAcross(m, forward) {
+        if (m.current < 0) return false;
+        const next = (m.current + (forward ? 1 : m.labels.length - 1)) % m.labels.length;
+        roveTo(m.labels, next);
+        if (m.openLabel) openAndFocus(m.menubar, m.labels[next], false);
+        return true;
+    }
+
+    // Down and Up: from a title, open its menu at the first or last entry; in a menu, the next or previous entry.
+    function moveAlong(m, up) {
+        if (m.labelIndex >= 0) {
+            openAndFocus(m.menubar, m.target, up);
+            return true;
+        }
+        if (m.entryIndex < 0) return false;
+        m.entries[(m.entryIndex + (up ? m.entries.length - 1 : 1)) % m.entries.length].focus();
+        return true;
+    }
+
+    // Home and End: the first or last entry of the open menu, or the first or last title.
+    function jumpTo(m, end) {
+        if (m.entryIndex >= 0 && m.entries.length) {
+            (end ? m.entries.at(-1) : m.entries[0]).focus();
+            return true;
+        }
+        if (m.labelIndex < 0) return false;
+        roveTo(m.labels, end ? m.labels.length - 1 : 0);
+        return true;
+    }
+
+    // Enter and Space on a closed menu's title open it.
+    function openFromTitle(m) {
+        if (m.labelIndex < 0 || m.target.getAttribute("aria-expanded") === "true") return false;
+        openAndFocus(m.menubar, m.target, false);
+        return true;
+    }
+
+    // Esc closes the open menu and goes back to its title.
+    function closeMenu(m) {
+        if (!m.openLabel) return false;
+        m.openLabel.click();
+        m.openLabel.focus();
+        return true;
+    }
+
+    // Answers a key the menu bar has; returns false for one it leaves to the page.
+    function menuKey(m, key) {
+        switch (key) {
+            case "ArrowRight": return moveAcross(m, true);
+            case "ArrowLeft": return moveAcross(m, false);
+            case "ArrowDown": return moveAlong(m, false);
+            case "ArrowUp": return moveAlong(m, true);
+            case "Home": return jumpTo(m, false);
+            case "End": return jumpTo(m, true);
+            case "Enter":
+            case " ": return openFromTitle(m);
+            case "Escape": return closeMenu(m);
+            case "Tab":
+                // Tab leaves the menu bar as it would any other control, closing the menu on the way.
+                if (m.openLabel) m.openLabel.click();
+                return false;
+            default: return false;
+        }
     }
 
     // ---- Files -----------------------------------------------------------------------------------
@@ -457,13 +555,13 @@
             };
             pendingInput = finish;
             input.addEventListener("change", async () => {
-                const file = input.files && input.files[0];
+                const file = input.files?.[0];
                 finish(file ? { name: file.name, key: null, text: await file.text() } : null);
             });
             input.addEventListener("cancel", () => finish(null));
             window.addEventListener("focus", () => {
                 setTimeout(() => {
-                    if (pendingInput === finish && !(input.files && input.files.length)) finish(null);
+                    if (pendingInput === finish && !input.files?.length) finish(null);
                 }, 1000);
             }, { once: true });
             document.body.appendChild(input);
@@ -501,12 +599,15 @@
         try {
             const probe = await fetch(`launcher/heartbeat?${query}`, { cache: "no-store" });
             const info = probe.ok && (probe.headers.get("content-type") || "").includes("json") ? await probe.json() : null;
-            if (!info || info.app !== "VirtualMarina.Designer.Launcher") return;
+            if (info?.app !== "VirtualMarina.Designer.Launcher") return;
         } catch {
             return;
         }
 
-        const client = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+        // randomUUID needs a secure context; getRandomValues does not, so the fallback is just as unguessable.
+        const client = crypto.randomUUID
+            ? crypto.randomUUID()
+            : Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
         const events = new EventSource(`launcher/events?${query}&client=${encodeURIComponent(client)}`);
         events.addEventListener("shutdown", () => events.close());
         window.addEventListener("pagehide", () => {
@@ -549,33 +650,17 @@
 
                 const target = e.target;
                 const typing = isTyping(target);
-                const ctrl = e.ctrlKey || e.metaKey;
-                for (const s of shortcuts) {
-                    if (s.ctrl !== ctrl || s.alt !== e.altKey || s.shift !== e.shiftKey) continue;
-                    if (!keyMatches(s, e)) continue;
-                    if (typing && !s.editing) return;
-                    // An Alt+letter chord types a character on some layouts (a Mac's Option key), so a text box keeps it.
-                    if (typing && !s.ctrl && s.key.length === 1) return;
-                    // A tool's letter is only a tool while the view has the focus; anywhere else it is just a letter.
-                    if (s.viewOnly && !inView(target)) return;
-                    // Esc is never taken from the browser, which uses it to close a picker or leave full screen.
-                    if (s.name !== "escape") e.preventDefault();
-                    // The modal answers its own keys, Esc included; the rest wait until it is gone.
-                    if (modalOpen()) return;
-                    // Holding the keys down would otherwise save, or open, over and over.
-                    if (e.repeat && !s.repeats) return;
+                const s = findShortcut(shortcuts, e);
+                if (!s || !shortcutApplies(s, typing, target)) return;
 
-                    // A field being typed in only hands its value over when it loses the focus, so it is made to
-                    // now, and the command waits a turn for Blazor to take the change in: Ctrl+S straight after
-                    // typing a name saves the new name, not the old one.
-                    if (typing && typeof target.blur === "function") {
-                        target.blur();
-                        setTimeout(() => dotNet.invokeMethodAsync("OnShortcut", s.name), 0);
-                    } else {
-                        dotNet.invokeMethodAsync("OnShortcut", s.name);
-                    }
-                    return;
-                }
+                // Esc is never taken from the browser, which uses it to close a picker or leave full screen.
+                if (s.name !== "escape") e.preventDefault();
+                // The modal answers its own keys, Esc included; the rest wait until it is gone.
+                if (modalOpen()) return;
+                // Holding the keys down would otherwise save, or open, over and over.
+                if (e.repeat && !s.repeats) return;
+
+                runShortcut(dotNet, s, typing, target);
             };
             window.addEventListener("keydown", shortcutHandler);
         },
@@ -595,69 +680,9 @@
             if (!menubar || menubar.vmMenuKeys) return;
             menubar.vmMenuKeys = true;
             menubar.addEventListener("keydown", (e) => {
-                const labels = menuLabels(menubar);
-                const target = e.target;
-                const labelIndex = labels.indexOf(target);
-                const entries = menuEntries(menubar);
-                const entryIndex = entries.indexOf(target);
-                const openLabel = labels.find((label) => label.getAttribute("aria-expanded") === "true");
-                const current = labelIndex >= 0 ? labelIndex : labels.indexOf(openLabel);
-                let handled = true;
-
-                switch (e.key) {
-                    case "ArrowRight":
-                    case "ArrowLeft": {
-                        if (current < 0) { handled = false; break; }
-                        const next = (current + (e.key === "ArrowRight" ? 1 : labels.length - 1)) % labels.length;
-                        roveTo(labels, next);
-                        if (openLabel) openAndFocus(menubar, labels[next], false);
-                        break;
-                    }
-                    case "ArrowDown":
-                        if (labelIndex >= 0) openAndFocus(menubar, target, false);
-                        else if (entryIndex >= 0) entries[(entryIndex + 1) % entries.length].focus();
-                        else handled = false;
-                        break;
-                    case "ArrowUp":
-                        if (labelIndex >= 0) openAndFocus(menubar, target, true);
-                        else if (entryIndex >= 0) entries[(entryIndex + entries.length - 1) % entries.length].focus();
-                        else handled = false;
-                        break;
-                    case "Home":
-                        if (entryIndex >= 0 && entries.length) entries[0].focus();
-                        else if (labelIndex >= 0) roveTo(labels, 0);
-                        else handled = false;
-                        break;
-                    case "End":
-                        if (entryIndex >= 0 && entries.length) entries[entries.length - 1].focus();
-                        else if (labelIndex >= 0) roveTo(labels, labels.length - 1);
-                        else handled = false;
-                        break;
-                    case "Enter":
-                    case " ":
-                        if (labelIndex >= 0 && target.getAttribute("aria-expanded") !== "true") openAndFocus(menubar, target, false);
-                        else handled = false;
-                        break;
-                    case "Escape":
-                        if (openLabel) {
-                            openLabel.click();
-                            openLabel.focus();
-                        } else {
-                            handled = false;
-                        }
-                        break;
-                    case "Tab":
-                        if (openLabel) openLabel.click();
-                        handled = false;
-                        break;
-                    default:
-                        handled = false;
-                }
-
-                if (handled) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
+                if (!menuKey(menuState(menubar, e.target), e.key)) return;
+                e.preventDefault();
+                e.stopPropagation();
             });
         },
 
@@ -682,7 +707,7 @@
         modalClosed() {
             const previous = focusBeforeModal;
             focusBeforeModal = null;
-            if (previous && previous.isConnected && typeof previous.focus === "function") previous.focus();
+            if (previous?.isConnected && typeof previous.focus === "function") previous.focus();
         },
 
         /**

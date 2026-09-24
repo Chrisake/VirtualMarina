@@ -196,16 +196,20 @@ public sealed record MarineTraffic
         }
 
         if (LaneCount < 1 || LaneCount > LaneLimit) yield return Strings.Format(Strings.ErrorTrafficLanes, LaneLimit);
-        if (!float.IsFinite(LaneSpacing) || LaneSpacing <= 0f) yield return Strings.ErrorTrafficLaneSpacing;
-        if (!float.IsFinite(Clearance) || Clearance < 0f) yield return Strings.ErrorTrafficClearance;
-        if (!float.IsFinite(EdgeClearance) || EdgeClearance < 0f) yield return Strings.ErrorTrafficEdgeClearance;
-        if (!float.IsFinite(SpeedPercent) || SpeedPercent <= 0f) yield return Strings.ErrorTrafficSpeed;
-        if (!float.IsFinite(SpawnDelaySeconds) || SpawnDelaySeconds < 0f) yield return Strings.ErrorTrafficSpawnDelay;
-        if (!float.IsFinite(Reach) || Reach <= 0f) yield return Strings.ErrorTrafficReach;
+        if (!IsPositive(LaneSpacing)) yield return Strings.ErrorTrafficLaneSpacing;
+        if (!IsNonNegative(Clearance)) yield return Strings.ErrorTrafficClearance;
+        if (!IsNonNegative(EdgeClearance)) yield return Strings.ErrorTrafficEdgeClearance;
+        if (!IsPositive(SpeedPercent)) yield return Strings.ErrorTrafficSpeed;
+        if (!IsNonNegative(SpawnDelaySeconds)) yield return Strings.ErrorTrafficSpawnDelay;
+        if (!IsPositive(Reach)) yield return Strings.ErrorTrafficReach;
 
         foreach (var vessel in Vessels.Where(vessel => !Enum.IsDefined(vessel)).Distinct())
         {
             yield return Strings.Format(Strings.ErrorTrafficUnknownVessel, vessel);
         }
     }
+
+    private static bool IsPositive(float value) => float.IsFinite(value) && value > 0f;
+
+    private static bool IsNonNegative(float value) => float.IsFinite(value) && value >= 0f;
 }

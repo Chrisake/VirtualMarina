@@ -464,35 +464,38 @@ public static class LandMeshFactory
         switch (shoreline.Scenery)
         {
             case HinterlandScenery.Countryside:
-                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, 340, 10f, SceneryDepth);
+                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, new TreeBand(340, 10f, SceneryDepth));
                 break;
 
             case HinterlandScenery.Fields:
                 AddFields(output, shoreline, outline, style, random, ground);
-                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, 60, 12f, SceneryDepth);
+                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, new TreeBand(60, 12f, SceneryDepth));
                 break;
 
             case HinterlandScenery.Town:
                 AddTown(output, shoreline, outline, style, random, ground);
-                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, 70, 18f, SceneryDepth * 0.8f);
+                if (style.ShowTrees) AddHinterlandTrees(output, shoreline, outline, style, random, ground, new TreeBand(70, 18f, SceneryDepth * 0.8f));
                 break;
         }
 
         return output.ToArray();
     }
 
+    /// <summary>How many hinterland trees to try, and the band inland they stand in: <see cref="Near"/> is how far inland it starts, <see cref="Depth"/> how deep it is.</summary>
+    private readonly record struct TreeBand(int Count, float Near, float Depth);
+
     /// <summary>Trees of the same mix as a land area's, standing on the mainland rather than inside an outline.</summary>
     private static void AddHinterlandTrees(
-        List<RenderObject> output, Shoreline shoreline, IReadOnlyList<Vector2> outline, LandStyle style, Random random, float ground, int count, float near, float depth)
+        List<RenderObject> output, Shoreline shoreline, IReadOnlyList<Vector2> outline, LandStyle style, Random random, float ground, TreeBand band)
     {
-        var trees = new List<LandTree>(count);
+        var trees = new List<LandTree>(band.Count);
 
         // The trees placed so far, bucketed by position, so keeping new ones clear of them looks at a few neighbours
         // rather than at every tree.
         const float cell = 8f;
         var grid = new Dictionary<(int, int), List<LandTree>>();
         var largest = 0f;
-        foreach (var (position, _, _) in ScatterInland(shoreline, outline, random, count, near, depth))
+        foreach (var (position, _, _) in ScatterInland(shoreline, outline, random, band.Count, band.Near, band.Depth))
         {
             var shape = LandArea.PickShape(random);
             var height = shape switch

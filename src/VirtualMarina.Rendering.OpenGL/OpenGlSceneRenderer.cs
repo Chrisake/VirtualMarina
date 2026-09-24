@@ -240,32 +240,38 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
 
             var instances = layer.Instances.Span;
             GL.BindBuffer(BufferTarget.ArrayBuffer, gpu.Buffer);
-            if (upload == LayerUpload.Full)
-            {
-                var floats = Pack(instances);
-                var bytes = floats * sizeof(float);
-                if (bytes > gpu.Capacity)
-                {
-                    // Room to grow, so a layer that gains a few instances does not reallocate every time.
-                    gpu.Capacity = Math.Max(bytes, gpu.Capacity * 3 / 2);
-                    GL.BufferData(BufferTarget.ArrayBuffer, gpu.Capacity, IntPtr.Zero, BufferUsageHint.DynamicDraw);
-                }
-
-                if (bytes > 0) GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, bytes, _packed);
-            }
-            else
-            {
-                foreach (var range in _changes)
-                {
-                    var floats = Pack(instances.Slice(range.Start, range.Count));
-                    GL.BufferSubData(BufferTarget.ArrayBuffer, range.Start * InstanceData.StrideBytes, floats * sizeof(float), _packed);
-                }
-            }
+            if (upload == LayerUpload.Full) UploadAll(gpu, instances);
+            else UploadChanges(instances);
 
             _uploads.Uploaded(layer);
         }
 
         GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
+    }
+
+    /// <summary>Replaces the bound buffer's contents with every instance, growing it first when they no longer fit.</summary>
+    private void UploadAll(GpuLayer gpu, ReadOnlySpan<RenderObject> instances)
+    {
+        var floats = Pack(instances);
+        var bytes = floats * sizeof(float);
+        if (bytes > gpu.Capacity)
+        {
+            // Room to grow, so a layer that gains a few instances does not reallocate every time.
+            gpu.Capacity = Math.Max(bytes, gpu.Capacity * 3 / 2);
+            GL.BufferData(BufferTarget.ArrayBuffer, gpu.Capacity, IntPtr.Zero, BufferUsageHint.DynamicDraw);
+        }
+
+        if (bytes > 0) GL.BufferSubData(BufferTarget.ArrayBuffer, IntPtr.Zero, bytes, _packed);
+    }
+
+    /// <summary>Rewrites, in the bound buffer, just the ranges of instances listed in the pending changes.</summary>
+    private void UploadChanges(ReadOnlySpan<RenderObject> instances)
+    {
+        foreach (var range in _changes)
+        {
+            var floats = Pack(instances.Slice(range.Start, range.Count));
+            GL.BufferSubData(BufferTarget.ArrayBuffer, range.Start * InstanceData.StrideBytes, floats * sizeof(float), _packed);
+        }
     }
 
     /// <summary>Packs instances into the scratch buffer (growing it when needed) and returns how many floats that took.</summary>

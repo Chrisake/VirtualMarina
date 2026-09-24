@@ -226,26 +226,36 @@ internal sealed class Vector3Converter : JsonConverter<Vector3>
             return ColorRgbaConverter.TryParseHex(reader.GetString(), out var color) ? color.ToVector3() : Vector3.Zero;
         }
 
-        if (reader.TokenType == JsonTokenType.StartObject)
-        {
-            float x = 0f, y = 0f, z = 0f;
-            while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-            {
-                if (reader.TokenType != JsonTokenType.PropertyName) continue;
-                var name = reader.GetString();
-                reader.Read();
-                if (string.Equals(name, "x", StringComparison.OrdinalIgnoreCase) || string.Equals(name, "r", StringComparison.OrdinalIgnoreCase)) x = MarinaJson.ReadNumber(ref reader);
-                else if (string.Equals(name, "y", StringComparison.OrdinalIgnoreCase) || string.Equals(name, "g", StringComparison.OrdinalIgnoreCase)) y = MarinaJson.ReadNumber(ref reader);
-                else if (string.Equals(name, "z", StringComparison.OrdinalIgnoreCase) || string.Equals(name, "b", StringComparison.OrdinalIgnoreCase)) z = MarinaJson.ReadNumber(ref reader);
-                else reader.Skip();
-            }
-
-            return new Vector3(x, y, z);
-        }
+        if (reader.TokenType == JsonTokenType.StartObject) return ReadObject(ref reader);
 
         var values = MarinaJson.ReadNumbers(ref reader, 3);
         return new Vector3(values[0], values[1], values[2]);
     }
+
+    /// <summary>Reads <c>{ "x": .., "y": .., "z": .. }</c>, or the same as <c>r</c>, <c>g</c>, <c>b</c>; anything else in it is skipped.</summary>
+    private static Vector3 ReadObject(ref Utf8JsonReader reader)
+    {
+        var xyz = new float[3];
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+        {
+            if (reader.TokenType != JsonTokenType.PropertyName) continue;
+            var axis = AxisOf(reader.GetString());
+            reader.Read();
+            if (axis < 0) reader.Skip();
+            else xyz[axis] = MarinaJson.ReadNumber(ref reader);
+        }
+
+        return new Vector3(xyz[0], xyz[1], xyz[2]);
+    }
+
+    /// <summary>0, 1 or 2 for the property naming a component (in either spelling, any case), -1 for any other.</summary>
+    private static int AxisOf(string? name) => name?.ToUpperInvariant() switch
+    {
+        "X" or "R" => 0,
+        "Y" or "G" => 1,
+        "Z" or "B" => 2,
+        _ => -1,
+    };
 
     public override void Write(Utf8JsonWriter writer, Vector3 value, JsonSerializerOptions options) =>
         MarinaJson.WriteInlineArray(writer, value.X, value.Y, value.Z);

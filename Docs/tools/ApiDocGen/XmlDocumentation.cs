@@ -38,6 +38,9 @@ internal sealed partial class XmlDocumentation
         return new XmlDocumentation(members);
     }
 
+    private const string SummaryTag = "summary";
+    private const string RemarksTag = "remarks";
+
     /// <summary>The summary and remarks of a type or member, flattened to one line of Markdown each.</summary>
     public (string Summary, string Remarks) For(MemberInfo member) =>
         !_members.ContainsKey(DocIds.Of(member)) ? ("", "") : Resolve(member, 0) ?? (InheritedPlaceholder, "");
@@ -46,9 +49,9 @@ internal sealed partial class XmlDocumentation
     private (string Summary, string Remarks)? Resolve(MemberInfo member, int depth)
     {
         if (depth > MaxInheritanceDepth || !_members.TryGetValue(DocIds.Of(member), out var element)) return null;
-        if (element.Element("inheritdoc") is not { } inherit || element.Element("summary") is not null)
+        if (element.Element("inheritdoc") is not { } inherit || element.Element(SummaryTag) is not null)
         {
-            return (Flatten(element.Element("summary")), Flatten(element.Element("remarks")));
+            return (Flatten(element.Element(SummaryTag)), Flatten(element.Element(RemarksTag)));
         }
 
         if ((string?)inherit.Attribute("cref") is { } cref)
@@ -70,61 +73,44 @@ internal sealed partial class XmlDocumentation
     private (string Summary, string Remarks)? ResolveId(string id, int depth)
     {
         if (depth > MaxInheritanceDepth || !_members.TryGetValue(id, out var element)) return null;
-        if (element.Element("inheritdoc") is { } inherit && element.Element("summary") is null)
+        if (element.Element("inheritdoc") is { } inherit && element.Element(SummaryTag) is null)
         {
             return (string?)inherit.Attribute("cref") is { } cref && cref != id ? ResolveId(cref, depth + 1) : null;
         }
 
-        return (Flatten(element.Element("summary")), Flatten(element.Element("remarks")));
+        return (Flatten(element.Element(SummaryTag)), Flatten(element.Element(RemarksTag)));
     }
 
     /// <summary>
     /// The members a comment can be inherited from, nearest first: the member it overrides in each base class, then
     /// the interface members it implements. For a type, its base types and then its interfaces.
     /// </summary>
-    private static IEnumerable<MemberInfo> InheritedFrom(MemberInfo member)
+    private static IEnumerable<MemberInfo> InheritedFrom(MemberInfo member) => member switch
     {
-        switch (member)
+        Type type => BaseTypes(type).Concat(type.GetInterfaces()).Select(Definition),
+        MethodInfo method => Overridden(method).Concat(Implemented(method)).Select(Definition),
+        PropertyInfo property when (property.GetMethod ?? property.SetMethod) is { } accessor =>
+            Overridden(accessor).Concat(Implemented(accessor)).Select(PropertyOf).OfType<PropertyInfo>().Select(Definition),
+        EventInfo ev when ev.AddMethod is { } adder =>
+            Overridden(adder).Concat(Implemented(adder)).Select(EventOf).OfType<EventInfo>().Select(Definition),
+        ConstructorInfo ctor when ctor.DeclaringType?.BaseType is { } baseType => BaseConstructor(ctor, baseType),
+        _ => Enumerable.Empty<MemberInfo>(),
+    };
+
+    /// <summary>The classes a type derives from, nearest first, short of <see cref="object"/>.</summary>
+    private static IEnumerable<Type> BaseTypes(Type type)
+    {
+        for (var baseType = type.BaseType; baseType is not null && baseType != typeof(object); baseType = baseType.BaseType)
         {
-            case Type type:
-                for (var baseType = type.BaseType; baseType is not null && baseType != typeof(object); baseType = baseType.BaseType)
-                {
-                    yield return Definition(baseType);
-                }
-
-                foreach (var implemented in type.GetInterfaces()) yield return Definition(implemented);
-                break;
-
-            case MethodInfo method:
-                foreach (var ancestor in Overridden(method)) yield return Definition(ancestor);
-                foreach (var ancestor in Implemented(method)) yield return Definition(ancestor);
-                break;
-
-            case PropertyInfo property when (property.GetMethod ?? property.SetMethod) is { } accessor:
-                foreach (var ancestor in Overridden(accessor).Concat(Implemented(accessor)))
-                {
-                    if (PropertyOf(ancestor) is { } inherited) yield return Definition(inherited);
-                }
-
-                break;
-
-            case EventInfo ev when ev.AddMethod is { } adder:
-                foreach (var ancestor in Overridden(adder).Concat(Implemented(adder)))
-                {
-                    if (EventOf(ancestor) is { } inherited) yield return Definition(inherited);
-                }
-
-                break;
-
-            case ConstructorInfo ctor when ctor.DeclaringType?.BaseType is { } baseType:
-                // A constructor inherits from the base constructor with the same parameters.
-                var parameters = ctor.GetParameters().Select(p => p.ParameterType).ToArray();
-                if (baseType.GetConstructor(DocIds.AllDeclared, parameters) is { } baseCtor) yield return Definition(baseCtor);
-                break;
-
-            default:
-                break;
+            yield return baseType;
         }
+    }
+
+    /// <summary>A constructor inherits from the base constructor with the same parameters.</summary>
+    private static IEnumerable<MemberInfo> BaseConstructor(ConstructorInfo ctor, Type baseType)
+    {
+        var parameters = ctor.GetParameters().Select(p => p.ParameterType).ToArray();
+        return baseType.GetConstructor(DocIds.AllDeclared, parameters) is { } baseCtor ? [Definition(baseCtor)] : [];
     }
 
     /// <summary>The declarations a virtual method overrides, from the nearest base class up to the one that introduced it.</summary>

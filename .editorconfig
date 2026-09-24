@@ -152,6 +152,14 @@ dotnet_diagnostic.S3267.severity = none
 # S2245 is Sonar's CA5394; see above.
 dotnet_diagnostic.S2245.severity = none
 
+# SonarQube Cloud's profile turns these on, but the SonarAnalyzer package does not by default, so
+# until they were named here they only appeared after a push -- 90 of them, in one analysis. Named,
+# they fail the local build like every other finding and the CI report holds no surprises.
+dotnet_diagnostic.S3776.severity = warning
+dotnet_diagnostic.S107.severity = warning
+dotnet_diagnostic.S1192.severity = warning
+dotnet_diagnostic.S2589.severity = warning
+
 # S1104 "make field private and expose a property". Vector and geometry structs expose fields on
 # purpose: a property would copy the struct on every read in the render loop.
 dotnet_diagnostic.S1104.severity = suggestion
@@ -216,6 +224,13 @@ generated_code = true
 # The repetition is the point: renaming either side, or expanding 43 call sites, reads worse.
 [src/VirtualMarina.Core/Rendering/SceneBuilder.cs]
 dotnet_diagnostic.S3218.severity = none
+
+# S107 "too many parameters". The layout builder's AddPier, AddBerths, AlongPier and DividersAlongPier
+# are the published fluent API: a few required values, then optional ones with defaults, named at the
+# call site. Folding them into an options object is a breaking change (Docs/16-compatibility.md) that
+# would make every call longer. Private helpers elsewhere are held to the limit.
+[src/VirtualMarina.Core/Domain/MarinaLayoutBuilder.cs]
+dotnet_diagnostic.S107.severity = none
 
 # Blazor WebAssembly runs on a single thread with a synchronisation context the component needs to
 # stay on. CA2007 (call ConfigureAwait) would take it off that context, and CA1849 objects to the

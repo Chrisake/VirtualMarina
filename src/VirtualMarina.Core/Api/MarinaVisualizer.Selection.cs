@@ -96,9 +96,7 @@ public sealed partial class MarinaVisualizer
                 continue;
             }
 
-            if (berth.IsDisabled) rejected.Add(new RejectedBerth(id, BerthSelectionRejection.Disabled));
-            else if (!berth.IsVisible) rejected.Add(new RejectedBerth(id, BerthSelectionRejection.Hidden));
-            else if (!_statusFilter.Includes(berth.Status)) rejected.Add(new RejectedBerth(id, BerthSelectionRejection.FilteredOut));
+            if (RejectionOf(berth) is { } rejection) rejected.Add(new RejectedBerth(id, rejection));
             else if (seen.Add(berth.Id)) selected.Add(berth.Id);
         }
 
@@ -110,6 +108,15 @@ public sealed partial class MarinaVisualizer
 
         if (focusCamera && _selection.Count > 0) FocusBerths(_selection, focusAngle);
         return new SelectionResult(_selection.ToArray(), rejected, changed);
+    }
+
+    /// <summary>Why <see cref="SetSelection(IEnumerable{string}, bool, CameraAngle?)"/> cannot select a berth that exists, or null when it can.</summary>
+    private BerthSelectionRejection? RejectionOf(Berth berth)
+    {
+        if (berth.IsDisabled) return BerthSelectionRejection.Disabled;
+        if (!berth.IsVisible) return BerthSelectionRejection.Hidden;
+        if (!_statusFilter.Includes(berth.Status)) return BerthSelectionRejection.FilteredOut;
+        return null;
     }
 
     /// <summary>Adds a berth to the selection (making it primary). Returns false when it can't be selected.</summary>
@@ -229,17 +236,8 @@ public sealed partial class MarinaVisualizer
         switch (button)
         {
             case PointerButton.Left when additive:
-                {
-                    var ids = IsBerthSelected(berth.Id)
-                        ? _selection.Where(id => !IdComparer.Equals(id, berth.Id)).ToArray()
-                        : _selection.Append(berth.Id).ToArray();
-                    if (SetSelectionCore(ids) && ids.Length > 0)
-                    {
-                        RaiseContentAndShowPopup(SelectionReason.Pointer, isNewSelection: true, button, BerthPopupKind.Tooltip, worldPoint);
-                    }
-
-                    break;
-                }
+                ToggleClickedBerth(berth, worldPoint);
+                break;
 
             case PointerButton.Left:
                 {
@@ -249,27 +247,43 @@ public sealed partial class MarinaVisualizer
                 }
 
             case PointerButton.Right:
-                {
-                    var before = new HashSet<string>(_selection, IdComparer);
-                    string[] ids;
-                    if (before.Contains(berth.Id) && (before.Count > 1 || additive))
-                    {
-                        // Right-click inside a multi-selection keeps it and moves the popup to the clicked berth.
-                        ids = _selection.Where(id => !IdComparer.Equals(id, berth.Id)).Append(berth.Id).ToArray();
-                    }
-                    else
-                    {
-                        ids = additive ? _selection.Append(berth.Id).ToArray() : new[] { berth.Id };
-                    }
-
-                    SetSelectionCore(ids);
-                    var isNew = !before.SetEquals(ids);
-                    RaiseContentAndShowPopup(SelectionReason.Pointer, isNew, button, BerthPopupKind.Actions, worldPoint);
-                    break;
-                }
+                SelectForActions(berth, additive, worldPoint);
+                break;
         }
 
         BerthClicked?.Invoke(this, CreateBerthArgs(berth, button, isDoubleClick: false, worldPoint));
+    }
+
+    /// <summary>Ctrl+click or Shift+click: takes the berth out of the selection, or adds it.</summary>
+    private void ToggleClickedBerth(Berth berth, Vector3 worldPoint)
+    {
+        var ids = IsBerthSelected(berth.Id)
+            ? _selection.Where(id => !IdComparer.Equals(id, berth.Id)).ToArray()
+            : _selection.Append(berth.Id).ToArray();
+        if (SetSelectionCore(ids) && ids.Length > 0)
+        {
+            RaiseContentAndShowPopup(SelectionReason.Pointer, isNewSelection: true, PointerButton.Left, BerthPopupKind.Tooltip, worldPoint);
+        }
+    }
+
+    /// <summary>A right-click: selects the berth, or keeps the multi-selection it is part of, and opens the actions window on it.</summary>
+    private void SelectForActions(Berth berth, bool additive, Vector3 worldPoint)
+    {
+        var before = new HashSet<string>(_selection, IdComparer);
+        string[] ids;
+        if (before.Contains(berth.Id) && (before.Count > 1 || additive))
+        {
+            // Right-click inside a multi-selection keeps it and moves the popup to the clicked berth.
+            ids = _selection.Where(id => !IdComparer.Equals(id, berth.Id)).Append(berth.Id).ToArray();
+        }
+        else
+        {
+            ids = additive ? _selection.Append(berth.Id).ToArray() : new[] { berth.Id };
+        }
+
+        SetSelectionCore(ids);
+        var isNew = !before.SetEquals(ids);
+        RaiseContentAndShowPopup(SelectionReason.Pointer, isNew, PointerButton.Right, BerthPopupKind.Actions, worldPoint);
     }
 
     /// <summary>Escape closes the popup first, then clears the selection.</summary>

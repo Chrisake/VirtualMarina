@@ -143,7 +143,25 @@ internal sealed class CamerasPanel : SidePanel
         var keep = CommonPrefix(built ?? string.Empty, wanted);
         _rowsChanged = true;
         table.SuspendLayout();
+        DropRows(table, keep, automatic);
 
+        if (automatic) _automaticRows = wanted;
+        else _savedRows = wanted;
+
+        if (presets.Count == 0)
+        {
+            Theme.FullRow(table, Theme.Hint(Strings.CameraNoneSaved));
+            table.ResumeLayout();
+            return;
+        }
+
+        foreach (var preset in presets.Skip(keep)) AddRow(table, preset, automatic);
+        table.ResumeLayout();
+    }
+
+    /// <summary>Removes every row after the first <paramref name="keep"/>, and the ticks that went with them.</summary>
+    private void DropRows(TableLayoutPanel table, int keep, bool automatic)
+    {
         if (keep == 0)
         {
             while (table.Controls.Count > 0)
@@ -156,91 +174,79 @@ internal sealed class CamerasPanel : SidePanel
             table.RowStyles.Clear();
             table.RowCount = 0;
             if (automatic) _ticks.Clear();
-        }
-        else
-        {
-            // Drop only the tail that no longer matches.
-            while (table.RowCount > keep)
-            {
-                var last = table.GetControlFromPosition(0, table.RowCount - 1);
-                if (last is not null)
-                {
-                    if (automatic) _ticks.Remove(last.Tag as string ?? string.Empty);
-                    table.Controls.Remove(last);
-                    last.Dispose();
-                }
-
-                table.RowStyles.RemoveAt(table.RowCount - 1);
-                table.RowCount--;
-            }
-        }
-
-        if (automatic) _automaticRows = wanted;
-        else _savedRows = wanted;
-
-        if (presets.Count == 0)
-        {
-            Theme.FullRow(table, Theme.Hint(Strings.CameraNoneSaved));
-            table.ResumeLayout();
             return;
         }
 
-        foreach (var preset in presets.Skip(keep))
+        // Drop only the tail that no longer matches.
+        while (table.RowCount > keep)
         {
-            var row = new TableLayoutPanel
+            var last = table.GetControlFromPosition(0, table.RowCount - 1);
+            if (last is not null)
             {
-                ColumnCount = 2,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                Dock = DockStyle.Top,
-                Margin = new Padding(0, 1, 0, 1),
-                BackColor = Theme.Surface,
-            };
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            row.Tag = preset.Name;
-
-            var name = preset.Name;
-            var key = preset.Key ?? name;
-            if (automatic)
-            {
-                var tick = Theme.Check(name);
-                tick.Checked = preset.IsEnabled;
-                tick.CheckedChanged += (_, _) => SetEnabled(key, name, tick.Checked);
-                Theme.Tips.SetToolTip(tick, preset.Description ?? name);
-                row.Controls.Add(tick, 0, 0);
-                _ticks[name] = tick;
-            }
-            else
-            {
-                var label = new Label { Text = name, AutoSize = true, ForeColor = Theme.Text, Font = Theme.Body, Margin = new Padding(3, 5, 3, 3) };
-                Theme.Tips.SetToolTip(label, preset.Description ?? name);
-                row.Controls.Add(label, 0, 0);
+                if (automatic) _ticks.Remove(last.Tag as string ?? string.Empty);
+                table.Controls.Remove(last);
+                last.Dispose();
             }
 
-            var buttons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = Padding.Empty, WrapContents = false };
-            // The row asks for the view by key or name when it is pressed rather than carrying the one it was built
-            // from. Automatic views are worked out afresh from the layout every time it changes, so a row built for an
-            // earlier layout that still holds its own copy sends the camera to where the marina used to be. Asking
-            // this way also keeps a saved view named after an automatic one distinct from it: a row in the automatic
-            // list asks for the automatic one by its key, a row in the saved list gets the saved one first.
-            var goTo = automatic
-                ? new EventHandler((_, _) => _marina.ApplyBuiltInCameraPreset(key))
-                : new EventHandler((_, _) => _marina.ApplyCameraPreset(name));
-            buttons.Controls.Add(Theme.Icon(Strings.CameraGoToGlyph, Strings.CameraGoToTip, goTo));
-            if (!automatic)
-            {
-                buttons.Controls.Add(Theme.Icon(Strings.CameraDeleteGlyph, Strings.CameraDeleteTip, (_, _) => Delete(name), danger: true));
-            }
+            table.RowStyles.RemoveAt(table.RowCount - 1);
+            table.RowCount--;
+        }
+    }
 
-            row.Controls.Add(buttons, 1, 0);
+    /// <summary>Adds the row for one view: its tick or name, a button that goes there, and one that deletes a saved view.</summary>
+    private void AddRow(TableLayoutPanel table, CameraPreset preset, bool automatic)
+    {
+        var row = new TableLayoutPanel
+        {
+            ColumnCount = 2,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Dock = DockStyle.Top,
+            Margin = new Padding(0, 1, 0, 1),
+            BackColor = Theme.Surface,
+        };
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+        row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        row.Tag = preset.Name;
 
-            table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-            table.Controls.Add(row, 0, table.RowCount++);
-            table.SetColumnSpan(row, table.ColumnCount);
+        var name = preset.Name;
+        var key = preset.Key ?? name;
+        if (automatic)
+        {
+            var tick = Theme.Check(name);
+            tick.Checked = preset.IsEnabled;
+            tick.CheckedChanged += (_, _) => SetEnabled(key, name, tick.Checked);
+            Theme.Tips.SetToolTip(tick, preset.Description ?? name);
+            row.Controls.Add(tick, 0, 0);
+            _ticks[name] = tick;
+        }
+        else
+        {
+            var label = new Label { Text = name, AutoSize = true, ForeColor = Theme.Text, Font = Theme.Body, Margin = new Padding(3, 5, 3, 3) };
+            Theme.Tips.SetToolTip(label, preset.Description ?? name);
+            row.Controls.Add(label, 0, 0);
         }
 
-        table.ResumeLayout();
+        var buttons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = Padding.Empty, WrapContents = false };
+        // The row asks for the view by key or name when it is pressed rather than carrying the one it was built
+        // from. Automatic views are worked out afresh from the layout every time it changes, so a row built for an
+        // earlier layout that still holds its own copy sends the camera to where the marina used to be. Asking
+        // this way also keeps a saved view named after an automatic one distinct from it: a row in the automatic
+        // list asks for the automatic one by its key, a row in the saved list gets the saved one first.
+        var goTo = automatic
+            ? new EventHandler((_, _) => _marina.ApplyBuiltInCameraPreset(key))
+            : new EventHandler((_, _) => _marina.ApplyCameraPreset(name));
+        buttons.Controls.Add(Theme.Icon(Strings.CameraGoToGlyph, Strings.CameraGoToTip, goTo));
+        if (!automatic)
+        {
+            buttons.Controls.Add(Theme.Icon(Strings.CameraDeleteGlyph, Strings.CameraDeleteTip, (_, _) => Delete(name), danger: true));
+        }
+
+        row.Controls.Add(buttons, 1, 0);
+
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table.Controls.Add(row, 0, table.RowCount++);
+        table.SetColumnSpan(row, table.ColumnCount);
     }
 
     /// <summary>

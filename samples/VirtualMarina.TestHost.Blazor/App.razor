@@ -514,17 +514,7 @@
         }
 
         sb.AppendLine($"Berth:    {berth.DisplayName} ({berth.Id})");
-        if (berth.LandAreaId is { } landAreaId)
-        {
-            sb.AppendLine($"Land:    {_marina.GetLandArea(landAreaId)?.DisplayName ?? landAreaId} (stored ashore)");
-        }
-        else if (berth.PierId is { } pierId)
-        {
-            var pier = _marina.GetPier(pierId);
-            var sides = pier?.BerthingSides is PierSides.Left or PierSides.Right ? ", single-sided" : "";
-            sb.AppendLine($"Pier:    {pier?.Name} ({(pier is null ? "?" : Pier.GetDisplayName(pier.Type))}{sides})");
-        }
-
+        AppendPlace(sb, berth);
         sb.AppendLine($"Status:  {berth.Status.GetDisplayName()}");
         sb.AppendLine($"Size:    {berth.Length:0.0} m x {berth.Width:0.0} m, draft {berth.MaxDraft?.ToString("0.0") ?? "?"} m");
         if (berth.Boat is { } boat)
@@ -540,6 +530,21 @@
         foreach (var (key, value) in berth.Metadata) sb.AppendLine($"{key,-8} {value}");
         foreach (var (key, value) in berth.ExternalData) sb.AppendLine($"ext:{key} = {value}");
         return sb.ToString();
+    }
+
+    /// <summary>The line naming where the berth is: its land area, or its pier and what kind of pier.</summary>
+    private void AppendPlace(StringBuilder sb, Berth berth)
+    {
+        if (berth.LandAreaId is { } landAreaId)
+        {
+            sb.AppendLine($"Land:    {_marina.GetLandArea(landAreaId)?.DisplayName ?? landAreaId} (stored ashore)");
+        }
+        else if (berth.PierId is { } pierId)
+        {
+            var pier = _marina.GetPier(pierId);
+            var sides = pier?.BerthingSides is PierSides.Left or PierSides.Right ? ", single-sided" : "";
+            sb.AppendLine($"Pier:    {pier?.Name} ({(pier is null ? "?" : Pier.GetDisplayName(pier.Type))}{sides})");
+        }
     }
 
     private void Log(string message)

@@ -41,22 +41,7 @@ internal static class BrowserFonts
         {
             var character = glyph.GetProperty("c").GetString();
             if (string.IsNullOrEmpty(character)) continue;
-
-            var contours = new List<IReadOnlyList<Vector2>>();
-            if (glyph.TryGetProperty("o", out var outlines))
-            {
-                foreach (var contour in outlines.EnumerateArray())
-                {
-                    var flat = contour.EnumerateArray().Select(v => v.GetSingle()).ToArray();
-                    if (flat.Length < 6) continue;   // fewer than three points is not an outline
-
-                    var points = new List<Vector2>(flat.Length / 2);
-                    for (var i = 0; i + 1 < flat.Length; i += 2) points.Add(new Vector2(flat[i], flat[i + 1]));
-                    if (points.Count >= 3) contours.Add(points);
-                }
-            }
-
-            glyphs.Add(new LabelGlyph(character[0], glyph.GetProperty("a").GetSingle(), contours));
+            glyphs.Add(new LabelGlyph(character[0], glyph.GetProperty("a").GetSingle(), Outlines(glyph)));
         }
 
         if (glyphs.Count == 0) return null;
@@ -64,5 +49,24 @@ internal static class BrowserFonts
         var isBold = captured.TryGetProperty("isBold", out var b) && b.GetBoolean();
         var font = new LabelFontDefinition(name, glyphs, isBold);
         return font.Validate().Any() ? null : font;
+    }
+
+    /// <summary>A captured glyph's outlines, each sent as a flat run of x, y pairs; any with fewer than three points is dropped.</summary>
+    private static List<IReadOnlyList<Vector2>> Outlines(JsonElement glyph)
+    {
+        var contours = new List<IReadOnlyList<Vector2>>();
+        if (!glyph.TryGetProperty("o", out var outlines)) return contours;
+
+        foreach (var contour in outlines.EnumerateArray())
+        {
+            var flat = contour.EnumerateArray().Select(v => v.GetSingle()).ToArray();
+            if (flat.Length < 6) continue;   // fewer than three points is not an outline
+
+            var points = new List<Vector2>(flat.Length / 2);
+            for (var i = 0; i + 1 < flat.Length; i += 2) points.Add(new Vector2(flat[i], flat[i + 1]));
+            contours.Add(points);
+        }
+
+        return contours;
     }
 }

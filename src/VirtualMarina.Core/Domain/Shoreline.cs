@@ -352,24 +352,10 @@ public sealed record Shoreline
             yield break;
         }
 
-        for (var i = 0; i < Points.Count; i++)
+        if (FindPointProblem() is { } pointProblem)
         {
-            if (!float.IsFinite(Points[i].X) || !float.IsFinite(Points[i].Y))
-            {
-                yield return Strings.Format(Strings.ErrorShorelineNonFinitePoint, i);
-                yield break;
-            }
-        }
-
-        for (var i = 1; i < Points.Count; i++)
-        {
-            if (Vector2.Distance(Points[i - 1], Points[i]) <= MinimumSpacing)
-            {
-                yield return Points.Count == 2
-                    ? Strings.ErrorShorelineTwoPointsTogether
-                    : Strings.Format(Strings.ErrorShorelinePointsTogether, i - 1, i);
-                yield break;
-            }
+            yield return pointProblem;
+            yield break;
         }
 
         if (FindSelfCrossing() is { } crossing)
@@ -399,6 +385,27 @@ public sealed record Shoreline
         {
             yield return Strings.ErrorShorelineEndCrosses;
         }
+    }
+
+    /// <summary>The first point that is not a number, or the first two that sit on top of each other; null when there is neither.</summary>
+    private string? FindPointProblem()
+    {
+        for (var i = 0; i < Points.Count; i++)
+        {
+            if (!float.IsFinite(Points[i].X) || !float.IsFinite(Points[i].Y)) return Strings.Format(Strings.ErrorShorelineNonFinitePoint, i);
+        }
+
+        for (var i = 1; i < Points.Count; i++)
+        {
+            if (Vector2.Distance(Points[i - 1], Points[i]) <= MinimumSpacing)
+            {
+                return Points.Count == 2
+                    ? Strings.ErrorShorelineTwoPointsTogether
+                    : Strings.Format(Strings.ErrorShorelinePointsTogether, i - 1, i);
+            }
+        }
+
+        return null;
     }
 
     /// <summary>

@@ -359,16 +359,7 @@ public sealed partial class MarinaDesigner
                 }
                 else if (args.Pier is { } pier)
                 {
-                    // The id moves first, so the display name is applied to the pier under its new id.
-                    var wantedId = args.NewPierId?.Trim();
-                    var moving = !string.IsNullOrEmpty(wantedId) && !string.Equals(wantedId, pier.Id, StringComparison.Ordinal);
-                    var current = moving ? ChangePierId(pier.Id, wantedId!).Id : pier.Id;
-                    RenamePier(current, args.NewName);
-
-                    // A pattern of the host's own goes over the whole pier, including the berths the id move just
-                    // renamed under the old one. Otherwise moving the id has already put the names right.
-                    if (patternChanged) RenumberBerths(current, args.NewBerthPattern!.Trim());
-                    else if (!moving) RenumberBerths(current);
+                    RenamePierAndRow(pier, args, patternChanged);
                 }
 
                 step.Complete();
@@ -380,6 +371,21 @@ public sealed partial class MarinaDesigner
                 return ex;
             }
         }
+    }
+
+    /// <summary>The pier half of <see cref="RenameOne"/>: its id, then its name, then its berths' names.</summary>
+    private void RenamePierAndRow(Pier pier, DesignElementRenamingEventArgs args, bool patternChanged)
+    {
+        // The id moves first, so the display name is applied to the pier under its new id.
+        var wantedId = args.NewPierId?.Trim();
+        var moving = !string.IsNullOrEmpty(wantedId) && !string.Equals(wantedId, pier.Id, StringComparison.Ordinal);
+        var current = moving ? ChangePierId(pier.Id, wantedId!).Id : pier.Id;
+        RenamePier(current, args.NewName);
+
+        // A pattern of the host's own goes over the whole pier, including the berths the id move just
+        // renamed under the old one. Otherwise moving the id has already put the names right.
+        if (patternChanged) RenumberBerths(current, args.NewBerthPattern!.Trim());
+        else if (!moving) RenumberBerths(current);
     }
 
     /// <summary>

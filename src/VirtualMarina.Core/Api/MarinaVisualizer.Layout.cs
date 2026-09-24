@@ -722,29 +722,7 @@ public sealed partial class MarinaVisualizer
             MultiBerthId = keepMultiBerthId && replacement.MultiBerthId is null ? existing.MultiBerthId : replacement.MultiBerthId,
         });
         _berths[existing.Id] = normalized;
-        if (IsBerthSelected(existing.Id)) _selectedSnapshot = null;
-
-        // A new status, boat or label changes only what the berths layer shows; the piers, fingers and pedestals stay.
-        if (ShapesStructure(existing, normalized)) MarkSceneDirty();
-        else MarkBerthsDirty();
-
-        // Moved, resized or given to another pier: the automatic views frame it somewhere else.
-        if (existing.Bounds != normalized.Bounds || !IdComparer.Equals(existing.PierId, normalized.PierId) ||
-            !IdComparer.Equals(existing.LandAreaId, normalized.LandAreaId))
-        {
-            InvalidateLayoutGeometry();
-        }
-
-        if (IsBerthSelected(existing.Id))
-        {
-            if (!IsSelectable(normalized)) RemoveFromSelectionCore(existing.Id);
-            else RequestPopupRefresh();
-        }
-
-        if (IdComparer.Equals(_hoveredBerthId, existing.Id) && !(normalized.IsInteractive && _statusFilter.Includes(normalized.Status)))
-        {
-            SetHoveredBerth(null);
-        }
+        FollowBerthChange(existing, normalized);
 
         if (existing.Status != normalized.Status || existing.Boat != normalized.Boat)
         {
@@ -753,6 +731,37 @@ public sealed partial class MarinaVisualizer
 
         RaiseLayoutChanged(LayoutChangeKind.BerthUpdated, normalized.PierId, normalized.Id, landAreaId: normalized.LandAreaId);
         return normalized;
+    }
+
+    /// <summary>
+    /// Brings everything that depends on a berth up to date after it was stored as <paramref name="after"/>: the scene, the
+    /// automatic views, the selection and its popup, and the hover.
+    /// </summary>
+    private void FollowBerthChange(Berth before, Berth after)
+    {
+        if (IsBerthSelected(before.Id)) _selectedSnapshot = null;
+
+        // A new status, boat or label changes only what the berths layer shows; the piers, fingers and pedestals stay.
+        if (ShapesStructure(before, after)) MarkSceneDirty();
+        else MarkBerthsDirty();
+
+        // Moved, resized or given to another pier: the automatic views frame it somewhere else.
+        if (before.Bounds != after.Bounds || !IdComparer.Equals(before.PierId, after.PierId) ||
+            !IdComparer.Equals(before.LandAreaId, after.LandAreaId))
+        {
+            InvalidateLayoutGeometry();
+        }
+
+        if (IsBerthSelected(before.Id))
+        {
+            if (!IsSelectable(after)) RemoveFromSelectionCore(before.Id);
+            else RequestPopupRefresh();
+        }
+
+        if (IdComparer.Equals(_hoveredBerthId, before.Id) && !(after.IsInteractive && _statusFilter.Includes(after.Status)))
+        {
+            SetHoveredBerth(null);
+        }
     }
 
     private void ValidateBerthForStorage(Berth berth)

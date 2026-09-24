@@ -154,6 +154,27 @@ public sealed class LabelFontDefinition
     private static IEnumerable<(IReadOnlyList<Vector2> Outer, IReadOnlyList<IReadOnlyList<Vector2>> Holes)> Nest(
         IReadOnlyList<Vector2>[] rings)
     {
+        var (depth, parent) = Containment(rings);
+        for (var i = 0; i < rings.Length; i++)
+        {
+            if (depth[i] % 2 != 0) continue;   // odd means it sits inside something: a counter, not a shape
+
+            var holes = new List<IReadOnlyList<Vector2>>();
+            for (var j = 0; j < rings.Length; j++)
+            {
+                if (depth[j] % 2 == 1 && parent[j] == i) holes.Add(rings[j]);
+            }
+
+            yield return (rings[i], holes);
+        }
+    }
+
+    /// <summary>
+    /// For each outline, how many others it sits inside, and the smallest of those (its immediate parent), or -1 when it
+    /// sits inside none.
+    /// </summary>
+    private static (int[] Depth, int[] Parent) Containment(IReadOnlyList<Vector2>[] rings)
+    {
         var depth = new int[rings.Length];
         var parent = new int[rings.Length];
         for (var i = 0; i < rings.Length; i++)
@@ -173,18 +194,7 @@ public sealed class LabelFontDefinition
             }
         }
 
-        for (var i = 0; i < rings.Length; i++)
-        {
-            if (depth[i] % 2 != 0) continue;   // odd means it sits inside something: a counter, not a shape
-
-            var holes = new List<IReadOnlyList<Vector2>>();
-            for (var j = 0; j < rings.Length; j++)
-            {
-                if (depth[j] % 2 == 1 && parent[j] == i) holes.Add(rings[j]);
-            }
-
-            yield return (rings[i], holes);
-        }
+        return (depth, parent);
     }
 
     /// <summary>
@@ -261,21 +271,35 @@ public sealed class LabelFontDefinition
         {
             foreach (var part in rest[(space + 1)..].Split('|', StringSplitOptions.RemoveEmptyEntries))
             {
-                var points = new List<Vector2>();
-                foreach (var pair in part.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var comma = pair.IndexOf(',', StringComparison.Ordinal);
-                    if (comma <= 0) continue;
-                    if (!float.TryParse(pair[..comma], NumberStyles.Float, CultureInfo.InvariantCulture, out var x)) continue;
-                    if (!float.TryParse(pair[(comma + 1)..], NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) continue;
-                    points.Add(new Vector2(x, y));
-                }
-
+                var points = ParseContour(part);
                 if (points.Count >= 3) contours.Add(points);
             }
         }
 
         return new LabelGlyph(character, advance, contours);
+    }
+
+    /// <summary>The <c>x,y</c> points of one outline, skipping any that do not read as two numbers.</summary>
+    private static List<Vector2> ParseContour(string part)
+    {
+        var points = new List<Vector2>();
+        foreach (var pair in part.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (TryParsePoint(pair, out var point)) points.Add(point);
+        }
+
+        return points;
+    }
+
+    private static bool TryParsePoint(string pair, out Vector2 point)
+    {
+        point = default;
+        var comma = pair.IndexOf(',', StringComparison.Ordinal);
+        if (comma <= 0) return false;
+        if (!float.TryParse(pair[..comma], NumberStyles.Float, CultureInfo.InvariantCulture, out var x)) return false;
+        if (!float.TryParse(pair[(comma + 1)..], NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) return false;
+        point = new Vector2(x, y);
+        return true;
     }
 
     /// <summary>Three decimals of the cap height is finer than a label is ever drawn, and keeps the file small.</summary>

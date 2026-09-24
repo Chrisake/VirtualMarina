@@ -14,6 +14,9 @@ public static class ReferenceImageLoader
     /// <summary>The EXIF tag saying which way up a photo was taken.</summary>
     private const int ExifOrientation = 0x0112;
 
+    private const string PngType = "image/png";
+    private const string JpegType = "image/jpeg";
+
     /// <summary>File filter for an <see cref="OpenFileDialog"/>, with the descriptions in the current language.</summary>
     public static string FileDialogFilter =>
         $"{Strings.FileDialogFilterImages}|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff|{Strings.FileDialogFilterAll}|*.*";
@@ -40,7 +43,7 @@ public static class ReferenceImageLoader
         using var buffer = new MemoryStream();
         stream.CopyTo(buffer);
         var data = buffer.ToArray();
-        return FromBytes(data, ContentTypeOf(data) ?? "image/png");
+        return FromBytes(data, ContentTypeOf(data) ?? PngType);
     }
 
     /// <summary>
@@ -50,7 +53,7 @@ public static class ReferenceImageLoader
     /// <param name="encodedData">The PNG/JPEG/BMP file contents.</param>
     /// <param name="contentType">MIME type of the data, e.g. "image/png".</param>
     /// <exception cref="ArgumentException">The bytes are not a supported image.</exception>
-    public static ReferenceImage FromBytes(byte[] encodedData, string contentType = "image/png")
+    public static ReferenceImage FromBytes(byte[] encodedData, string contentType = PngType)
     {
         ArgumentNullException.ThrowIfNull(encodedData);
         if (encodedData.Length == 0) throw new ArgumentException("The image data is empty.", nameof(encodedData));
@@ -72,7 +75,7 @@ public static class ReferenceImageLoader
         ArgumentNullException.ThrowIfNull(image);
         return image.Rgba is not null || image.EncodedData is not { Length: > 0 } data
             ? image
-            : FromBytes(data, image.ContentType ?? ContentTypeOf(data) ?? "image/png");
+            : FromBytes(data, image.ContentType ?? ContentTypeOf(data) ?? PngType);
     }
 
     /// <summary>
@@ -102,15 +105,15 @@ public static class ReferenceImageLoader
         // The stored file describes the original pixels: a turned or scaled copy is stored as itself instead.
         if (scale >= 1d && turnedCopy is null) return new ReferenceImage(width, height, rgba, encodedData, contentType);
 
-        var jpeg = string.Equals(contentType, "image/jpeg", StringComparison.OrdinalIgnoreCase);
-        return new ReferenceImage(width, height, rgba, Encode(bitmap, jpeg), jpeg ? "image/jpeg" : "image/png");
+        var jpeg = string.Equals(contentType, JpegType, StringComparison.OrdinalIgnoreCase);
+        return new ReferenceImage(width, height, rgba, Encode(bitmap, jpeg), jpeg ? JpegType : PngType);
     }
 
     /// <summary>The MIME type of image bytes, read from the signature at their start; null when it is none GDI+ reads.</summary>
     private static string? ContentTypeOf(ReadOnlySpan<byte> data)
     {
-        if (data.StartsWith(PngSignature)) return "image/png";
-        if (data.StartsWith(JpegSignature)) return "image/jpeg";
+        if (data.StartsWith(PngSignature)) return PngType;
+        if (data.StartsWith(JpegSignature)) return JpegType;
         if (data.StartsWith(GifSignature)) return "image/gif";
         if (data.StartsWith(BmpSignature)) return "image/bmp";
         if (data.StartsWith(TiffIntelSignature) || data.StartsWith(TiffMotorolaSignature)) return "image/tiff";
@@ -133,11 +136,11 @@ public static class ReferenceImageLoader
     // upper-case direction round-trips for every culture (CA1308).
     private static string ContentTypeOf(string path) => Path.GetExtension(path).ToUpperInvariant() switch
     {
-        ".JPG" or ".JPEG" => "image/jpeg",
+        ".JPG" or ".JPEG" => JpegType,
         ".BMP" => "image/bmp",
         ".GIF" => "image/gif",
         ".TIF" or ".TIFF" => "image/tiff",
-        _ => "image/png",
+        _ => PngType,
     };
 
     /// <summary>What turns a photo the right way up, from its EXIF orientation (1 to 8); nothing when it has none.</summary>

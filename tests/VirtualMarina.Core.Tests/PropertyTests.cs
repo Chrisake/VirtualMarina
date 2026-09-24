@@ -187,34 +187,22 @@ public class PropertyTests
     /// <summary>Every position in the document that holds a value, as a slash-separated path.</summary>
     private static IEnumerable<string> ValuePaths(JsonNode node, string prefix = "")
     {
-        switch (node)
+        foreach (var (key, child) in Children(node))
         {
-            case JsonObject obj:
-                foreach (var (key, value) in obj)
-                {
-                    var path = prefix + "/" + key;
-                    yield return path;
-                    if (value is not null)
-                    {
-                        foreach (var inner in ValuePaths(value, path)) yield return inner;
-                    }
-                }
-
-                break;
-            case JsonArray array:
-                for (var i = 0; i < array.Count; i++)
-                {
-                    var path = prefix + "/" + i.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                    yield return path;
-                    if (array[i] is { } value)
-                    {
-                        foreach (var inner in ValuePaths(value, path)) yield return inner;
-                    }
-                }
-
-                break;
+            var path = prefix + "/" + key;
+            yield return path;
+            if (child is null) continue;
+            foreach (var inner in ValuePaths(child, path)) yield return inner;
         }
     }
+
+    /// <summary>An object's properties by name, an array's items by index; nothing for a plain value.</summary>
+    private static IEnumerable<(string Key, JsonNode? Value)> Children(JsonNode node) => node switch
+    {
+        JsonObject obj => obj.Select(pair => (pair.Key, pair.Value)),
+        JsonArray array => array.Select((value, i) => (i.ToString(System.Globalization.CultureInfo.InvariantCulture), value)),
+        _ => Enumerable.Empty<(string, JsonNode?)>(),
+    };
 
     // ---- Polygons --------------------------------------------------------------------------------
 

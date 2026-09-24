@@ -123,13 +123,15 @@ public static class ApiSurface
         _ => null,
     };
 
+    private const string Protected = "protected ";
+
     /// <summary>"protected " for a member a derived class can reach but a caller cannot; nothing for public ones.</summary>
     private static string Access(MemberInfo member) => member switch
     {
         // A property is as visible as its most visible accessor; a less visible one is marked on the accessor.
-        PropertyInfo p => p.GetMethod is { IsPublic: true } || p.SetMethod is { IsPublic: true } ? string.Empty : "protected ",
-        EventInfo e => IsProtected(e.AddMethod!) ? "protected " : string.Empty,
-        _ => IsProtected(member) ? "protected " : string.Empty,
+        PropertyInfo p => p.GetMethod is { IsPublic: true } || p.SetMethod is { IsPublic: true } ? string.Empty : Protected,
+        EventInfo e => IsProtected(e.AddMethod!) ? Protected : string.Empty,
+        _ => IsProtected(member) ? Protected : string.Empty,
     };
 
     private static string Modifiers(MethodInfo method)
@@ -175,7 +177,7 @@ public static class ApiSurface
 
         if (property.SetMethod is { } set && IsVisible(set))
         {
-            if (IsProtected(set) && !propertyIsProtected) text.Append("protected ");
+            if (IsProtected(set) && !propertyIsProtected) text.Append(Protected);
 
             // An init-only setter is not a normal setter: assigning after construction is a compile error.
             var isInit = set.ReturnParameter.GetRequiredCustomModifiers()
@@ -261,15 +263,7 @@ public static class ApiSurface
 
     private static string Describe(Type type)
     {
-        var attributes = type.GetCustomAttributesData();
-        var isRecord = IsRecord(type);
-        var kind = type.IsEnum ? "enum"
-            : type.IsInterface ? "interface"
-            : type.IsValueType ? StructKind(type, attributes) + (isRecord ? "record struct" : "struct")
-            : IsStatic(type) ? "static class"
-            : type.IsAbstract ? isRecord ? "abstract record" : "abstract class"
-            : type.IsSealed ? isRecord ? "sealed record" : "sealed class"
-            : isRecord ? "record" : "class";
+        var kind = Kind(type);
 
         var bases = new List<string>();
         if (type is { IsClass: true, BaseType: { } baseType } && baseType.FullName != "System.Object") bases.Add(Name(baseType));
@@ -277,6 +271,21 @@ public static class ApiSurface
 
         var constraints = type.IsGenericTypeDefinition ? Constraints(type.GetGenericArguments()) : string.Empty;
         return $"{kind} {Name(type)}{(bases.Count > 0 ? " : " + string.Join(", ", bases) : string.Empty)}{constraints}";
+    }
+
+    /// <summary>What the type is declared as, the way C# writes it: "sealed record", "readonly struct", "static class".</summary>
+    private static string Kind(Type type)
+    {
+        if (type.IsEnum) return "enum";
+        if (type.IsInterface) return "interface";
+
+        var isRecord = IsRecord(type);
+        if (type.IsValueType) return StructKind(type, type.GetCustomAttributesData()) + (isRecord ? "record struct" : "struct");
+        if (IsStatic(type)) return "static class";
+
+        var noun = isRecord ? "record" : "class";
+        if (type.IsAbstract) return "abstract " + noun;
+        return type.IsSealed ? "sealed " + noun : noun;
     }
 
     private static string StructKind(Type type, IList<CustomAttributeData> attributes) =>

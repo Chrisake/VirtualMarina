@@ -183,15 +183,7 @@ public static class PreviewFleet
                 for (var j = i + 1; j < group.Length; j++)
                 {
                     var (a, b) = (group[i], group[j]);
-                    if (MathF.Abs(MarinaMath.DeltaAngle(a.HeadingDegrees, b.HeadingDegrees)) > 5f) continue;
-
-                    var offset = b.Center - a.Center;
-                    var across = MathF.Abs(Vector2.Dot(offset, a.Right));
-                    var along = MathF.Abs(Vector2.Dot(offset, a.Forward));
-                    var apart = (a.Width + b.Width) * 0.5f;
-
-                    if (along > MathF.Max(a.Length, b.Length) * 0.25f) continue;
-                    if (across < apart * 0.6f || across > apart * 1.4f) continue;
+                    if (!SideBySide(a, b)) continue;
 
                     Add(found, a.Id, b);
                     Add(found, b.Id, a);
@@ -206,6 +198,18 @@ public static class PreviewFleet
             if (!map.TryGetValue(id, out var list)) map[id] = list = new List<Berth>(2);
             list.Add(mate);
         }
+    }
+
+    /// <summary>Facing the same way, level along the pier, and about their two half-widths apart across it.</summary>
+    private static bool SideBySide(Berth a, Berth b)
+    {
+        if (MathF.Abs(MarinaMath.DeltaAngle(a.HeadingDegrees, b.HeadingDegrees)) > 5f) return false;
+
+        var offset = b.Center - a.Center;
+        var across = MathF.Abs(Vector2.Dot(offset, a.Right));
+        var along = MathF.Abs(Vector2.Dot(offset, a.Forward));
+        var apart = (a.Width + b.Width) * 0.5f;
+        return along <= MathF.Max(a.Length, b.Length) * 0.25f && across >= apart * 0.6f && across <= apart * 1.4f;
     }
 
     private static bool Fits(BoatDimensions size, float length, float width) =>

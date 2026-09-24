@@ -43,7 +43,7 @@ internal sealed class BerthsTool : DraftTool
         }
 
         Designer.TryCreate(() => Designer.CreateBerths(anchor.PierId, anchor.Side, anchor.Along, PierGeometry.Along(pier, pointer)).Count > 0);
-        if (_anchor is not null) Designer.FinishDraft(DesignDraftChange.Canceled);
+        if (HasDraft) Designer.FinishDraft(DesignDraftChange.Canceled);
     }
 
     public override DraftOutcome Complete() =>
@@ -154,7 +154,7 @@ internal sealed class LandBerthTool : DraftTool
 
         var center = Points[0];
         Designer.TryCreate(() => Designer.CreateLandBerth(landAreaId, center, Designer.HeadingFor(center, pointer)) is not null);
-        if (_landId is not null) Designer.FinishDraft(DesignDraftChange.Canceled);
+        if (HasDraft) Designer.FinishDraft(DesignDraftChange.Canceled);
     }
 
     public override DraftOutcome Complete()

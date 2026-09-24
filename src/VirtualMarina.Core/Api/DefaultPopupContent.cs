@@ -37,18 +37,7 @@ public static class DefaultPopupContent
         if (berth.MaxDraft is { } draft) size += string.Format(c, Strings.TooltipDraftSuffix, draft);
         tooltip.AddLine(Strings.TooltipBerthSize, size);
 
-        if (berth.Boat is { } boat && berth.Status.CanHaveBoat())
-        {
-            tooltip.AddLine(Strings.TooltipBoat, string.IsNullOrWhiteSpace(boat.Name) ? boat.Id : boat.Name, emphasize: true);
-            tooltip.AddLine(Strings.TooltipBoatType, boat.TypeDisplayName);
-            tooltip.AddLine(Strings.TooltipBoatSize, string.Format(c, Strings.TooltipSize, boat.LengthMeters, boat.BeamMeters));
-            if (!string.IsNullOrWhiteSpace(boat.OwnerName)) tooltip.AddLine(Strings.TooltipOwner, boat.OwnerName);
-            if (!string.IsNullOrWhiteSpace(boat.RegistrationNumber)) tooltip.AddLine(Strings.TooltipRegistration, boat.RegistrationNumber);
-            if (boat.ExpectedArrival is { } eta && berth.Status != BerthStatus.Occupied)
-            {
-                tooltip.AddLine(berth.Status == BerthStatus.TemporarilyFree ? Strings.TooltipReturns : Strings.TooltipExpected, eta.ToLocalTime().ToString("g", c));
-            }
-        }
+        if (berth.Boat is { } boat && berth.Status.CanHaveBoat()) AddBoatLines(tooltip, berth.Status, boat, c);
 
         if (multiBerth is not null)
         {
@@ -58,6 +47,28 @@ public static class DefaultPopupContent
 
         if (berth.IsReadOnly) tooltip.AddLine(Strings.TooltipAccess, Strings.TooltipReadOnly);
         return tooltip;
+    }
+
+    /// <summary>The rows about the boat in a berth: name, type, size, owner, registration and when it is due.</summary>
+    private static void AddBoatLines(BerthTooltip tooltip, BerthStatus status, Boat boat, CultureInfo c)
+    {
+        tooltip.AddLine(Strings.TooltipBoat, string.IsNullOrWhiteSpace(boat.Name) ? boat.Id : boat.Name, emphasize: true);
+        tooltip.AddLine(Strings.TooltipBoatType, boat.TypeDisplayName);
+        tooltip.AddLine(Strings.TooltipBoatSize, string.Format(c, Strings.TooltipSize, boat.LengthMeters, boat.BeamMeters));
+        if (!string.IsNullOrWhiteSpace(boat.OwnerName)) tooltip.AddLine(Strings.TooltipOwner, boat.OwnerName);
+        if (!string.IsNullOrWhiteSpace(boat.RegistrationNumber)) tooltip.AddLine(Strings.TooltipRegistration, boat.RegistrationNumber);
+        if (boat.ExpectedArrival is { } eta && status != BerthStatus.Occupied)
+        {
+            tooltip.AddLine(status == BerthStatus.TemporarilyFree ? Strings.TooltipReturns : Strings.TooltipExpected, eta.ToLocalTime().ToString("g", c));
+        }
+    }
+
+    /// <summary>The name of the pier or land area a berth belongs to, its id when it cannot be looked up, or null for neither.</summary>
+    private static string? PlaceName(Berth berth, Func<string, Pier?> pierLookup, Func<string, LandArea?>? landLookup)
+    {
+        if (berth.PierId is { } pierId) return pierLookup(pierId)?.Name ?? pierId;
+        if (berth.LandAreaId is { } landId) return landLookup?.Invoke(landId)?.DisplayName ?? landId;
+        return null;
     }
 
     /// <summary>
@@ -76,9 +87,7 @@ public static class DefaultPopupContent
 
         var statuses = berths.Select(s => s.Status).Distinct().ToArray();
         var piers = berths
-            .Select(s => s.PierId is { } pierId
-                ? pierLookup(pierId)?.Name ?? pierId
-                : s.LandAreaId is { } landId ? landLookup?.Invoke(landId)?.DisplayName ?? landId : null)
+            .Select(s => PlaceName(s, pierLookup, landLookup))
             .OfType<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();

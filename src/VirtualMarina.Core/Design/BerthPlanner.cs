@@ -102,7 +102,7 @@ internal sealed class BerthPlanner
         }
 
         if (preview || DividerTypeOf(settings.Separators) is not { } type || berths.Count == 0) return (berths, Array.Empty<Divider>());
-        return (berths, PlanDividers(pier, side, offsets, occupied, width, settings.Length, settings.Separators, type));
+        return (berths, PlanDividers(pier, side, offsets, occupied, settings, type));
     }
 
     /// <summary>
@@ -133,6 +133,13 @@ internal sealed class BerthPlanner
             }
         }
 
+        AddOrphansOfNoPier(doomedBerths, doomedIds, result);
+        return result;
+    }
+
+    /// <summary>The part of <see cref="OrphanedDividers"/> for dividers that belong to no pier, checked against every berth.</summary>
+    private void AddOrphansOfNoPier(IReadOnlyList<Berth> doomedBerths, HashSet<string> doomedIds, List<Divider> result)
+    {
         Berth[]? everyoneElse = null;
         foreach (var divider in _marina.GetDividers())
         {
@@ -140,8 +147,6 @@ internal sealed class BerthPlanner
             everyoneElse ??= _marina.GetBerths().Where(berth => !doomedIds.Contains(berth.Id)).ToArray();
             if (!SeparatesAny(divider, everyoneElse)) result.Add(divider);
         }
-
-        return result;
     }
 
     /// <summary>The space left between neighbouring berths: the gap asked for, but never less than a hand's width without a separator.</summary>
@@ -190,7 +195,7 @@ internal sealed class BerthPlanner
         return occupancy;
     }
 
-    private List<Divider> PlanDividers(Pier pier, PierSide side, IReadOnlyList<float> offsets, Occupancy occupied, float width, float length, BerthSeparator separators, DividerType type)
+    private List<Divider> PlanDividers(Pier pier, PierSide side, IReadOnlyList<float> offsets, Occupancy occupied, BerthRowSettings settings, DividerType type)
     {
         var dividerPrefix = BerthGenerator.DividerPrefix(pier, side);
         var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -209,9 +214,9 @@ internal sealed class BerthPlanner
         }
 
         var dividers = new List<Divider>();
-        foreach (var edge in SeparatorEdges(offsets, occupied, width, separators))
+        foreach (var edge in SeparatorEdges(offsets, occupied, settings.Width, settings.Separators))
         {
-            var divider = BerthGenerator.DividerAtPier(pier, "-", side, edge, length, type);
+            var divider = BerthGenerator.DividerAtPier(pier, "-", side, edge, settings.Length, type);
             if (!taken.Add(divider.Start)) continue;
             string id;
             do id = $"{dividerPrefix}{++number:00}"; while (!usedIds.Add(id));

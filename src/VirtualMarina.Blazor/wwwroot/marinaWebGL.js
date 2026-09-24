@@ -28,6 +28,10 @@ const PASS = { OPAQUE: 0, SHADOW: 1, TRANSPARENT: 2 };
 // How long an idle view waits before asking .NET whether anything changed that it was not told about (the camera moved
 // by code, the lighting changed). Changes made through the visualizer wake it at once.
 const IDLE_POLL_MS = 250;
+
+// How much one wheel event scrolls, in notches, by WheelEvent.deltaMode: 1 is lines, 2 is pages; pixels (0) and
+// anything else count 100 to the notch.
+const WHEEL_UNITS = { 1: 3, 2: 1 };
 // Frames that fail one after another before the loop gives up and reports the error.
 const MAX_FRAME_FAILURES = 3;
 
@@ -90,11 +94,12 @@ export function createView(canvas, dotnetRef, popup) {
     return id;
 }
 
-export function initRenderer(id, modelVertex, modelFragment, waterVertex, waterFragment, imageVertex, imageFragment, imageQuadCorners) {
+/** shaders: { modelVertex, modelFragment, waterVertex, waterFragment, imageVertex, imageFragment } */
+export function initRenderer(id, shaders, imageQuadCorners) {
     const view = views.get(id);
     if (!view) return 'Unknown view.';
     // Kept so the programs can be built again if the browser takes the context away and later gives it back.
-    view.sources = { modelVertex, modelFragment, waterVertex, waterFragment, imageVertex, imageFragment, imageQuadCorners };
+    view.sources = { ...shaders, imageQuadCorners };
     return createGlResources(view);
 }
 
@@ -108,7 +113,7 @@ function createGlResources(view) {
         view.image = createProgram(gl, s.imageVertex, s.imageFragment);
     } catch (e) {
         view.model = view.water = view.image = null;
-        return String(e && e.message ? e.message : e);
+        return String(e?.message ? e.message : e);
     }
 
     const imageQuadCorners = s.imageQuadCorners;
@@ -158,6 +163,21 @@ function attachContextLoss(view) {
     view.listeners.push([view.canvas, 'webglcontextlost', lost, undefined], [view.canvas, 'webglcontextrestored', restored, undefined]);
 }
 
+/** Takes in a new size of the canvas (in CSS and device pixels, where the browser reports them) or of the popup. */
+function resized(view, entry) {
+    if (entry.target === view.canvas) {
+        const box = entry.contentBoxSize?.[0];
+        view.cssWidth = box ? box.inlineSize : entry.contentRect.width;
+        view.cssHeight = box ? box.blockSize : entry.contentRect.height;
+        const pixels = entry.devicePixelContentBoxSize?.[0];
+        view.pixelWidth = pixels ? pixels.inlineSize : 0;
+        view.pixelHeight = pixels ? pixels.blockSize : 0;
+    } else if (entry.target === view.popup) {
+        view.popupWidth = view.popup.offsetWidth;
+        view.popupHeight = view.popup.offsetHeight;
+    }
+}
+
 /**
  * Sizes are measured when they change instead of being read from the layout every frame, and drawing stops while the
  * canvas is scrolled out of sight or the tab is hidden.
@@ -166,19 +186,7 @@ function attachObservers(view) {
     const canvas = view.canvas;
     if (typeof ResizeObserver !== 'undefined') {
         const sizes = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                if (entry.target === canvas) {
-                    const box = entry.contentBoxSize && entry.contentBoxSize[0];
-                    view.cssWidth = box ? box.inlineSize : entry.contentRect.width;
-                    view.cssHeight = box ? box.blockSize : entry.contentRect.height;
-                    const pixels = entry.devicePixelContentBoxSize && entry.devicePixelContentBoxSize[0];
-                    view.pixelWidth = pixels ? pixels.inlineSize : 0;
-                    view.pixelHeight = pixels ? pixels.blockSize : 0;
-                } else if (entry.target === view.popup) {
-                    view.popupWidth = view.popup.offsetWidth;
-                    view.popupHeight = view.popup.offsetHeight;
-                }
-            }
+            for (const entry of entries) resized(view, entry);
             wake(view);
         });
         sizes.observe(canvas);
@@ -188,7 +196,7 @@ function attachObservers(view) {
 
     if (typeof IntersectionObserver !== 'undefined') {
         const sight = new IntersectionObserver((entries) => {
-            view.visible = entries[entries.length - 1].isIntersecting;
+            view.visible = entries.at(-1).isIntersecting;
             wake(view);
         });
         sight.observe(canvas);
@@ -606,7 +614,7 @@ function tick(view, timestamp) {
         console.error('[VirtualMarina] frame failed', e);
         if (view.failures >= MAX_FRAME_FAILURES) {
             view.failed = true;
-            view.dotnetRef.invokeMethodAsync('OnRenderLoopFailed', String(e && e.message ? e.message : e))
+            view.dotnetRef.invokeMethodAsync('OnRenderLoopFailed', String(e?.message ? e.message : e))
                 .catch((err) => console.error('[VirtualMarina] could not report the failure', err));
             return;
         }
@@ -920,7 +928,7 @@ function attachInput(view) {
     }));
     on(canvas, 'wheel', safe((e) => {
         e.preventDefault();
-        const unit = e.deltaMode === 1 ? 3 : e.deltaMode === 2 ? 1 : 100;
+        const unit = WHEEL_UNITS[e.deltaMode] ?? 100;
         const [x, y] = position(e);
         ref.invokeMethod('OnWheel', -e.deltaY / unit, x, y);
     }), { passive: false });
@@ -930,7 +938,7 @@ function attachInput(view) {
         // Keep wheel over the popup from scrolling the page; zoom the view instead.
         on(view.popup, 'wheel', safe((e) => {
             e.preventDefault();
-            const unit = e.deltaMode === 1 ? 3 : e.deltaMode === 2 ? 1 : 100;
+            const unit = WHEEL_UNITS[e.deltaMode] ?? 100;
             const [x, y] = position(e);
             ref.invokeMethod('OnWheel', -e.deltaY / unit, x, y);
         }), { passive: false });

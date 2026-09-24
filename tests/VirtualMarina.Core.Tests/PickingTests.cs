@@ -26,6 +26,15 @@ public class PickingTests
         return marina;
     }
 
+    [Fact]
+    public void HitTest_OnAnEmptyMarina_FindsNothing()
+    {
+        var marina = new MarinaVisualizer();
+        marina.SetViewportSize(800, 600);
+
+        Assert.Null(marina.HitTest(400, 300));
+    }
+
     private static List<BoatInstance> Boats(MarinaVisualizer marina) =>
         BerthPlacement.EnumerateBoats(marina.GetBerths(), marina.GetBerth, marina.GetMultiBerth, BerthStatusFilter.All).ToList();
 

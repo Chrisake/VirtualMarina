@@ -346,10 +346,14 @@ public sealed partial class MarinaVisualizer
         var (planMin, planMax) = MarinaLayout.ComputeBounds(berths.Select(s => s.Bounds));
         var target = MarinaMath.ToWorld((planMin + planMax) * 0.5f, berths.Average(s => GroundHeight(s) ?? 0f));
         var extent = MathF.Max(planMax.X - planMin.X, planMax.Y - planMin.Y);
-        var limit = 1f - 2f * _focusMargin; // usable NDC half-extent
         var pose = Camera.Constrain(new CameraPose(target, resolved.YawDegrees, resolved.PitchDegrees, MathF.Max(MinFocusDistance, FitDistance(extent))));
+        return BackOffUntilInside(RefineFocus(pose, points), points);
+    }
 
-        // Refine: re-center the projected bounds and scale the distance until they fill the usable area.
+    /// <summary>Re-centers the projected bounds and scales the distance until they fill the usable area.</summary>
+    private CameraPose RefineFocus(CameraPose pose, Vector3[] points)
+    {
+        var limit = 1f - 2f * _focusMargin; // usable NDC half-extent
         for (var iteration = 0; iteration < 12; iteration++)
         {
             if (!TryProjectedBounds(pose, points, out var min, out var max))
@@ -367,8 +371,15 @@ public sealed partial class MarinaVisualizer
             pose = Camera.Constrain(pose with { Target = pose.Target + ShiftToCentre(pose, center), Distance = MathF.Max(MinFocusDistance, distance) });
         }
 
-        // Guarantee: back off until everything is inside the view (perspective makes the estimate slightly optimistic,
-        // and degenerate viewports can stop the refinement early). Re-center on every step.
+        return pose;
+    }
+
+    /// <summary>
+    /// Backs off until everything is inside the view (perspective makes the estimate slightly optimistic, and degenerate
+    /// viewports can stop the refinement early). Re-centers on every step.
+    /// </summary>
+    private CameraPose BackOffUntilInside(CameraPose pose, Vector3[] points)
+    {
         for (var i = 0; i < 200; i++)
         {
             if (!TryProjectedBounds(pose, points, out var min, out var max))
@@ -543,30 +554,9 @@ public sealed partial class MarinaVisualizer
         // Room left around the marina, as the share of the view it may fill.
         const float limit = 1f / FitMargin;
 
-        // Where the view has to point for the marina to sit in the middle of the screen from this distance. Aiming
-        // straight at the middle of the marina does not do it: seen from an angle, the middle of a patch of ground
-        // does not land in the middle of the picture, so the marina sits high or low and the fit below then has to
-        // back off until the overhanging side comes in — which is how a view that "fits" ended up filling 60% of
-        // itself with water.
-        Vector3 Centred(float distance)
-        {
-            var target = center;
-            for (var pass = 0; pass < 6; pass++)
-            {
-                var pose = Camera.Constrain(new CameraPose(target, yawDegrees, pitchDegrees, distance));
-                if (!TryProjectedBounds(pose, corners, out var min, out var max)) break;
-
-                var middle = (min + max) * 0.5f;
-                if (MathF.Abs(middle.X) < 0.002f && MathF.Abs(middle.Y) < 0.002f) break;
-                target += ShiftToCentre(pose, middle);
-            }
-
-            return target;
-        }
-
         bool Fits(float distance, out Vector3 target)
         {
-            target = Centred(distance);
+            target = CentredTarget(new CameraPose(center, yawDegrees, pitchDegrees, distance), corners);
             var pose = Camera.Constrain(new CameraPose(target, yawDegrees, pitchDegrees, distance));
             return TryProjectedBounds(pose, corners, out var min, out var max)
                 && min.X >= -limit && max.X <= limit && min.Y >= -limit && max.Y <= limit;
@@ -592,6 +582,29 @@ public sealed partial class MarinaVisualizer
         }
 
         return (best, far);
+    }
+
+    /// <summary>
+    /// Where the view has to point for the corners to sit in the middle of the screen from the pose's distance, starting
+    /// from the pose's target. Aiming straight at the middle of the marina does not do it: seen from an angle, the middle
+    /// of a patch of ground does not land in the middle of the picture, so the marina sits high or low and a fit then has
+    /// to back off until the overhanging side comes in — which is how a view that "fits" ended up filling 60% of itself
+    /// with water.
+    /// </summary>
+    private Vector3 CentredTarget(CameraPose start, IReadOnlyList<Vector3> corners)
+    {
+        var target = start.Target;
+        for (var pass = 0; pass < 6; pass++)
+        {
+            var pose = Camera.Constrain(start with { Target = target });
+            if (!TryProjectedBounds(pose, corners, out var min, out var max)) break;
+
+            var middle = (min + max) * 0.5f;
+            if (MathF.Abs(middle.X) < 0.002f && MathF.Abs(middle.Y) < 0.002f) break;
+            target += ShiftToCentre(pose, middle);
+        }
+
+        return target;
     }
 
     /// <summary>

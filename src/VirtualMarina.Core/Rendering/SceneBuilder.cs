@@ -220,7 +220,28 @@ internal static class SceneBuilder
         output.Clear();
         casters.Clear();
         var palette = new Palette(state.Style);
+        AddGround(output, casters, state);
 
+        // Piers and what stands on them are over water, so their shadows land on it.
+        var structureFrom = output.Count;
+        AddPiers(output, state, palette);
+
+        foreach (var divider in state.Dividers) AddDivider(output, divider, divider.PierId is null ? null : state.PierLookup(divider.PierId), palette);
+
+        foreach (var berth in state.Berths)
+        {
+            // Hidden berths draw nothing at all, not even their physical structure; the status filter hides status
+            // visuals and boats, but not structure.
+            if (!berth.IsVisible || !berth.HasFingerPiers || berth.IsOnLand) continue;
+            AddFingerPiers(output, berth, berth.PierId is null ? null : state.PierLookup(berth.PierId), state, palette);
+        }
+
+        for (var i = structureFrom; i < output.Count; i++) casters.Add(new ShadowCaster(output[i], 0f));
+    }
+
+    /// <summary>The mainland and the land areas, with the trees, rocks and buildings standing on them and casting shadows on them.</summary>
+    private static void AddGround(List<RenderObject> output, List<ShadowCaster> casters, SceneState state)
+    {
         // The mainland goes down first, so the land areas traced along the shore sit on top of it.
         if (state.HasShoreline)
         {
@@ -244,7 +265,11 @@ internal static class SceneBuilder
                 casters.Add(new ShadowCaster(scenery, land.Height));
             }
         }
+    }
 
+    /// <summary>Every pier, with the service pedestals of those whose berths ask for power or water.</summary>
+    private static void AddPiers(List<RenderObject> output, SceneState state, Palette palette)
+    {
         // The berths of each pier, gathered once rather than searched for pier by pier.
         var byPier = new Dictionary<string, List<Berth>>(StringComparer.OrdinalIgnoreCase);
         foreach (var berth in state.Berths)
@@ -254,8 +279,6 @@ internal static class SceneBuilder
             list.Add(berth);
         }
 
-        // Piers and what stands on them are over water, so their shadows land on it.
-        var structureFrom = output.Count;
         foreach (var pier in state.Piers)
         {
             AddPier(output, pier, palette);
@@ -265,18 +288,6 @@ internal static class SceneBuilder
                 AddServicePedestals(output, pier, berths, palette);
             }
         }
-
-        foreach (var divider in state.Dividers) AddDivider(output, divider, divider.PierId is null ? null : state.PierLookup(divider.PierId), palette);
-
-        foreach (var berth in state.Berths)
-        {
-            // Hidden berths draw nothing at all, not even their physical structure; the status filter hides status
-            // visuals and boats, but not structure.
-            if (!berth.IsVisible || !berth.HasFingerPiers || berth.IsOnLand) continue;
-            AddFingerPiers(output, berth, berth.PierId is null ? null : state.PierLookup(berth.PierId), state, palette);
-        }
-
-        for (var i = structureFrom; i < output.Count; i++) casters.Add(new ShadowCaster(output[i], 0f));
     }
 
     // ---- Berths -------------------------------------------------------------------------------------
@@ -347,7 +358,7 @@ internal static class SceneBuilder
 
         // Status pad on the water. A berth that can be hovered or selected keeps its pad even when the style hides pads,
         // drawn fully transparent, so that highlighting it rewrites the pad in place rather than adding one.
-        var padAlpha = isSelected ? MathF.Max(colors.PadOpacity, 0.72f) : isHovered ? MathF.Max(colors.PadOpacity, 0.6f) : berth.IsDisabled ? colors.PadOpacity * 0.75f : colors.PadOpacity;
+        var padAlpha = PadAlpha(berth, colors, isSelected, isHovered);
         var padEmissive = isSelected ? selection.SelectedGlow : isHovered ? selection.HoverGlow : 0.05f;
         if (padAlpha > 0.005f || berth.IsInteractive)
         {
@@ -356,31 +367,41 @@ internal static class SceneBuilder
                 isSelected && selection.Pulse ? RenderAnimation.Pulse : RenderAnimation.None, phase, desaturation));
         }
 
-        var markerScale = colors.StatusMarkerScale;
-        if (!colors.ShowStatusMarkers)
+        if (colors.ShowStatusMarkers) AddStatusMarker(output, berth, berthGround, statusColor, colors.StatusMarkerScale, phase);
+        if (state.LabelMode.Includes(berth.Status)) AddLabel(output, berth, isSelected || isHovered, phase, berthGround, palette);
+    }
+
+    /// <summary>How opaque a berth's status pad is drawn: stronger while it is selected or hovered, fainter when disabled.</summary>
+    private static float PadAlpha(Berth berth, StatusColorScheme colors, bool isSelected, bool isHovered) =>
+        isSelected ? MathF.Max(colors.PadOpacity, 0.72f)
+        : isHovered ? MathF.Max(colors.PadOpacity, 0.6f)
+        : berth.IsDisabled ? colors.PadOpacity * 0.75f
+        : colors.PadOpacity;
+
+    /// <summary>
+    /// The berth's status, visible from far away: a buoy on the water, or a post with a ball on top at the rear of a land
+    /// berth standing on <paramref name="ground"/>.
+    /// </summary>
+    private static void AddStatusMarker(List<RenderObject> output, Berth berth, float? ground, ColorRgba statusColor, float markerScale, float phase)
+    {
+        var desaturation = berth.IsDisabled ? 1f : 0f;
+        var color = statusColor.WithAlpha(1f).ToVector4();
+        var emissive = berth.IsDisabled ? 0.05f : 0.35f;
+        if (ground is { } landHeight)
         {
-            // No buoy or post.
-        }
-        else if (berthGround is { } landHeight)
-        {
-            // Status post at the rear of a land berth, visible from far away.
             var post = BerthPlacement.StatusPostPosition(berth);
             output.Add(Cylinder(post, landHeight, new Vector3(0.12f * markerScale, BerthPlacement.StatusPostHeight * markerScale, 0.12f * markerScale), PostGray) with { Desaturation = desaturation });
             output.Add(new RenderObject(
                 MeshIds.Buoy,
                 Matrix4x4.CreateScale(0.7f * markerScale) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(post, landHeight + (BerthPlacement.StatusPostHeight + 0.3f) * markerScale)),
-                statusColor.WithAlpha(1f).ToVector4(), berth.IsDisabled ? 0.05f : 0.35f, RenderAnimation.None, phase, desaturation));
-        }
-        else
-        {
-            // Status buoy, visible from far away.
-            output.Add(new RenderObject(
-                MeshIds.Buoy,
-                Matrix4x4.CreateScale(0.9f * markerScale) * Matrix4x4.CreateTranslation(BerthPlacement.BuoyPosition(berth)),
-                statusColor.WithAlpha(1f).ToVector4(), berth.IsDisabled ? 0.05f : 0.35f, RenderAnimation.FloatOnWater, phase, desaturation));
+                color, emissive, RenderAnimation.None, phase, desaturation));
+            return;
         }
 
-        if (state.LabelMode.Includes(berth.Status)) AddLabel(output, berth, isSelected || isHovered, phase, berthGround, palette);
+        output.Add(new RenderObject(
+            MeshIds.Buoy,
+            Matrix4x4.CreateScale(0.9f * markerScale) * Matrix4x4.CreateTranslation(BerthPlacement.BuoyPosition(berth)),
+            color, emissive, RenderAnimation.FloatOnWater, phase, desaturation));
     }
 
     // ---- Highlight ----------------------------------------------------------------------------------
@@ -427,6 +448,38 @@ internal static class SceneBuilder
         // How far the pen moves for each character. The built-in lettering is the same width throughout; a captured
         // font is not, so the line is laid out character by character either way.
         Span<float> advances = text.Length <= 64 ? stackalloc float[text.Length] : new float[text.Length];
+        var total = MeasureLabel(text, captured, font, advances);
+
+        var (center, height, upHeading, reading) = BerthPlacement.LabelPlacementForWidth(berth, total);
+        var tint = LabelTint(berth, highlighted, palette);
+        var scale = new Vector3(height, 1f, height);
+        var lift = ground is { } g ? g + LabelHeightAboveLand : LabelHeightAboveWater;
+        var emissive = highlighted ? 0.35f : 0.15f;
+        var animation = ground.HasValue ? RenderAnimation.None : RenderAnimation.AboveWaves;
+        var pen = total * -0.5f;
+
+        for (var i = 0; i < text.Length; i++)
+        {
+            var advance = advances[i];
+            if (TryGetGlyphMesh(text[i], captured, font, typeface, out var meshId))
+            {
+                var position = center + reading * ((pen + (advance * 0.5f)) * height);
+                output.Add(new RenderObject(
+                    meshId, MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, lift)), tint, emissive, animation, phase));
+            }
+
+            pen += advance;
+        }
+    }
+
+    /// <summary>The mesh of a character: from the captured font when it has one, else from the built-in lettering.</summary>
+    private static bool TryGetGlyphMesh(char character, LabelFontDefinition? captured, LabelFont font, LabelTypeface typeface, out int meshId) =>
+        captured is not null && captured.TryGetMeshId(character, out meshId)
+        || GlyphFont.TryGetMeshId(character, font, typeface, out meshId);
+
+    /// <summary>Fills in how far the pen moves for each character, and returns the width of the whole line.</summary>
+    private static float MeasureLabel(string text, LabelFontDefinition? captured, LabelFont font, Span<float> advances)
+    {
         var total = 0f;
         for (var i = 0; i < text.Length; i++)
         {
@@ -436,55 +489,48 @@ internal static class SceneBuilder
             total += advances[i];
         }
 
-        var (center, height, upHeading, reading) = BerthPlacement.LabelPlacementForWidth(berth, total);
-        // A name ashore is read against quay concrete or grass, not against the sea, so it gets its own
-        // colour. Highlight and disabled still win: those say something about the berth, wherever it is.
-        var tint = berth.IsDisabled ? palette.LabelDisabled
-            : highlighted ? palette.LabelHighlight
-            : berth.IsOnLand ? palette.LabelAshore
-            : palette.Label;
-        var scale = new Vector3(height, 1f, height);
-        var pen = total * -0.5f;
+        return total;
+    }
 
-        for (var i = 0; i < text.Length; i++)
-        {
-            var advance = advances[i];
-            var drawn = captured is not null && captured.TryGetMeshId(text[i], out var meshId)
-                || GlyphFont.TryGetMeshId(text[i], font, typeface, out meshId);
+    /// <summary>
+    /// A name ashore is read against quay concrete or grass, not against the sea, so it gets its own colour. Highlight and
+    /// disabled still win: those say something about the berth, wherever it is.
+    /// </summary>
+    private static Vector4 LabelTint(Berth berth, bool highlighted, Palette palette) =>
+        berth.IsDisabled ? palette.LabelDisabled
+        : highlighted ? palette.LabelHighlight
+        : berth.IsOnLand ? palette.LabelAshore
+        : palette.Label;
 
-            if (drawn)
-            {
-                var position = center + reading * ((pen + (advance * 0.5f)) * height);
-                output.Add(new RenderObject(
-                    meshId,
-                    MarinaMath.CreatePlacement(scale, upHeading, MarinaMath.ToWorld(position, ground is { } g ? g + LabelHeightAboveLand : LabelHeightAboveWater)),
-                    tint, highlighted ? 0.35f : 0.15f, ground.HasValue ? RenderAnimation.None : RenderAnimation.AboveWaves, phase));
-            }
-
-            pen += advance;
-        }
+    /// <summary>True when a berth of the boat is selected, and when (none being selected) an interactive one is hovered.</summary>
+    private static (bool Selected, bool Hovered) HighlightOf(BoatInstance boat, SceneState state)
+    {
+        var isSelected = boat.Berths.Any(s => state.Selected.Contains(s.Id));
+        var isHovered = !isSelected && state.HoveredBerthId is { } hovered &&
+            boat.Berths.Any(s => s.IsInteractive && string.Equals(s.Id, hovered, StringComparison.OrdinalIgnoreCase));
+        return (isSelected, isHovered);
     }
 
     private static void AddBoat(List<RenderObject> output, BoatInstance boat, SceneState state)
     {
         var colors = state.Colors;
-        var selection = state.Style.Selection;
-        var isSelected = boat.Berths.Any(s => state.Selected.Contains(s.Id));
-        var isHovered = !isSelected && state.HoveredBerthId is { } hovered &&
-            boat.Berths.Any(s => s.IsInteractive && string.Equals(s.Id, hovered, StringComparison.OrdinalIgnoreCase));
-        var disabled = boat.IsDisabled;
-        var animation = (boat.OnLand ? RenderAnimation.None : RenderAnimation.FloatOnWater) | (isSelected && selection.Pulse ? RenderAnimation.Pulse : RenderAnimation.None);
-        var emissive = isSelected ? selection.SelectedGlow * 0.67f : isHovered ? selection.HoverGlow * 0.6f : 0f;
-        var phase = BerthPlacement.AnimationPhase(boat.MultiBerthId ?? boat.PrimaryBerth.Id);
-        var meshId = MeshIds.ForBoat(boat.Boat.Type);
         var opacity = colors.GetBoatOpacity(boat.Status);
         if (opacity <= 0.005f) return;
 
+        var selection = state.Style.Selection;
+        var (isSelected, isHovered) = HighlightOf(boat, state);
+        var disabled = boat.IsDisabled;
+        var desaturation = disabled ? 1f : 0f;
+        var animation = BoatAnimation(boat, pulse: isSelected && selection.Pulse);
+        var emissive = isSelected ? selection.SelectedGlow * 0.67f : isHovered ? selection.HoverGlow * 0.6f : 0f;
+        var phase = BerthPlacement.AnimationPhase(boat.MultiBerthId ?? boat.PrimaryBerth.Id);
+        var meshId = MeshIds.ForBoat(boat.Boat.Type);
+
         if (!boat.Status.ShowsGhostBoat())
         {
-            if (boat.Ground is { } ground) AddCradle(output, boat, ground, state.Meshes, disabled ? 1f : 0f);
+            if (boat.Ground is { } ground) AddCradle(output, boat, ground, state.Meshes, desaturation);
             var tint = (disabled ? new Vector4(0.92f, 0.92f, 0.92f, 1f) : White) with { W = opacity };
-            output.Add(new RenderObject(meshId, boat.World, tint, emissive, animation, phase, disabled ? 1f : 0f));
+            output.Add(new RenderObject(meshId, boat.World, tint, emissive, animation, phase, desaturation));
             return;
         }
 
@@ -492,8 +538,12 @@ internal static class SceneBuilder
         var statusColor = disabled ? colors.DisabledColor : colors.Get(boat.Status);
         var ghost = new ColorRgba(1f, 1f, 1f).Lerp(statusColor, colors.GhostBoatTint).WithAlpha(opacity);
         output.Add(new RenderObject(
-            meshId, boat.World, ghost.ToVector4(), disabled ? emissive : MathF.Max(emissive, 0.25f), animation, phase, disabled ? 1f : 0f));
+            meshId, boat.World, ghost.ToVector4(), disabled ? emissive : MathF.Max(emissive, 0.25f), animation, phase, desaturation));
     }
+
+    /// <summary>A boat afloat rides the waves and one ashore stands still; either pulses while it is selected, if the style says so.</summary>
+    private static RenderAnimation BoatAnimation(BoatInstance boat, bool pulse) =>
+        (boat.OnLand ? RenderAnimation.None : RenderAnimation.FloatOnWater) | (pulse ? RenderAnimation.Pulse : RenderAnimation.None);
 
     /// <summary>Keel blocks and side supports holding a boat stored ashore.</summary>
     private static void AddCradle(List<RenderObject> output, BoatInstance boat, float ground, MeshLibrary meshes, float desaturation)
@@ -642,9 +692,6 @@ internal static class SceneBuilder
     /// </summary>
     private static void AddServicePedestals(List<RenderObject> output, Pier pier, IEnumerable<Berth> berths, Palette p)
     {
-        const float postHeight = 0.95f;
-        var top = pier.DeckHeight;
-
         foreach (var side in BerthSides(pier))
         {
             var offset = pier.Right * side * MathF.Max(0.12f, pier.Width * 0.5f - 0.3f);
@@ -652,21 +699,30 @@ internal static class SceneBuilder
             for (var i = 0; i < row.Count; i += 2)
             {
                 // One pedestal serves the pair, so it offers whatever the two of them together ask for.
+                var paired = i + 1 < row.Count;
                 var services = ServicesOf(row[i].Berth, pier);
-                if (i + 1 < row.Count) services |= ServicesOf(row[i + 1].Berth, pier);
+                if (paired) services |= ServicesOf(row[i + 1].Berth, pier);
                 if (services == PierServices.None) continue;
 
                 // Between the two berths of a pair, or halfway along a berth left on its own at the end of the row.
-                var along = i + 1 < row.Count ? (row[i].Max + row[i + 1].Min) * 0.5f : (row[i].Min + row[i].Max) * 0.5f;
+                var along = paired ? (row[i].Max + row[i + 1].Min) * 0.5f : (row[i].Min + row[i].Max) * 0.5f;
                 var at = pier.Start + pier.Direction * Math.Clamp(along, 0.25f, MathF.Max(0.25f, pier.Length - 0.25f)) + offset;
-                var power = (services & PierServices.Power) != 0;
-                output.Add(Box(pier, at, 0f, new Vector3(0.28f, postHeight, 0.28f), top + postHeight * 0.5f, p.Pedestal));
-                output.Add(Box(pier, at, 0f, new Vector3(0.34f, 0.1f, 0.34f), top + postHeight + 0.05f, power ? p.PowerTop : p.WaterTop));
-                if (services == PierServices.PowerAndWater)
-                {
-                    output.Add(Box(pier, at, 0f, new Vector3(0.3f, 0.14f, 0.3f), top + postHeight * 0.45f, p.WaterTop));
-                }
+                AddPedestal(output, pier, at, services, p);
             }
+        }
+    }
+
+    /// <summary>One pedestal on the pier deck at <paramref name="at"/>, its cap coloured for what it offers.</summary>
+    private static void AddPedestal(List<RenderObject> output, Pier pier, Vector2 at, PierServices services, Palette p)
+    {
+        const float postHeight = 0.95f;
+        var top = pier.DeckHeight;
+        var power = (services & PierServices.Power) != 0;
+        output.Add(Box(pier, at, 0f, new Vector3(0.28f, postHeight, 0.28f), top + postHeight * 0.5f, p.Pedestal));
+        output.Add(Box(pier, at, 0f, new Vector3(0.34f, 0.1f, 0.34f), top + postHeight + 0.05f, power ? p.PowerTop : p.WaterTop));
+        if (services == PierServices.PowerAndWater)
+        {
+            output.Add(Box(pier, at, 0f, new Vector3(0.3f, 0.14f, 0.3f), top + postHeight * 0.45f, p.WaterTop));
         }
     }
 
@@ -760,39 +816,12 @@ internal static class SceneBuilder
         switch (divider.Type)
         {
             case DividerType.Piles:
-                {
-                    var count = Math.Max(2, (int)MathF.Floor(divider.Length / divider.Spacing) + 1);
-                    var steel = pier is { Type: not PierType.FloatingWooden };
-                    for (var i = 0; i < count; i++)
-                    {
-                        var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
-                        output.Add(steel ? SteelPile(position, deckHeight + 1.4f, divider.Width, p) : Piling(position, deckHeight + 1.4f, divider.Width));
-                    }
-
-                    break;
-                }
+                AddPileRow(output, divider, pier, deckHeight, p);
+                break;
 
             case DividerType.Boom:
-                {
-                    const float y = 0.12f;
-                    output.Add(new RenderObject(
-                        MeshIds.UnitBox,
-                        MarinaMath.CreatePlacement(new Vector3(0.08f, 0.06f, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
-                        BoomLine));
-                    var count = Math.Max(2, (int)MathF.Floor(divider.Length / divider.Spacing) + 1);
-                    for (var i = 0; i < count; i++)
-                    {
-                        var isEnd = i == 0 || i == count - 1;
-                        var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
-                        var size = divider.Width * (isEnd ? 1.5f : 1f);
-                        output.Add(new RenderObject(
-                            MeshIds.Buoy,
-                            Matrix4x4.CreateScale(size) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(position, y)),
-                            isEnd ? p.BoomEnd : p.BoomFloat, 0.1f, RenderAnimation.FloatOnWater, MarinaMath.StableHash01(divider.Id) * MathF.Tau + i * 0.7f));
-                    }
-
-                    break;
-                }
+                AddBoom(output, divider, p);
+                break;
 
             case DividerType.SinglePile:
                 {
@@ -803,17 +832,54 @@ internal static class SceneBuilder
                 }
 
             default:
-                {
-                    var wooden = pier is null or { Type: PierType.FloatingWooden };
-                    var y = MathF.Min(deckHeight, 0.6f) - 0.12f - FingerThickness * 0.5f;
-                    output.Add(new RenderObject(
-                        MeshIds.UnitBox,
-                        MarinaMath.CreatePlacement(new Vector3(divider.Width, FingerThickness, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
-                        wooden ? p.WoodFinger : p.PontoonTop));
-                    output.Add(wooden ? Piling(divider.End, y + 1.2f, 0.34f) : SteelPile(divider.End, y + 1.4f, 0.38f, p));
-                    break;
-                }
+                AddFingerDivider(output, divider, pier, deckHeight, p);
+                break;
         }
+    }
+
+    /// <summary>Piles evenly spaced along the divider, steel beside a concrete pontoon and timber beside a wooden one.</summary>
+    private static void AddPileRow(List<RenderObject> output, Divider divider, Pier? pier, float deckHeight, Palette p)
+    {
+        var count = Math.Max(2, (int)MathF.Floor(divider.Length / divider.Spacing) + 1);
+        var steel = pier is { Type: not PierType.FloatingWooden };
+        for (var i = 0; i < count; i++)
+        {
+            var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
+            output.Add(steel ? SteelPile(position, deckHeight + 1.4f, divider.Width, p) : Piling(position, deckHeight + 1.4f, divider.Width));
+        }
+    }
+
+    /// <summary>A floating boom: a line along the divider, with floats on it and larger ones at both ends.</summary>
+    private static void AddBoom(List<RenderObject> output, Divider divider, Palette p)
+    {
+        const float y = 0.12f;
+        output.Add(new RenderObject(
+            MeshIds.UnitBox,
+            MarinaMath.CreatePlacement(new Vector3(0.08f, 0.06f, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
+            BoomLine));
+        var count = Math.Max(2, (int)MathF.Floor(divider.Length / divider.Spacing) + 1);
+        for (var i = 0; i < count; i++)
+        {
+            var isEnd = i == 0 || i == count - 1;
+            var position = divider.Start + divider.Direction * (divider.Length * i / (count - 1));
+            var size = divider.Width * (isEnd ? 1.5f : 1f);
+            output.Add(new RenderObject(
+                MeshIds.Buoy,
+                Matrix4x4.CreateScale(size) * Matrix4x4.CreateTranslation(MarinaMath.ToWorld(position, y)),
+                isEnd ? p.BoomEnd : p.BoomFloat, 0.1f, RenderAnimation.FloatOnWater, MarinaMath.StableHash01(divider.Id) * MathF.Tau + i * 0.7f));
+        }
+    }
+
+    /// <summary>A finger pier along the divider, with a pile at its outer end.</summary>
+    private static void AddFingerDivider(List<RenderObject> output, Divider divider, Pier? pier, float deckHeight, Palette p)
+    {
+        var wooden = pier is null or { Type: PierType.FloatingWooden };
+        var y = MathF.Min(deckHeight, 0.6f) - 0.12f - FingerThickness * 0.5f;
+        output.Add(new RenderObject(
+            MeshIds.UnitBox,
+            MarinaMath.CreatePlacement(new Vector3(divider.Width, FingerThickness, divider.Length), divider.HeadingDegrees, MarinaMath.ToWorld(divider.Center, y)),
+            wooden ? p.WoodFinger : p.PontoonTop));
+        output.Add(wooden ? Piling(divider.End, y + 1.2f, 0.34f) : SteelPile(divider.End, y + 1.4f, 0.38f, p));
     }
 
     // ---- Primitives --------------------------------------------------------------------------------
