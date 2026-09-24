@@ -88,7 +88,7 @@ public class WebGlSceneRendererTests
 
         var init = Assert.Single(module.CallsTo("initRenderer"));
         Assert.Equal(ViewId, init.Args[0]);
-        var shaders = Assert.IsAssignableFrom<IReadOnlyDictionary<string, string>>(init.Args[1]);
+        var shaders = Assert.IsType<IReadOnlyDictionary<string, string>>(init.Args[1], exactMatch: false);
         Assert.Equal(ShaderSources.InstancedModelVertex(ShaderDialect.WebGL2), shaders["modelVertex"]);
         Assert.Equal(ShaderSources.InstancedModelFragment(ShaderDialect.WebGL2), shaders["modelFragment"]);
         Assert.Equal(ShaderSources.WaterVertex(ShaderDialect.WebGL2), shaders["waterVertex"]);
