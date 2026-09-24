@@ -212,7 +212,6 @@
         "labels": { "$ref": "#/$defs/labels" },
         "selection": { "$ref": "#/$defs/selection" },
         "view": { "$ref": "#/$defs/view" },
-        "shadows": { "$ref": "#/$defs/shadows" },
         "berthLabels": { "$ref": "#/$defs/berthLabelMode" }
       }
     },
@@ -329,14 +328,6 @@
         "cameraSmoothing": { "type": "number" }
       }
     },
-    "shadows": {
-      "type": "object",
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "strength": { "type": "number" }
-      }
-    },
-
     "camera": {
       "type": "object",
       "properties": {

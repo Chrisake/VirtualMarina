@@ -44,8 +44,7 @@ public class LayeredSceneTests
         var frame = CreateMarina().BuildRenderFrame();
 
         Assert.Equal(
-            [RenderLayerKind.Structure, RenderLayerKind.StructureShadows, RenderLayerKind.BerthShadows, RenderLayerKind.Berths,
-             RenderLayerKind.Highlight, RenderLayerKind.Overlay, RenderLayerKind.Traffic],
+            [RenderLayerKind.Structure, RenderLayerKind.Berths, RenderLayerKind.Highlight, RenderLayerKind.Overlay, RenderLayerKind.Traffic],
             frame.Layers.Select(layer => layer.Kind));
         Assert.Equal(frame.Layers.Sum(layer => layer.Count), frame.Objects.Count);
     }
@@ -108,7 +107,7 @@ public class LayeredSceneTests
         var frame = marina.BuildRenderFrame();
         var after = Versions(frame);
 
-        foreach (var kind in new[] { RenderLayerKind.Structure, RenderLayerKind.StructureShadows, RenderLayerKind.BerthShadows, RenderLayerKind.Overlay })
+        foreach (var kind in new[] { RenderLayerKind.Structure, RenderLayerKind.Overlay })
         {
             Assert.Equal(before[kind], after[kind]);
         }
@@ -146,32 +145,20 @@ public class LayeredSceneTests
         var after = Versions(marina.BuildRenderFrame());
 
         Assert.Equal(before[RenderLayerKind.Structure], after[RenderLayerKind.Structure]);
-        Assert.Equal(before[RenderLayerKind.StructureShadows], after[RenderLayerKind.StructureShadows]);
         Assert.NotEqual(before[RenderLayerKind.Berths], after[RenderLayerKind.Berths]);
     }
 
     [Fact]
-    public void MovingTheSun_RecastsTheShadows_AndNothingElse()
+    public void MovingTheSun_RebuildsNoLayer()
     {
         var marina = CreateMarina();
         var before = Versions(marina.BuildRenderFrame());
 
+        // The sun only lights the scene; nothing in it is built from where the sun stands.
         marina.Lighting.SetSunAngles(120f, 50f);
         var after = Versions(marina.BuildRenderFrame());
 
-        Assert.Equal(before[RenderLayerKind.Structure], after[RenderLayerKind.Structure]);
-        Assert.Equal(before[RenderLayerKind.Berths], after[RenderLayerKind.Berths]);
-        Assert.NotEqual(before[RenderLayerKind.StructureShadows], after[RenderLayerKind.StructureShadows]);
-    }
-
-    [Fact]
-    public void ShadowsAreDrawnUnlit_InTheirOwnPass()
-    {
-        var shadows = Layer(CreateMarina().BuildRenderFrame(), RenderLayerKind.StructureShadows);
-
-        Assert.NotEqual(0, shadows.Count);
-        Assert.All(shadows.Instances.ToArray(), o => Assert.NotEqual(RenderAnimation.None, o.Animation & RenderAnimation.Unlit));
-        Assert.All(shadows.Batches, b => Assert.Equal(RenderPass.Shadow, b.Pass));
+        Assert.Equal(before, after);
     }
 
     [Fact]

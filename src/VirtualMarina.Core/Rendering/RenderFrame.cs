@@ -183,7 +183,7 @@ public sealed record ReferenceImageLayer(ReferenceImage Image, Vector2 Min, Vect
 
 /// <summary>
 /// Per-object animations evaluated on the GPU (uniform <c>uAnimation</c>, or the instance attribute), so an animated scene
-/// needs no per-frame CPU updates; plus <see cref="Unlit"/>, the one flag about shading.
+/// needs no per-frame CPU updates.
 /// </summary>
 [Flags]
 public enum RenderAnimation
@@ -205,12 +205,6 @@ public enum RenderAnimation
     /// so the water never covers it. Used for text on the water.
     /// </summary>
     AboveWaves = 8,
-
-    /// <summary>
-    /// Not an animation: drawn in its color and tint alone, with no lighting (only fog). Shadows are drawn this way, since
-    /// they are flattened and have no normals to light.
-    /// </summary>
-    Unlit = 16,
 }
 
 /// <summary>One mesh instance.</summary>

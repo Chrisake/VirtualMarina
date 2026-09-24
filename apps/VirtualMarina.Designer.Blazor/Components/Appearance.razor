@@ -69,13 +69,6 @@
     </div>
 
     <div class="vm-card">
-        <h3 class="vm-card__title">@Strings.CardShadows</h3>
-        @Check(Strings.ShadowsShow, () => Shadows.IsEnabled, v => Shadows.IsEnabled = v, Strings.ShadowsShowTip)
-        @Percent(Strings.ShadowStrength, (0, 100, Defaults.Shadows.Strength * 100f), () => Shadows.Strength * 100f, v => Shadows.Strength = v / 100f, Percentage, Strings.ShadowStrengthTip)
-        <div class="vm-hint">@Strings.ShadowHint</div>
-    </div>
-
-    <div class="vm-card">
         <h3 class="vm-card__title">@Strings.CardTraffic</h3>
         @Check(Strings.TrafficShow, () => Traffic.IsEnabled, v => SetTraffic(t => t with { IsEnabled = v }), Strings.TrafficShowTip)
         @Percent(Strings.TrafficClearance, (50, 1200, MarineTraffic.None.Clearance), () => Traffic.Clearance, v => SetTraffic(t => t with { Clearance = v }), v => Strings.Format(Strings.ValueMetersWhole, v), Strings.TrafficClearanceTip)
@@ -161,7 +154,6 @@
     private LightingSettings Lighting => Marina.Style.Lighting;
     private LandStyle Land => Marina.Style.Land;
     private MarineTraffic Traffic => Marina.MarineTraffic;
-    private ShadowStyle Shadows => Marina.Style.Shadows;
     private StatusColorScheme Status => Marina.Style.Status;
     private LabelStyle Labels => Marina.Style.Labels;
 

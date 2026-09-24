@@ -75,10 +75,6 @@ public sealed class LayerUploadTracker
 /// Puts the transparent instances of a frame in back-to-front order, which blending needs where they overlap, and
 /// groups consecutive instances of one mesh into runs a backend can draw instanced.
 /// </summary>
-/// <remarks>
-/// Shadows (<see cref="RenderPass.Shadow"/>) are left out: they all have the same color and opacity, so their order
-/// does not matter, and they are drawn before everything sorted here.
-/// </remarks>
 public sealed class TransparentSorter
 {
     private readonly List<(float Distance, int Layer, int Index)> _keys = [];

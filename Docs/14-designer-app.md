@@ -14,8 +14,7 @@ the same and save the same files:
 
 ```
 dotnet run --project apps/VirtualMarina.Designer            # Windows
-dotnet run --project apps/VirtualMarina.Designer.Blazor     # then open http://localhost:5290
-dotnet run --project apps/VirtualMarina.Designer.Desktop    # the Blazor edition in an app window
+dotnet run --project apps/VirtualMarina.Designer.Blazor     # the Blazor edition in an app window (through the launcher)
 ```
 
 Both are built on the same pieces as any other host: a view (`MarinaViewControl` or `<MarinaView>`) and
@@ -118,7 +117,7 @@ never means losing sight of what the tool in hand is doing. The two are one scro
 tool's settings lead, and scrolling down carries them off the top and leaves the whole height to what follows.
 
 **Look** shows the appearance settings while the marina stays visible, so the effect of each one can be seen as it is
-changed: water and waves, light and air, shadows, berth colours, the land and its trees, berth labels. Each setting
+changed: water and waves, light and air, berth colours, the land and its trees, berth labels. Each setting
 has a small ↺ beside it that puts only that one back to its default, and a full reset sits at the bottom.
 **Marina full** fills the marina with preview boats, so colours, light and water can be judged against a marina with
 boats in it rather than an empty one. The slider says how full the marina ends up, not how many boats get added: the
@@ -233,9 +232,16 @@ and the dialogs are Razor components. It needs a browser with WebGL 2.
 ### Building, running and publishing
 
 ```
-dotnet run --project apps/VirtualMarina.Designer.Blazor                 # http://localhost:5290
+dotnet run --project apps/VirtualMarina.Designer.Blazor                 # an app window, through the launcher
+dotnet run --project apps/VirtualMarina.Designer.Blazor --property:DesignerDevServer=true   # a tab, http://localhost:5290
 dotnet publish apps/VirtualMarina.Designer.Blazor -c Release -o out/designer-web
 ```
+
+Running the project starts the [desktop launcher](#the-desktop-launcher) rather than the WebAssembly dev server, so the
+designer opens in an app window of its own: Chrome, Edge, Chromium or Brave in application mode, or the default
+browser when none of them is installed. The switch is in the project's `Directory.Build.targets`. Setting
+`DesignerDevServer` to true brings back the plain dev server, a tab at
+http://localhost:5290 with WebAssembly debugging.
 
 The published app is static files: serve `out/designer-web/wwwroot` from any web server or static host. It is
 served from the root of its site (`<base href="/">` in `wwwroot/index.html`); to serve it from a sub-path, change

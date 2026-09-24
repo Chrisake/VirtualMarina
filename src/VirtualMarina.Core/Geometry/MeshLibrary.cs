@@ -40,7 +40,7 @@ public static class MeshIds
     /// <summary>The mainland behind the shore (see <see cref="Domain.Shoreline"/>), drawn beneath the land areas.</summary>
     public const int Shoreline = 9_000;
 
-    /// <summary>What stands on the mainland — trees, crops, a town — kept apart from the ground so it can cast a shadow.</summary>
+    /// <summary>What stands on the mainland — trees, crops, a town — kept apart from the ground it stands on.</summary>
     public const int ShorelineScenery = 9_001;
 
     /// <summary>First id of the per-land-area meshes (see <see cref="ForLand"/>).</summary>

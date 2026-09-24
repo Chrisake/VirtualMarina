@@ -9,11 +9,11 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
 - **VirtualMarina.Core.Design**: [BerthNamePlan](#berthnameplan), [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionFailedEventArgs](#designactionfailedeventargs), [DesignActionRedoneEventArgs](#designactionredoneeventargs), [DesignActionScope](#designactionscope), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignRenameScope](#designrenamescope), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerLimits](#designerlimits), [DesignerSettingRange](#designersettingrange), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [PreviewFleet](#previewfleet), [PreviewMooring](#previewmooring), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
 - **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MarineTraffic](#marinetraffic), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TrafficVessel](#trafficvessel), [TreeShape](#treeshape)
-- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LabelFontDefinition](#labelfontdefinition), [LabelGlyph](#labelglyph), [LabelTypeface](#labeltypeface), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficField](#marinetrafficfield), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [ShadowProjection](#shadowprojection), [TrafficLane](#trafficlane)
+- **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LabelFontDefinition](#labelfontdefinition), [LabelGlyph](#labelglyph), [LabelTypeface](#labeltypeface), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficField](#marinetrafficfield), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [TrafficLane](#trafficlane)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [MarinaKeyMap](#marinakeymap), [PointerButton](#pointerbutton)
 - **VirtualMarina.Core.Mathematics**: [MarinaMath](#marinamath), [PolygonMath](#polygonmath)
 - **VirtualMarina.Core.Picking**: [BerthHit](#berthhit), [Ray](#ray)
-- **VirtualMarina.Core.Rendering**: [ColorRgba](#colorrgba), [FrameLighting](#framelighting), [FrameWater](#framewater), [ISceneRenderer](#iscenerenderer), [InstanceData](#instancedata), [InstanceRange](#instancerange), [LabelStyle](#labelstyle), [LandStyle](#landstyle), [LayerUpload](#layerupload), [LayerUploadTracker](#layeruploadtracker), [LightingSettings](#lightingsettings), [MarinaStyle](#marinastyle), [ReferenceImageLayer](#referenceimagelayer), [RenderAnimation](#renderanimation), [RenderBatch](#renderbatch), [RenderFrame](#renderframe), [RenderLayer](#renderlayer), [RenderLayerKind](#renderlayerkind), [RenderObject](#renderobject), [RenderPass](#renderpass), [SelectionStyle](#selectionstyle), [ShaderDialect](#shaderdialect), [ShaderSources](#shadersources), [ShadowStyle](#shadowstyle), [StructureStyle](#structurestyle), [StyleSection](#stylesection), [TransparentSorter](#transparentsorter), [ViewStyle](#viewstyle), [WaterSettings](#watersettings)
+- **VirtualMarina.Core.Rendering**: [ColorRgba](#colorrgba), [FrameLighting](#framelighting), [FrameWater](#framewater), [ISceneRenderer](#iscenerenderer), [InstanceData](#instancedata), [InstanceRange](#instancerange), [LabelStyle](#labelstyle), [LandStyle](#landstyle), [LayerUpload](#layerupload), [LayerUploadTracker](#layeruploadtracker), [LightingSettings](#lightingsettings), [MarinaStyle](#marinastyle), [ReferenceImageLayer](#referenceimagelayer), [RenderAnimation](#renderanimation), [RenderBatch](#renderbatch), [RenderFrame](#renderframe), [RenderLayer](#renderlayer), [RenderLayerKind](#renderlayerkind), [RenderObject](#renderobject), [RenderPass](#renderpass), [SelectionStyle](#selectionstyle), [ShaderDialect](#shaderdialect), [ShaderSources](#shadersources), [StructureStyle](#structurestyle), [StyleSection](#stylesection), [TransparentSorter](#transparentsorter), [ViewStyle](#viewstyle), [WaterSettings](#watersettings)
 - **VirtualMarina.Core.Serialization**: [MarinaDocument](#marinadocument), [MarinaFormatException](#marinaformatexception), [MarinaJson](#marinajson), [ReferenceImageRecord](#referenceimagerecord)
 - **VirtualMarina.Rendering.OpenGL**: [OpenGlSceneRenderer](#openglscenerenderer)
 - **VirtualMarina.WinForms**: [MarinaDesignerPanel](#virtualmarina-winforms-marinadesignerpanel), [MarinaViewControl](#marinaviewcontrol), [ReferenceImageLoader](#referenceimageloader)
@@ -2432,9 +2432,9 @@ World-space meshes for the ground: solid slabs for quays and lawns, rock piles f
 | `static MeshData CreateRockPile(int id, LandArea area, LandStyle? style = null)` | A rubble mound: the area filled with irregular rocks (low-poly squashed spheres), reaching the land height in the middle and sloping down to the water along the outline, over a dark core that hides the gaps between rocks. |
 | `static MeshData CreateShoreline(int id, Shoreline shoreline, LandStyle? style = null)` | The mainland behind the marina: the shoreline's shape as one slab, with whatever scenery it asks for scattered in a band along the coast. |
 | `static MeshData CreateShorelineGround(int id, Shoreline shoreline, LandStyle? style = null)` | The mainland's ground on its own, without whatever is scattered over it. |
-| `static MeshData CreateShorelineScenery(int id, Shoreline shoreline, LandStyle? style = null)` | Just what stands on the mainland — trees, crops or a town — as a mesh of its own, so it can cast a shadow on the ground it stands on. |
+| `static MeshData CreateShorelineScenery(int id, Shoreline shoreline, LandStyle? style = null)` | Just what stands on the mainland — trees, crops or a town — as a mesh of its own, apart from the ground it stands on. |
 | `static MeshData CreateSlab(int id, LandArea area, LandStyle? style = null)` | The outline extruded from `LandMeshFactory.WallDepth` below the water up to the land height, with a flat top. |
-| `static MeshData CreateTrees(int id, LandArea area, LandStyle? style = null)` | Just the trees of a land area, as a mesh of their own so they can be drawn over the ground and squashed onto it for a shadow. Empty when the style hides them or the area has none. |
+| `static MeshData CreateTrees(int id, LandArea area, LandStyle? style = null)` | Just the trees of a land area, as a mesh of their own, drawn over the ground. Empty when the style hides them or the area has none. |
 | `static float ShorelineGroundHeight(Shoreline shoreline)` | World Y of the mainland's surface: a hair under the land areas, so a quay on the shore wins. |
 
 <a id="marinameshfactory"></a>
@@ -2554,7 +2554,7 @@ Well-known mesh ids referenced by render objects.
 | `const int GlyphBase = 300` | First id of the text glyph meshes (see `GlyphFont`). |
 | `const int FontGlyphBase = 2000` | Ids of the glyphs of a font captured into the design start here, one per character. Clear of the built-in stroke faces below and of the world meshes above. |
 | `const int Shoreline = 9000` | The mainland behind the shore (see `Shoreline`), drawn beneath the land areas. |
-| `const int ShorelineScenery = 9001` | What stands on the mainland — trees, crops, a town — kept apart from the ground so it can cast a shadow. |
+| `const int ShorelineScenery = 9001` | What stands on the mainland — trees, crops, a town — kept apart from the ground it stands on. |
 | `const int LandBase = 10000` | First id of the per-land-area meshes (see `MeshIds.ForLand`). |
 | `const int LandTreesBase = 20000` | First id of the per-land-area tree meshes (see `MeshIds.ForLandTrees`). |
 | `const int MaxLandSlots = 10000` | How many land areas can have a mesh slot at the same time: the slots between `MeshIds.LandBase` and `MeshIds.LandTreesBase`. |
@@ -2581,21 +2581,6 @@ A renderer tells a changed mesh by its object: to change one, register a new `Me
 | `void Register(MeshData mesh)` | Adds or replaces a mesh (e.g. swap a procedural boat for one loaded from GLTF). |
 | `bool TryGet(int id, out MeshData mesh)` | Looks up a mesh by id. |
 | `bool Unregister(int id)` | Removes a mesh. Returns false when no mesh has this id. |
-
-<a id="shadowprojection"></a>
-### ShadowProjection
-
-`static class ShadowProjection`
-
-Flattens geometry onto a horizontal plane along the sun's rays, which is how the marina casts its shadows.
-
-A marina is almost all flat ground: water at nought, quays and yards a meter or two above it. Squashing the boats and the piers onto that ground and drawing them dark is enough to read as sunlight, and it costs one extra instance per object rather than a depth pass and a shadow map in every backend. What it does not do: a shadow lands on one plane, so a boat's shadow falls on the water rather than up the side of the pier beside it, and nothing shadows itself. The ground casts none — it is what the shadows land on — which is why the trees and the hinterland are meshes of their own rather than part of it.
-
-| Member | Description |
-|---|---|
-| `const float MinimumSunHeight = 0.07f` | How low the sun may be before shadows are dropped, as the Y of its unit direction (about 4° above the horizon). |
-| `static bool CanCast(Vector3 sunDirection)` | True when the sun is high enough for a shadow to be worth drawing. |
-| `static Matrix4x4 OntoPlane(Vector3 sunDirection, float planeHeight)` | The transform that drops a point straight down the sun's rays onto a horizontal plane. |
 
 <a id="trafficlane"></a>
 ### TrafficLane
@@ -3037,7 +3022,6 @@ Change properties at any time; the view updates on the next frame. Assign a whol
 | `LabelStyle Labels { get; init; }` | Colors of berth names written on the water. |
 | `SelectionStyle Selection { get; init; }` | Selection marker and hover/selection highlights. |
 | `ViewStyle View { get; init; }` | Camera field of view and animation smoothing. |
-| `ShadowStyle Shadows { get; init; }` | Whether the boats and piers cast shadows on the ground, and how dark those shadows are. |
 | `MarinaStyle Clone()` | A deep copy: every section is a new instance with the same values, so changing the copy leaves this style (and any visualizer showing it) alone. The captured label font is shared, as it is never changed once built. |
 | `static MarinaStyle CreateDefault()` | A copy of the defaults. |
 
@@ -3063,7 +3047,7 @@ A reference image laid flat in the scene, north (the top row) toward −Z.
 
 `[Flags] enum RenderAnimation`
 
-Per-object animations evaluated on the GPU (uniform `uAnimation`, or the instance attribute), so an animated scene needs no per-frame CPU updates; plus `RenderAnimation.Unlit`, the one flag about shading.
+Per-object animations evaluated on the GPU (uniform `uAnimation`, or the instance attribute), so an animated scene needs no per-frame CPU updates.
 
 | Value | Description |
 |---|---|
@@ -3072,7 +3056,6 @@ Per-object animations evaluated on the GPU (uniform `uAnimation`, or the instanc
 | `SpinAndBob` = 2 | Spin about Y and bob up and down (selection marker). |
 | `Pulse` = 4 | Pulse the emissive highlight over time. |
 | `AboveWaves` = 8 | Lift the object by the highest height the waves can reach (see `ShaderSources.MaxWaveHeightFactor`), so the water never covers it. Used for text on the water. |
-| `Unlit` = 16 | Not an animation: drawn in its color and tint alone, with no lighting (only fog). Shadows are drawn this way, since they are flattened and have no normals to light. |
 
 <a id="renderbatch"></a>
 ### RenderBatch
@@ -3133,7 +3116,7 @@ A backend keeps, per layer kind, the `RenderLayer.LayoutVersion` and `RenderLaye
 | `int LayoutVersion { get; }` | Changes whenever the instances are laid out afresh (their number, meshes or passes changed), which calls for a full upload. Unique across every layer in the process. |
 | `ReadOnlyMemory<RenderObject> Instances { get; }` | The instances, batch by batch (see `RenderLayer.Batches`). |
 | `int Count { get; }` | How many instances the layer has. |
-| `IReadOnlyList<RenderBatch> Batches { get; }` | The runs to draw: opaque batches first, then shadow batches, then the transparent ones in the order they are to be drawn. |
+| `IReadOnlyList<RenderBatch> Batches { get; }` | The runs to draw: opaque batches first, then the transparent ones in the order they are to be drawn. |
 | `static RenderLayer FromObjects(RenderLayerKind kind, IEnumerable<RenderObject> objects, int version)` | A layer holding the given objects, e.g. for a frame put together by hand. Its versions are both `version`, so a backend uploads it again only when that number changes. |
 | `bool TryGetChangesSince(int version, ICollection<InstanceRange> changes)` | Adds the stretches of instances rewritten in place since `version` to `changes`. Returns false when that is not known — the layout changed since, or too much changed to keep track of — in which case the whole layer has to be uploaded again. |
 
@@ -3150,8 +3133,6 @@ The scene is split by how often each part changes, so that a change rebuilds, an
 |---|---|
 | `Scene` = 0 | A whole scene in one layer: what a frame built from a flat `RenderFrame.Objects` list has. |
 | `Structure` = 1 | What only a change to the layout or the style moves: land, trees, piers, pedestals, dividers and fingers. |
-| `StructureShadows` = 2 | The shadows of `RenderLayerKind.Structure`, which the sun moves on their own. |
-| `BerthShadows` = 3 | The shadows of the boats. |
 | `Berths` = 4 | What a berth's status shows: boats, status pads, buoys and labels. |
 | `Highlight` = 5 | The selection markers. |
 | `Overlay` = 6 | The designer's drawing and measurements, and the traffic lanes while they are shown. |
@@ -3186,8 +3167,7 @@ Which pass of a frame an instance is drawn in.
 | Value | Description |
 |---|---|
 | `Opaque` = 0 | Before the water, depth-written, in any order. |
-| `Shadow` = 1 | After the water, blended with depth writes off, before any `RenderPass.Transparent` instance. These are the shadows: every one has the same color and opacity, so the order they are drawn in makes no difference. |
-| `Transparent` = 2 | After the shadows, blended with depth writes off, in order (back to front where the backend sorts). |
+| `Transparent` = 1 | After the water, blended with depth writes off, in order (back to front where the backend sorts). |
 
 <a id="selectionstyle"></a>
 ### SelectionStyle
@@ -3240,21 +3220,6 @@ Mesh attributes: location 0 = position, 1 = normal, 2 = color. Frame uniforms: u
 | `static string WaterFragment(ShaderDialect dialect)` | Fragment shader for the water: fresnel sky reflection, ripples, sun glints and fog. |
 | `static string WaterVertex(ShaderDialect dialect)` | Vertex shader for the water grid: displaces vertices by the wave function. |
 
-<a id="shadowstyle"></a>
-### ShadowStyle
-
-`sealed class ShadowStyle : StyleSection`
-
-Shadows cast on the ground by the boats and the piers (`MarinaStyle.Shadows`).
-
-Each shadow is the object itself squashed onto the ground along the sun's rays, so it costs one more instance per object. That is cheap enough for a phone but not free on a large marina, which is what `ShadowStyle.IsEnabled` is for. See `ShadowProjection` for what this kind of shadow can and cannot do.
-
-| Member | Description |
-|---|---|
-| `ShadowStyle()` | Creates an instance with default values. |
-| `bool IsEnabled { get; set; }` | Cast shadows at all. Default true; turning it off drops every shadow instance from the scene. |
-| `float Strength { get; set; }` | How dark a shadow is, 0–1 (default 0.25). A flattened object overlaps itself, so the darkness on screen is rather more than this; past about 0.4 the overlaps start to show as blotches. |
-
 <a id="structurestyle"></a>
 ### StructureStyle
 
@@ -3298,8 +3263,6 @@ Base of the style sections that notify the visualizer when they change.
 `sealed class TransparentSorter`
 
 Puts the transparent instances of a frame in back-to-front order, which blending needs where they overlap, and groups consecutive instances of one mesh into runs a backend can draw instanced.
-
-Shadows (`RenderPass.Shadow`) are left out: they all have the same color and opacity, so their order does not matter, and they are drawn before everything sorted here.
 
 | Member | Description |
 |---|---|

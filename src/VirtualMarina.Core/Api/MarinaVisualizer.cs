@@ -338,7 +338,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         EnsureCameraBounds();
 
         if (Designer.OverlayNeedsRefresh()) _scene.Invalidate(SceneChanges.Overlay);
-        _scene.Update(_style, CreateSceneState, Designer.AppendOverlay);
+        _scene.Update(CreateSceneState, Designer.AppendOverlay);
         UpdateTraffic();
 
         var view = Camera.GetViewMatrix();
@@ -383,7 +383,6 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         LandMeshId = land => _landMeshSlots.TryGetValue(land.Id, out var slot) ? MeshIds.ForLand(slot) : -1,
         LandScenery = land => _landScenery.TryGetValue(land.Id, out var scenery) ? scenery : [],
         ShorelineScenery = _shorelineScenery,
-        ShorelineGroundHeight = _shoreline is { } shore ? LandMeshFactory.ShorelineGroundHeight(shore) : 0f,
         LandLookup = GetLandArea,
         BerthLookup = GetBerth,
         PierLookup = GetPier,
@@ -512,7 +511,6 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         // Each section of the style feeds only some of the layers, so a change to it rebuilds only those.
         style.Piers.Changed += OnPierStyleChanged;
         style.Selection.Changed += OnBerthStyleChanged;
-        style.Shadows.Changed += OnShadowStyleChanged;
         style.Status.Changed += OnStatusStyleChanged;
         style.Land.Changed += OnLandStyleChanged;
         style.Labels.Changed += OnLabelStyleChanged;
@@ -528,7 +526,6 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     {
         style.Piers.Changed -= OnPierStyleChanged;
         style.Selection.Changed -= OnBerthStyleChanged;
-        style.Shadows.Changed -= OnShadowStyleChanged;
         style.Status.Changed -= OnStatusStyleChanged;
         style.Land.Changed -= OnLandStyleChanged;
         style.Labels.Changed -= OnLabelStyleChanged;
@@ -553,8 +550,6 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private void OnPierStyleChanged(object? sender, EventArgs e) => Invalidate(SceneChanges.Structure);
 
     private void OnBerthStyleChanged(object? sender, EventArgs e) => MarkBerthsDirty();
-
-    private void OnShadowStyleChanged(object? sender, EventArgs e) => Invalidate(SceneChanges.Shadows);
 
     /// <summary>Status colors also appear in the popup's accent.</summary>
     private void OnStatusStyleChanged(object? sender, EventArgs e)
@@ -743,7 +738,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         }
 
         // Rocks and trees are instances of a few shared meshes rather than part of the ground: far less to build and
-        // upload, and each can be squashed onto the ground for its shadow.
+        // upload.
         if (rebuildGround || !Meshes.TryGet(MeshIds.ForLand(slot), out _))
         {
             Meshes.Register(LandMeshFactory.CreateGroundBase(MeshIds.ForLand(slot), land, _style.Land));

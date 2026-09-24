@@ -57,7 +57,7 @@ public class MarinaDocumentRoundTripTests
         layout["piers"]![0]!["deckMaterial"] = "teak";
         layout["landAreas"]![0]!["trees"]![0]!["species"] = "olive";
         layout["multiBerths"]![0]!["boat"]!["mmsi"] = "237000000";
-        root["presentation"]!["shadows"]!["softness"] = 0.3;
+        root["presentation"]!["view"]!["softness"] = 0.3;
         root["referenceImage"]!["source"] = "survey.png";
         root["cameraPresets"]![0]!["hotkey"] = "F1";
         root["designer"]!["berthNaming"]!["suffix"] = "b";
@@ -91,7 +91,7 @@ public class MarinaDocumentRoundTripTests
         Assert.Equal(2, saved["layout"]!["piers"]!.AsArray().Count);
         Assert.Equal("olive", (string?)saved["layout"]!["landAreas"]![0]!["trees"]![0]!["species"]);
         Assert.Equal("237000000", (string?)saved["layout"]!["multiBerths"]![0]!["boat"]!["mmsi"]);
-        Assert.Equal(0.3, (double)saved["presentation"]!["shadows"]!["softness"]!, 3);
+        Assert.Equal(0.3, (double)saved["presentation"]!["view"]!["softness"]!, 3);
         Assert.Equal("survey.png", (string?)saved["referenceImage"]!["source"]);
         Assert.Equal("F1", (string?)saved["cameraPresets"]![0]!["hotkey"]);
         Assert.Equal("b", (string?)saved["designer"]!["berthNaming"]!["suffix"]);
@@ -109,6 +109,17 @@ public class MarinaDocumentRoundTripTests
         document.UpdateFrom(marina);
 
         Assert.DoesNotContain("tariffZone", document.ToJson(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheShadowSettingsOfAnOlderFile_AreDropped_NotKeptAsUnknown()
+    {
+        var root = JsonNode.Parse(MarinaDocument.FromVisualizer(new MarinaVisualizer()).ToJson())!.AsObject();
+        root["presentation"]!["shadows"] = new JsonObject { ["enabled"] = true, ["strength"] = 0.25 };
+
+        var saved = Reparse(MarinaDocument.Parse(root.ToJsonString()));
+
+        Assert.Null(saved["presentation"]!["shadows"]);
     }
 
     [Fact]
@@ -225,7 +236,6 @@ public class MarinaDocumentRoundTripTests
         style.Labels.Typeface = LabelTypeface.Serif;
         style.Selection.MarkerScale = 2f;
         style.View.FieldOfViewDegrees = 30f;
-        style.Shadows.Strength = 0.1f;
 
         var copy = style.Clone();
 
@@ -240,7 +250,6 @@ public class MarinaDocumentRoundTripTests
         Assert.Equal(LabelTypeface.Serif, copy.Labels.Typeface);
         Assert.Equal(2f, copy.Selection.MarkerScale);
         Assert.Equal(30f, copy.View.FieldOfViewDegrees);
-        Assert.Equal(0.1f, copy.Shadows.Strength);
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 ﻿# Appearance
 
-How the marina itself is drawn: the names on the water, the status colours, the light, the sea and the shadows, and
+How the marina itself is drawn: the names on the water, the status colours, the light and the sea, and
 the boat models. Everything here lives on `marina.Style` or on the visualizer directly, and all of it is saved with
 the design, so a host loading a `.marina.json` gets the look it was drawn with and need not configure anything.
 
@@ -22,7 +22,6 @@ in sections:
 | `Labels` | The lettering and colors of berth names |
 | `Selection` | The selection marker and the hover and selection highlights |
 | `View` | Camera field of view and smoothing |
-| `Shadows` | Whether shadows are cast, and how dark they are |
 
 Change any property at any time: every section raises `StyleSection.Changed` when a value actually changes, and the view
 redraws (a view drawing [on demand](10-hosting-and-custom-views.md) wakes for it). Assign a whole new `MarinaStyle` to
@@ -184,39 +183,6 @@ triangles reaching `MarinaMeshFactory.SeaReach` (30 km), and the shader fades th
 sun glints out over the outer third of the detailed grid. So the water runs to the horizon and the fog takes it into
 the sky, while everything that costs anything to draw stays near the marina. Widen `Size` to push the detailed water
 further out; the skirt follows on its own.
-
-## Shadows
-
-The boats and the piers cast shadows on the ground. On by default:
-
-```csharp
-marina.Style.Shadows.IsEnabled = false;   // off
-marina.Style.Shadows.Strength = 0.35f;    // darker (0-1, default 0.25)
-```
-
-Everything standing on the marina casts one: the boats, the piers and their kerbs, piles, bollards and service
-pedestals, the cradles ashore, the trees on the land areas, and the trees and town on the mainland behind the shore.
-
-Each shadow is the object itself squashed onto the ground along the sun's rays, so it follows
-`Lighting.SunDirection` — move the sun and the shadows move with it. It lands on the ground the object stands over:
-a boat afloat shades the water, a boat ashore shades the yard it is cradled in, a tree shades its own lawn.
-
-Each shadow costs one extra instance, so on a marina of several hundred berths shadows roughly double the scene —
-hence the toggle. They need no depth pass and no shadow map, and behave identically in the OpenGL and WebGL views.
-Shadows are drawn **unlit** (`RenderAnimation.Unlit`): a flattened object has no normals worth lighting, so a shadow
-is its tint alone, with fog, in a pass of its own between the water and the other transparent objects. They sit in
-layers of their own too (`StructureShadows`, `BerthShadows`), so moving the sun re-sends the shadows and nothing else.
-
-What projected shadows cannot do:
-
-- **One plane per object.** A boat's shadow falls on the water, not up the side of the pier beside it.
-- **No self-shadowing.** A cabin does not shade its own deck.
-- **The ground casts none**, being what the shadows land on. Trees and the mainland scenery are separate meshes, so
-  they do.
-- **Overlap darkens.** A flattened object covers itself, so a shadow is darker than `Strength` alone — much darker
-  for something like a tree crown, which is several rounded blobs on top of one another — and can look blotchy past
-  about 0.4.
-- **Nothing below about 4° of elevation** (`ShadowProjection.MinimumSunHeight`), where a shadow would stretch to the horizon.
 
 ## Replacing boat models
 

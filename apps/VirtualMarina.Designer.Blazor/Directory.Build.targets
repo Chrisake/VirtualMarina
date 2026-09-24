@@ -1,0 +1,32 @@
+<Project>
+
+  <!--
+    Running this project (dotnet run, or Visual Studio's Project launch) starts the desktop launcher rather than the
+    WebAssembly dev server, so the designer opens as an app window: the launcher serves this build and looks for
+    Chrome, Edge, Chromium or Brave to open it in application mode, and opens the default browser when it finds none
+    (apps/VirtualMarina.Designer.Desktop, and Docs/14-designer-app.md).
+
+    The WebAssembly SDK and the dev server package both set RunCommand and RunArguments themselves, in files imported
+    after the project file, and newer SDKs set them again in a target. So they are set twice here: as properties, which
+    a Directory.Build.targets imports late enough to win, and again after ComputeRunArguments, the target the SDK runs
+    just before it reads them.
+
+    The plain dev server, a browser tab with WebAssembly debugging, is still there when asked for: set the property
+    DesignerDevServer to true, as Docs/14-designer-app.md shows.
+  -->
+  <PropertyGroup Condition="'$(DesignerDevServer)' != 'true'">
+    <_DesignerLauncherProject>$([MSBuild]::NormalizePath($(MSBuildThisFileDirectory), '..', 'VirtualMarina.Designer.Desktop', 'VirtualMarina.Designer.Desktop.csproj'))</_DesignerLauncherProject>
+    <RunCommand>dotnet</RunCommand>
+    <RunArguments>run --project &quot;$(_DesignerLauncherProject)&quot; --configuration $(Configuration)</RunArguments>
+    <RunWorkingDirectory>$(MSBuildThisFileDirectory)</RunWorkingDirectory>
+  </PropertyGroup>
+
+  <Target Name="_RunDesignerThroughLauncher" AfterTargets="ComputeRunArguments" Condition="'$(DesignerDevServer)' != 'true'">
+    <PropertyGroup>
+      <RunCommand>dotnet</RunCommand>
+      <RunArguments>run --project &quot;$(_DesignerLauncherProject)&quot; --configuration $(Configuration)</RunArguments>
+      <RunWorkingDirectory>$(MSBuildThisFileDirectory)</RunWorkingDirectory>
+    </PropertyGroup>
+  </Target>
+
+</Project>

@@ -34,7 +34,7 @@ VirtualMarina is a .NET 8 library that renders an interactive 3D marina (piers, 
 
 | Guide | What it covers |
 |---|---|
-| [Appearance](08-appearance.md) | Berth labels, status colours, lighting, water, shadows, replacing boat models |
+| [Appearance](08-appearance.md) | Berth labels, status colours, lighting, water, replacing boat models |
 | [Hosting and custom views](10-hosting-and-custom-views.md) | `MarinaViewControl`, `<MarinaView>`, the keyboard contract, on-demand rendering, writing your own view or rendering backend |
 | [Localization](15-localization.md) | Resource files per assembly, choosing the language, adding a translation |
 | [Designer applications](14-designer-app.md) | The stand-alone tools for drawing a marina to scale and saving it for the host: the WinForms designer, the Blazor designer in the browser, and the desktop launcher that opens it in a window |

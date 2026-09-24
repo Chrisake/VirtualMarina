@@ -72,7 +72,7 @@ internal sealed class AppearancePanel : SidePanel
         header.Controls.Add(new Label { Text = Strings.LookHint, Font = Theme.Body, ForeColor = Theme.TextSoft, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 10) }, 0, 1);
 
         Stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        foreach (var card in new[] { BuildWaterCard(), BuildBoatsCard(), BuildLightCard(), BuildStatusCard(), BuildLandCard(), BuildShadowCard(), BuildTrafficCard(), BuildLabelCard(), BuildPreviewCard(), BuildResetCard() })
+        foreach (var card in new[] { BuildWaterCard(), BuildBoatsCard(), BuildLightCard(), BuildStatusCard(), BuildLandCard(), BuildTrafficCard(), BuildLabelCard(), BuildPreviewCard(), BuildResetCard() })
         {
             card.Dock = DockStyle.Top;
             Stack.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -91,8 +91,6 @@ internal sealed class AppearancePanel : SidePanel
     private LandStyle Land => _marina.Style.Land;
 
     private MarineTraffic Traffic => _marina.MarineTraffic;
-
-    private ShadowStyle Shadows => _marina.Style.Shadows;
 
     private StatusColorScheme Status => _marina.Style.Status;
 
@@ -187,19 +185,6 @@ internal sealed class AppearancePanel : SidePanel
         Color(table, Strings.LandRoof, () => Land.RoofColor, c => Land.RoofColor = c, Defaults.Land.RoofColor);
 
         Check(table, Strings.LandShowTrees, () => Land.ShowTrees, v => Land.ShowTrees = v);
-        return card;
-    }
-
-    /// <summary>Shadows cast by the boats and the piers, and how dark they are.</summary>
-    private Panel BuildShadowCard()
-    {
-        var card = Theme.Card(Strings.CardShadows, out var table);
-
-        Check(table, Strings.ShadowsShow, () => Shadows.IsEnabled, v => Shadows.IsEnabled = v, Strings.ShadowsShowTip);
-
-        Percent(table, Strings.ShadowStrength, (0, 100, Defaults.Shadows.Strength * 100f), () => Shadows.Strength * 100f,
-            v => Shadows.Strength = v / 100f, Percentage, Strings.ShadowStrengthTip);
-        Theme.FullRow(table, Theme.Hint(Strings.ShadowHint));
         return card;
     }
 

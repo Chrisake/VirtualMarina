@@ -298,8 +298,6 @@ touched: hovering a berth never re-sends the piers, and passing traffic never re
 | `RenderLayerKind` | Holds |
 |---|---|
 | `Structure` | Land, trees, piers, pedestals, dividers and fingers: what only a layout or style change moves |
-| `StructureShadows` | Their shadows, which the sun moves on their own |
-| `BerthShadows` | The boats' shadows |
 | `Berths` | Boats, status pads, buoys and labels |
 | `Highlight` | Selection markers |
 | `Overlay` | The designer's drawing and measurements, and the traffic lanes while shown |
@@ -310,8 +308,8 @@ A `RenderLayer` has:
 
 - `Instances` — its `RenderObject`s, grouped batch by batch; `Count`.
 - `Batches` — `RenderBatch(MeshId, Pass, Start, Count)`: runs of instances sharing one mesh and one `RenderPass`, each
-  drawn with a single instanced draw call. Opaque batches come first, then shadow batches, then the transparent ones in
-  the order they are to be drawn.
+  drawn with a single instanced draw call. Opaque batches come first, then the transparent ones in the order
+  they are to be drawn.
 - `LayoutVersion` — changes when the instances were laid out afresh (their number, meshes or passes changed): upload everything.
 - `Version` — changes whenever any instance changes. The same `LayoutVersion` with a new `Version` means some instances
   were rewritten in place, and `TryGetChangesSince(version, ranges)` lists which (`InstanceRange(Start, Count)`), so only
@@ -336,8 +334,7 @@ foreach (var kind in tracker.RemoveMissing(frame.Layers)) DeleteLayer(kind);
 // after losing the graphics context: tracker.Clear();
 ```
 
-`RenderPass` of an instance: `Opaque` when its tint alpha is 1; `Shadow` when it is transparent and `Unlit`; otherwise
-`Transparent`.
+`RenderPass` of an instance: `Opaque` when its tint alpha is 1, otherwise `Transparent`.
 
 ### Instance data
 
@@ -364,13 +361,11 @@ Transforms are affine, so the fourth column is always (0, 0, 0, 1) and is not st
    `ShaderSources.ImageQuadCorners` with the image shaders (`uView`, `uProjection`, `uImageMin`, `uImageMax`,
    `uImageHeight`, `uOpacity`, `uImage` on unit 0). Blending is on and depth writes off; the depth test is off when
    `AboveScene` is true. Free the texture once no image is shown.
-5. **Shadow pass:** draw the `Shadow` batches, blending on (`SRC_ALPHA, ONE_MINUS_SRC_ALPHA`) and depth writes off. They
-   all share one color and opacity, so their order does not matter.
-6. **Transparent pass:** draw the `Transparent` instances, blending on and depth writes off. This includes status pads,
+5. **Transparent pass:** draw the `Transparent` instances, blending on (`SRC_ALPHA, ONE_MINUS_SRC_ALPHA`) and depth writes off. This includes status pads,
    ghost boats and the designer's drawing previews. `TransparentSorter.Sort(layers, cameraPosition, sceneVersion)` puts
    them back to front and groups them into runs of one mesh (`Sorted`, `Runs`); it returns false when neither the camera
    nor the scene moved, so the sorted buffer need not be uploaded again.
-7. **Uniforms:**
+6. **Uniforms:**
    - Per frame: `uView`, `uProjection`, `uCameraPos`, `uTime`, `uSunDirection`, `uSunColor`, `uAmbientColor`,
      `uSpecularStrength`, `uShininess`, `uSkyColor`, `uFogColor`, `uFogDensity`, `uWaveAmplitude`, `uWaveFrequency`,
      `uWaveSpeed`, `uFloatMotion` (from `Water.BoatMotion`); the water adds `uWaterDeep`, `uWaterShallow`,
@@ -386,8 +381,7 @@ Shader source comes from `ShaderSources.InstancedModelVertex/InstancedModelFragm
 `WaterVertex/WaterFragment` and `ImageVertex/ImageFragment(ShaderDialect)`. It is the same GLSL body for OpenGL 3.3
 (`DesktopGL33`) and WebGL 2 (`WebGL2`). Matrices use the System.Numerics row-vector convention; uploading M11..M44 in
 order gives the column-major matrices GLSL expects. `RenderAnimation` flags (float on water, spin and bob, pulse, above
-waves) are evaluated in the shaders, so an animated scene needs no per-frame uploads; the `Unlit` flag draws an object in
-its color and tint alone, with fog but no lighting, which is how shadows are drawn.
+waves) are evaluated in the shaders, so an animated scene needs no per-frame uploads.
 
 Existing backends, both drawing every mesh instanced, one draw call per batch:
 

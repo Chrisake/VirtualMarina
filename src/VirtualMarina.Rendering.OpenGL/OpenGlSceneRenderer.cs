@@ -153,7 +153,7 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
             water.Draw();
         }
 
-        // 3. Reference image (designer), then shadows, then the other transparent instances (status pads, ghost boats,
+        // 3. Reference image (designer), then the transparent instances (status pads, ghost boats,
         // drawing previews) back to front, all blended without depth writes.
         GL.Enable(EnableCap.Blend);
         GL.DepthMask(false);
@@ -161,7 +161,6 @@ public sealed class OpenGlSceneRenderer : ISceneRenderer
         else ReleaseReferenceTexture();
 
         model.Use();
-        DrawPass(frame.Layers, RenderPass.Shadow);
         DrawSortedTransparent(frame);
 
         GL.DepthMask(true);

@@ -87,6 +87,7 @@ public class GoldenFileTests
     /// <summary>
     /// A current-version file, read and written again, keeps every value it had. The writer may add a setting the
     /// fixture predates, but must not drop or change one it has: that would silently lose part of someone's design.
+    /// The only exceptions are the settings of features taken out of the library, listed in <see cref="Retired"/>.
     /// </summary>
     [Theory]
     [MemberData(nameof(Fixtures))]
@@ -99,8 +100,12 @@ public class GoldenFileTests
 
         var differences = new List<string>();
         CollectLost(original, resaved, "", differences);
+        differences.RemoveAll(difference => Retired.Any(path => difference.StartsWith(path + ":", StringComparison.Ordinal)));
         Assert.True(differences.Count == 0, "Lost or changed on saving again:\n" + string.Join("\n", differences.Take(20)));
     }
+
+    /// <summary>Sections a file may still carry that are dropped on purpose: shadows were taken out of the library.</summary>
+    private static readonly string[] Retired = ["/presentation/shadows"];
 
     private static void CollectLost(JsonNode? expected, JsonNode? actual, string path, List<string> differences)
     {

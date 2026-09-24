@@ -17,7 +17,7 @@ public class StyleCompletenessTests
     public void EverySetting_IsFoundBySection()
     {
         var sections = StyleProperties.Sections().Select(section => section.Name).ToList();
-        Assert.Equal(new[] { "Lighting", "Water", "Status", "Land", "Piers", "Labels", "Selection", "View", "Shadows" }, sections);
+        Assert.Equal(new[] { "Lighting", "Water", "Status", "Land", "Piers", "Labels", "Selection", "View" }, sections);
         Assert.True(StyleProperties.Settable(typeof(LandStyle)).Count() >= 14);
     }
 

@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Numerics;
 
 namespace VirtualMarina.Core.Rendering;
 
@@ -9,10 +8,10 @@ internal enum SceneChanges
 {
     None = 0,
 
-    /// <summary>The layout or its style: land, piers, dividers, fingers. Their shadows follow.</summary>
+    /// <summary>The layout or its style: land, piers, dividers, fingers.</summary>
     Structure = 1,
 
-    /// <summary>Berth statuses, boats, labels, the status filter or the status colors. Boat shadows and markers follow.</summary>
+    /// <summary>Berth statuses, boats, labels, the status filter or the status colors. The markers follow.</summary>
     Berths = 2,
 
     /// <summary>Hover or selection: rewrites the affected berths in place and redraws the markers.</summary>
@@ -21,10 +20,7 @@ internal enum SceneChanges
     /// <summary>The designer's overlay or the traffic lanes.</summary>
     Overlay = 8,
 
-    /// <summary>The sun or the shadow style.</summary>
-    Shadows = 16,
-
-    All = Structure | Berths | Highlight | Overlay | Shadows,
+    All = Structure | Berths | Highlight | Overlay,
 }
 
 /// <summary>
@@ -37,8 +33,6 @@ internal sealed class SceneLayers
     private static readonly StringComparer IdComparer = StringComparer.OrdinalIgnoreCase;
 
     private readonly RenderLayer _structure = new(RenderLayerKind.Structure);
-    private readonly RenderLayer _structureShadows = new(RenderLayerKind.StructureShadows);
-    private readonly RenderLayer _berthShadows = new(RenderLayerKind.BerthShadows);
     private readonly RenderLayer _berths = new(RenderLayerKind.Berths);
     private readonly RenderLayer _highlight = new(RenderLayerKind.Highlight);
     private readonly RenderLayer _overlay = new(RenderLayerKind.Overlay);
@@ -46,16 +40,13 @@ internal sealed class SceneLayers
     private readonly RenderLayer[] _all;
 
     private readonly List<RenderObject> _scratch = [];
-    private readonly List<ShadowCaster> _structureCasters = [];
-    private readonly List<ShadowCaster> _berthCasters = [];
     private readonly BerthLayerContent _berthContent = new();
     private readonly HashSet<string> _drawnSelection = new(IdComparer);
     private string? _drawnHover;
-    private (bool Cast, Vector3 Sun, float Strength) _drawnShadows;
     private SceneChanges _dirty = SceneChanges.All;
     private FlatObjects? _flat;
 
-    public SceneLayers() => _all = [_structure, _structureShadows, _berthShadows, _berths, _highlight, _overlay, _traffic];
+    public SceneLayers() => _all = [_structure, _berths, _highlight, _overlay, _traffic];
 
     /// <summary>Every layer, in drawing order.</summary>
     public IReadOnlyList<RenderLayer> All => _all;
@@ -89,19 +80,15 @@ internal sealed class SceneLayers
     public void Invalidate(SceneChanges changes) => _dirty |= changes;
 
     /// <summary>Builds whatever is out of date.</summary>
-    /// <param name="style">The style, which says whether and where shadows fall.</param>
     /// <param name="createState">Gathers the scene; called only when a layer that needs it is out of date.</param>
     /// <param name="overlay">Adds the designer's overlay.</param>
-    public void Update(MarinaStyle style, Func<SceneState> createState, Action<List<RenderObject>> overlay)
+    public void Update(Func<SceneState> createState, Action<List<RenderObject>> overlay)
     {
-        var shadows = (Cast: SceneBuilder.CastsShadows(style), Sun: style.Lighting.SunDirection, Strength: style.Shadows.Strength);
-        if (shadows != _drawnShadows) _dirty |= SceneChanges.Shadows;
-
         var dirty = _dirty;
         _dirty = SceneChanges.None;
         if ((dirty & (SceneChanges.Structure | SceneChanges.Berths | SceneChanges.Highlight)) == 0)
         {
-            UpdateShadowsAndOverlay(dirty, shadows, overlay);
+            UpdateOverlay(dirty, overlay);
             return;
         }
 
@@ -109,16 +96,15 @@ internal sealed class SceneLayers
 
         if ((dirty & SceneChanges.Structure) != 0)
         {
-            SceneBuilder.BuildStructure(_scratch, _structureCasters, state);
+            SceneBuilder.BuildStructure(_scratch, state);
             _structure.Rebuild(_scratch);
-            dirty |= SceneChanges.Shadows;
         }
 
         if ((dirty & SceneChanges.Berths) != 0 || ((dirty & SceneChanges.Highlight) != 0 && !TryPatchHighlight(state)))
         {
-            SceneBuilder.BuildBerths(_berthContent, _berthCasters, state);
+            SceneBuilder.BuildBerths(_berthContent, state);
             _berths.Rebuild(_berthContent.Objects);
-            dirty |= SceneChanges.Highlight | SceneChanges.Shadows;
+            dirty |= SceneChanges.Highlight;
         }
 
         if ((dirty & SceneChanges.Highlight) != 0)
@@ -131,18 +117,11 @@ internal sealed class SceneLayers
             _highlight.Rebuild(_scratch);
         }
 
-        UpdateShadowsAndOverlay(dirty, shadows, overlay);
+        UpdateOverlay(dirty, overlay);
     }
 
-    private void UpdateShadowsAndOverlay(SceneChanges dirty, (bool Cast, Vector3 Sun, float Strength) shadows, Action<List<RenderObject>> overlay)
+    private void UpdateOverlay(SceneChanges dirty, Action<List<RenderObject>> overlay)
     {
-        if ((dirty & SceneChanges.Shadows) != 0)
-        {
-            _drawnShadows = shadows;
-            CastShadows(_structureShadows, _structureCasters, shadows);
-            CastShadows(_berthShadows, _berthCasters, shadows);
-        }
-
         if ((dirty & SceneChanges.Overlay) != 0)
         {
             _scratch.Clear();
@@ -153,13 +132,6 @@ internal sealed class SceneLayers
 
     /// <summary>Replaces the passing traffic.</summary>
     public void SetTraffic(IReadOnlyList<RenderObject> vessels) => _traffic.Rebuild(vessels);
-
-    private void CastShadows(RenderLayer layer, List<ShadowCaster> casters, (bool Cast, Vector3 Sun, float Strength) shadows)
-    {
-        if (shadows.Cast) SceneBuilder.CastShadows(_scratch, casters, shadows.Sun, shadows.Strength);
-        else _scratch.Clear();
-        layer.Rebuild(_scratch);
-    }
 
     /// <summary>
     /// Rewrites, in place, the berths and boats whose hover or selection changed. False when one of them would come out

@@ -731,6 +731,14 @@ public sealed class MarinaDocument
     private void KeepPresentation(PresentationDto? presentation)
     {
         if (presentation is null) return;
+
+        // Shadows were taken out of the library. A file written before still has their settings, which are dropped here
+        // rather than kept as an unknown section and written back with every save.
+        if (presentation.Extra is { } extra)
+        {
+            foreach (var key in extra.Keys.Where(key => string.Equals(key, "shadows", StringComparison.OrdinalIgnoreCase)).ToList()) extra.Remove(key);
+        }
+
         Keep(presentation.Extra, "presentation");
         Keep(presentation.Water?.Extra, "presentation:water");
         Keep(presentation.Lighting?.Extra, "presentation:lighting");
@@ -740,7 +748,6 @@ public sealed class MarinaDocument
         Keep(presentation.Labels?.Extra, "presentation:labels");
         Keep(presentation.Selection?.Extra, "presentation:selection");
         Keep(presentation.View?.Extra, "presentation:view");
-        Keep(presentation.Shadows?.Extra, "presentation:shadows");
     }
 
     /// <summary>Writes them back out next to the settings this version does know.</summary>
@@ -755,7 +762,6 @@ public sealed class MarinaDocument
         if (presentation.Labels is not null) presentation.Labels.Extra = Restore("presentation:labels");
         if (presentation.Selection is not null) presentation.Selection.Extra = Restore("presentation:selection");
         if (presentation.View is not null) presentation.View.Extra = Restore("presentation:view");
-        if (presentation.Shadows is not null) presentation.Shadows.Extra = Restore("presentation:shadows");
     }
 
     private void Keep(Dictionary<string, JsonElement>? extra, string? section = null)

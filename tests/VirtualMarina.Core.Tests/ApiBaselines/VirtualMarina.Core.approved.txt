@@ -1699,11 +1699,6 @@ sealed class VirtualMarina.Core.Geometry.MeshLibrary
     static VirtualMarina.Core.Geometry.MeshLibrary CreateDefault(float waterSize, int waterResolution, Vector2 waterCenter)
     void Register(VirtualMarina.Core.Geometry.MeshData mesh)
 
-static class VirtualMarina.Core.Geometry.ShadowProjection
-    const float MinimumSunHeight = 0.07
-    static Matrix4x4 OntoPlane(Vector3 sunDirection, float planeHeight)
-    static bool CanCast(Vector3 sunDirection)
-
 sealed class VirtualMarina.Core.Geometry.TrafficLane
     .ctor(IEnumerable<Vector2> points, bool reversed = false)
     IReadOnlyList<Vector2> Points { get; }
@@ -1978,7 +1973,6 @@ sealed class VirtualMarina.Core.Rendering.MarinaStyle
     VirtualMarina.Core.Rendering.LightingSettings Lighting { get; init; }
     VirtualMarina.Core.Rendering.MarinaStyle Clone()
     VirtualMarina.Core.Rendering.SelectionStyle Selection { get; init; }
-    VirtualMarina.Core.Rendering.ShadowStyle Shadows { get; init; }
     VirtualMarina.Core.Rendering.StructureStyle Piers { get; init; }
     VirtualMarina.Core.Rendering.ViewStyle View { get; init; }
     VirtualMarina.Core.Rendering.WaterSettings Water { get; init; }
@@ -2006,7 +2000,6 @@ enum VirtualMarina.Core.Rendering.RenderAnimation : IComparable, IConvertible, I
     None = 0
     Pulse = 4
     SpinAndBob = 2
-    Unlit = 16
 
 readonly record struct VirtualMarina.Core.Rendering.RenderBatch : IEquatable<VirtualMarina.Core.Rendering.RenderBatch>
     .ctor(int MeshId, VirtualMarina.Core.Rendering.RenderPass Pass, int Start, int Count)
@@ -2051,13 +2044,11 @@ sealed class VirtualMarina.Core.Rendering.RenderLayer
     static VirtualMarina.Core.Rendering.RenderLayer FromObjects(VirtualMarina.Core.Rendering.RenderLayerKind kind, IEnumerable<VirtualMarina.Core.Rendering.RenderObject> objects, int version)
 
 enum VirtualMarina.Core.Rendering.RenderLayerKind : IComparable, IConvertible, IFormattable, ISpanFormattable
-    BerthShadows = 3
     Berths = 4
     Highlight = 5
     Overlay = 6
     Scene = 0
     Structure = 1
-    StructureShadows = 2
     Traffic = 7
 
 readonly record struct VirtualMarina.Core.Rendering.RenderObject : IEquatable<VirtualMarina.Core.Rendering.RenderObject>
@@ -2080,8 +2071,7 @@ readonly record struct VirtualMarina.Core.Rendering.RenderObject : IEquatable<Vi
 
 enum VirtualMarina.Core.Rendering.RenderPass : IComparable, IConvertible, IFormattable, ISpanFormattable
     Opaque = 0
-    Shadow = 1
-    Transparent = 2
+    Transparent = 1
 
 sealed class VirtualMarina.Core.Rendering.SelectionStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()
@@ -2107,11 +2097,6 @@ static class VirtualMarina.Core.Rendering.ShaderSources
     static string ModelVertex(VirtualMarina.Core.Rendering.ShaderDialect dialect)
     static string WaterFragment(VirtualMarina.Core.Rendering.ShaderDialect dialect)
     static string WaterVertex(VirtualMarina.Core.Rendering.ShaderDialect dialect)
-
-sealed class VirtualMarina.Core.Rendering.ShadowStyle : VirtualMarina.Core.Rendering.StyleSection
-    .ctor()
-    bool IsEnabled { get; set; }
-    float Strength { get; set; }
 
 sealed class VirtualMarina.Core.Rendering.StructureStyle : VirtualMarina.Core.Rendering.StyleSection
     .ctor()

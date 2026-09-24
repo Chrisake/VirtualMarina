@@ -161,6 +161,6 @@ to the GPU each frame; the piers, berths and boats stay uploaded as they are. Mo
 ## See also
 
 - [Layout](03-layout.md) — land areas, quays and breakwaters inside the marina
-- [Appearance](08-appearance.md) — water, lighting and shadows
+- [Appearance](08-appearance.md) — water and lighting
 - [Designer](12-designer.md) — drawing a coastline by hand
 - [Marina files](13-marina-file-format.md) — how both are stored

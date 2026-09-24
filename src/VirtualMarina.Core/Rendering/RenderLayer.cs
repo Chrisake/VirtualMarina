@@ -16,12 +16,6 @@ public enum RenderLayerKind
     /// <summary>What only a change to the layout or the style moves: land, trees, piers, pedestals, dividers and fingers.</summary>
     Structure = 1,
 
-    /// <summary>The shadows of <see cref="Structure"/>, which the sun moves on their own.</summary>
-    StructureShadows = 2,
-
-    /// <summary>The shadows of the boats.</summary>
-    BerthShadows = 3,
-
     /// <summary>What a berth's status shows: boats, status pads, buoys and labels.</summary>
     Berths = 4,
 
@@ -41,14 +35,8 @@ public enum RenderPass
     /// <summary>Before the water, depth-written, in any order.</summary>
     Opaque = 0,
 
-    /// <summary>
-    /// After the water, blended with depth writes off, before any <see cref="Transparent"/> instance. These are the
-    /// shadows: every one has the same color and opacity, so the order they are drawn in makes no difference.
-    /// </summary>
-    Shadow = 1,
-
-    /// <summary>After the shadows, blended with depth writes off, in order (back to front where the backend sorts).</summary>
-    Transparent = 2,
+    /// <summary>After the water, blended with depth writes off, in order (back to front where the backend sorts).</summary>
+    Transparent = 1,
 }
 
 /// <summary>A run of a layer's instances that share one mesh and one pass, drawn with a single instanced draw call.</summary>
@@ -115,7 +103,7 @@ public sealed class RenderLayer
     public int Count => _count;
 
     /// <summary>
-    /// The runs to draw: opaque batches first, then shadow batches, then the transparent ones in the order they are to be drawn.
+    /// The runs to draw: opaque batches first, then the transparent ones in the order they are to be drawn.
     /// </summary>
     public IReadOnlyList<RenderBatch> Batches => _batches;
 
@@ -260,10 +248,7 @@ public sealed class RenderLayer
     }
 
     /// <summary>The pass an object is drawn in.</summary>
-    internal static RenderPass PassOf(in RenderObject obj) =>
-        !obj.IsTransparent ? RenderPass.Opaque
-        : (obj.Animation & RenderAnimation.Unlit) != 0 ? RenderPass.Shadow
-        : RenderPass.Transparent;
+    internal static RenderPass PassOf(in RenderObject obj) => obj.IsTransparent ? RenderPass.Transparent : RenderPass.Opaque;
 
     private void LogChange(int version, InstanceRange range)
     {
@@ -286,7 +271,7 @@ public sealed class RenderLayer
     }
 
     /// <summary>
-    /// Lays the objects out batch by batch. Opaque and shadow objects are grouped by mesh, in the order each mesh first
+    /// Lays the objects out batch by batch. Opaque objects are grouped by mesh, in the order each mesh first
     /// appears, since their order does not change the picture; transparent ones keep their order exactly, split into a
     /// new batch wherever the mesh changes.
     /// </summary>
@@ -334,7 +319,7 @@ public sealed class RenderLayer
             sizes[batch]++;
         }
 
-        // Opaque batches, then shadows, then the transparent runs, each in the order they were first met.
+        // Opaque batches, then the transparent runs, each in the order they were first met.
         var order = Enumerable.Range(0, keys.Count).OrderBy(b => (int)keys[b].Pass).ThenBy(b => b).ToArray();
         var starts = new int[keys.Count];
         var next = 0;

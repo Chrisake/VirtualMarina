@@ -195,7 +195,7 @@ public static class ShaderSources
 
             // The normal matrix is the cofactor matrix of the model's 3x3 part: the inverse transpose without the division
             // by the determinant, which only scales it (and flips it for a mirroring transform). Cross products are cheap,
-            // and a flattened shadow, which has no inverse, still gets a finite normal (it is drawn unlit anyway).
+            // and a transform that flattens the model, which has no inverse, still gets a finite normal.
             mat3 m = mat3(model);
             mat3 cofactor = mat3(cross(m[1], m[2]), cross(m[2], m[0]), cross(m[0], m[1]));
             vec3 normal = cofactor * n * (dot(m[0], cofactor[0]) < 0.0 ? -1.0 : 1.0);
@@ -271,7 +271,6 @@ public static class ShaderSources
             vec3 base = vColor * tint.rgb;
             float luma = dot(base, vec3(0.299, 0.587, 0.114));
             base = mix(base, vec3(luma * 0.9 + 0.08), clamp(desaturation, 0.0, 1.0));
-            if ((animation & 16) != 0) return vec4(vmApplyFog(base, vWorldPos), tint.a);
 
             vec3 N = normalize(vNormal);
             if (!gl_FrontFacing) N = -N;

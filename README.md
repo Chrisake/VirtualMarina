@@ -35,7 +35,7 @@ done
 dotnet run --project samples/VirtualMarina.TestHost.Blazor       # then open http://localhost:5280
 ```
 
-The designer runs in the browser too: `dotnet run --project apps/VirtualMarina.Designer.Blazor` (then open http://localhost:5290), or as a windowed app through the desktop launcher, `dotnet run --project apps/VirtualMarina.Designer.Desktop`. See [the designer applications](Docs/14-designer-app.md).
+The designer runs in the browser too: `dotnet run --project apps/VirtualMarina.Designer.Blazor` opens it in an app window of its own (Chrome, Edge, Chromium or Brave in application mode, or the default browser when none is installed), through the desktop launcher. See [the designer applications](Docs/14-designer-app.md).
 
 Requirements: a .NET 8 SDK (`global.json` accepts any 8.0 feature band, so the analysers stay the same everywhere), and a GPU/driver with OpenGL 3.3 (desktop) or WebGL 2 (browser). The JavaScript checks CI runs need Node 20 or newer: `npm ci && npx eslint . && npx tsc -p jsconfig.json`.
 
@@ -108,7 +108,7 @@ VirtualMarina.sln
 ```
 
 - **Backends only draw.** Camera math, hit testing, scene composition and animation logic live in Core. A new backend (WebGPU, Vulkan, Avalonia, MAUI) implements `ISceneRenderer` and forwards input to `marina.Input`; see [hosting and custom views](Docs/10-hosting-and-custom-views.md).
-- **Layered, instanced scene.** `RenderFrame.Layers` splits the scene by what changes it (structure, shadows, berths and boats, selection markers, designer overlay), and both backends draw each layer's batches instanced. A layer is uploaded again only when its versions say so, and a hover or status change patches just the instances it touched.
+- **Layered, instanced scene.** `RenderFrame.Layers` splits the scene by what changes it (structure, berths and boats, selection markers, designer overlay), and both backends draw each layer's batches instanced. A layer is uploaded again only when its versions say so, and a hover or status change patches just the instances it touched.
 - **GPU-side animation, on-demand frames.** Water waves, boats bobbing and rolling, the selection marker's spin, and highlight pulses are computed in the shaders from `uTime`. The views draw only while something changes or moves (`MarinaVisualizer.NeedsRedraw`, `IsAnimating`); a still marina costs nothing, and `ContinuousRendering` on either view draws every frame regardless.
 - **Immutable snapshots.** `Berth`, `Pier`, `Boat` and the other domain types are records with value equality. Events carry snapshots, so host code can't change marina state without going through the API.
 

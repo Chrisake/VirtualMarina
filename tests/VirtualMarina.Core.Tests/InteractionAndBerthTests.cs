@@ -20,9 +20,6 @@ public class InteractionAndBerthTests
         var marina = new MarinaVisualizer();
         marina.InitializeLayout(layout);
         marina.SetViewportSize(800, 600);
-        // These tests count what the scene draws. Shadows add a second instance of everything that casts one, which
-        // is what ShadowTests is for; here they would only be noise.
-        marina.Style.Shadows.IsEnabled = false;
         return marina;
     }
 
@@ -336,7 +333,6 @@ public class InteractionAndBerthTests
         marina.InitializeLayout(new MarinaLayoutBuilder()
             .AddPier("Q", "Quay", Vector2.Zero, 0f, 80f, pier => pier.AddBerths(PierSide.Right, 12, 4f, 10f))
             .Build());
-        marina.Style.Shadows.IsEnabled = false;   // counting what is drawn; the shadow would be a second instance
         var ids = marina.GetBerths().Select(s => s.Id).ToArray();
         var superyacht = new Boat("SY", "Long One", BoatType.MotorYacht) { LengthMeters = 46f, BeamMeters = 8.5f };
 

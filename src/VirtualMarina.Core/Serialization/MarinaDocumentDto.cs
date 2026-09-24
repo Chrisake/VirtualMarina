@@ -877,8 +877,6 @@ internal sealed class PresentationDto : ExtensibleDto
 
     public ViewDto? View { get; set; }
 
-    public ShadowDto? Shadows { get; set; }
-
     public BerthLabelMode? BerthLabels { get; set; }
 
     public static PresentationDto From(MarinaStyle style, BerthLabelMode labels) => new()
@@ -891,7 +889,6 @@ internal sealed class PresentationDto : ExtensibleDto
         Labels = LabelDto.From(style.Labels),
         Selection = SelectionDto.From(style.Selection),
         View = ViewDto.From(style.View),
-        Shadows = ShadowDto.From(style.Shadows),
         BerthLabels = labels,
     };
 
@@ -909,7 +906,6 @@ internal sealed class PresentationDto : ExtensibleDto
         Structures?.ApplyTo(style.Piers);
         Labels?.ApplyTo(style.Labels);
         Selection?.ApplyTo(style.Selection);
-        Shadows?.ApplyTo(style.Shadows);
         return style;
     }
 }
@@ -1304,26 +1300,6 @@ internal sealed class SelectionDto : ExtensibleDto
         selection.SelectedGlow = SelectedGlow ?? selection.SelectedGlow;
         selection.HoverGlow = HoverGlow ?? selection.HoverGlow;
         selection.Pulse = Pulse ?? selection.Pulse;
-    }
-}
-
-/// <summary>Whether the marina casts shadows, and how dark they are.</summary>
-internal sealed class ShadowDto : ExtensibleDto
-{
-    public bool? Enabled { get; set; }
-
-    public float? Strength { get; set; }
-
-    public static ShadowDto From(ShadowStyle shadows) => new()
-    {
-        Enabled = shadows.IsEnabled,
-        Strength = shadows.Strength,
-    };
-
-    public void ApplyTo(ShadowStyle shadows)
-    {
-        shadows.IsEnabled = Enabled ?? shadows.IsEnabled;
-        shadows.Strength = Strength ?? shadows.Strength;
     }
 }
 

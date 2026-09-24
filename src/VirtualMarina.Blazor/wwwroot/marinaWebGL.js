@@ -23,7 +23,7 @@ const VERTEX_STRIDE_BYTES = 9 * 4;
 const INSTANCE_STRIDE_BYTES = 20 * 4;
 const INSTANCE_FIRST_ATTRIBUTE = 3;
 const INSTANCE_ATTRIBUTES = 5;
-const PASS = { OPAQUE: 0, SHADOW: 1, TRANSPARENT: 2 };
+const PASS = { OPAQUE: 0, TRANSPARENT: 1 };
 
 // How long an idle view waits before asking .NET whether anything changed that it was not told about (the camera moved
 // by code, the lighting changed). Changes made through the visualizer wake it at once.
@@ -533,14 +533,13 @@ export function renderFrame(id, frame) {
         gl.drawElements(gl.TRIANGLES, water.count, gl.UNSIGNED_INT, 0);
     }
 
-    // 3. Reference image (designer), then shadows, then the other transparent instances (status pads, ghost boats,
+    // 3. Reference image (designer), then the transparent instances (status pads, ghost boats,
     // drawing previews) farthest first, in the order .NET sorted them.
     gl.enable(gl.BLEND);
     gl.depthMask(false);
     if (f[FRAME.IMAGE] > 0) drawReferenceImage(view, f, keys);
     else releaseImageTexture(view);
     gl.useProgram(model.program);
-    drawPass(view, PASS.SHADOW);
     drawTransparent(view);
     gl.depthMask(true);
     gl.disable(gl.BLEND);

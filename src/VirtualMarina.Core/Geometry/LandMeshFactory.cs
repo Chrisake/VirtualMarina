@@ -50,8 +50,7 @@ public static class LandMeshFactory
     }
 
     /// <summary>
-    /// Just the trees of a land area, as a mesh of their own so they can be drawn over the ground and squashed onto
-    /// it for a shadow. Empty when the style hides them or the area has none.
+    /// Just the trees of a land area, as a mesh of their own, drawn over the ground. Empty when the style hides them or the area has none.
     /// </summary>
     /// <param name="id">Mesh id (see <see cref="MeshIds.ForLandTrees"/>).</param>
     /// <param name="area">The land area whose trees to build.</param>
@@ -418,8 +417,8 @@ public static class LandMeshFactory
     }
 
     /// <summary>
-    /// Just what stands on the mainland — trees, crops or a town — as a mesh of its own, so it can cast a shadow on
-    /// the ground it stands on.
+    /// Just what stands on the mainland — trees, crops or a town — as a mesh of its own, apart from the
+    /// ground it stands on.
     /// </summary>
     /// <param name="id">Mesh id (see <see cref="MeshIds.ShorelineScenery"/>).</param>
     /// <param name="shoreline">The shoreline whose scenery to build.</param>

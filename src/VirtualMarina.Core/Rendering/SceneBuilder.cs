@@ -27,9 +27,6 @@ internal sealed class SceneState
     /// <summary>What stands on the mainland: trees, fields, a town.</summary>
     public IReadOnlyList<RenderObject> ShorelineScenery { get; init; } = [];
 
-    /// <summary>World Y of the mainland's surface, which its scenery casts its shadow on.</summary>
-    public float ShorelineGroundHeight { get; init; }
-
     /// <summary>True when there is a mainland to draw, beneath every land area.</summary>
     public required bool HasShoreline { get; init; }
 
@@ -58,9 +55,6 @@ internal sealed class SceneState
 
     public required MeshLibrary Meshes { get; init; }
 }
-
-/// <summary>Something that casts a shadow, and the height of the ground the shadow lands on.</summary>
-internal readonly record struct ShadowCaster(RenderObject Caster, float Ground);
 
 /// <summary>
 /// The berths layer as built: its objects in the order they were made, and which of them belong to which berth or boat,
@@ -146,50 +140,6 @@ internal static class SceneBuilder
     public static float MarkerBaseHeight(float boatTop, float ground = 0f) => MathF.Max(boatTop, ground + 2.5f) + MarkerClearance;
 
     /// <summary>
-    /// How far a shadow floats above the ground it lands on, in meters. Enough to stay off the surface it is drawn
-    /// over without reading as a gap.
-    /// </summary>
-    private const float ShadowLift = 0.03f;
-
-    /// <summary>True when shadows are drawn at all for this style and sun.</summary>
-    public static bool CastsShadows(MarinaStyle style) =>
-        style.Shadows.IsEnabled && style.Shadows.Strength > 0.004f && ShadowProjection.CanCast(style.Lighting.SunDirection);
-
-    /// <summary>
-    /// The shadows of <paramref name="casters"/>: the same geometry squashed onto the ground along the sun's rays and drawn
-    /// dark and unlit.
-    /// </summary>
-    /// <remarks>
-    /// The floating animation is carried over, so a boat's shadow rides the same wave the boat does instead of staying flat
-    /// while the water under it moves.
-    /// </remarks>
-    public static void CastShadows(List<RenderObject> output, IReadOnlyList<ShadowCaster> casters, Vector3 sun, float strength)
-    {
-        output.Clear();
-        var tint = new Vector4(0f, 0f, 0f, strength);
-        var flatten = default(Matrix4x4);
-        var flattenGround = float.NaN;
-        foreach (var (caster, ground) in casters)
-        {
-            // Most casters stand on one of a few grounds (the water, a quay), so the projection is worked out once per run.
-            if (ground != flattenGround)
-            {
-                flatten = ShadowProjection.OntoPlane(sun, ground + ShadowLift);
-                flattenGround = ground;
-            }
-
-            output.Add(caster with
-            {
-                World = caster.World * flatten,
-                Tint = tint,
-                Emissive = 0f,
-                Desaturation = 0f,
-                Animation = (caster.Animation & ~RenderAnimation.Pulse) | RenderAnimation.Unlit,
-            });
-        }
-    }
-
-    /// <summary>
     /// True when replacing <paramref name="before"/> with <paramref name="after"/> changes the structure layer (fingers,
     /// pedestals) and not only what the berths layer shows: its place, size, visibility, fingers, services or multi-berth.
     /// </summary>
@@ -213,17 +163,13 @@ internal static class SceneBuilder
 
     /// <summary>
     /// The layout itself: mainland, land areas and what stands on them, piers with their pedestals, dividers and finger
-    /// piers. Everything that casts a shadow is added to <paramref name="casters"/>.
+    /// piers.
     /// </summary>
-    public static void BuildStructure(List<RenderObject> output, List<ShadowCaster> casters, SceneState state)
+    public static void BuildStructure(List<RenderObject> output, SceneState state)
     {
         output.Clear();
-        casters.Clear();
         var palette = new Palette(state.Style);
-        AddGround(output, casters, state);
-
-        // Piers and what stands on them are over water, so their shadows land on it.
-        var structureFrom = output.Count;
+        AddGround(output, state);
         AddPiers(output, state, palette);
 
         foreach (var divider in state.Dividers) AddDivider(output, divider, divider.PierId is null ? null : state.PierLookup(divider.PierId), palette);
@@ -235,35 +181,23 @@ internal static class SceneBuilder
             if (!berth.IsVisible || !berth.HasFingerPiers || berth.IsOnLand) continue;
             AddFingerPiers(output, berth, berth.PierId is null ? null : state.PierLookup(berth.PierId), state, palette);
         }
-
-        for (var i = structureFrom; i < output.Count; i++) casters.Add(new ShadowCaster(output[i], 0f));
     }
 
-    /// <summary>The mainland and the land areas, with the trees, rocks and buildings standing on them and casting shadows on them.</summary>
-    private static void AddGround(List<RenderObject> output, List<ShadowCaster> casters, SceneState state)
+    /// <summary>The mainland and the land areas, with the trees, rocks and buildings standing on them.</summary>
+    private static void AddGround(List<RenderObject> output, SceneState state)
     {
         // The mainland goes down first, so the land areas traced along the shore sit on top of it.
         if (state.HasShoreline)
         {
             output.Add(new RenderObject(MeshIds.Shoreline, Matrix4x4.Identity, White));
-            foreach (var scenery in state.ShorelineScenery)
-            {
-                output.Add(scenery);
-                casters.Add(new ShadowCaster(scenery, state.ShorelineGroundHeight));
-            }
+            output.AddRange(state.ShorelineScenery);
         }
 
         foreach (var land in state.Land)
         {
             var ground = state.LandMeshId(land);
             if (HasGeometry(state.Meshes, ground)) output.Add(new RenderObject(ground, Matrix4x4.Identity, White));
-
-            // Trees and rocks stand on their land area, so that is the ground their shadow falls on.
-            foreach (var scenery in state.LandScenery(land))
-            {
-                output.Add(scenery);
-                casters.Add(new ShadowCaster(scenery, land.Height));
-            }
+            output.AddRange(state.LandScenery(land));
         }
     }
 
@@ -294,12 +228,10 @@ internal static class SceneBuilder
 
     /// <summary>
     /// What the berths' statuses show: boats (with the cradles of boats ashore), status pads, buoys or posts, and labels.
-    /// The boats are added to <paramref name="casters"/>.
     /// </summary>
-    public static void BuildBerths(BerthLayerContent content, List<ShadowCaster> casters, SceneState state)
+    public static void BuildBerths(BerthLayerContent content, SceneState state)
     {
         content.Clear();
-        casters.Clear();
         var palette = new Palette(state.Style);
         Func<Berth, float?> ground = berth => GroundHeight(berth, state.LandLookup);
 
@@ -312,13 +244,6 @@ internal static class SceneBuilder
             var start = content.Objects.Count;
             AddBoat(content.Objects, boat, state);
             content.AddUnit(start, null, boat, boat.Berths);
-
-            // A boat ashore throws its shadow on the yard it stands in, not on the water below it. Only what is drawn
-            // solid casts one.
-            for (var i = start; i < content.Objects.Count; i++)
-            {
-                if (!content.Objects[i].IsTransparent) casters.Add(new ShadowCaster(content.Objects[i], boat.Ground ?? 0f));
-            }
         }
 
         foreach (var berth in state.Berths)

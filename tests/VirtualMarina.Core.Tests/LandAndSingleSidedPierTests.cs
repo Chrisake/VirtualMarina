@@ -213,7 +213,6 @@ public class LandAndSingleSidedPierTests
     private static IReadOnlyList<RenderObject> Drawn(PierType type, PierSides sides)
     {
         var marina = new MarinaVisualizer();
-        marina.Style.Shadows.IsEnabled = false;   // a shadow is a second copy of everything; this counts originals
         marina.InitializeLayout(new MarinaLayout
         {
             Piers = new[] { new Pier("Q", "Quay pontoon", Vector2.Zero, 0f, 40f, 3f, type) { BerthingSides = sides } },
