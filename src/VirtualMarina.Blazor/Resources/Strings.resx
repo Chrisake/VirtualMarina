@@ -150,8 +150,17 @@
   <data name="BerthDepth">
     <value>Depth (m)</value>
   </data>
-  <data name="BerthSeparators">
-    <value>Separators</value>
+  <data name="SectionDividers">
+    <value>Dividers</value>
+  </data>
+  <data name="DividerType">
+    <value>Type</value>
+  </data>
+  <data name="DividerInterval">
+    <value>Every (berths)</value>
+  </data>
+  <data name="DividerIntervalHint">
+    <value>When a whole row is filled (Alt+click): how many berths lie between the dividers.</value>
   </data>
   <data name="BerthGap">
     <value>Space between (m)</value>

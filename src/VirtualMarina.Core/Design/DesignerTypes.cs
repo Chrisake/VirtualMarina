@@ -72,37 +72,15 @@ public enum DesignTool
     /// Backspace removes the last point; Escape cancels. Drawing a new one replaces the one already there.
     /// </summary>
     DrawShoreline = 12,
-}
-
-/// <summary>
-/// What separates the berths the designer adds (<see cref="MarinaDesigner.BerthSeparators"/>). Except for
-/// <see cref="FingerPiers"/> and <see cref="None"/>, each value generates <see cref="Divider"/> elements shared by neighbouring berths.
-/// </summary>
-public enum BerthSeparator
-{
-    /// <summary>The berths' own finger piers along both long sides (<see cref="Berth.HasFingerPiers"/>). Default.</summary>
-    FingerPiers = 0,
-
-    /// <summary>Nothing between the berths but the gap (<see cref="MarinaDesigner.BerthGap"/>, at least <see cref="MarinaDesigner.MinimumSeparatorGap"/>).</summary>
-    None = 1,
-
-    /// <summary>A walkable finger pier between neighbours (<see cref="DividerType.FingerPier"/>).</summary>
-    FingerPier = 2,
 
     /// <summary>
-    /// A finger pier at every other boundary, so the berths sit in pairs: each boat has a pier on one side and its neighbour on the
-    /// other, and the boats at the ends of the row get a pier on their outer side.
+    /// Click beside a row of berths to put a <see cref="Divider"/> of <see cref="MarinaDesigner.DividerType"/> on the boundary
+    /// nearest the pointer, or to take away the one already there. Hold Alt to fill the whole row instead: a divider on every
+    /// <see cref="MarinaDesigner.DividerInterval"/>-th boundary, counting from the one clicked. Ctrl+click (or a right-click)
+    /// only removes: the one divider, or with Alt every divider along the row. Berths with a divider between them are no
+    /// longer connected (<see cref="Berth.ConnectedBerthIds"/>).
     /// </summary>
-    PairedFingerPiers = 6,
-
-    /// <summary>A row of mooring piles (<see cref="DividerType.Piles"/>).</summary>
-    Piles = 3,
-
-    /// <summary>A floating boom (<see cref="DividerType.Boom"/>).</summary>
-    Boom = 4,
-
-    /// <summary>A single mooring pile at the outer end of each berth boundary (<see cref="DividerType.SinglePile"/>).</summary>
-    SinglePile = 5,
+    PlaceDividers = 13,
 }
 
 /// <summary>
@@ -316,7 +294,10 @@ public sealed class DesignElementCreatingEventArgs : EventArgs
     /// <summary>The berths to add (<see cref="DesignTool.AddBerths"/>, or the one land berth of <see cref="DesignTool.AddLandBerths"/>); empty for other tools.</summary>
     public IReadOnlyList<Berth> Berths { get; set; }
 
-    /// <summary>Dividers generated between the new berths, when <see cref="MarinaDesigner.BerthSeparators"/> asks for them.</summary>
+    /// <summary>
+    /// The dividers to add (<see cref="DesignTool.PlaceDividers"/>); empty for other tools, since <see cref="DesignTool.AddBerths"/>
+    /// places no dividers of its own.
+    /// </summary>
     public IReadOnlyList<Divider> Dividers { get; set; }
 
     /// <summary>
@@ -354,7 +335,7 @@ public sealed class DesignElementCreatedEventArgs : EventArgs
     /// <summary>The berths added (empty unless berths were added).</summary>
     public IReadOnlyList<Berth> Berths { get; }
 
-    /// <summary>The dividers added with the berths.</summary>
+    /// <summary>The dividers added (<see cref="DesignTool.PlaceDividers"/>).</summary>
     public IReadOnlyList<Divider> Dividers { get; }
 
     /// <summary>The mainland that was set (<see cref="DesignTool.DrawShoreline"/>), if any.</summary>
@@ -406,7 +387,10 @@ public sealed class DesignElementErasedEventArgs : EventArgs
         RemovedDividers = removedDividers;
     }
 
-    /// <summary>The removed <see cref="Berth"/>, <see cref="Pier"/> or <see cref="LandArea"/>.</summary>
+    /// <summary>
+    /// The removed <see cref="Berth"/>, <see cref="Pier"/>, <see cref="LandArea"/> or <see cref="Divider"/>. When
+    /// <see cref="DesignTool.PlaceDividers"/> clears a whole row of dividers, the pier they stood along.
+    /// </summary>
     public object Element { get; }
 
     /// <summary>Every berth removed (the berth itself, or the pier's or land area's berths).</summary>

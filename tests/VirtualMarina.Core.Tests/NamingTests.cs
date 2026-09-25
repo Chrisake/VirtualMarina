@@ -407,8 +407,9 @@ public class NamingTests
     public void EraseBerthsOfPier_ClearsTheRowButLeavesThePier_AndCanBeUndone()
     {
         var marina = WithPier(out var designer);
-        designer.BerthSeparators = BerthSeparator.Piles;
+        designer.DividerType = DividerType.Piles;
         var left = designer.CreateBerths("A", PierSide.Left, 0f, 15f);
+        designer.PlaceDividers("A", PierSide.Left, 0f, wholeRow: true);
         Assert.NotEmpty(marina.GetDividers());
 
         Assert.True(designer.EraseBerthsOfPier("A"));

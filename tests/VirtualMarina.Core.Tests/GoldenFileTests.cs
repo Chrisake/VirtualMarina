@@ -75,13 +75,13 @@ public class GoldenFileTests
     public void AFixture_SavedAgain_ReadsBackTheSame_AndSavesTheSameAgain(string folder, string file)
     {
         var first = MarinaDocument.Parse(ReadFixture(folder, file));
-        var saved = first.ToJson();
+        var saved = first.ToJson(stripOccupancy: false);
         var second = MarinaDocument.Parse(saved);
 
         Assert.Equal(MarinaDocument.CurrentVersion, second.Version);
         Assert.Equal(first.Layout.Berths.Count, second.Layout.Berths.Count);
         Assert.Equal(first.Layout.MultiBerths.Count, second.Layout.MultiBerths.Count);
-        Assert.Equal(saved, second.ToJson());
+        Assert.Equal(saved, second.ToJson(stripOccupancy: false));
     }
 
     /// <summary>
@@ -96,7 +96,7 @@ public class GoldenFileTests
         if (folder != CurrentFolder) return;
 
         var original = JsonNode.Parse(ReadFixture(folder, file))!;
-        var resaved = JsonNode.Parse(MarinaDocument.Parse(original.ToJsonString()).ToJson())!;
+        var resaved = JsonNode.Parse(MarinaDocument.Parse(original.ToJsonString()).ToJson(stripOccupancy: false))!;
 
         var differences = new List<string>();
         CollectLost(original, resaved, "", differences);
@@ -104,8 +104,11 @@ public class GoldenFileTests
         Assert.True(differences.Count == 0, "Lost or changed on saving again:\n" + string.Join("\n", differences.Take(20)));
     }
 
-    /// <summary>Sections a file may still carry that are dropped on purpose: shadows were taken out of the library.</summary>
-    private static readonly string[] Retired = ["/presentation/shadows"];
+    /// <summary>
+    /// Settings a file may still carry that are dropped on purpose: shadows were taken out of the library, and the berth
+    /// tool no longer places separators (the old setting is read into the divider tool's instead).
+    /// </summary>
+    private static readonly string[] Retired = ["/presentation/shadows", "/designer/berthSeparators"];
 
     private static void CollectLost(JsonNode? expected, JsonNode? actual, string path, List<string> differences)
     {
@@ -155,8 +158,8 @@ public class GoldenFileTests
     {
         var files = new Dictionary<string, string>
         {
-            ["small-harbor.marina.json"] = SmallHarbor().ToJson(),
-            ["sample-marina.marina.json"] = SampleMarina().ToJson(),
+            ["small-harbor.marina.json"] = SmallHarbor().ToJson(stripOccupancy: false),
+            ["sample-marina.marina.json"] = SampleMarina().ToJson(stripOccupancy: false),
         };
 
         Assert.All(files.Values, json => Assert.Contains($"\"formatVersion\": \"{MarinaDocument.CurrentVersion.ToString(2)}\"", json, StringComparison.Ordinal));

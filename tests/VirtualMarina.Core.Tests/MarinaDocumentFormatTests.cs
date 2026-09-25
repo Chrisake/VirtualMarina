@@ -165,7 +165,7 @@ public class MarinaDocumentFormatTests
         Assert.Equal(document.Layout.Piers, MarinaDocument.Parse(withBom).Layout.Piers);
 
         using var stream = new MemoryStream();
-        await document.SaveAsync(stream, indented: false);
+        await document.SaveAsync(stream, indented: false, stripOccupancy: false);
         Assert.True(document.SavedUtc > new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero));
         stream.Position = 0;
         var reread = await MarinaDocument.LoadAsync(stream);
@@ -256,7 +256,7 @@ public class MarinaDocumentFormatTests
     public void AMultiBerthCarriesItsBoat_ASingleBerthDoesNot_AndABoatsSizeIsOnlyWrittenWhenItHasOne()
     {
         var document = Sample();
-        var json = JsonNode.Parse(document.ToJson())!;
+        var json = JsonNode.Parse(document.ToJson(stripOccupancy: false))!;
         var layout = json["layout"]!;
         Assert.Null(layout["berths"]![0]!["boat"]);
         Assert.Null(layout["berths"]![0]!["status"]);
@@ -265,7 +265,7 @@ public class MarinaDocumentFormatTests
         Assert.Null(boat["lengthMeters"]);
         Assert.Equal(4.5f, (float)boat["beamMeters"]!);
 
-        var reread = MarinaDocument.Parse(document.ToJson()).Layout.MultiBerths[0].Boat;
+        var reread = MarinaDocument.Parse(document.ToJson(stripOccupancy: false)).Layout.MultiBerths[0].Boat;
         Assert.False(reread.HasCustomLength);
         Assert.True(reread.HasCustomBeam);
         Assert.Equal(document.Layout.MultiBerths[0].Boat, reread);

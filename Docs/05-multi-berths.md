@@ -11,7 +11,27 @@ A `MultiBerth` puts **one boat across two or more berths**, for example a supery
 
 - **Reference frame:** geometry uses the **first** berth in `BerthIds` (the primary berth). The combined rectangle is measured along that berth's axes, so list berths that lie in a row.
 - **Finger piers:** automatic finger piers between member berths are not drawn, so the boat doesn't clip through them.
-- **Explicit dividers** (`Divider` records) are always drawn. Don't put pile or boom dividers between berths you intend to combine.
+- **Explicit dividers** (`Divider` records) are always drawn. Don't put pile or boom dividers between berths you intend to combine: `ConnectedBerthIds` says which berths can be (see below).
+
+## Connected berths
+
+Every berth carries `ConnectedBerthIds`: the berths right beside it that one boat can share it with, and so the berths a multi-berth can join to it. The visualizer works them out from the layout and keeps them up to date as berths and dividers come, go and move; they are written to the marina file too. Two berths are connected when:
+
+- they are in the same place: along the same pier, or ashore on the same land area;
+- they face the same way (within 10°);
+- their long sides face each other: level along their length (the shorter one at least half beside the other), with no more than 1.5 m of water between them;
+- neither has finger piers of its own (`HasFingerPiers`), which stand along both long sides;
+- no divider of any type — finger pier, piles, boom or a single pile — stands on the boundary between them. A divider is a fixed obstacle, so no boat can lie across it.
+
+Connections come in pairs: when B is in A's list, A is in B's. A row of berths drawn with the designer starts out connected end to end, and its [divider tool](12-designer.md#placing-dividers) parts them where the marina has dividers — every other boundary, for example, for berths that come in pairs. `MarinaLayout.WithBerthConnections()` works them out for a layout built in code without a visualizer.
+
+```csharp
+// Offer a wide boat the berths it could take along with the one chosen.
+var berth = marina.GetBerth("B-L05")!;
+foreach (var mateId in berth.ConnectedBerthIds) Console.WriteLine($"{berth.Id} + {mateId}");
+```
+
+The visualizer does not check a multi-berth's members against their connections: a host with a reason to join berths the layout keeps apart still can.
 
 ## Creating a multi-berth at runtime
 

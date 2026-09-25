@@ -42,11 +42,9 @@ internal sealed class InspectorPanel : SidePanel
     private readonly NumericUpDown _berthWidth = Theme.Number(DesignerRanges.BerthWidth);
     private readonly NumericUpDown _berthLength = Theme.Number(DesignerRanges.BerthLength);
     private readonly NumericUpDown _berthDepth = Theme.Number(DesignerRanges.BerthDepth);
-    private readonly ComboBox _separators = Theme.Choice();
     private readonly NumericUpDown _berthGap = Theme.Number(DesignerRanges.BerthGap);
     private readonly CheckBox _alignBerths = Theme.Check(Strings.AlignBerths);
     private readonly ComboBox _services = Theme.Choice();
-    private readonly Label _separatorHint = Theme.Hint(string.Empty);
     private readonly TextBox _berthPattern = Theme.Field();
     private readonly NumericUpDown _berthStartNumber = Theme.Number(DesignerRanges.NamingStart);
     private readonly NumericUpDown _berthIncrement = Theme.Number(DesignerRanges.NamingIncrement);
@@ -74,6 +72,11 @@ internal sealed class InspectorPanel : SidePanel
     // Pedestals
     private readonly Panel _servicesCard;
     private readonly ComboBox _servicesChoice = Theme.Choice();
+
+    // Dividers
+    private readonly Panel _dividersCard;
+    private readonly ComboBox _dividerType = Theme.Choice();
+    private readonly NumericUpDown _dividerInterval = Theme.Number(DesignerRanges.DividerInterval);
 
     // The mainland
     private readonly Panel _coastCard;
@@ -148,12 +151,13 @@ internal sealed class InspectorPanel : SidePanel
         _eraseCard = BuildEraseCard();
         _renameCard = BuildRenameCard();
         _servicesCard = BuildServicesCard();
+        _dividersCard = BuildDividersCard();
         _selectCard = BuildSelectCard();
         _imageCard = BuildImageCard(out _imageMove, out _imageMeasure, out _applyScale);
         _summaryCard = BuildSummaryCard();
 
         Stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
-        foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _coastCard, _treeCard, _eraseCard, _renameCard, _servicesCard, _selectCard, _imageCard, _summaryCard })
+        foreach (var card in new[] { _landCard, _pierCard, _berthCard, _landBerthCard, _coastCard, _treeCard, _eraseCard, _renameCard, _servicesCard, _dividersCard, _selectCard, _imageCard, _summaryCard })
         {
             // Top, not Fill: the column still decides the width, but the height stays the card's own.
             card.Dock = DockStyle.Top;
@@ -225,6 +229,7 @@ internal sealed class InspectorPanel : SidePanel
             _eraseCard.Visible = tool == DesignTool.Erase;
             _renameCard.Visible = tool == DesignTool.Rename;
             _servicesCard.Visible = tool == DesignTool.EditServices;
+            _dividersCard.Visible = tool == DesignTool.PlaceDividers;
             _selectCard.Visible = tool == DesignTool.SelectArea;
             _coastCard.Visible = tool == DesignTool.DrawShoreline;
             _imageCard.Visible = tool is DesignTool.Navigate or DesignTool.MoveReferenceImage or DesignTool.MeasureScale;
@@ -245,12 +250,12 @@ internal sealed class InspectorPanel : SidePanel
             SetNumber(_berthWidth, designer.BerthWidth);
             SetNumber(_berthLength, designer.BerthLength);
             SetNumber(_berthDepth, designer.BerthDepth);
-            _separators.SelectedItem = Choice.Of(_separators, designer.BerthSeparators);
             SetNumber(_berthGap, designer.BerthGap);
             _alignBerths.Checked = designer.AlignBerthsToExisting;
             _services.SelectedItem = Choice.Of(_services, designer.BerthServices);
             _servicesChoice.SelectedItem = Choice.Of(_servicesChoice, designer.BerthServices);
-            _separatorHint.Text = DesignerText.SeparatorHint(designer.BerthSeparators, designer.BerthWidth, designer.BerthGap);
+            _dividerType.SelectedItem = Choice.Of(_dividerType, designer.DividerType);
+            SetNumber(_dividerInterval, designer.DividerInterval);
 
             var naming = designer.BerthNaming;
             SetText(_berthPattern, naming.Pattern, overwriteFocused);
@@ -325,15 +330,13 @@ internal sealed class InspectorPanel : SidePanel
     private Panel BuildBerthCard()
     {
         var card = Theme.Card(Strings.CardBerths, out var table);
-        Choice.Fill(_separators, DesignerChoices.Separators);
         Choice.Fill(_services, DesignerChoices.Services);
 
         Theme.Row(table, Strings.BerthWidth, _berthWidth, Strings.BerthWidthTip);
         Theme.Row(table, Strings.BerthLength, _berthLength, Strings.BerthLengthTip);
         Theme.Row(table, Strings.BerthDepth, _berthDepth, Strings.BerthDepthTip);
-        Theme.Row(table, Strings.BerthSeparator, _separators);
         Theme.Row(table, Strings.BerthGap, _berthGap, Strings.BerthGapTip);
-        Theme.FullRow(table, _separatorHint);
+        Theme.FullRow(table, Theme.Hint(Strings.BerthDividersHint));
         Theme.Row(table, Strings.BerthServices, _services, Strings.BerthServicesTip);
         Theme.FullRow(table, _alignBerths);
         Theme.FullRow(table, Theme.Hint(Strings.BerthHint));
@@ -418,6 +421,17 @@ internal sealed class InspectorPanel : SidePanel
         return card;
     }
 
+    private Panel BuildDividersCard()
+    {
+        var card = Theme.Card(Strings.CardDividers, out var table);
+        Choice.Fill(_dividerType, DesignerChoices.DividerTypes);
+        Theme.Row(table, Strings.DividerType, _dividerType);
+        Theme.Row(table, Strings.DividerInterval, _dividerInterval, Strings.DividerIntervalTip);
+        Theme.FullRow(table, Theme.Hint(Strings.DividersHint));
+        Theme.FullRow(table, Theme.Hint(Strings.DividersConnectHint));
+        return card;
+    }
+
     private static Panel BuildRenameCard()
     {
         var card = Theme.Card(Strings.CardRename, out var table);
@@ -482,11 +496,12 @@ internal sealed class InspectorPanel : SidePanel
         _berthWidth.ValueChanged += (_, _) => Apply(d => d.BerthWidth = (float)_berthWidth.Value);
         _berthLength.ValueChanged += (_, _) => Apply(d => d.BerthLength = (float)_berthLength.Value);
         _berthDepth.ValueChanged += (_, _) => Apply(d => d.BerthDepth = (float)_berthDepth.Value);
-        _separators.SelectedIndexChanged += (_, _) => Apply(d => d.BerthSeparators = Choice.Value<BerthSeparator>(_separators));
         _berthGap.ValueChanged += (_, _) => Apply(d => d.BerthGap = (float)_berthGap.Value);
         _alignBerths.CheckedChanged += (_, _) => Apply(d => d.AlignBerthsToExisting = _alignBerths.Checked);
         _services.SelectedIndexChanged += (_, _) => Apply(d => d.BerthServices = Choice.Value<PierServices>(_services));
         _servicesChoice.SelectedIndexChanged += (_, _) => Apply(d => d.BerthServices = Choice.Value<PierServices>(_servicesChoice));
+        _dividerType.SelectedIndexChanged += (_, _) => Apply(d => d.DividerType = Choice.Value<DividerType>(_dividerType));
+        _dividerInterval.ValueChanged += (_, _) => Apply(d => d.DividerInterval = (int)_dividerInterval.Value);
         _berthPattern.TextChanged += (_, _) => ApplyNaming(_berthPattern, _berthNameExample, n => n with { Pattern = _berthPattern.Text });
         _berthStartNumber.ValueChanged += (_, _) => ApplyNaming(_berthStartNumber, _berthNameExample, n => n with { StartNumber = (int)_berthStartNumber.Value });
         _berthIncrement.ValueChanged += (_, _) => ApplyNaming(_berthIncrement, _berthNameExample, n => n with { Increment = (int)_berthIncrement.Value });

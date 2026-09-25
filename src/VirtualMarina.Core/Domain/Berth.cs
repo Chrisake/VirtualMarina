@@ -18,6 +18,7 @@ namespace VirtualMarina.Core.Domain;
 public sealed record Berth
 {
     private readonly ValueDictionary _metadata = ValueDictionary.Empty;
+    private readonly ValueList<string> _connectedBerthIds = ValueList<string>.Empty;
 
     /// <summary>Creates a Free berth at an explicit position, orientation and size.</summary>
     /// <param name="id">Unique id (case-insensitive), typically the ERP berth number.</param>
@@ -150,6 +151,20 @@ public sealed record Berth
 
     /// <summary>Id of the <see cref="MultiBerth"/> this berth belongs to, if any. Managed by the visualizer.</summary>
     public string? MultiBerthId { get; internal init; }
+
+    /// <summary>
+    /// Ids of the berths right beside this one that a single boat can share it with: the neighbours whose long side faces
+    /// this berth's across open water, with no <see cref="Divider"/> (and no finger pier of their own,
+    /// <see cref="HasFingerPiers"/>) in between. These are the berths a <see cref="MultiBerth"/> can join to this one.
+    /// Managed by the visualizer, which works them out again whenever the berths or dividers change; empty when the berth
+    /// has no such neighbour.
+    /// </summary>
+    /// <remarks>
+    /// Connections always come in pairs: when B is in A's list, A is in B's. A marina file carries them too, so an
+    /// application that reads the file without a visualizer can offer the same joins; <see cref="MarinaLayout.WithBerthConnections"/>
+    /// works them out for a layout built in code. See Docs/05-multi-berths.md for the exact rules.
+    /// </remarks>
+    public IReadOnlyList<string> ConnectedBerthIds { get => _connectedBerthIds; internal init => _connectedBerthIds = ValueList<string>.From(value); }
 
     /// <summary>Read-only string attributes supplied with the berth definition (e.g. power, water). For mutable host objects use <see cref="ExternalData"/>.</summary>
     public IReadOnlyDictionary<string, string> Metadata { get => _metadata; init => _metadata = ValueDictionary.From(value); }

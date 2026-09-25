@@ -34,28 +34,13 @@ public static class DesignerText
         DesignTool.Erase => Strings.TitleErase,
         DesignTool.Rename => Strings.TitleRename,
         DesignTool.EditServices => Strings.TitleServices,
+        DesignTool.PlaceDividers => Strings.TitleDividers,
         DesignTool.SelectArea => Strings.TitleSelect,
         DesignTool.DrawShoreline => Strings.TitleCoast,
         DesignTool.MoveReferenceImage => Strings.TitleMoveImage,
         DesignTool.MeasureScale => Strings.TitleMeasureScale,
         _ => Strings.TitleNavigate,
     };
-
-    /// <summary>What the chosen separator looks like, and how far apart the berths end up with the gap.</summary>
-    /// <param name="separator">The separator.</param>
-    /// <param name="width">Berth width, meters.</param>
-    /// <param name="gap">Gap between berths, meters.</param>
-    public static string SeparatorHint(BerthSeparator separator, float width, float gap) => separator switch
-    {
-        BerthSeparator.FingerPiers => Strings.SeparatorHintFingerPiers,
-        BerthSeparator.None => Strings.SeparatorHintNone,
-        BerthSeparator.FingerPier => Strings.SeparatorHintFingerPier,
-        BerthSeparator.Piles => Strings.SeparatorHintPiles,
-        BerthSeparator.Boom => Strings.SeparatorHintBoom,
-        BerthSeparator.PairedFingerPiers => Strings.SeparatorHintPaired,
-        BerthSeparator.SinglePile => Strings.SeparatorHintSinglePile,
-        _ => string.Empty,
-    } + (gap > 0f ? string.Format(CultureInfo.CurrentCulture, Strings.SeparatorHintSpacing, gap, width + gap) : string.Empty);
 
     /// <summary>The first three names the scheme would give berths on the water, so a pattern's effect shows while it is typed.</summary>
     /// <param name="marina">The marina; its first pier is used when it has one.</param>

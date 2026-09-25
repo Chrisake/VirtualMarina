@@ -540,8 +540,9 @@ internal sealed class BerthDto : ExtensibleDto
 
     /// <summary>
     /// Occupancy and the interaction flags are runtime state: the host application sets them from its own records
-    /// every session, so a design does not carry them. They are still read, for files written before that was so. (A
-    /// <see cref="MultiBerthDto"/> does carry its boat and status: a multi-berth cannot exist without them.)
+    /// every session, so a design does not carry them unless it is saved with its occupancy kept
+    /// (<c>stripOccupancy: false</c>). They are always read. (A <see cref="MultiBerthDto"/> carries its boat and status
+    /// whenever it is written: a multi-berth cannot exist without them.)
     /// </summary>
     public BerthStatus? Status { get; set; }
 
@@ -562,11 +563,20 @@ internal sealed class BerthDto : ExtensibleDto
     /// <inheritdoc cref="Status"/>
     public bool? IsReadOnly { get; set; }
 
+    /// <summary>The berths a boat can share this one with (<see cref="Berth.ConnectedBerthIds"/>); written only when there are any.</summary>
+    public List<string>? ConnectedBerthIds { get; set; }
+
     public Dictionary<string, string>? Metadata { get; set; }
 
     protected override void Normalize() => Id = IdOr(Id, "berth");
 
-    public static BerthDto From(Berth berth) => new()
+    /// <summary>The berth as it goes in the file.</summary>
+    /// <param name="berth">The berth.</param>
+    /// <param name="withOccupancy">
+    /// Write its status and boat, and the interaction flags that differ from the defaults; false (a design as it is
+    /// normally saved) leaves every berth Free and enabled.
+    /// </param>
+    public static BerthDto From(Berth berth, bool withOccupancy = false) => new()
     {
         Id = berth.Id,
         PierId = berth.PierId,
@@ -577,9 +587,15 @@ internal sealed class BerthDto : ExtensibleDto
         Length = berth.Length,
         Width = berth.Width,
         MaxDraft = berth.MaxDraft,
-        // Status, the flags and any boat are left out on purpose: see the Status property.
+        // Status, the flags and any boat are left out unless asked for: see the Status property.
+        Status = withOccupancy && berth.Status != BerthStatus.Free ? berth.Status : null,
+        Boat = withOccupancy && berth.Boat is { } boat ? BoatDto.From(boat) : null,
+        IsVisible = withOccupancy && !berth.IsVisible ? false : null,
+        IsDisabled = withOccupancy && berth.IsDisabled ? true : null,
+        IsReadOnly = withOccupancy && berth.IsReadOnly ? true : null,
         HasFingerPiers = berth.HasFingerPiers,
         Services = berth.Services,
+        ConnectedBerthIds = berth.ConnectedBerthIds.Count == 0 ? null : berth.ConnectedBerthIds.ToList(),
         Metadata = Copy(berth.Metadata),
     };
 
@@ -601,6 +617,7 @@ internal sealed class BerthDto : ExtensibleDto
             IsVisible = IsVisible ?? true,
             IsDisabled = IsDisabled ?? false,
             IsReadOnly = IsReadOnly ?? false,
+            ConnectedBerthIds = ConnectedBerthIds?.Where(id => !string.IsNullOrWhiteSpace(id)).ToArray() ?? [],
             Metadata = Read(Metadata),
         };
     }
@@ -733,7 +750,15 @@ internal sealed class DesignerDto : ExtensibleDto
 
     public float? BerthDepth { get; set; }
 
-    public BerthSeparator? BerthSeparators { get; set; }
+    public DividerType? DividerType { get; set; }
+
+    public int? DividerInterval { get; set; }
+
+    /// <summary>
+    /// What the berth tool put between the berths it added, before it stopped placing dividers of its own. Read to set the
+    /// divider tool up the same way, and never written.
+    /// </summary>
+    public JsonElement? BerthSeparators { get; set; }
 
     public float? BerthGap { get; set; }
 
@@ -762,7 +787,8 @@ internal sealed class DesignerDto : ExtensibleDto
         BerthWidth = settings.BerthWidth,
         BerthLength = settings.BerthLength,
         BerthDepth = settings.BerthDepth,
-        BerthSeparators = settings.BerthSeparators,
+        DividerType = settings.DividerType,
+        DividerInterval = settings.DividerInterval,
         BerthGap = settings.BerthGap,
         AlignBerthsToExisting = settings.AlignBerthsToExisting,
         BerthServices = settings.BerthServices,
@@ -788,7 +814,8 @@ internal sealed class DesignerDto : ExtensibleDto
             BerthWidth = BerthWidth ?? defaults.BerthWidth,
             BerthLength = BerthLength ?? defaults.BerthLength,
             BerthDepth = BerthDepth ?? defaults.BerthDepth,
-            BerthSeparators = BerthSeparators ?? defaults.BerthSeparators,
+            DividerType = DividerType ?? LegacyDividerType() ?? defaults.DividerType,
+            DividerInterval = DividerInterval ?? (IsLegacy("PairedFingerPiers") ? 2 : defaults.DividerInterval),
             BerthGap = BerthGap ?? defaults.BerthGap,
             AlignBerthsToExisting = AlignBerthsToExisting ?? defaults.AlignBerthsToExisting,
             BerthServices = BerthServices ?? defaults.BerthServices,
@@ -798,6 +825,26 @@ internal sealed class DesignerDto : ExtensibleDto
             BerthNaming = BerthNaming?.ToDomain() ?? defaults.BerthNaming,
         };
     }
+
+    /// <summary>The divider the old <see cref="BerthSeparators"/> setting generated, or null when it generated none.</summary>
+    private Domain.DividerType? LegacyDividerType() =>
+        IsLegacy("Piles") ? Domain.DividerType.Piles
+        : IsLegacy("Boom") ? Domain.DividerType.Boom
+        : IsLegacy("SinglePile") ? Domain.DividerType.SinglePile
+        : IsLegacy("FingerPier") || IsLegacy("PairedFingerPiers") ? Domain.DividerType.FingerPier
+        : null;
+
+    /// <summary>True when the old setting names <paramref name="name"/>, by name or by its number.</summary>
+    private bool IsLegacy(string name) => BerthSeparators switch
+    {
+        { ValueKind: JsonValueKind.String } text => string.Equals(text.GetString()?.Trim(), name, StringComparison.OrdinalIgnoreCase),
+        { ValueKind: JsonValueKind.Number } number when number.TryGetInt32(out var value) =>
+            Array.IndexOf(LegacySeparatorNames, name) is var index && index >= 0 && index == value,
+        _ => false,
+    };
+
+    /// <summary>The old setting's names, in the order of their numbers.</summary>
+    private static readonly string[] LegacySeparatorNames = ["FingerPiers", "None", "FingerPier", "Piles", "Boom", "SinglePile", "PairedFingerPiers"];
 }
 
 /// <summary>How the designer names the berths it draws.</summary>

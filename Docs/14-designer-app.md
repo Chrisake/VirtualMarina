@@ -25,12 +25,13 @@ edition differs are collected in [The browser edition](#the-browser-edition).
 ## The window
 
 - **A fixed toolbar** across the top, grouped by what each tool is for: Navigate and Select; Coast, Land, Piers,
-  Berths and Ashore; Trees and Pedestals; Rename and Erase; then Look, Cameras, the two view commands (Top View and
+  Berths and Ashore; Dividers, Trees and Pedestals; Rename and Erase; then Look, Cameras, the two view commands (Top View and
   Fit Marina), and Undo and Redo. The tool in hand is highlighted, each tool's tooltip names its key, and the toolbar
   never scrolls away. Undo and Redo are greyed out when there is nothing to take back or put back.
 - **The marina fills the window.** Left-drag pans, right-drag orbits, the wheel zooms, exactly as in the viewer.
 - **One panel beside it** showing the name of the current tool, a line saying what to do with it, and only that
-  tool's settings. Picking *Berths* shows berth sizes, separators, the gap, the pedestals and how berths are named;
+  tool's settings. Picking *Berths* shows berth sizes, the gap, the pedestals and how berths are named; *Dividers*
+  shows the divider type and how many berths lie between the dividers of a filled row;
   picking *Land* shows the surface and height. Nothing else is on screen to scroll past.
 - **A status bar** with the same instruction, the pointer's position in meters, and the camera's height and tilt, so
   you can see where you are while tracing a map. A change the designer refused (a name already taken, an undo blocked
@@ -124,8 +125,9 @@ boats in it rather than an empty one. The slider says how full the marina ends u
 boats already there are cleared first, so pressing *Add boats* again deals a fresh fleet to the same figure, and 100%
 means every berth in the marina has a boat in it, the ones ashore included. Each boat is picked to suit the berth it
 goes in — no jet ski rattling around in a twenty-metre yacht berth — and a boat too wide for one berth, a catamaran
-above all, is moored across two berths side by side (`PreviewFleet` in the core library does the choosing, for both
-editions). None of it is saved with the design; the host application decides who is really in the marina.
+above all, is moored across two connected berths — never across a divider (`PreviewFleet` in the core library does
+the choosing, for both editions). None of it is saved with the design: Save writes every berth Free and enabled and
+no multi-berths, since the host application decides who is really in the marina.
 
 The **labels** card sets the **Font** berth names are drawn in. Choosing one captures its letter shapes into the
 design, so the marina reads the same wherever it is opened — the machine showing it to customers does not need the
@@ -219,7 +221,7 @@ letters for itself, so Ctrl+Z there undoes the typing, not the last design step.
 | F1 / F2 | Shortcuts / rename |
 
 **Tool letters.** While the 3D view has the focus, a single letter picks a tool: N Navigate, X Select, C Coast,
-L Land, P Piers, B Berths, Y Ashore, T Trees, U Pedestals, R Rename, E Erase. None of them clashes with the view's
+L Land, P Piers, B Berths, Y Ashore, V Dividers, T Trees, U Pedestals, R Rename, E Erase. None of them clashes with the view's
 own W A S D, and they never fire while the focus is anywhere else, so typing an "e" into a name field does not pick
 the eraser. The toolbar buttons show each tool's letter in their tooltips.
 

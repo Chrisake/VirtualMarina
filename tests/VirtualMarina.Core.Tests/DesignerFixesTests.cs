@@ -195,9 +195,11 @@ public class DesignerFixesTests
         marina.AddPier(new Pier("B", "Pier B", new Vector2(40, 0), 0f, 60f));
         var designer = marina.Designer;
         designer.BerthWidth = 5f;
-        designer.BerthSeparators = BerthSeparator.Piles;
+        designer.DividerType = DividerType.Piles;
         designer.CreateBerths("A", PierSide.Left, 0f, 15f);
         designer.CreateBerths("B", PierSide.Left, 0f, 15f);
+        designer.PlaceDividers("A", PierSide.Left, 0f, wholeRow: true);
+        designer.PlaceDividers("B", PierSide.Left, 0f, wholeRow: true);
         var onB = marina.GetDividersByPier("B").Select(d => d.Id).ToArray();
 
         // Separators of no pier: one only the last berth uses, one it shares with the berth before it.

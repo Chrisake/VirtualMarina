@@ -9,25 +9,21 @@ internal readonly record struct BerthRowSettings(
     float Width,
     float Length,
     float Depth,
-    BerthSeparator Separators,
     float Gap,
     bool Align,
     BerthNamingScheme Naming);
 
 /// <summary>
-/// Lays out rows of berths along a pier — where each one goes, what it is called and which separators it needs — and
-/// works out which separators an erased berth leaves with nothing to separate.
+/// Lays out rows of berths along a pier — where each one goes and what it is called — and works out which separators an
+/// erased berth leaves with nothing to separate. A row has no separators of its own: they are placed afterwards with
+/// <see cref="DesignTool.PlaceDividers"/> (see <see cref="DividerPlanner"/>).
 /// </summary>
 /// <remarks>
 /// The preview under the pointer is planned again whenever the overlay is rebuilt, so it keeps what it looked up about
-/// each side of each pier until the layout changes, and neither names its berths nor plans their separators, which only
-/// a real row needs.
+/// each side of each pier until the layout changes, and does not name its berths, which only a real row needs.
 /// </remarks>
 internal sealed class BerthPlanner
 {
-    /// <summary>Gap left between berths separated by nothing when <see cref="BerthRowSettings.Gap"/> is smaller, in meters.</summary>
-    public const float MinimumSeparatorGap = 0.3f;
-
     /// <summary>How far a divider may sit from a berth's edge and still count as its separator, in meters.</summary>
     private const float SeparatorTolerance = 1f;
 
@@ -46,22 +42,20 @@ internal sealed class BerthPlanner
     public void Invalidate() => _previewCache.Clear();
 
     /// <summary>
-    /// The berths (and dividers) a row between two distances along a pier would add: one every width + gap meters, lined
-    /// up with the existing berths on that side unless the settings say otherwise, skipping the places already taken.
+    /// The berths a row between two distances along a pier would add: one every width + gap meters, lined up with the
+    /// existing berths on that side unless the settings say otherwise, skipping the places already taken. They have no
+    /// finger piers of their own, and no dividers come with them.
     /// </summary>
     /// <param name="pier">The pier.</param>
     /// <param name="side">Its side.</param>
     /// <param name="fromAlong">Where the row begins, from the pier's start.</param>
     /// <param name="toAlong">Where it ends.</param>
-    /// <param name="settings">How the berths are sized, spaced, separated and named.</param>
-    /// <param name="preview">
-    /// True for the preview under the pointer: uses what was cached about the pier, and leaves the berths unnamed and the
-    /// separators out.
-    /// </param>
-    public (IReadOnlyList<Berth> Berths, IReadOnlyList<Divider> Dividers) Plan(Pier pier, PierSide side, float fromAlong, float toAlong, BerthRowSettings settings, bool preview)
+    /// <param name="settings">How the berths are sized, spaced and named.</param>
+    /// <param name="preview">True for the preview under the pointer: uses what was cached about the pier, and leaves the berths unnamed.</param>
+    public IReadOnlyList<Berth> Plan(Pier pier, PierSide side, float fromAlong, float toAlong, BerthRowSettings settings, bool preview)
     {
         var width = settings.Width;
-        var gap = SeparatorGap(settings);
+        var gap = settings.Gap;
         var pitch = width + gap;
         var occupied = preview ? PreviewOccupancy(pier, side) : Occupancy.Of(_marina, pier, side);
 
@@ -85,7 +79,6 @@ internal sealed class BerthPlanner
 
         var names = preview ? null : new BerthNames(settings.Naming, _marina.GetBerths().Select(s => s.Id));
         var berths = new List<Berth>();
-        var offsets = new List<float>();
         for (var offset = first; offset < last - 1e-3f && berths.Count < MaxRow; offset += pitch)
         {
             var center = offset + width * 0.5f;
@@ -96,13 +89,11 @@ internal sealed class BerthPlanner
             berths.Add(BerthGenerator.AtPier(pier, id, side, offset, width, settings.Length) with
             {
                 MaxDraft = settings.Depth,
-                HasFingerPiers = settings.Separators == BerthSeparator.FingerPiers,
+                HasFingerPiers = false,
             });
-            offsets.Add(offset);
         }
 
-        if (preview || DividerTypeOf(settings.Separators) is not { } type || berths.Count == 0) return (berths, Array.Empty<Divider>());
-        return (berths, PlanDividers(pier, side, offsets, occupied, settings, type));
+        return berths;
     }
 
     /// <summary>
@@ -149,20 +140,6 @@ internal sealed class BerthPlanner
         }
     }
 
-    /// <summary>The space left between neighbouring berths: the gap asked for, but never less than a hand's width without a separator.</summary>
-    private static float SeparatorGap(BerthRowSettings settings) =>
-        settings.Separators == BerthSeparator.None ? MathF.Max(settings.Gap, MinimumSeparatorGap) : settings.Gap;
-
-    /// <summary>The divider generated between the berths, or null when they have their own finger piers or nothing at all.</summary>
-    private static DividerType? DividerTypeOf(BerthSeparator separator) => separator switch
-    {
-        BerthSeparator.FingerPier or BerthSeparator.PairedFingerPiers => DividerType.FingerPier,
-        BerthSeparator.Piles => DividerType.Piles,
-        BerthSeparator.Boom => DividerType.Boom,
-        BerthSeparator.SinglePile => DividerType.SinglePile,
-        _ => null,
-    };
-
     private static bool SeparatesAny(Divider divider, IReadOnlyList<Berth> berths)
     {
         foreach (var berth in berths)
@@ -193,72 +170,6 @@ internal sealed class BerthPlanner
         }
 
         return occupancy;
-    }
-
-    private List<Divider> PlanDividers(Pier pier, PierSide side, IReadOnlyList<float> offsets, Occupancy occupied, BerthRowSettings settings, DividerType type)
-    {
-        var dividerPrefix = BerthGenerator.DividerPrefix(pier, side);
-        var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var number = 0;
-        foreach (var existingDivider in _marina.GetDividers())
-        {
-            usedIds.Add(existingDivider.Id);
-            number = Math.Max(number, DesignNaming.ParseNumber(existingDivider.Id, dividerPrefix));
-        }
-
-        // Where the pier already has a divider of this kind, no second one goes on top of it.
-        var taken = new PointSet(0.1f);
-        foreach (var existing in _marina.GetDividersByPier(pier.Id))
-        {
-            if (existing.Type == type) taken.Add(existing.Start);
-        }
-
-        var dividers = new List<Divider>();
-        foreach (var edge in SeparatorEdges(offsets, occupied, settings.Width, settings.Separators))
-        {
-            var divider = BerthGenerator.DividerAtPier(pier, "-", side, edge, settings.Length, type);
-            if (!taken.Add(divider.Start)) continue;
-            string id;
-            do id = $"{dividerPrefix}{++number:00}"; while (!usedIds.Add(id));
-            dividers.Add(divider with { Id = id });
-        }
-
-        return dividers;
-    }
-
-    /// <summary>
-    /// Distances along the pier where the new berths get a separator: both edges of every new berth, or — for
-    /// <see cref="BerthSeparator.PairedFingerPiers"/> — every other boundary of the whole row, so the berths end up in pairs
-    /// with one pier each and a pier at both ends of the row.
-    /// </summary>
-    private static List<float> SeparatorEdges(IReadOnlyList<float> newOffsets, Occupancy occupied, float width, BerthSeparator separators)
-    {
-        var mine = new List<float>(newOffsets.Count * 2);
-        foreach (var offset in newOffsets)
-        {
-            mine.Add(offset);
-            mine.Add(offset + width);
-        }
-
-        if (separators != BerthSeparator.PairedFingerPiers) return mine;
-
-        // Pair up the whole row, not just the berths being added, so a row built in several goes keeps its rhythm.
-        var row = newOffsets.Select(offset => (Min: offset, Max: offset + width)).Concat(occupied.Spans).OrderBy(span => span.Min).ToList();
-        var edges = new List<float>();
-        for (var i = 0; i < row.Count; i += 2) edges.Add(row[i].Min);
-        if (row.Count > 0) edges.Add(row[^1].Max);
-
-        // Only the boundaries of the berths being added are ours to build. Both lists are in order along the pier.
-        mine.Sort();
-        return edges.Where(edge => ContainsNear(mine, edge)).ToList();
-    }
-
-    /// <summary>True when the sorted list holds a value within the overlap tolerance of <paramref name="value"/>.</summary>
-    private static bool ContainsNear(List<float> sorted, float value)
-    {
-        var index = sorted.BinarySearch(value - OverlapTolerance);
-        if (index < 0) index = ~index;
-        return index < sorted.Count && sorted[index] < value + OverlapTolerance;
     }
 
     /// <summary>
@@ -354,42 +265,5 @@ internal sealed class BerthPlanner
 
             return lo;
         }
-    }
-
-    /// <summary>Points on a grid of cells, to ask quickly whether one is already near a given spot.</summary>
-    private sealed class PointSet
-    {
-        private readonly float _radius;
-        private readonly Dictionary<(int X, int Y), List<Vector2>> _cells = [];
-
-        public PointSet(float radius) => _radius = radius;
-
-        /// <summary>Adds the point unless one is already within the radius of it. Returns false when one was.</summary>
-        public bool Add(Vector2 point)
-        {
-            var (cx, cy) = Cell(point);
-            for (var dx = -1; dx <= 1; dx++)
-            {
-                for (var dy = -1; dy <= 1; dy++)
-                {
-                    if (!_cells.TryGetValue((cx + dx, cy + dy), out var near)) continue;
-                    foreach (var other in near)
-                    {
-                        if (Vector2.DistanceSquared(other, point) < _radius * _radius) return false;
-                    }
-                }
-            }
-
-            if (!_cells.TryGetValue((cx, cy), out var cell))
-            {
-                cell = [];
-                _cells[(cx, cy)] = cell;
-            }
-
-            cell.Add(point);
-            return true;
-        }
-
-        private (int X, int Y) Cell(Vector2 point) => ((int)MathF.Floor(point.X / _radius), (int)MathF.Floor(point.Y / _radius));
     }
 }

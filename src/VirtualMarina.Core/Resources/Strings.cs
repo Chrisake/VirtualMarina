@@ -214,28 +214,8 @@ internal static class Strings
     /// <summary>"Coast"</summary>
     internal static string ToolDrawShoreline => Get("ToolDrawShoreline");
 
-    // ---- Berth separators ----------------------------------------------------------------------------
-
-    /// <summary>"Own finger piers"</summary>
-    internal static string SeparatorFingerPiers => Get("SeparatorFingerPiers");
-
-    /// <summary>"Nothing (gap only)"</summary>
-    internal static string SeparatorNone => Get("SeparatorNone");
-
-    /// <summary>"Pier between all"</summary>
-    internal static string SeparatorFingerPier => Get("SeparatorFingerPier");
-
-    /// <summary>"Pier every other berth"</summary>
-    internal static string SeparatorPairedFingerPiers => Get("SeparatorPairedFingerPiers");
-
-    /// <summary>"Mooring piles"</summary>
-    internal static string SeparatorPiles => Get("SeparatorPiles");
-
-    /// <summary>"Floating boom"</summary>
-    internal static string SeparatorBoom => Get("SeparatorBoom");
-
-    /// <summary>"Single pile at the end"</summary>
-    internal static string SeparatorSinglePile => Get("SeparatorSinglePile");
+    /// <summary>"Dividers"</summary>
+    internal static string ToolPlaceDividers => Get("ToolPlaceDividers");
 
     // ---- Pier services -------------------------------------------------------------------------------
 
@@ -341,6 +321,9 @@ internal static class Strings
 
     /// <summary>"Click a berth to give it the pedestals chosen above; Alt or Ctrl changes that whole side of t..."</summary>
     internal static string HintEditServices => Get("HintEditServices");
+
+    /// <summary>"Click beside a row of berths to put a divider on the nearest boundary ..."</summary>
+    internal static string HintPlaceDividers => Get("HintPlaceDividers");
 
     /// <summary>"Click a lawn to scatter trees on it (replacing the ones it has); Ctrl+click or right-click re..."</summary>
     internal static string HintPlantTrees => Get("HintPlantTrees");
@@ -488,6 +471,18 @@ internal static class Strings
 
     /// <summary>"Set {0} on {1} berths" (see <see cref="Plural"/>)</summary>
     internal static string UndoSetServicesOther => Get("UndoSetServices_Other");
+
+    /// <summary>"Place {0} divider" (see <see cref="Plural"/>)</summary>
+    internal static string UndoPlaceDividersOne => Get("UndoPlaceDividers_One");
+
+    /// <summary>"Place {0} dividers" (see <see cref="Plural"/>)</summary>
+    internal static string UndoPlaceDividersOther => Get("UndoPlaceDividers_Other");
+
+    /// <summary>"Remove {0} divider" (see <see cref="Plural"/>)</summary>
+    internal static string UndoRemoveDividersOne => Get("UndoRemoveDividers_One");
+
+    /// <summary>"Remove {0} dividers" (see <see cref="Plural"/>)</summary>
+    internal static string UndoRemoveDividersOther => Get("UndoRemoveDividers_Other");
 
     /// <summary>"Change pier id {0} to {1}"</summary>
     internal static string UndoChangePierId => Get("UndoChangePierId");

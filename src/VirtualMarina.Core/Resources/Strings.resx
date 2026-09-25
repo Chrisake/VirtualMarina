@@ -243,28 +243,11 @@
     <value>Coast</value>
     <comment>The tool that draws the coast of the mainland behind the marina.</comment>
   </data>
+  <data name="ToolPlaceDividers">
+    <value>Dividers</value>
+    <comment>The tool that puts finger piers, piles or booms between berths.</comment>
+  </data>
   <!-- Berth separators -->
-  <data name="SeparatorFingerPiers">
-    <value>Own finger piers</value>
-  </data>
-  <data name="SeparatorNone">
-    <value>Nothing (gap only)</value>
-  </data>
-  <data name="SeparatorFingerPier">
-    <value>Pier between all</value>
-  </data>
-  <data name="SeparatorPairedFingerPiers">
-    <value>Pier every other berth</value>
-  </data>
-  <data name="SeparatorPiles">
-    <value>Mooring piles</value>
-  </data>
-  <data name="SeparatorBoom">
-    <value>Floating boom</value>
-  </data>
-  <data name="SeparatorSinglePile">
-    <value>Single pile at the end</value>
-  </data>
   <!-- Pier services -->
   <data name="ServicesNone">
     <value>None</value>
@@ -363,6 +346,9 @@
   </data>
   <data name="HintEditServices">
     <value>Click a berth to give it the pedestals chosen above; Alt or Ctrl changes that whole side of the pier.</value>
+  </data>
+  <data name="HintPlaceDividers">
+    <value>Click beside a row of berths to put a divider on the nearest boundary, or take away the one there; Alt fills the whole row. Ctrl+click or a right-click only removes.</value>
   </data>
   <data name="HintPlantTrees">
     <value>Click a lawn to scatter trees on it (replacing the ones it has); Ctrl+click or right-click removes them.</value>
@@ -478,6 +464,22 @@
   <data name="UndoSetServices_Other">
     <value>Set {0} on {1} berths</value>
     <comment>Undo step; {0} = what the pedestals offer, {1} = how many berths. Plural form.</comment>
+  </data>
+  <data name="UndoPlaceDividers_One">
+    <value>Place {0} divider</value>
+    <comment>Undo step; {0} = number of dividers placed. Singular form, for a count the display language treats as one.</comment>
+  </data>
+  <data name="UndoPlaceDividers_Other">
+    <value>Place {0} dividers</value>
+    <comment>Undo step; {0} = number of dividers placed. Plural form.</comment>
+  </data>
+  <data name="UndoRemoveDividers_One">
+    <value>Remove {0} divider</value>
+    <comment>Undo step; {0} = number of dividers removed. Singular form, for a count the display language treats as one.</comment>
+  </data>
+  <data name="UndoRemoveDividers_Other">
+    <value>Remove {0} dividers</value>
+    <comment>Undo step; {0} = number of dividers removed. Plural form.</comment>
   </data>
   <data name="UndoChangePierId">
     <value>Change pier id {0} to {1}</value>

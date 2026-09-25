@@ -29,10 +29,10 @@ That is the whole integration: `ApplyTo` sets the style (so the water grid is bu
 | `FromVisualizer(marina, generator, includeCamera, includeDesignerSettings, includeReferenceImage)` | Captures a live visualizer |
 | `UpdateFrom(marina, ...)` | Refreshes a document that was loaded, keeping what the file carried that this version does not know |
 | `ApplyTo(marina, applyStyle, applyCamera, applyDesignerSettings, applyReferenceImage)` | Loads it into a visualizer |
-| `Parse(ReadOnlySpan<byte> utf8, allowNewerVersion)` / `ToUtf8Bytes(indented)` | Read and write UTF-8 bytes: a file's contents, a database column, a download |
-| `LoadAsync(stream, allowNewerVersion, ct)` / `SaveAsync(stream, indented, ct)` | Read and write a stream |
-| `Parse(json, allowNewerVersion)` / `ToJson(indented)` | Read and write text (wrappers around the UTF-8 members) |
-| `Load(path, allowNewerVersion)` / `Save(path, indented)` | Read and write a file |
+| `Parse(ReadOnlySpan<byte> utf8, allowNewerVersion)` / `ToUtf8Bytes(indented, stripOccupancy)` | Read and write UTF-8 bytes: a file's contents, a database column, a download |
+| `LoadAsync(stream, allowNewerVersion, ct)` / `SaveAsync(stream, indented, stripOccupancy, ct)` | Read and write a stream |
+| `Parse(json, allowNewerVersion)` / `ToJson(indented, stripOccupancy)` | Read and write text (wrappers around the UTF-8 members) |
+| `Load(path, allowNewerVersion)` / `Save(path, indented, stripOccupancy)` / `Save(indented, stripOccupancy)` | Read and write a file, or its bytes |
 | `Validate()` | Errors in the stored layout, empty when it is sound |
 | `SetExtension(key, value, typeInfo)` / `GetExtension(key, typeInfo)` | Your own data, stored next to the marina, serialized with your own (source-generated) metadata |
 | `SetExtension(key, value)` / `GetExtension<T>(key)` | The same through reflection; not for trimmed or AOT-compiled applications |
@@ -101,7 +101,7 @@ Keeping the photo in a separate file next to the design (or packing both into on
   },
   "camera": { "target": [12, 0, -40], "yawDegrees": 33, "pitchDegrees": 41, "distance": 180 },
   "designer": {
-    "berthWidth": 5, "berthLength": 12, "berthSeparators": "PairedFingerPiers", "berthGap": 0.5, "berthServices": "PowerAndWater",
+    "berthWidth": 5, "berthLength": 12, "dividerType": "FingerPier", "dividerInterval": 2, "berthGap": 0.5, "berthServices": "PowerAndWater",
     "pierNamePattern": "Pier {pier}",
     "berthNaming": { "pattern": "{pier}-{side}{number}", "startNumber": 1, "increment": 1, "numberDigits": 2, "leftSide": "L", "rightSide": "R" }
   },
@@ -120,7 +120,18 @@ Conventions: points are `[x, y]` in plan coordinates (meters, x east, y south �
 
 ### What a design carries, and what it leaves to the host
 
-A design file describes the marina, not today's occupancy. A single berth's **status, boat and interaction flags** (`isVisible`, `isDisabled`, `isReadOnly`) are runtime state that the host sets from its own records every session, so they are not written; they are still read from files written before that was so. A **multi-berth** is the exception: it cannot exist without a boat and a status that is not Free, so both are written with it. A Free berth that carries a boat is not an error — the visualizer drops the boat when the berth is loaded.
+A design file describes the marina, not today's occupancy. Every way of writing a document — `Save`, `SaveAsync`, `ToJson`, `ToUtf8Bytes` — takes `stripOccupancy`, true by default, and then writes the marina empty: every berth Free and enabled with no boat, and no **multi-berths**. A berth's status, boat and interaction flags (`isVisible`, `isDisabled`, `isReadOnly`) are runtime state that the host sets from its own records every session; the boats a designer shows are only there to judge the look of the design. Only the file is emptied: the `MarinaDocument` in memory, and the visualizer it came from, keep who is where.
+
+```csharp
+document.Save(path);                          // the layout alone: what a designer exports
+document.Save(path, stripOccupancy: false);   // a snapshot, occupancy and all
+```
+
+With `stripOccupancy: false` the berths' `status`, `boat` and the flags that differ from the defaults are written, and so are the multi-berths, each with its boat and a status that is not Free (a multi-berth cannot exist without them). They are always read, whichever way the file was written. A Free berth that carries a boat is not an error — the visualizer drops the boat when the berth is loaded.
+
+### Connected berths
+
+Each berth carries `connectedBerthIds`: the berths beside it that one boat can share it with — side by side, facing the same way, with open water and no divider or finger pier between them (the rules are in [Multi-berths](05-multi-berths.md#connected-berths)). An application reading the file without a visualizer can offer the same joins the designer allowed. The list is worked out by the library from the layout, written only when it is not empty, and worked out again when the file is shown in a visualizer; `MarinaLayout.WithBerthConnections()` works it out for a file written before berths had it.
 
 A boat's `lengthMeters` and `beamMeters` are written only when the boat was given a size of its own; without them the boat takes the nominal size of its `type`, and follows the type if it changes. A pier's `deckHeight` works the same way. (Older files wrote both always; a value that equals the type's default reads as the default.)
 

@@ -33,8 +33,8 @@ public sealed class MarinaDesignerPanel : UserControl
     private static readonly DesignTool[] Tools =
     [
         DesignTool.Navigate, DesignTool.SelectArea, DesignTool.DrawShoreline, DesignTool.DrawLandArea, DesignTool.DrawPier,
-        DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlantTrees, DesignTool.EditServices, DesignTool.Rename,
-        DesignTool.Erase,
+        DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlaceDividers, DesignTool.PlantTrees, DesignTool.EditServices,
+        DesignTool.Rename, DesignTool.Erase,
     ];
 
     private readonly Dictionary<DesignTool, CheckBox> _toolButtons = [];
@@ -57,11 +57,13 @@ public sealed class MarinaDesignerPanel : UserControl
     private readonly NumericUpDown _nudBerthWidth = CreateNumber(DesignerLimits.BerthWidth, 0.25m, 2);
     private readonly NumericUpDown _nudBerthLength = CreateNumber(DesignerLimits.BerthLength, 0.5m, 2);
     private readonly NumericUpDown _nudBerthDepth = CreateNumber(DesignerLimits.BerthDepth, 0.1m, 2);
-    private readonly ComboBox _cmbBerthSeparators = CreateCombo();
     private readonly NumericUpDown _nudBerthGap = CreateNumber(DesignerLimits.BerthGap, 0.1m, 2);
     private readonly CheckBox _chkAlignBerths = new() { Text = Strings.AlignBerths, AutoSize = true };
     private readonly ComboBox _cmbBerthServices = CreateCombo();
     private readonly NumericUpDown _nudLandBerthHeading = CreateNumber(DesignerLimits.LandBerthHeading, 15m, 0);
+
+    private readonly ComboBox _cmbDividerType = CreateCombo();
+    private readonly NumericUpDown _nudDividerInterval = CreateNumber(DesignerLimits.DividerInterval, 1m, 0);
 
     private readonly Button _btnLoadImage = new() { Text = Strings.LoadImage, AutoSize = true };
     private readonly Button _btnClearImage = new() { Text = Strings.RemoveImage, AutoSize = true };
@@ -145,12 +147,6 @@ public sealed class MarinaDesignerPanel : UserControl
         stack.Controls.Add(pier);
 
         // Berths
-        var separators = new[]
-        {
-            BerthSeparator.FingerPiers, BerthSeparator.PairedFingerPiers, BerthSeparator.FingerPier,
-            BerthSeparator.Piles, BerthSeparator.SinglePile, BerthSeparator.Boom, BerthSeparator.None,
-        };
-        foreach (var separator in separators) _cmbBerthSeparators.Items.Add(new Choice<BerthSeparator>(separator, separator.GetDisplayName()));
         foreach (var services in new[] { PierServices.None, PierServices.PowerAndWater, PierServices.Power, PierServices.Water })
         {
             _cmbBerthServices.Items.Add(new Choice<PierServices>(services, services.GetDisplayName()));
@@ -160,12 +156,22 @@ public sealed class MarinaDesignerPanel : UserControl
         Row(berthTable, Strings.BerthWidth, _nudBerthWidth);
         Row(berthTable, Strings.BerthLength, _nudBerthLength);
         Row(berthTable, Strings.BerthDepth, _nudBerthDepth);
-        Row(berthTable, Strings.BerthSeparators, _cmbBerthSeparators);
         Row(berthTable, Strings.BerthGap, _nudBerthGap);
         FullRow(berthTable, _chkAlignBerths);
         Row(berthTable, Strings.BerthServices, _cmbBerthServices);
         Row(berthTable, Strings.LandBerthHeading, _nudLandBerthHeading);
         stack.Controls.Add(berths);
+
+        // Dividers
+        foreach (var type in new[] { DividerType.FingerPier, DividerType.Piles, DividerType.SinglePile, DividerType.Boom })
+        {
+            _cmbDividerType.Items.Add(new Choice<DividerType>(type, type.GetDisplayName()));
+        }
+
+        var dividers = Section(Strings.SectionDividers, out var dividerTable);
+        Row(dividerTable, Strings.DividerType, _cmbDividerType);
+        Row(dividerTable, Strings.DividerInterval, _nudDividerInterval);
+        stack.Controls.Add(dividers);
 
         // Reference image
         var imageTools = new FlowLayoutPanel { AutoSize = true, WrapContents = true, MaximumSize = new Size(290, 0) };
@@ -310,11 +316,12 @@ public sealed class MarinaDesignerPanel : UserControl
         _nudBerthWidth.ValueChanged += (_, _) => Apply(d => d.BerthWidth = (float)_nudBerthWidth.Value);
         _nudBerthLength.ValueChanged += (_, _) => Apply(d => d.BerthLength = (float)_nudBerthLength.Value);
         _nudBerthDepth.ValueChanged += (_, _) => Apply(d => d.BerthDepth = (float)_nudBerthDepth.Value);
-        _cmbBerthSeparators.SelectedIndexChanged += (_, _) => Apply(d => d.BerthSeparators = ((Choice<BerthSeparator>)_cmbBerthSeparators.SelectedItem!).Value);
         _nudBerthGap.ValueChanged += (_, _) => Apply(d => d.BerthGap = (float)_nudBerthGap.Value);
         _chkAlignBerths.CheckedChanged += (_, _) => Apply(d => d.AlignBerthsToExisting = _chkAlignBerths.Checked);
         _cmbBerthServices.SelectedIndexChanged += (_, _) => Apply(d => d.BerthServices = ((Choice<PierServices>)_cmbBerthServices.SelectedItem!).Value);
         _nudLandBerthHeading.ValueChanged += (_, _) => Apply(d => d.LandBerthHeading = (float)_nudLandBerthHeading.Value);
+        _cmbDividerType.SelectedIndexChanged += (_, _) => Apply(d => d.DividerType = ((Choice<DividerType>)_cmbDividerType.SelectedItem!).Value);
+        _nudDividerInterval.ValueChanged += (_, _) => Apply(d => d.DividerInterval = (int)_nudDividerInterval.Value);
 
         _btnLoadImage.Click += (_, _) => LoadImage();
         _btnClearImage.Click += (_, _) => Apply(d => d.ClearReferenceImage());
@@ -426,11 +433,12 @@ public sealed class MarinaDesignerPanel : UserControl
             SetNumber(_nudBerthWidth, designer.BerthWidth);
             SetNumber(_nudBerthLength, designer.BerthLength);
             SetNumber(_nudBerthDepth, designer.BerthDepth);
-            _cmbBerthSeparators.SelectedItem = _cmbBerthSeparators.Items.Cast<Choice<BerthSeparator>>().First(c => c.Value == designer.BerthSeparators);
             SetNumber(_nudBerthGap, designer.BerthGap);
             _chkAlignBerths.Checked = designer.AlignBerthsToExisting;
             _cmbBerthServices.SelectedItem = _cmbBerthServices.Items.Cast<Choice<PierServices>>().First(c => c.Value == designer.BerthServices);
             SetNumber(_nudLandBerthHeading, designer.LandBerthHeading);
+            _cmbDividerType.SelectedItem = _cmbDividerType.Items.Cast<Choice<DividerType>>().First(c => c.Value == designer.DividerType);
+            SetNumber(_nudDividerInterval, designer.DividerInterval);
 
             var hasImage = designer.ReferenceImage is not null;
             _btnClearImage.Enabled = hasImage;

@@ -97,8 +97,14 @@ internal static class Strings
     /// <summary>"Depth (m)"</summary>
     internal static string BerthDepth => Get("BerthDepth");
 
-    /// <summary>"Separators"</summary>
-    internal static string BerthSeparators => Get("BerthSeparators");
+    /// <summary>"Dividers"</summary>
+    internal static string SectionDividers => Get("SectionDividers");
+
+    /// <summary>"Type"</summary>
+    internal static string DividerType => Get("DividerType");
+
+    /// <summary>"Every (berths)"</summary>
+    internal static string DividerInterval => Get("DividerInterval");
 
     /// <summary>"Space between (m)"</summary>
     internal static string BerthGap => Get("BerthGap");

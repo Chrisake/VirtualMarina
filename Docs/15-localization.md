@@ -40,12 +40,12 @@ The names of the settings themselves are in the core library, reached through `D
 ```csharp
 using VirtualMarina.Core.Api;
 
-comboBox.Items.Add(BerthSeparator.PairedFingerPiers.GetDisplayName()); // "Pier every other berth"
+comboBox.Items.Add(DividerType.SinglePile.GetDisplayName()); // "Single pile"
 comboBox.Items.Add(PierSides.Left.GetDisplayName());                  // "Boats on the left only"
 label.Text = berth.Status.GetDisplayName();                           // "Temporarily Free"
 ```
 
-`GetDisplayName()` is an extension method for `BerthStatus`, `BerthLabelMode`, `PierServices`, `PierSides`, `LandKind`, `HinterlandScenery`, `DividerType`, `MooringStyle`, `BerthSeparator` and `DesignTool`. Boat and pier types have static ones: `BoatTypeCatalog.GetDisplayName(type)` and `Pier.GetDisplayName(type)`.
+`GetDisplayName()` is an extension method for `BerthStatus`, `BerthLabelMode`, `PierServices`, `PierSides`, `LandKind`, `HinterlandScenery`, `DividerType`, `MooringStyle` and `DesignTool`. Boat and pier types have static ones: `BoatTypeCatalog.GetDisplayName(type)` and `Pier.GetDisplayName(type)`.
 
 ## Adding a language
 

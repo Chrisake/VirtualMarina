@@ -77,6 +77,7 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
     private bool _showTrafficLanes;
     private LabelFontDefinition? _registeredLabelFont;
     private bool _trafficDirty = true;
+    private bool _connectionsDirty;
     private readonly SceneLayers _scene = new();
     private readonly List<RenderObject> _trafficObjects = [];
     private readonly Dictionary<string, int> _landMeshSlots = new(IdComparer);
@@ -803,6 +804,10 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
         // What is under the pointer may have changed: a berth moved, a boat arrived or left, one was hidden.
         InvalidatePickSet();
 
+        // A berth or divider coming, going or moving can join or part neighbours. (A berth that was only updated says so
+        // itself, since most updates are a new status or boat and change nothing about where it lies.)
+        if (ShapesConnections(kind)) _connectionsDirty = true;
+
         var change = new LayoutChange(kind, pierId, berthId, dividerId, multiBerthId, landAreaId);
         if (_updateDepth > 0)
         {
@@ -811,7 +816,39 @@ public sealed partial class MarinaVisualizer : IMarinaVisualizer
             return;
         }
 
+        RefreshConnections();
         LayoutChanged?.Invoke(this, new LayoutChangedEventArgs(kind, pierId, berthId, dividerId, multiBerthId, landAreaId));
+    }
+
+    /// <summary>
+    /// True for the changes that can join or part neighbouring berths. <see cref="LayoutChangeKind.BerthUpdated"/> is not
+    /// one of them: whoever stores the update marks the connections themselves when the berth moved.
+    /// </summary>
+    private static bool ShapesConnections(LayoutChangeKind kind) => kind is
+        LayoutChangeKind.Initialized or LayoutChangeKind.Cleared or
+        LayoutChangeKind.PierAdded or LayoutChangeKind.PierUpdated or LayoutChangeKind.PierRemoved or LayoutChangeKind.PierRenamed or
+        LayoutChangeKind.BerthAdded or LayoutChangeKind.BerthRemoved or LayoutChangeKind.BerthRenamed or
+        LayoutChangeKind.DividerAdded or LayoutChangeKind.DividerUpdated or LayoutChangeKind.DividerRemoved or
+        LayoutChangeKind.LandAreaAdded or LayoutChangeKind.LandAreaRemoved;
+
+    /// <summary>
+    /// Works out every berth's <see cref="Berth.ConnectedBerthIds"/> again once something has moved, and stores the berths
+    /// whose connections changed. Connections follow from the layout, so this raises no event of its own: the change that
+    /// caused it is reported right after, and whoever reads the berths then sees them up to date.
+    /// </summary>
+    private void RefreshConnections()
+    {
+        if (!_connectionsDirty) return;
+        _connectionsDirty = false;
+
+        var connections = BerthConnections.Compute(_berths.Values, _dividers.Values);
+        foreach (var berth in _berths.Values.ToArray())
+        {
+            var now = connections.TryGetValue(berth.Id, out var found) ? found : [];
+            if (berth.ConnectedBerthIds.SequenceEqual(now, StringComparer.Ordinal)) continue;
+            _berths[berth.Id] = berth with { ConnectedBerthIds = now };
+            if (IsBerthSelected(berth.Id)) _selectedSnapshot = null;
+        }
     }
 
     private Berth RequireBerth(string berthId)

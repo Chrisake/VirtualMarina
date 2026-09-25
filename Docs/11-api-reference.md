@@ -7,7 +7,7 @@ Guides with examples are listed in the [documentation index](README.md).
 - **VirtualMarina.Blazor**: [MarinaDesignerPanel](#virtualmarina-blazor-marinadesignerpanel), [MarinaView](#marinaview), [WebGlSceneRenderer](#webglscenerenderer)
 - **VirtualMarina.Core.Api**: [BatchUpdateError](#batchupdateerror), [BatchUpdateResult](#batchupdateresult), [BerthAction](#berthaction), [BerthActionCollection](#berthactioncollection), [BerthActionInvokedEventArgs](#berthactioninvokedeventargs), [BerthActionStyle](#berthactionstyle), [BerthEventArgs](#bertheventargs), [BerthHoverEventArgs](#berthhovereventargs), [BerthLabelMode](#berthlabelmode), [BerthLabelModeExtensions](#berthlabelmodeextensions), [BerthPopup](#berthpopup), [BerthPopupChangedEventArgs](#berthpopupchangedeventargs), [BerthPopupKind](#berthpopupkind), [BerthSelectedEventArgs](#berthselectedeventargs), [BerthSelectionRejection](#berthselectionrejection), [BerthStatusChangedEventArgs](#berthstatuschangedeventargs), [BerthTooltip](#berthtooltip), [BerthTooltipLine](#berthtooltipline), [BerthUpdate](#berthupdate), [DefaultPopupContent](#defaultpopupcontent), [DisplayNames](#displaynames), [IMarinaVisualizer](#imarinavisualizer), [LayoutChange](#layoutchange), [LayoutChangeKind](#layoutchangekind), [LayoutChangedEventArgs](#layoutchangedeventargs), [MarinaLocalization](#marinalocalization), [MarinaStatistics](#marinastatistics), [MarinaVisualizer](#marinavisualizer), [MarinaVisualizerOptions](#marinavisualizeroptions), [MultiBerthSelectedEventArgs](#multiberthselectedeventargs), [PierUpdate](#pierupdate), [RejectedBerth](#rejectedberth), [SelectionChangedEventArgs](#selectionchangedeventargs), [SelectionReason](#selectionreason), [SelectionResult](#selectionresult), [StatusColorScheme](#statuscolorscheme)
 - **VirtualMarina.Core.Camera**: [CameraAngle](#cameraangle), [CameraConstraints](#cameraconstraints), [CameraPose](#camerapose), [CameraPreset](#camerapreset), [OrbitCamera](#orbitcamera)
-- **VirtualMarina.Core.Design**: [BerthNamePlan](#berthnameplan), [BerthNamingScheme](#berthnamingscheme), [BerthSeparator](#berthseparator), [DesignActionFailedEventArgs](#designactionfailedeventargs), [DesignActionRedoneEventArgs](#designactionredoneeventargs), [DesignActionScope](#designactionscope), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignRenameScope](#designrenamescope), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerLimits](#designerlimits), [DesignerSettingRange](#designersettingrange), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [PreviewFleet](#previewfleet), [PreviewMooring](#previewmooring), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
+- **VirtualMarina.Core.Design**: [BerthNamePlan](#berthnameplan), [BerthNamingScheme](#berthnamingscheme), [DesignActionFailedEventArgs](#designactionfailedeventargs), [DesignActionRedoneEventArgs](#designactionredoneeventargs), [DesignActionScope](#designactionscope), [DesignActionUndoneEventArgs](#designactionundoneeventargs), [DesignDraftChange](#designdraftchange), [DesignDraftChangedEventArgs](#designdraftchangedeventargs), [DesignElementCreatedEventArgs](#designelementcreatedeventargs), [DesignElementCreatingEventArgs](#designelementcreatingeventargs), [DesignElementErasedEventArgs](#designelementerasedeventargs), [DesignElementRenamingEventArgs](#designelementrenamingeventargs), [DesignRenameScope](#designrenamescope), [DesignTool](#designtool), [DesignToolChangedEventArgs](#designtoolchangedeventargs), [DesignTreesPlantedEventArgs](#designtreesplantedeventargs), [DesignerLimits](#designerlimits), [DesignerSettingRange](#designersettingrange), [DesignerSettings](#designersettings), [MarinaDesigner](#marinadesigner), [PreviewFleet](#previewfleet), [PreviewMooring](#previewmooring), [ReferenceImage](#referenceimage), [ReferenceImageChange](#referenceimagechange), [ReferenceImageChangedEventArgs](#referenceimagechangedeventargs), [ScaleLineDrawnEventArgs](#scalelinedrawneventargs)
 - **VirtualMarina.Core.Domain**: [Berth](#berth), [BerthGenerator](#berthgenerator), [BerthStatus](#berthstatus), [BerthStatusExtensions](#berthstatusextensions), [BerthStatusFilter](#berthstatusfilter), [Boat](#boat), [BoatDimensions](#boatdimensions), [BoatType](#boattype), [BoatTypeCatalog](#boattypecatalog), [Divider](#divider), [DividerType](#dividertype), [HinterlandScenery](#hinterlandscenery), [LandArea](#landarea), [LandAreaBuilder](#landareabuilder), [LandKind](#landkind), [LandTree](#landtree), [MarinaDataBag](#marinadatabag), [MarinaLayout](#marinalayout), [MarinaLayoutBuilder](#marinalayoutbuilder), [MarinaLayoutException](#marinalayoutexception), [MarineTraffic](#marinetraffic), [MooringStyle](#mooringstyle), [MultiBerth](#multiberth), [OrientedRect](#orientedrect), [Pier](#pier), [PierBuilder](#pierbuilder), [PierServices](#pierservices), [PierSide](#pierside), [PierSides](#piersides), [PierType](#piertype), [Shoreline](#shoreline), [TrafficVessel](#trafficvessel), [TreeShape](#treeshape)
 - **VirtualMarina.Core.Geometry**: [BoatMeshFactory](#boatmeshfactory), [BoundingBox](#boundingbox), [GlyphFont](#glyphfont), [LabelFont](#labelfont), [LabelFontDefinition](#labelfontdefinition), [LabelGlyph](#labelglyph), [LabelTypeface](#labeltypeface), [LandMeshFactory](#landmeshfactory), [MarinaMeshFactory](#marinameshfactory), [MarineTrafficField](#marinetrafficfield), [MarineTrafficPlanner](#marinetrafficplanner), [MeshBuilder](#meshbuilder), [MeshData](#meshdata), [MeshIds](#meshids), [MeshLibrary](#meshlibrary), [TrafficLane](#trafficlane)
 - **VirtualMarina.Core.Input**: [CameraDragAction](#cameradragaction), [InputModifiers](#inputmodifiers), [MarinaInputController](#marinainputcontroller), [MarinaKey](#marinakey), [MarinaKeyMap](#marinakeymap), [PointerButton](#pointerbutton)
@@ -432,7 +432,6 @@ The text comes from the core library's resources and follows `MarinaLocalization
 | Member | Description |
 |---|---|
 | `static string GetDisplayName(DesignTool tool)` | Name of a design tool, e.g. "Land berths", for a toolbar button. |
-| `static string GetDisplayName(BerthSeparator separator)` | Name of a berth separator, e.g. "Pier every other berth". |
 | `static string GetDisplayName(PierServices services)` | Name of a pier's services, e.g. "Power and water". |
 | `static string GetDisplayName(PierSides sides)` | Name of the berthing sides of a pier, e.g. "Boats on the left only". |
 | `static string GetDisplayName(LandKind kind)` | Name of a land surface, e.g. "Lawn or park". |
@@ -1145,23 +1144,6 @@ The pattern is plain text with tokens in braces, written into every new berth's 
 | `string Format(LandArea landArea, int number)` | The name this scheme gives berth number `number` on a land area. |
 | `IEnumerable<string> Validate()` | Problems that would stop the scheme from naming anything, empty when it is sound. |
 
-<a id="berthseparator"></a>
-### BerthSeparator
-
-`enum BerthSeparator`
-
-What separates the berths the designer adds (`MarinaDesigner.BerthSeparators`). Except for `BerthSeparator.FingerPiers` and `BerthSeparator.None`, each value generates `Divider` elements shared by neighbouring berths.
-
-| Value | Description |
-|---|---|
-| `FingerPiers` = 0 | The berths' own finger piers along both long sides (`Berth.HasFingerPiers`). Default. |
-| `None` = 1 | Nothing between the berths but the gap (`MarinaDesigner.BerthGap`, at least `MarinaDesigner.MinimumSeparatorGap`). |
-| `FingerPier` = 2 | A walkable finger pier between neighbours (`DividerType.FingerPier`). |
-| `PairedFingerPiers` = 6 | A finger pier at every other boundary, so the berths sit in pairs: each boat has a pier on one side and its neighbour on the other, and the boats at the ends of the row get a pier on their outer side. |
-| `Piles` = 3 | A row of mooring piles (`DividerType.Piles`). |
-| `Boom` = 4 | A floating boom (`DividerType.Boom`). |
-| `SinglePile` = 5 | A single mooring pile at the outer end of each berth boundary (`DividerType.SinglePile`). |
-
 <a id="designactionfailedeventargs"></a>
 ### DesignActionFailedEventArgs
 
@@ -1259,7 +1241,7 @@ Data for `MarinaDesigner.ElementCreated`: the element was added to the marina (a
 | `LandArea? LandArea { get; }` | The land area added, if any. |
 | `Pier? Pier { get; }` | The pier added, if any. |
 | `IReadOnlyList<Berth> Berths { get; }` | The berths added (empty unless berths were added). |
-| `IReadOnlyList<Divider> Dividers { get; }` | The dividers added with the berths. |
+| `IReadOnlyList<Divider> Dividers { get; }` | The dividers added (`DesignTool.PlaceDividers`). |
 | `Shoreline? Shoreline { get; init; }` | The mainland that was set (`DesignTool.DrawShoreline`), if any. |
 
 <a id="designelementcreatingeventargs"></a>
@@ -1276,7 +1258,7 @@ Data for `MarinaDesigner.ElementCreating`: the user finished drawing and the ele
 | `LandArea? LandArea { get; set; }` | The land area to add (`DesignTool.DrawLandArea`). Replace it to change the id, name or outline. |
 | `Pier? Pier { get; set; }` | The pier to add (`DesignTool.DrawPier`). If you change its id, berths created later reference the new id. |
 | `IReadOnlyList<Berth> Berths { get; set; }` | The berths to add (`DesignTool.AddBerths`, or the one land berth of `DesignTool.AddLandBerths`); empty for other tools. |
-| `IReadOnlyList<Divider> Dividers { get; set; }` | Dividers generated between the new berths, when `MarinaDesigner.BerthSeparators` asks for them. |
+| `IReadOnlyList<Divider> Dividers { get; set; }` | The dividers to add (`DesignTool.PlaceDividers`); empty for other tools, since `DesignTool.AddBerths` places no dividers of its own. |
 | `Shoreline? Shoreline { get; set; }` | The mainland to set (`DesignTool.DrawShoreline`); null for other tools. Replace it to change its height, surface or scenery before it is drawn. |
 | `bool Cancel { get; set; }` | Set to true to discard the drawing. |
 
@@ -1290,7 +1272,7 @@ Data for `MarinaDesigner.ElementErased`.
 | Member | Description |
 |---|---|
 | `DesignElementErasedEventArgs(object element, IReadOnlyList<Berth> removedBerths, IReadOnlyList<Divider> removedDividers)` | Creates the event data. |
-| `object Element { get; }` | The removed `Berth`, `Pier` or `LandArea`. |
+| `object Element { get; }` | The removed `Berth`, `Pier`, `LandArea` or `Divider`. When `DesignTool.PlaceDividers` clears a whole row of dividers, the pier they stood along. |
 | `IReadOnlyList<Berth> RemovedBerths { get; }` | Every berth removed (the berth itself, or the pier's or land area's berths). |
 | `IReadOnlyList<Divider> RemovedDividers { get; }` | Dividers removed with them: a pier's dividers, or the ones left without a berth on either side. A divider still shared with a remaining berth stays. |
 
@@ -1350,6 +1332,7 @@ What clicks in the 3D view do while `MarinaDesigner.IsActive` is true.
 | `EditServices` = 10 | Click a berth to give it the pedestals in `MarinaDesigner.BerthServices`; hold Alt or Ctrl to change every berth down that side of the pier at once. The berths about to change are highlighted. |
 | `SelectArea` = 11 | Drag a box over the water to select every berth whose middle falls inside it. Hold Shift or Ctrl to add to the selection already made instead of replacing it. |
 | `DrawShoreline` = 12 | Draw the coast of the mainland behind the marina (`Shoreline`). Click to place points along it — two are enough for a straight coast — then press Enter, and click the side of the line that is land. Backspace removes the last point; Escape cancels. Drawing a new one replaces the one already there. |
+| `PlaceDividers` = 13 | Click beside a row of berths to put a `Divider` of `MarinaDesigner.DividerType` on the boundary nearest the pointer, or to take away the one already there. Hold Alt to fill the whole row instead: a divider on every `MarinaDesigner.DividerInterval`-th boundary, counting from the one clicked. Ctrl+click (or a right-click) only removes: the one divider, or with Alt every divider along the row. Berths with a divider between them are no longer connected (`Berth.ConnectedBerthIds`). |
 
 <a id="designtoolchangedeventargs"></a>
 ### DesignToolChangedEventArgs
@@ -1393,6 +1376,7 @@ The range and default of every numeric `MarinaDesigner` setting, so a host's own
 | `static DesignerSettingRange BerthLength { get; }` | `MarinaDesigner.BerthLength`, in meters. |
 | `static DesignerSettingRange BerthDepth { get; }` | `MarinaDesigner.BerthDepth`, in meters. |
 | `static DesignerSettingRange BerthGap { get; }` | `MarinaDesigner.BerthGap`, in meters. |
+| `static DesignerSettingRange DividerInterval { get; }` | `MarinaDesigner.DividerInterval`, in berths (a whole number). |
 | `static DesignerSettingRange LandBerthHeading { get; }` | `MarinaDesigner.LandBerthHeading`, in degrees. The designer does not refuse a heading outside it: any finite angle is wrapped into the range. |
 | `static DesignerSettingRange SnapDistancePixels { get; }` | `MarinaDesigner.SnapDistancePixels`, in pixels. |
 | `static DesignerSettingRange FogFactor { get; }` | `MarinaDesigner.FogFactor`, a multiplier. |
@@ -1434,7 +1418,8 @@ The designer's tool settings as a plain value: what the next land area, pier, be
 | `float BerthWidth { get; init; }` | Width of new berths, in meters. |
 | `float BerthLength { get; init; }` | Length of new berths, in meters. |
 | `float BerthDepth { get; init; }` | Water depth of new berths, in meters. |
-| `BerthSeparator BerthSeparators { get; init; }` | What separates new berths. |
+| `DividerType DividerType { get; init; }` | Kind of divider the divider tool places. |
+| `int DividerInterval { get; init; }` | How many berths lie between the dividers the divider tool puts along a whole row. |
 | `float BerthGap { get; init; }` | Space between neighbouring berths, in meters. |
 | `bool AlignBerthsToExisting { get; init; }` | Line new rows up with the berths already on that side of the pier. |
 | `PierServices BerthServices { get; init; }` | Power/water pedestals switched on for a pier when berths are added to it. |
@@ -1459,7 +1444,6 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | Member | Description |
 |---|---|
 | `const float MinimumPierLength = 1f` | Shortest pier the `DesignTool.DrawPier` tool creates, in meters. |
-| `const float MinimumSeparatorGap = 0.3f` | Gap left between berths separated by `BerthSeparator.None` when `MarinaDesigner.BerthGap` is smaller, in meters. |
 | `const int MaxUndoSteps = 50` | How many changes `MarinaDesigner.Undo` can step back through (older ones are dropped). |
 | `bool IsActive { get; set; }` | Designer mode. Turning it on closes the popup, clears the selection and hover, and routes clicks to `MarinaDesigner.Tool`. Turning it off abandons any drawing, and any drag, in progress. |
 | `DesignTool Tool { get; set; }` | What clicks do while `MarinaDesigner.IsActive`. Changing it abandons any drawing, and any drag, in progress. |
@@ -1496,8 +1480,9 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `float BerthWidth { get; set; }` | Width of new berths (along the pier), 1–50 m (default 5). |
 | `float BerthLength { get; set; }` | Length of new berths (away from the pier), 1–150 m (default 12). |
 | `float BerthDepth { get; set; }` | Water depth of new berths, stored as `Berth.MaxDraft`, 0.1–50 m (default 3). |
-| `BerthSeparator BerthSeparators { get; set; }` | What separates new berths: their own finger piers (default), nothing at all, or generated `Divider` elements (finger pier, piles, boom or a single pile at the outer end). |
-| `float BerthGap { get; set; }` | Space left between neighbouring berths, 0–20 m (default 0, berths touching). With `BerthSeparator.None` at least `MarinaDesigner.MinimumSeparatorGap` is used, so the berths never touch without a separator. |
+| `DividerType DividerType { get; set; }` | Kind of `Divider` placed by `DesignTool.PlaceDividers`: a finger pier (default), a row of piles, a floating boom or a single pile at the outer end. `DesignTool.AddBerths` places no dividers; they are added afterwards, where they are wanted. |
+| `int DividerInterval { get; set; }` | How many berths lie between the dividers `DesignTool.PlaceDividers` puts down when it fills a whole row (Alt+click), 1–10 (default 1). 1 puts one on every boundary, so every berth stands alone; 2 on every other boundary, so the berths come in pairs a boat can share; and so on. The count starts from the boundary clicked. |
+| `float BerthGap { get; set; }` | Space left between neighbouring berths, 0–20 m (default 0, berths touching). Berths up to 1.5 m apart with nothing between them are still connected (`Berth.ConnectedBerthIds`). |
 | `bool AlignBerthsToExisting { get; set; }` | True (default): a row of berths lines up with the nearest existing berth edge on that side, or with the pier's start, in whole berth pitches. False: the first berth starts exactly where you click (or at `fromAlong`), at any offset from the pier's start. |
 | `PierServices BerthServices { get; set; }` | Power/water pedestals switched on for a pier when berths are added to it (default `PierServices.None`). They are drawn on the berthing sides only, next to the berths that exist (see `Pier.Services`). |
 | `BerthNamingScheme BerthNaming { get; set; }` | How the berths drawn from now on are named: the pattern, the first number and the step between them (default `BerthNamingScheme.Default`, giving `A-L01`, `A-L02`, ...). |
@@ -1511,7 +1496,7 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `event EventHandler<DesignElementCreatingEventArgs>? ElementCreating` | A drawing is complete and its element is about to be added; handlers can change or cancel it. |
 | `event EventHandler<DesignElementCreatedEventArgs>? ElementCreated` | A land area, pier or berths were added by the designer. |
 | `event EventHandler<DesignElementRenamingEventArgs>? ElementRenaming` | A berth or pier was clicked with the `DesignTool.Rename` tool: put the new name in `DesignElementRenamingEventArgs.NewName`. Without a handler the tool does nothing. |
-| `event EventHandler<DesignElementErasedEventArgs>? ElementErased` | A berth, pier or land area was removed with the `DesignTool.Erase` tool (or `MarinaDesigner.Erase`). |
+| `event EventHandler<DesignElementErasedEventArgs>? ElementErased` | A berth, pier or land area was removed with the `DesignTool.Erase` tool (or `MarinaDesigner.Erase`), or dividers with the `DesignTool.PlaceDividers` tool (or `MarinaDesigner.RemoveDividers`). |
 | `event EventHandler<DesignTreesPlantedEventArgs>? TreesPlanted` | Trees were scattered on a land area (`DesignTool.PlantTrees`, `MarinaDesigner.PlantTrees`, or a new lawn). |
 | `event EventHandler<DesignActionUndoneEventArgs>? ActionUndone` | The last change was reverted by `MarinaDesigner.Undo`. |
 | `event EventHandler<DesignActionRedoneEventArgs>? ActionRedone` | The last change undone was made again by `MarinaDesigner.Redo`. |
@@ -1529,7 +1514,7 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `void ClearReferenceImage()` | Removes the reference image and the scale line. |
 | `bool ClearScaleLine()` | Forgets the measuring line, once the image has been scaled by it and the line is only in the way. Returns false when there was none. |
 | `bool CompleteDraft()` | Finishes the drawing in progress: closes a land outline (3+ points), ends a pier at the pointer, or adds the anchored berth. Returns true when an element was created. |
-| `IReadOnlyList<Berth> CreateBerths(string pierId, PierSide side, float fromAlong, float toAlong)` | Adds a row of berths of the current `MarinaDesigner.BerthWidth`, `MarinaDesigner.BerthLength` and `MarinaDesigner.BerthDepth` on one side of a pier, covering the stretch between two distances from the pier's start (equal distances add one berth), separated by `MarinaDesigner.BerthSeparators` and `MarinaDesigner.BerthGap`. With `MarinaDesigner.AlignBerthsToExisting` the row lines up with existing berths on that side; otherwise it starts exactly at `fromAlong`. Places already taken are skipped, and `MarinaDesigner.BerthServices` switches the pier's pedestals on. Returns the berths added (empty when none fit or a handler cancels). |
+| `IReadOnlyList<Berth> CreateBerths(string pierId, PierSide side, float fromAlong, float toAlong)` | Adds a row of berths of the current `MarinaDesigner.BerthWidth`, `MarinaDesigner.BerthLength` and `MarinaDesigner.BerthDepth` on one side of a pier, covering the stretch between two distances from the pier's start (equal distances add one berth), `MarinaDesigner.BerthGap` apart. With `MarinaDesigner.AlignBerthsToExisting` the row lines up with existing berths on that side; otherwise it starts exactly at `fromAlong`. Places already taken are skipped, and `MarinaDesigner.BerthServices` switches the pier's pedestals on. Returns the berths added (empty when none fit or a handler cancels). |
 | `LandArea? CreateLandArea(IReadOnlyList<Vector2> outline)` | Adds a land area with the given outline and the current `MarinaDesigner.LandKind` and `MarinaDesigner.LandHeight`, raising `MarinaDesigner.ElementCreating` and `MarinaDesigner.ElementCreated`. Returns null when a handler cancels. |
 | `Berth? CreateLandBerth(string landAreaId, Vector2 position, float? headingDegrees = null)` | Adds a land berth (`Berth.OnLand`) of the current `MarinaDesigner.BerthWidth` and `MarinaDesigner.BerthLength` to a land area, where a boat is stored or worked on ashore. Raises `MarinaDesigner.ElementCreating` and `MarinaDesigner.ElementCreated`; returns null when a handler cancels. |
 | `Pier? CreatePier(Vector2 start, Vector2 end)` | Adds a pier from `start` (shore end) to `end` with the current `MarinaDesigner.PierType`, `MarinaDesigner.PierWidth` and `MarinaDesigner.PierBerthingSides`. Returns null when a handler cancels. |
@@ -1544,9 +1529,11 @@ Turn it on with `MarinaDesigner.IsActive` and pick a `MarinaDesigner.Tool`. Whil
 | `bool IsBerthNameAvailable(string? berthName, string? forBerthId = null)` | True when a berth could be given this name. A berth's name is also its id, so it has to be free across the whole marina. |
 | `bool IsPierIdAvailable(string? pierId, string? forPierId = null)` | True when a pier could be given this id: nothing is using it, or the pier using it is the one asking. Ids are compared without regard to case, and an empty one is never free. |
 | `Shoreline? PickShorelineSide(Vector2 landSide)` | Makes the mainland from the coast waiting for a side, putting the land on the side `landSide` falls on. Returns null when nothing is waiting, or when a handler cancels. |
+| `IReadOnlyList<Divider> PlaceDividers(string pierId, PierSide side, float along, bool wholeRow = false)` | Puts dividers of the current `MarinaDesigner.DividerType` on the boundaries of the berths along one side of a pier: the boundary nearest `along`, or with `wholeRow` every `MarinaDesigner.DividerInterval`-th boundary of the row, counting from that one. Boundaries that already have a divider keep it. Raises `MarinaDesigner.ElementCreating` and `MarinaDesigner.ElementCreated`, and records one step for `MarinaDesigner.Undo`. |
 | `BerthNamePlan PlanBerthNames(string pierId, string? pattern)` | Works out what naming a pier's berths by a pattern would call each of them, and what would go wrong, without changing anything. |
 | `LandArea? PlantTrees(string landAreaId, float? treesPer1000SquareMeters = null)` | Replaces the trees of a lawn with new, randomly placed ones (kept clear of its land berths) and raises `MarinaDesigner.TreesPlanted`. Returns the updated land area, or null when it doesn't exist or is not a `LandKind.Grass` area. |
 | `bool Redo()` | Makes the last undone change again, as it was made. Raises `MarinaDesigner.ActionRedone`. Returns false when there is nothing to redo; any new change forgets what could have been redone. |
+| `IReadOnlyList<Divider> RemoveDividers(string pierId, PierSide side, float along, bool wholeRow = false)` | Takes away the dividers on the boundaries of the berths along one side of a pier: the one on the boundary nearest `along`, or with `wholeRow` every divider along the row. Raises `MarinaDesigner.ElementErased` — with the divider, or for a whole row with the pier — and records one step for `MarinaDesigner.Undo`. |
 | `bool RemoveLastPoint()` | Removes the last placed point (or takes a settled coast back to drawing). Returns false when there was none. Ctrl+Z in the views does this too while a drawing is in progress, rather than undoing the last element. |
 | `LandArea? RemoveTrees(string landAreaId)` | Removes every tree from a land area (of any kind) and raises `MarinaDesigner.TreesPlanted` with an empty `LandArea.Trees`. Returns the updated land area, or null when it doesn't exist or has no trees. |
 | `Berth RenameBerth(string berthId, string newBerthId)` | Gives one berth another name, keeping everything else about it, and records the change for `MarinaDesigner.Undo`. Returns the renamed berth. |
@@ -1686,6 +1673,7 @@ The one deliberate exception is `Berth.ExternalData`, a mutable bag shared by ev
 | `bool IsReadOnly { get; init; }` | When true the berth looks normal and can be selected and show its tooltip, but its actions window does not open. |
 | `PierServices? Services { get; init; }` | Power and water at this berth, overriding `Pier.Services`. Null (the default) takes whatever the pier offers, which is what most berths do; set it where one stretch of a pier was upgraded and the rest was not. |
 | `string? MultiBerthId { get; }` | Id of the `MultiBerth` this berth belongs to, if any. Managed by the visualizer. |
+| `IReadOnlyList<string> ConnectedBerthIds { get; }` | Ids of the berths right beside this one that a single boat can share it with: the neighbours whose long side faces this berth's across open water, with no `Divider` (and no finger pier of their own, `Berth.HasFingerPiers`) in between. These are the berths a `MultiBerth` can join to this one. Managed by the visualizer, which works them out again whenever the berths or dividers change; empty when the berth has no such neighbour. |
 | `IReadOnlyDictionary<string, string> Metadata { get; init; }` | Read-only string attributes supplied with the berth definition (e.g. power, water). For mutable host objects use `Berth.ExternalData`. |
 | `MarinaDataBag ExternalData { get; init; }` | Host-owned objects attached to this berth (contract ids, cached ERP records, ...). The same instance is shared by every snapshot of the berth, so values written from an event handler are visible in later events and in `GetBerth`. The visualizer never reads it. |
 | `string DisplayName { get; }` | `Berth.Label` when set, otherwise `Berth.Id`. Used for tooltips and water labels. |
@@ -2003,6 +1991,7 @@ Every list is the record's own read-only copy, so a layout built from a host's l
 | `static MarinaLayout FromObjects(IEnumerable<object> elements, string name = "Marina")` | Builds a layout from elements in any order (the inverse of `MarinaLayout.ToObjects`). The result is not validated. |
 | `object[] ToObjects()` | Every element as one flat array, in dependency order: the shoreline and the passing traffic, each if there is one, then land areas, piers, dividers, berths, then multi-berths. Each entry is the immutable record itself (`Shoreline`, `MarineTraffic`, `LandArea`, `Pier`, `Divider`, `Berth`, `MultiBerth`), so host code can pattern-match on it. Everything in the layout but its `MarinaLayout.Name` is there, so `MarinaLayout.FromObjects` given the array and the name builds an equal layout. |
 | `IReadOnlyList<string> Validate()` | Returns a list of problems; empty when the layout is valid. |
+| `MarinaLayout WithBerthConnections()` | A copy of this layout whose berths carry their `Berth.ConnectedBerthIds`, worked out from where the berths and dividers stand, just as a visualizer showing the layout would work them out. |
 
 <a id="marinalayoutbuilder"></a>
 ### MarinaLayoutBuilder
@@ -3350,13 +3339,13 @@ The format is `{ "format": "virtualmarina.marina", "formatVersion": "1.0", ... }
 | `static Task<MarinaDocument> LoadAsync(Stream utf8Json, bool allowNewerVersion = false, CancellationToken cancellationToken = default)` | Reads a document from a stream of UTF-8 JSON, such as an open file or an HTTP response body. |
 | `static MarinaDocument Parse(string json, bool allowNewerVersion = false)` | Reads a document from JSON text. |
 | `static MarinaDocument Parse(ReadOnlySpan<byte> utf8Json, bool allowNewerVersion = false)` | Reads a document from UTF-8 JSON, such as the bytes of a file, a database column or a download. |
-| `void Save(string path, bool indented = true)` | Writes the document to a file (UTF-8), and stamps `MarinaDocument.SavedUtc` once it is safely written. |
-| `byte[] Save(bool indented = true)` | Writes the document as the bytes of a marina file (UTF-8), and stamps `MarinaDocument.SavedUtc`. |
-| `Task SaveAsync(Stream utf8Json, bool indented = true, CancellationToken cancellationToken = default)` | Writes the document to a stream as UTF-8 JSON, and stamps `MarinaDocument.SavedUtc` once it is written. |
+| `void Save(string path, bool indented = true, bool stripOccupancy = true)` | Writes the document to a file (UTF-8), and stamps `MarinaDocument.SavedUtc` once it is safely written. |
+| `byte[] Save(bool indented = true, bool stripOccupancy = true)` | Writes the document as the bytes of a marina file (UTF-8), and stamps `MarinaDocument.SavedUtc`. |
+| `Task SaveAsync(Stream utf8Json, bool indented = true, bool stripOccupancy = true, CancellationToken cancellationToken = default)` | Writes the document to a stream as UTF-8 JSON, and stamps `MarinaDocument.SavedUtc` once it is written. |
 | `void SetExtension<T>(string key, T? value)` | Stores your own data in the file under `key` (serialized with reflection, in the marina file's JSON style). |
 | `void SetExtension<T>(string key, T? value, JsonTypeInfo<T?> typeInfo)` | Stores your own data in the file under `key`, serialized with metadata you supply. |
-| `string ToJson(bool indented = true)` | Writes the document as JSON text. |
-| `byte[] ToUtf8Bytes(bool indented = true)` | Writes the document as UTF-8 JSON, ready to store or send. |
+| `string ToJson(bool indented = true, bool stripOccupancy = true)` | Writes the document as JSON text. |
+| `byte[] ToUtf8Bytes(bool indented = true, bool stripOccupancy = true)` | Writes the document as UTF-8 JSON, ready to store or send. |
 | `void UpdateFrom(MarinaVisualizer marina, string? generator = null, bool includeCamera = true, bool includeDesignerSettings = true, bool includeReferenceImage = true)` | Refreshes this document from a visualizer — its layout, style, label mode, camera and (optionally) the designer's settings — while keeping what the file carried that the visualizer knows nothing about: the `MarinaDocument.Description`, the `MarinaDocument.Extensions`, and the properties a newer version stored alongside individual elements. |
 | `IReadOnlyList<string> Validate()` | Errors in the stored layout, empty when it is valid (the same checks `InitializeLayout` makes). |
 

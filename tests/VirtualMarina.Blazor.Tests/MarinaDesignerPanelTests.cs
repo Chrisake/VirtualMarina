@@ -156,7 +156,7 @@ public class MarinaDesignerPanelTests
             {
                 DesignerLimits.LandHeight, DesignerLimits.TreeDensity, DesignerLimits.PierWidth, DesignerLimits.BerthWidth,
                 DesignerLimits.BerthLength, DesignerLimits.BerthDepth, DesignerLimits.BerthGap, DesignerLimits.LandBerthHeading,
-                DesignerLimits.ReferenceImageMetersPerPixel,
+                DesignerLimits.DividerInterval, DesignerLimits.ReferenceImageMetersPerPixel,
                 DesignerLimits.ReferenceImageOpacity with
                 {
                     Minimum = DesignerLimits.ReferenceImageOpacity.Minimum * 100f,

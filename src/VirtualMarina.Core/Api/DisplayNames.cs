@@ -27,24 +27,12 @@ public static class DisplayNames
         DesignTool.Erase => Strings.ToolErase,
         DesignTool.Rename => Strings.ToolRename,
         DesignTool.EditServices => Strings.ToolEditServices,
+        DesignTool.PlaceDividers => Strings.ToolPlaceDividers,
         DesignTool.SelectArea => Strings.ToolSelectArea,
         DesignTool.MoveReferenceImage => Strings.ToolMoveReferenceImage,
         DesignTool.MeasureScale => Strings.ToolMeasureScale,
         DesignTool.DrawShoreline => Strings.ToolDrawShoreline,
         _ => tool.ToString(),
-    };
-
-    /// <summary>Name of a berth separator, e.g. "Pier every other berth".</summary>
-    public static string GetDisplayName(this BerthSeparator separator) => separator switch
-    {
-        BerthSeparator.FingerPiers => Strings.SeparatorFingerPiers,
-        BerthSeparator.None => Strings.SeparatorNone,
-        BerthSeparator.FingerPier => Strings.SeparatorFingerPier,
-        BerthSeparator.PairedFingerPiers => Strings.SeparatorPairedFingerPiers,
-        BerthSeparator.Piles => Strings.SeparatorPiles,
-        BerthSeparator.Boom => Strings.SeparatorBoom,
-        BerthSeparator.SinglePile => Strings.SeparatorSinglePile,
-        _ => separator.ToString(),
     };
 
     /// <summary>Name of a pier's services, e.g. "Power and water".</summary>

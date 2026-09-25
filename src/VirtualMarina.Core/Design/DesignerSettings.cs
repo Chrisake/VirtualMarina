@@ -42,8 +42,11 @@ public sealed record DesignerSettings
     /// <summary>Water depth of new berths, in meters.</summary>
     public float BerthDepth { get; init; } = DesignerDefaults.BerthDepth.Default;
 
-    /// <summary>What separates new berths.</summary>
-    public BerthSeparator BerthSeparators { get; init; } = DesignerDefaults.BerthSeparators;
+    /// <summary>Kind of divider the divider tool places.</summary>
+    public DividerType DividerType { get; init; } = DesignerDefaults.DividerType;
+
+    /// <summary>How many berths lie between the dividers the divider tool puts along a whole row.</summary>
+    public int DividerInterval { get; init; } = (int)DesignerDefaults.DividerInterval.Default;
 
     /// <summary>Space between neighbouring berths, in meters.</summary>
     public float BerthGap { get; init; } = DesignerDefaults.BerthGap.Default;
@@ -88,7 +91,8 @@ public sealed record DesignerSettings
             BerthWidth = designer.BerthWidth,
             BerthLength = designer.BerthLength,
             BerthDepth = designer.BerthDepth,
-            BerthSeparators = designer.BerthSeparators,
+            DividerType = designer.DividerType,
+            DividerInterval = designer.DividerInterval,
             BerthGap = designer.BerthGap,
             AlignBerthsToExisting = designer.AlignBerthsToExisting,
             BerthServices = designer.BerthServices,
@@ -120,7 +124,8 @@ public sealed record DesignerSettings
             designer.BerthWidth = DesignerDefaults.BerthWidth.Clamp(BerthWidth);
             designer.BerthLength = DesignerDefaults.BerthLength.Clamp(BerthLength);
             designer.BerthDepth = DesignerDefaults.BerthDepth.Clamp(BerthDepth);
-            designer.BerthSeparators = Enum.IsDefined(BerthSeparators) ? BerthSeparators : DesignerDefaults.BerthSeparators;
+            designer.DividerType = Enum.IsDefined(DividerType) ? DividerType : DesignerDefaults.DividerType;
+            designer.DividerInterval = (int)DesignerDefaults.DividerInterval.Clamp(DividerInterval);
             designer.BerthGap = DesignerDefaults.BerthGap.Clamp(BerthGap);
             designer.AlignBerthsToExisting = AlignBerthsToExisting;
             designer.BerthServices = DesignerDefaults.IsValidServices(BerthServices) ? BerthServices : DesignerDefaults.BerthServices;

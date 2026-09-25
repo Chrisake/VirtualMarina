@@ -14,7 +14,8 @@ public sealed partial class MarinaDesigner
     private float _berthWidth = DesignerDefaults.BerthWidth.Default;
     private float _berthLength = DesignerDefaults.BerthLength.Default;
     private float _berthDepth = DesignerDefaults.BerthDepth.Default;
-    private BerthSeparator _berthSeparators = DesignerDefaults.BerthSeparators;
+    private DividerType _dividerType = DesignerDefaults.DividerType;
+    private int _dividerInterval = (int)DesignerDefaults.DividerInterval.Default;
     private float _berthGap = DesignerDefaults.BerthGap.Default;
     private bool _alignBerths = true;
     private PierServices _berthServices = DesignerDefaults.BerthServices;
@@ -103,18 +104,30 @@ public sealed partial class MarinaDesigner
     }
 
     /// <summary>
-    /// What separates new berths: their own finger piers (default), nothing at all, or generated <see cref="Divider"/> elements
-    /// (finger pier, piles, boom or a single pile at the outer end).
+    /// Kind of <see cref="Divider"/> placed by <see cref="DesignTool.PlaceDividers"/>: a finger pier (default), a row of piles, a
+    /// floating boom or a single pile at the outer end. <see cref="DesignTool.AddBerths"/> places no dividers; they are added
+    /// afterwards, where they are wanted.
     /// </summary>
-    public BerthSeparator BerthSeparators
+    public DividerType DividerType
     {
-        get => _berthSeparators;
-        set => SetSetting(ref _berthSeparators, Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(value), value, null));
+        get => _dividerType;
+        set => SetSetting(ref _dividerType, Enum.IsDefined(value) ? value : throw new ArgumentOutOfRangeException(nameof(value), value, null));
     }
 
     /// <summary>
-    /// Space left between neighbouring berths, 0–20 m (default 0, berths touching). With <see cref="BerthSeparator.None"/> at least
-    /// <see cref="MinimumSeparatorGap"/> is used, so the berths never touch without a separator.
+    /// How many berths lie between the dividers <see cref="DesignTool.PlaceDividers"/> puts down when it fills a whole row
+    /// (Alt+click), 1–10 (default 1). 1 puts one on every boundary, so every berth stands alone; 2 on every other boundary, so
+    /// the berths come in pairs a boat can share; and so on. The count starts from the boundary clicked.
+    /// </summary>
+    public int DividerInterval
+    {
+        get => _dividerInterval;
+        set => SetSetting(ref _dividerInterval, (int)DesignerDefaults.DividerInterval.Require(value));
+    }
+
+    /// <summary>
+    /// Space left between neighbouring berths, 0–20 m (default 0, berths touching). Berths up to
+    /// 1.5 m apart with nothing between them are still connected (<see cref="Berth.ConnectedBerthIds"/>).
     /// </summary>
     public float BerthGap
     {

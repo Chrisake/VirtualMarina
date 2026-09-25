@@ -6,7 +6,7 @@ Everything the designer creates goes through the normal API (`AddLandArea`, `Add
 
 ## Ready-made panels
 
-Both hosts include a tool panel. It has the design mode switch, a button for every tool (Navigate, Select, Coast, land, pier, berths, land berths, trees, Pedestals, Rename, erase, and the reference image's move and scale-line tools), Undo and Redo buttons, land / pier / berth settings (including the tree coverage slider, berth spacing, separators and pedestals) and the reference image controls. Undo there works like Ctrl+Z in the view (see [Undo and redo](#undo-and-redo)).
+Both hosts include a tool panel. It has the design mode switch, a button for every tool (Navigate, Select, Coast, land, pier, berths, land berths, Dividers, trees, Pedestals, Rename, erase, and the reference image's move and scale-line tools), Undo and Redo buttons, land / pier / berth / divider settings (including the tree coverage slider, berth spacing, pedestals, and the divider type and interval) and the reference image controls. Undo there works like Ctrl+Z in the view (see [Undo and redo](#undo-and-redo)).
 
 **WinForms**
 
@@ -54,6 +54,7 @@ While `IsActive` is true, clicks go to the designer instead of selecting berths.
 | `DrawLandArea` | Click to add corners. Finish with a double-click, a right-click or a click on the first corner | Enter finishes, Backspace removes the last corner, Esc cancels |
 | `DrawPier` | Click the shore end, then the far end. The direction squares up with the quay and the other piers; Alt draws it free, Shift snaps to 15° steps | Esc cancels |
 | `AddBerths` | Click beside a pier where the row starts, then where it ends. Clicking the same spot twice adds one berth | Esc cancels |
+| `PlaceDividers` | Click beside a row of berths to put a divider on the boundary nearest the pointer, or to take away the one there. Alt+click fills the whole row: a divider on every `DividerInterval`-th boundary, counting from the one clicked. Ctrl+click or a right-click only removes — with Alt, every divider along the row. The dividers about to come (green) or go (red) are shown | |
 | `AddLandBerths` | Click a land area where the boat should stand, then click where its bow should point (Shift snaps to 15°; the same spot twice uses `LandBerthHeading`) | Esc cancels |
 | `PlantTrees` | Click a lawn to scatter trees on it, replacing the ones it has. Ctrl+click or right-click removes them | |
 | `Erase` | Click a berth, pier or land area to remove it (piers and land areas take their berths with them, berths take their own dividers). Alt+click on a berth clears every berth off its pier, leaving the pier | Delete removes the element under the pointer |
@@ -92,10 +93,11 @@ While drawing, the view shows a preview on top of everything: outline and rubber
 | `PierBerthingSides` (`Both`, `Left`, `Right`) | `DrawPier` | `Both` |
 | `BerthWidth`, `BerthLength` | `AddBerths`, `AddLandBerths` | 5 m, 12 m |
 | `BerthDepth` (stored as `Berth.MaxDraft`) | `AddBerths` | 3 m |
-| `BerthSeparators` (a `BerthSeparator`) | `AddBerths` | `FingerPiers` |
 | `BerthGap` (space between neighbouring berths, 0–20 m) | `AddBerths` | 0 m |
 | `AlignBerthsToExisting` | `AddBerths` | true |
 | `BerthServices` (`PierServices`: pedestals switched on for the pier) | `AddBerths`, `DrawPier` | `None` |
+| `DividerType` (`FingerPier`, `Piles`, `SinglePile`, `Boom`) | `PlaceDividers` | `FingerPier` |
+| `DividerInterval` (berths between dividers when a whole row is filled, 1–10) | `PlaceDividers` | 1 |
 | `LandBerthHeading` (bow direction in degrees) | `AddLandBerths` | 0° |
 | `BerthNaming` (a `BerthNamingScheme`) | `AddBerths`, `AddLandBerths` | `A-L01`, `A-R01`, ... |
 | `PierNamePattern` | `DrawPier` | `Pier {pier}` |
@@ -110,17 +112,28 @@ Numeric settings are checked against the ranges in `DesignerDefaults` (for examp
 Berths are perpendicular to the pier, bows toward it, on the side you click. A row covers the stretch between the two clicks, one berth every `BerthWidth` + `BerthGap` meters. Places that are already taken are skipped, and berths can't be added on the closed side of a single-sided pier.
 
 - **Where the row starts.** With `AlignBerthsToExisting` (the default) the row lines up with the nearest existing berth edge on that side, or with the pier's start, so a second row continues the first. Turn it off and the first berth starts exactly where you click — at any offset from the pier's start, not a multiple of the berth width.
-- **What separates them.** `BerthSeparators` picks between the berths' own finger piers, nothing at all, or generated `Divider` elements shared by neighbours:
+- **Nothing between them.** A new row has no dividers and no finger piers of its own (`HasFingerPiers` is false), so neighbouring berths start out connected: one boat can lie across them (`Berth.ConnectedBerthIds`, see [Multi-berths](05-multi-berths.md#connected-berths)). Put dividers where they belong afterwards with `PlaceDividers`.
 
-| `BerthSeparator` | Between two berths |
+### Placing dividers
+
+`PlaceDividers` works on the boundaries of a row: the edges of its berths, in order along the pier. Two berths with no more than 1.5 m of water between them share one boundary, halfway across; berths further apart each have an edge of their own. A plain click toggles the divider on the boundary nearest the pointer; Alt+click fills the row, and `DividerInterval` says how often:
+
+| `DividerInterval` | Alt+click on a row of six berths (boundaries 0–6) at boundary 0 |
 |---|---|
-| `FingerPiers` (default) | Each berth's own finger piers (`Berth.HasFingerPiers`); no `Divider` elements |
-| `None` | Nothing: only the gap, at least `MarinaDesigner.MinimumSeparatorGap` (0.3 m) wide |
-| `FingerPier` | One walkable finger pier, 75% of the berth length, between every two berths |
-| `PairedFingerPiers` | A pier at every other boundary: each boat has a pier on one side and its neighbour on the other, and the boats at the ends of the row get one on their outer side |
-| `Piles` | A row of mooring piles |
-| `Boom` | A floating boom |
-| `SinglePile` | One pile at the outer end of the boundary (Mediterranean mooring) |
+| 1 (default) | A divider on every boundary: each berth stands alone |
+| 2 | Boundaries 0, 2, 4 and 6: the berths come in pairs, each boat with a divider on one side and its neighbour on the other |
+| 3 | Boundaries 0, 3 and 6: threes |
+
+The count starts from the boundary clicked, so clicking boundary 1 instead shifts the pattern by one. Boundaries that already have a divider keep it, whatever its type. The same from code:
+
+```csharp
+designer.DividerType = DividerType.Piles;
+designer.DividerInterval = 2;
+designer.PlaceDividers("A", PierSide.Left, along: 0f, wholeRow: true);   // piles on every other boundary
+designer.RemoveDividers("A", PierSide.Left, along: 10f);                 // take one away again
+```
+
+`DividerType` is one of the divider kinds: a walkable `FingerPier` (75% of the berth length), a row of mooring `Piles`, a floating `Boom`, or a `SinglePile` at the outer end of the boundary (Mediterranean mooring). Every kind is a fixed obstacle: two berths with a divider between them are no longer connected, so no boat is put across them. Each placement or removal is one step for `Undo`, and raises `ElementCreating` / `ElementCreated` (with `Tool` = `PlaceDividers` and the `Dividers`) or `ElementErased` (with the divider, or the pier for a whole row).
 
 - **Power and water.** `BerthServices` switches the pier's `Pier.Services` on when berths are added to it. Pedestals are drawn on the berthing sides only and only where berths exist — one for every two berths, standing between them, so each berth has exactly one within reach (a berth left on its own at the end of a row gets one halfway along it).
 
@@ -399,7 +412,7 @@ The camera limits and the water surface grow to cover the image.
 | `DraftChanged` | A point was placed or removed, or a drawing was finished or abandoned | `Tool`, `Change` (`PointAdded`, `PointRemoved`, `Completed`, `Canceled`), `Points` |
 | `ElementCreating` | A drawing is complete and about to be added | `Tool`, `LandArea`, `Pier`, `Berths`, `Dividers`, `Shoreline` (all settable), `Cancel` |
 | `ElementCreated` | The element was added | `Tool`, `LandArea`, `Pier`, `Berths`, `Dividers`, `Shoreline` |
-| `ElementErased` | Something was removed with the eraser (or `Erase`, `EraseBerthsOfPier`, `EraseSelectedBerths`); once per berth for a selection | `Element`, `RemovedBerths`, `RemovedDividers` |
+| `ElementErased` | Something was removed with the eraser (or `Erase`, `EraseBerthsOfPier`, `EraseSelectedBerths`), or dividers with `PlaceDividers` (or `RemoveDividers`); once per berth for a selection | `Element`, `RemovedBerths`, `RemovedDividers` |
 | `ElementRenaming` | A berth or pier was clicked with `DesignTool.Rename` | `Scope`, `Berth`, `Pier`, `CurrentName`, `BerthPattern`, settable `NewName`, `NewPierId`, `NewBerthPattern`, `Cancel` |
 | `TreesPlanted` | Trees were scattered or removed | `LandArea`, `PreviousCount` |
 | `ActionUndone` | `Undo()` reverted a change | `Description`, `RemainingSteps` |

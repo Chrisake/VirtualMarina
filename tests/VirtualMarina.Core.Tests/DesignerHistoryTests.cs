@@ -81,8 +81,9 @@ public class DesignerHistoryTests
     public void UndoAndRedo_WalkBackAndForthThroughErasures_AndRenames()
     {
         var marina = WithPier(out var designer);
-        designer.BerthSeparators = BerthSeparator.Piles;
+        designer.DividerType = DividerType.Piles;
         designer.CreateBerths("A", PierSide.Left, 0f, 15f);
+        designer.PlaceDividers("A", PierSide.Left, 0f, wholeRow: true);
         var dividers = marina.GetDividers().Count;
         designer.Erase(marina.GetBerth("A-L02")!);
         designer.RenameBerth("A-L01", "Visitor");

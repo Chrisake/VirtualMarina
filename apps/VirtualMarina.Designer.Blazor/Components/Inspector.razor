@@ -92,13 +92,9 @@
                 @Number("vm-berth-length", DesignerRanges.BerthLength, Designer.BerthLength, (d, v) => d.BerthLength = v)
                 <label class="vm-grid__label" for="vm-berth-depth" title="@Strings.BerthDepthTip">@Strings.BerthDepth</label>
                 @Number("vm-berth-depth", DesignerRanges.BerthDepth, Designer.BerthDepth, (d, v) => d.BerthDepth = v)
-                <label class="vm-grid__label" for="vm-berth-separator">@Strings.BerthSeparator</label>
-                <select id="vm-berth-separator" value="@Designer.BerthSeparators" @onchange="e => Apply(d => d.BerthSeparators = Parse<BerthSeparator>(e))">
-                    @foreach (var separator in DesignerChoices.Separators) { <option value="@separator">@DesignerChoices.Describe(separator)</option> }
-                </select>
                 <label class="vm-grid__label" for="vm-berth-gap" title="@Strings.BerthGapTip">@Strings.BerthGap</label>
                 @Number("vm-berth-gap", DesignerRanges.BerthGap, Designer.BerthGap, (d, v) => d.BerthGap = v)
-                <span class="vm-grid__wide vm-hint">@DesignerText.SeparatorHint(Designer.BerthSeparators, Designer.BerthWidth, Designer.BerthGap)</span>
+                <span class="vm-grid__wide vm-hint">@Strings.BerthDividersHint</span>
                 <label class="vm-grid__label" for="vm-berth-services" title="@Strings.BerthServicesTip">@Strings.BerthServices</label>
                 <select id="vm-berth-services" value="@Designer.BerthServices" @onchange="e => Apply(d => d.BerthServices = Parse<PierServices>(e))">
                     @foreach (var services in DesignerChoices.Services) { <option value="@services">@DesignerChoices.Describe(services)</option> }
@@ -127,6 +123,23 @@
             </div>
             <div class="vm-hint">@Strings.LandBerthHint</div>
             @BerthNaming(landVariant: true)
+        </section>
+    }
+
+    @if (Designer.Tool == DesignTool.PlaceDividers)
+    {
+        <section class="vm-card" aria-labelledby="vm-card-dividers">
+            <h3 id="vm-card-dividers" class="vm-card__title">@Strings.CardDividers</h3>
+            <div class="vm-grid">
+                <label class="vm-grid__label" for="vm-divider-type">@Strings.DividerType</label>
+                <select id="vm-divider-type" value="@Designer.DividerType" @onchange="e => Apply(d => d.DividerType = Parse<DividerType>(e))">
+                    @foreach (var type in DesignerChoices.DividerTypes) { <option value="@type">@DesignerChoices.Describe(type)</option> }
+                </select>
+                <label class="vm-grid__label" for="vm-divider-interval" title="@Strings.DividerIntervalTip">@Strings.DividerInterval</label>
+                @Number("vm-divider-interval", DesignerRanges.DividerInterval, Designer.DividerInterval, (d, v) => d.DividerInterval = (int)MathF.Round(v))
+            </div>
+            <div class="vm-hint">@Strings.DividersHint</div>
+            <div class="vm-hint">@Strings.DividersConnectHint</div>
         </section>
     }
 

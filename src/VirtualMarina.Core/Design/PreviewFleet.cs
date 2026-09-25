@@ -1,7 +1,5 @@
 using System.Globalization;
-using System.Numerics;
 using VirtualMarina.Core.Domain;
-using VirtualMarina.Core.Mathematics;
 
 namespace VirtualMarina.Core.Design;
 
@@ -163,53 +161,25 @@ public static class PreviewFleet
         };
     }
 
-    /// <summary>Berths lying side by side in the same row, by berth id — the pairs a wide boat can moor across.</summary>
+    /// <summary>The berths each berth is connected to, by berth id — the pairs a wide boat can moor across.</summary>
     /// <remarks>
-    /// Worked out from the geometry rather than from the berth names, which follow no rule the designer has to keep
-    /// to. Two berths are side by side when they face the same way, sit level with one another along the pier, and
-    /// stand about their own two half-widths apart across it. The two sides of a double pier face opposite ways, so
-    /// the heading alone keeps a berth from being paired with the one backing onto it.
+    /// Taken from <see cref="Berth.ConnectedBerthIds"/>, which the visualizer works out from the geometry: berths facing
+    /// the same way, level with one another and side by side, with no divider or finger pier between them. So the preview
+    /// never puts a boat across a divider, nor across the two sides of a double pier.
     /// </remarks>
     private static Dictionary<string, List<Berth>> Neighbours(IReadOnlyList<Berth> berths)
     {
+        var byId = new Dictionary<string, Berth>(StringComparer.OrdinalIgnoreCase);
+        foreach (var berth in berths) byId.TryAdd(berth.Id, berth);
+
         var found = new Dictionary<string, List<Berth>>(StringComparer.OrdinalIgnoreCase);
-
-        // Only berths on the same pier, or ashore in the same land area, can be in the same row.
-        foreach (var row in berths.GroupBy(berth => berth.PierId ?? berth.LandAreaId ?? string.Empty))
+        foreach (var berth in berths)
         {
-            var group = row.ToArray();
-            for (var i = 0; i < group.Length; i++)
-            {
-                for (var j = i + 1; j < group.Length; j++)
-                {
-                    var (a, b) = (group[i], group[j]);
-                    if (!SideBySide(a, b)) continue;
-
-                    Add(found, a.Id, b);
-                    Add(found, b.Id, a);
-                }
-            }
+            var mates = berth.ConnectedBerthIds.Select(id => byId.TryGetValue(id, out var mate) ? mate : null).OfType<Berth>().ToList();
+            if (mates.Count > 0) found.TryAdd(berth.Id, mates);
         }
 
         return found;
-
-        static void Add(Dictionary<string, List<Berth>> map, string id, Berth mate)
-        {
-            if (!map.TryGetValue(id, out var list)) map[id] = list = new List<Berth>(2);
-            list.Add(mate);
-        }
-    }
-
-    /// <summary>Facing the same way, level along the pier, and about their two half-widths apart across it.</summary>
-    private static bool SideBySide(Berth a, Berth b)
-    {
-        if (MathF.Abs(MarinaMath.DeltaAngle(a.HeadingDegrees, b.HeadingDegrees)) > 5f) return false;
-
-        var offset = b.Center - a.Center;
-        var across = MathF.Abs(Vector2.Dot(offset, a.Right));
-        var along = MathF.Abs(Vector2.Dot(offset, a.Forward));
-        var apart = (a.Width + b.Width) * 0.5f;
-        return along <= MathF.Max(a.Length, b.Length) * 0.25f && across >= apart * 0.6f && across <= apart * 1.4f;
     }
 
     private static bool Fits(BoatDimensions size, float length, float width) =>

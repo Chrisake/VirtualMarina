@@ -194,7 +194,6 @@ static class VirtualMarina.Core.Api.DefaultPopupContent
     static VirtualMarina.Core.Api.BerthTooltip ForBerths(IReadOnlyList<VirtualMarina.Core.Domain.Berth> berths, Func<string, VirtualMarina.Core.Domain.Pier?> pierLookup, VirtualMarina.Core.Api.StatusColorScheme colors, Func<string, VirtualMarina.Core.Domain.LandArea?>? landLookup = null)
 
 static class VirtualMarina.Core.Api.DisplayNames
-    static string GetDisplayName(VirtualMarina.Core.Design.BerthSeparator separator)
     static string GetDisplayName(VirtualMarina.Core.Design.DesignTool tool)
     static string GetDisplayName(VirtualMarina.Core.Domain.DividerType type)
     static string GetDisplayName(VirtualMarina.Core.Domain.HinterlandScenery scenery)
@@ -780,15 +779,6 @@ sealed record VirtualMarina.Core.Design.BerthNamingScheme : IEquatable<VirtualMa
     string RightSide { get; init; }
     string? LandPattern { get; init; }
 
-enum VirtualMarina.Core.Design.BerthSeparator : IComparable, IConvertible, IFormattable, ISpanFormattable
-    Boom = 4
-    FingerPier = 2
-    FingerPiers = 0
-    None = 1
-    PairedFingerPiers = 6
-    Piles = 3
-    SinglePile = 5
-
 sealed class VirtualMarina.Core.Design.DesignActionFailedEventArgs : EventArgs
     .ctor(string description, Exception exception)
     Exception Exception { get; }
@@ -876,6 +866,7 @@ enum VirtualMarina.Core.Design.DesignTool : IComparable, IConvertible, IFormatta
     MeasureScale = 6
     MoveReferenceImage = 5
     Navigate = 0
+    PlaceDividers = 13
     PlantTrees = 7
     Rename = 9
     SelectArea = 11
@@ -895,6 +886,7 @@ static class VirtualMarina.Core.Design.DesignerLimits
     static VirtualMarina.Core.Design.DesignerSettingRange BerthGap { get; }
     static VirtualMarina.Core.Design.DesignerSettingRange BerthLength { get; }
     static VirtualMarina.Core.Design.DesignerSettingRange BerthWidth { get; }
+    static VirtualMarina.Core.Design.DesignerSettingRange DividerInterval { get; }
     static VirtualMarina.Core.Design.DesignerSettingRange FogFactor { get; }
     static VirtualMarina.Core.Design.DesignerSettingRange LandBerthHeading { get; }
     static VirtualMarina.Core.Design.DesignerSettingRange LandHeight { get; }
@@ -922,7 +914,7 @@ readonly record struct VirtualMarina.Core.Design.DesignerSettingRange : IEquatab
 sealed record VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMarina.Core.Design.DesignerSettings>
     .ctor()
     VirtualMarina.Core.Design.BerthNamingScheme BerthNaming { get; init; }
-    VirtualMarina.Core.Design.BerthSeparator BerthSeparators { get; init; }
+    VirtualMarina.Core.Domain.DividerType DividerType { get; init; }
     VirtualMarina.Core.Domain.HinterlandScenery Scenery { get; init; }
     VirtualMarina.Core.Domain.LandKind LandKind { get; init; }
     VirtualMarina.Core.Domain.PierServices BerthServices { get; init; }
@@ -940,6 +932,7 @@ sealed record VirtualMarina.Core.Design.DesignerSettings : IEquatable<VirtualMar
     float PierWidth { get; init; }
     float SnapDistancePixels { get; init; }
     float TreeDensity { get; init; }
+    int DividerInterval { get; init; }
     override bool Equals(object? obj)
     override int GetHashCode()
     override string ToString()
@@ -958,6 +951,8 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     IReadOnlyList<Vector2>? ShorelineAwaitingSide { get; }
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> CreateBerths(string pierId, VirtualMarina.Core.Domain.PierSide side, float fromAlong, float toAlong)
     IReadOnlyList<VirtualMarina.Core.Domain.Berth> SetBerthServices(string berthId, bool wholeSide = false)
+    IReadOnlyList<VirtualMarina.Core.Domain.Divider> PlaceDividers(string pierId, VirtualMarina.Core.Domain.PierSide side, float along, bool wholeRow = false)
+    IReadOnlyList<VirtualMarina.Core.Domain.Divider> RemoveDividers(string pierId, VirtualMarina.Core.Domain.PierSide side, float along, bool wholeRow = false)
     IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, bool add = false)
     IReadOnlyList<string> SelectBerthsInArea(Vector2 from, Vector2 to, float headingDegrees, bool add = false)
     ValueTuple<Vector2, Vector2>? ReferenceImageBounds { get; }
@@ -968,12 +963,12 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     Vector2? PointerPosition { get; }
     VirtualMarina.Core.Design.BerthNamePlan PlanBerthNames(string pierId, string? pattern)
     VirtualMarina.Core.Design.BerthNamingScheme BerthNaming { get; set; }
-    VirtualMarina.Core.Design.BerthSeparator BerthSeparators { get; set; }
     VirtualMarina.Core.Design.DesignActionScope BeginAction(string description)
     VirtualMarina.Core.Design.DesignTool Tool { get; set; }
     VirtualMarina.Core.Design.ReferenceImage? ReferenceImage { get; }
     VirtualMarina.Core.Domain.Berth RenameBerth(string berthId, string newBerthId)
     VirtualMarina.Core.Domain.Berth? CreateLandBerth(string landAreaId, Vector2 position, float? headingDegrees = null)
+    VirtualMarina.Core.Domain.DividerType DividerType { get; set; }
     VirtualMarina.Core.Domain.HinterlandScenery Scenery { get; set; }
     VirtualMarina.Core.Domain.LandArea? CreateLandArea(IReadOnlyList<Vector2> outline)
     VirtualMarina.Core.Domain.LandArea? PlantTrees(string landAreaId, float? treesPer1000SquareMeters = null)
@@ -1012,7 +1007,6 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     bool TryUndo()
     bool Undo()
     const float MinimumPierLength = 1
-    const float MinimumSeparatorGap = 0.3
     const int MaxUndoSteps = 50
     event EventHandler<VirtualMarina.Core.Design.DesignActionFailedEventArgs>? ActionFailed
     event EventHandler<VirtualMarina.Core.Design.DesignActionRedoneEventArgs>? ActionRedone
@@ -1040,6 +1034,7 @@ sealed class VirtualMarina.Core.Design.MarinaDesigner
     float ReferenceImageOpacity { get; set; }
     float SnapDistancePixels { get; set; }
     float TreeDensity { get; set; }
+    int DividerInterval { get; set; }
     int EraseSelectedBerths()
     int RedoCount { get; }
     int UndoCount { get; }
@@ -1105,6 +1100,7 @@ sealed class VirtualMarina.Core.Design.ScaleLineDrawnEventArgs : EventArgs
 sealed record VirtualMarina.Core.Domain.Berth : IEquatable<VirtualMarina.Core.Domain.Berth>
     .ctor(string id, string pierId, Vector2 center, float headingDegrees, float length, float width)
     IReadOnlyDictionary<string, string> Metadata { get; init; }
+    IReadOnlyList<string> ConnectedBerthIds { get; }
     Vector2 Center { get; init; }
     Vector2 Forward { get; }
     Vector2 LocalX { get; }
@@ -1326,6 +1322,7 @@ sealed record VirtualMarina.Core.Domain.MarinaLayout : IEquatable<VirtualMarina.
     IReadOnlyList<VirtualMarina.Core.Domain.Pier> Piers { get; init; }
     IReadOnlyList<string> Validate()
     ValueTuple<Vector2, Vector2> ComputeBounds()
+    VirtualMarina.Core.Domain.MarinaLayout WithBerthConnections()
     VirtualMarina.Core.Domain.MarineTraffic? MarineTraffic { get; init; }
     VirtualMarina.Core.Domain.Shoreline? Shoreline { get; init; }
     bool Equals(VirtualMarina.Core.Domain.MarinaLayout? other)
@@ -2153,7 +2150,7 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     IReadOnlyList<string> Validate()
     T GetExtension<T>(string key)
     T GetExtension<T>(string key, JsonTypeInfo<T> typeInfo)
-    Task SaveAsync(Stream utf8Json, bool indented = true, CancellationToken cancellationToken = null)
+    Task SaveAsync(Stream utf8Json, bool indented = true, bool stripOccupancy = true, CancellationToken cancellationToken = null)
     Version Version { get; }
     VirtualMarina.Core.Api.BerthLabelMode BerthLabels { get; set; }
     VirtualMarina.Core.Camera.CameraPose? Camera { get; set; }
@@ -2162,8 +2159,8 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     VirtualMarina.Core.Rendering.MarinaStyle Style { get; set; }
     VirtualMarina.Core.Serialization.ReferenceImageRecord? ReferenceImage { get; set; }
     bool IsFromNewerVersion { get; }
-    byte[] Save(bool indented = true)
-    byte[] ToUtf8Bytes(bool indented = true)
+    byte[] Save(bool indented = true, bool stripOccupancy = true)
+    byte[] ToUtf8Bytes(bool indented = true, bool stripOccupancy = true)
     const string FileDialogFilter = "Marina design (*.marina.json)|*.marina.json|JSON files (*.json)|*.json|All files (*.*)|*.*"
     const string FileExtension = ".marina.json"
     const string FormatName = "virtualmarina.marina"
@@ -2175,11 +2172,11 @@ sealed class VirtualMarina.Core.Serialization.MarinaDocument
     static VirtualMarina.Core.Serialization.MarinaDocument Parse(ReadOnlySpan<byte> utf8Json, bool allowNewerVersion = false)
     static VirtualMarina.Core.Serialization.MarinaDocument Parse(string json, bool allowNewerVersion = false)
     string Name { get; set; }
-    string ToJson(bool indented = true)
+    string ToJson(bool indented = true, bool stripOccupancy = true)
     string? Description { get; set; }
     string? Generator { get; set; }
     void ApplyTo(VirtualMarina.Core.Api.MarinaVisualizer marina, bool applyStyle = true, bool applyCamera = true, bool applyDesignerSettings = true, bool applyReferenceImage = true)
-    void Save(string path, bool indented = true)
+    void Save(string path, bool indented = true, bool stripOccupancy = true)
     void SetExtension<T>(string key, T value)
     void SetExtension<T>(string key, T value, JsonTypeInfo<T> typeInfo)
     void UpdateFrom(VirtualMarina.Core.Api.MarinaVisualizer marina, string? generator = null, bool includeCamera = true, bool includeDesignerSettings = true, bool includeReferenceImage = true)

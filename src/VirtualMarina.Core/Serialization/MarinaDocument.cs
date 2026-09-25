@@ -363,11 +363,23 @@ public sealed class MarinaDocument
 
     /// <summary>Writes the document as JSON text.</summary>
     /// <param name="indented">Lay the JSON out over several lines (default true); false gives the most compact file.</param>
-    public string ToJson(bool indented = true) => JsonSerializer.Serialize(ToDto(SavedUtc ?? DateTimeOffset.UtcNow), TypeInfo(indented));
+    /// <param name="stripOccupancy">
+    /// Write the marina empty (default true): every berth Free and enabled with no boat, and no multi-berths, so the file
+    /// is the layout alone. The document itself keeps its occupancy either way. Pass false to write the berths' status,
+    /// boats and interaction flags, and the multi-berths, as they are.
+    /// </param>
+    public string ToJson(bool indented = true, bool stripOccupancy = true) =>
+        JsonSerializer.Serialize(ToDto(SavedUtc ?? DateTimeOffset.UtcNow, stripOccupancy), TypeInfo(indented));
 
     /// <summary>Writes the document as UTF-8 JSON, ready to store or send.</summary>
     /// <param name="indented">Lay the JSON out over several lines (default true); false gives the most compact file.</param>
-    public byte[] ToUtf8Bytes(bool indented = true) => JsonSerializer.SerializeToUtf8Bytes(ToDto(SavedUtc ?? DateTimeOffset.UtcNow), TypeInfo(indented));
+    /// <param name="stripOccupancy">
+    /// Write the marina empty (default true): every berth Free and enabled with no boat, and no multi-berths, so the file
+    /// is the layout alone. The document itself keeps its occupancy either way. Pass false to write the berths' status,
+    /// boats and interaction flags, and the multi-berths, as they are.
+    /// </param>
+    public byte[] ToUtf8Bytes(bool indented = true, bool stripOccupancy = true) =>
+        JsonSerializer.SerializeToUtf8Bytes(ToDto(SavedUtc ?? DateTimeOffset.UtcNow, stripOccupancy), TypeInfo(indented));
 
     /// <summary>Reads a document from a file.</summary>
     /// <param name="path">Path of the <c>.marina.json</c> file.</param>
@@ -404,12 +416,17 @@ public sealed class MarinaDocument
     /// <summary>Writes the document to a file (UTF-8), and stamps <see cref="SavedUtc"/> once it is safely written.</summary>
     /// <param name="path">Where to write it.</param>
     /// <param name="indented">Lay the JSON out over several lines (default true).</param>
+    /// <param name="stripOccupancy">
+    /// Write the marina empty (default true): every berth Free and enabled with no boat, and no multi-berths, so the file
+    /// is the layout alone. The document itself keeps its occupancy either way. Pass false to write the berths' status,
+    /// boats and interaction flags, and the multi-berths, as they are.
+    /// </param>
     /// <remarks>
     /// The file is first written in full to a temporary file in the same folder, which then takes its place in one step. A crash
     /// or a full disk part-way through leaves the old file as it was, never half of the new one. If anything fails,
     /// <see cref="SavedUtc"/> is left unchanged.
     /// </remarks>
-    public void Save(string path, bool indented = true)
+    public void Save(string path, bool indented = true, bool stripOccupancy = true)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var target = Path.GetFullPath(path);
@@ -420,7 +437,7 @@ public sealed class MarinaDocument
         {
             using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                JsonSerializer.Serialize(stream, ToDto(savedUtc), TypeInfo(indented));
+                JsonSerializer.Serialize(stream, ToDto(savedUtc, stripOccupancy), TypeInfo(indented));
                 stream.Flush(flushToDisk: true);
             }
 
@@ -437,15 +454,20 @@ public sealed class MarinaDocument
 
     /// <summary>Writes the document as the bytes of a marina file (UTF-8), and stamps <see cref="SavedUtc"/>.</summary>
     /// <param name="indented">Lay the JSON out over several lines (default true).</param>
+    /// <param name="stripOccupancy">
+    /// Write the marina empty (default true): every berth Free and enabled with no boat, and no multi-berths, so the file
+    /// is the layout alone. The document itself keeps its occupancy either way. Pass false to write the berths' status,
+    /// boats and interaction flags, and the multi-berths, as they are.
+    /// </param>
     /// <returns>The file contents, ready to store in a database or send; <see cref="Load(byte[], bool)"/> reads them back.</returns>
     /// <remarks>
     /// Unlike <see cref="ToUtf8Bytes"/>, which leaves the document as it is, this counts as saving it: the bytes carry the
     /// time of this save, and <see cref="SavedUtc"/> is set to it.
     /// </remarks>
-    public byte[] Save(bool indented = true)
+    public byte[] Save(bool indented = true, bool stripOccupancy = true)
     {
         var savedUtc = DateTimeOffset.UtcNow;
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(ToDto(savedUtc), TypeInfo(indented));
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(ToDto(savedUtc, stripOccupancy), TypeInfo(indented));
         SavedUtc = savedUtc;
         return bytes;
     }
@@ -453,13 +475,18 @@ public sealed class MarinaDocument
     /// <summary>Writes the document to a stream as UTF-8 JSON, and stamps <see cref="SavedUtc"/> once it is written.</summary>
     /// <param name="utf8Json">Where to write it. It is flushed but not closed.</param>
     /// <param name="indented">Lay the JSON out over several lines (default true).</param>
+    /// <param name="stripOccupancy">
+    /// Write the marina empty (default true): every berth Free and enabled with no boat, and no multi-berths, so the file
+    /// is the layout alone. The document itself keeps its occupancy either way. Pass false to write the berths' status,
+    /// boats and interaction flags, and the multi-berths, as they are.
+    /// </param>
     /// <param name="cancellationToken">Stops the write.</param>
     /// <returns>A task that completes when the document is written.</returns>
-    public async Task SaveAsync(Stream utf8Json, bool indented = true, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(Stream utf8Json, bool indented = true, bool stripOccupancy = true, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(utf8Json);
         var savedUtc = DateTimeOffset.UtcNow;
-        await JsonSerializer.SerializeAsync(utf8Json, ToDto(savedUtc), TypeInfo(indented), cancellationToken).ConfigureAwait(false);
+        await JsonSerializer.SerializeAsync(utf8Json, ToDto(savedUtc, stripOccupancy), TypeInfo(indented), cancellationToken).ConfigureAwait(false);
         await utf8Json.FlushAsync(cancellationToken).ConfigureAwait(false);
         SavedUtc = savedUtc;
     }
@@ -482,7 +509,7 @@ public sealed class MarinaDocument
         }
     }
 
-    private DocumentDto ToDto(DateTimeOffset savedUtc)
+    private DocumentDto ToDto(DateTimeOffset savedUtc, bool stripOccupancy)
     {
         var dto = new DocumentDto
         {
@@ -491,7 +518,7 @@ public sealed class MarinaDocument
             Generator = Generator,
             SavedUtc = savedUtc,
             Marina = new MarinaDto { Name = Name, Description = Description, Extra = Restore("marina") },
-            Layout = WriteLayout(),
+            Layout = WriteLayout(stripOccupancy),
             Presentation = PresentationDto.From(Style, BerthLabels),
             Camera = Camera is { } pose
                 ? new CameraDto { Target = pose.Target, YawDegrees = pose.YawDegrees, PitchDegrees = pose.PitchDegrees, Distance = pose.Distance, Extra = Restore("camera") }
@@ -702,7 +729,8 @@ public sealed class MarinaDocument
         };
     }
 
-    private LayoutDto WriteLayout()
+    /// <summary>The layout as it goes in the file; see the <c>stripOccupancy</c> parameter of <see cref="Save(string, bool, bool)"/>.</summary>
+    private LayoutDto WriteLayout(bool stripOccupancy)
     {
         var layout = new LayoutDto
         {
@@ -720,8 +748,8 @@ public sealed class MarinaDocument
             }).ToList(),
             Piers = Layout.Piers.Select(pier => Attach(PierDto.From(pier), "pier", pier.Id)).ToList(),
             Dividers = Layout.Dividers.Select(divider => Attach(DividerDto.From(divider), "divider", divider.Id)).ToList(),
-            Berths = Layout.Berths.Select(berth => Attach(BerthDto.From(berth), "berth", berth.Id)).ToList(),
-            MultiBerths = Layout.MultiBerths.Count == 0
+            Berths = Layout.Berths.Select(berth => Attach(BerthDto.From(berth, withOccupancy: !stripOccupancy), "berth", berth.Id)).ToList(),
+            MultiBerths = stripOccupancy || Layout.MultiBerths.Count == 0
                 ? null
                 : Layout.MultiBerths.Select(group =>
                 {

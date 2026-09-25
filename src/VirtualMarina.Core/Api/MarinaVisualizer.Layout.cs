@@ -570,6 +570,7 @@ public sealed partial class MarinaVisualizer
         _updateDepth--;
         if (_updateDepth > 0) return;
 
+        RefreshConnections();
         if (_pendingChanges.Count > 0)
         {
             var changes = _pendingChanges.ToArray();
@@ -720,8 +721,17 @@ public sealed partial class MarinaVisualizer
             Id = existing.Id,
             ExternalData = existing.ExternalData,
             MultiBerthId = keepMultiBerthId && replacement.MultiBerthId is null ? existing.MultiBerthId : replacement.MultiBerthId,
+
+            // Connections are worked out here, never taken from the caller; a berth that moved has them worked out again.
+            ConnectedBerthIds = existing.ConnectedBerthIds,
         });
         _berths[existing.Id] = normalized;
+        if (existing.Bounds != normalized.Bounds || existing.HasFingerPiers != normalized.HasFingerPiers ||
+            !IdComparer.Equals(existing.PierId, normalized.PierId) || !IdComparer.Equals(existing.LandAreaId, normalized.LandAreaId))
+        {
+            _connectionsDirty = true;
+        }
+
         FollowBerthChange(existing, normalized);
 
         if (existing.Status != normalized.Status || existing.Boat != normalized.Boat)

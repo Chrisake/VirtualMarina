@@ -595,9 +595,6 @@ Runtime      {4}
   <data name="BerthDepthTip">
     <value>Water depth, stored as the berth's maximum draft.</value>
   </data>
-  <data name="BerthSeparator">
-    <value>Separator</value>
-  </data>
   <data name="BerthGap">
     <value>Gap (m)</value>
   </data>
@@ -615,31 +612,6 @@ Runtime      {4}
   </data>
   <data name="BerthHint">
     <value>Click beside a pier where the row starts, then where it ends. Clear the tick above to start the row exactly where you click.</value>
-  </data>
-  <data name="SeparatorHintFingerPiers">
-    <value>Each berth gets its own pair of short finger piers.</value>
-  </data>
-  <data name="SeparatorHintNone">
-    <value>Nothing between the berths but a gap, so boats lie side by side.</value>
-  </data>
-  <data name="SeparatorHintFingerPier">
-    <value>One walkable pier between every two berths.</value>
-  </data>
-  <data name="SeparatorHintPiles">
-    <value>A row of mooring piles between every two berths.</value>
-  </data>
-  <data name="SeparatorHintBoom">
-    <value>A floating boom between every two berths.</value>
-  </data>
-  <data name="SeparatorHintPaired">
-    <value>A pier every other berth: each boat has a pier on one side and a neighbour on the other.</value>
-  </data>
-  <data name="SeparatorHintSinglePile">
-    <value>One mooring pile at the outer end of every berth boundary (Mediterranean mooring).</value>
-  </data>
-  <data name="SeparatorHintSpacing" xml:space="preserve">
-    <value> Berths are {0:0.##} m apart, {1:0.##} m from center to center.</value>
-    <comment>Appended to the separator hint. {0} = gap, {1} = spacing.</comment>
   </data>
   <data name="BerthNamingHeading">
     <value>Names</value>
@@ -734,6 +706,30 @@ Runtime      {4}
   <data name="ServicesInheritHint">
     <value>A berth left alone takes whatever its pier offers, so only the ones you change carry their own setting.</value>
   </data>
+  <data name="CardDividers">
+    <value>Dividers</value>
+  </data>
+  <data name="TitleDividers">
+    <value>Dividers</value>
+  </data>
+  <data name="DividerType">
+    <value>Type</value>
+  </data>
+  <data name="DividerInterval">
+    <value>Every (berths)</value>
+  </data>
+  <data name="DividerIntervalTip">
+    <value>When a whole row is filled: 1 puts a divider between every two berths, 2 between every other pair, and so on, counting from the boundary clicked.</value>
+  </data>
+  <data name="DividersHint">
+    <value>Click beside a row of berths to put a divider on the nearest boundary, or to take away the one there. Alt+click fills the whole row; Ctrl+click or a right-click removes (with Alt, every divider along the row).</value>
+  </data>
+  <data name="DividersConnectHint">
+    <value>Two berths with a divider between them can no longer be joined for one boat.</value>
+  </data>
+  <data name="BerthDividersHint">
+    <value>New berths have nothing between them; put dividers where they are wanted with the Dividers tool.</value>
+  </data>
   <data name="CardRename">
     <value>Rename</value>
   </data>
@@ -804,6 +800,12 @@ Change the pattern and try again.</value>
   </data>
   <data name="ToolServicesTip">
     <value>Give berths power and water; Alt or Ctrl changes a whole side of a pier</value>
+  </data>
+  <data name="ToolDividers">
+    <value>Dividers</value>
+  </data>
+  <data name="ToolDividersTip">
+    <value>Put finger piers, piles or booms between berths; Alt fills a whole row</value>
   </data>
   <data name="ToolSelect">
     <value>Select</value>

@@ -149,11 +149,16 @@ public sealed partial class MarinaDesigner
 
     /// <summary>
     /// Adds a row of berths of the current <see cref="BerthWidth"/>, <see cref="BerthLength"/> and <see cref="BerthDepth"/> on one side of a
-    /// pier, covering the stretch between two distances from the pier's start (equal distances add one berth), separated by
-    /// <see cref="BerthSeparators"/> and <see cref="BerthGap"/>. With <see cref="AlignBerthsToExisting"/> the row lines up with existing
-    /// berths on that side; otherwise it starts exactly at <paramref name="fromAlong"/>. Places already taken are skipped, and
-    /// <see cref="BerthServices"/> switches the pier's pedestals on. Returns the berths added (empty when none fit or a handler cancels).
+    /// pier, covering the stretch between two distances from the pier's start (equal distances add one berth), <see cref="BerthGap"/>
+    /// apart. With <see cref="AlignBerthsToExisting"/> the row lines up with existing berths on that side; otherwise it starts exactly at
+    /// <paramref name="fromAlong"/>. Places already taken are skipped, and <see cref="BerthServices"/> switches the pier's pedestals on.
+    /// Returns the berths added (empty when none fit or a handler cancels).
     /// </summary>
+    /// <remarks>
+    /// The berths have nothing between them — no finger piers of their own and no dividers — so neighbours start out
+    /// connected (<see cref="Berth.ConnectedBerthIds"/>). Put dividers where they are wanted afterwards with
+    /// <see cref="PlaceDividers"/>.
+    /// </remarks>
     /// <param name="pierId">The pier.</param>
     /// <param name="side">Side of the pier.</param>
     /// <param name="fromAlong">Distance from the pier's start where the row begins.</param>
@@ -168,14 +173,14 @@ public sealed partial class MarinaDesigner
 
         using (BeginUpdate())
         {
-            var (berths, dividers) = Planner.Plan(pier, side, fromAlong, toAlong, RowSettings, preview: false);
+            var berths = Planner.Plan(pier, side, fromAlong, toAlong, RowSettings, preview: false);
             if (berths.Count == 0)
             {
                 FinishDraft(DesignDraftChange.Canceled);
                 return Array.Empty<Berth>();
             }
 
-            var args = new DesignElementCreatingEventArgs(DesignTool.AddBerths, null, null, berths, dividers);
+            var args = new DesignElementCreatingEventArgs(DesignTool.AddBerths, null, null, berths, Array.Empty<Divider>());
             ElementCreating?.Invoke(this, args);
             if (args.Cancel || args.Berths.Count == 0)
             {
@@ -209,6 +214,98 @@ public sealed partial class MarinaDesigner
             ElementCreated?.Invoke(this, new DesignElementCreatedEventArgs(DesignTool.AddBerths, null, null, added, addedDividers));
             return added;
         }
+    }
+
+    /// <summary>
+    /// Puts dividers of the current <see cref="DividerType"/> on the boundaries of the berths along one side of a pier: the
+    /// boundary nearest <paramref name="along"/>, or with <paramref name="wholeRow"/> every <see cref="DividerInterval"/>-th
+    /// boundary of the row, counting from that one. Boundaries that already have a divider keep it. Raises
+    /// <see cref="ElementCreating"/> and <see cref="ElementCreated"/>, and records one step for <see cref="Undo"/>.
+    /// </summary>
+    /// <remarks>
+    /// This is what <see cref="DesignTool.PlaceDividers"/> does with Alt held, or with a click on a boundary that has no
+    /// divider yet. Berths with a divider between them are no longer connected (<see cref="Berth.ConnectedBerthIds"/>).
+    /// </remarks>
+    /// <param name="pierId">The pier.</param>
+    /// <param name="side">Side of the pier.</param>
+    /// <param name="along">Distance from the pier's start of the boundary wanted; the nearest one is taken.</param>
+    /// <param name="wholeRow">True to fill the whole row, false for the one boundary.</param>
+    /// <returns>The dividers added; empty when that side has no berths, every boundary wanted already had one, or a handler canceled.</returns>
+    /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
+    public IReadOnlyList<Divider> PlaceDividers(string pierId, PierSide side, float along, bool wholeRow = false)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        var pier = Marina.GetPier(pierId) ?? throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
+        if (DividerSlots(pier, side, along, wholeRow) is not { Count: > 0 } slots) return Array.Empty<Divider>();
+
+        var planned = Dividers.Plan(pier, side, slots, _dividerType);
+        if (planned.Count == 0) return Array.Empty<Divider>();
+
+        using (BeginUpdate())
+        {
+            var args = new DesignElementCreatingEventArgs(DesignTool.PlaceDividers, null, null, Array.Empty<Berth>(), planned);
+            ElementCreating?.Invoke(this, args);
+            if (args.Cancel || args.Dividers is not { Count: > 0 } wanted) return Array.Empty<Divider>();
+
+            Marina.AddDividers(wanted);
+            var added = wanted.Select(divider => Marina.GetDivider(divider.Id)!).ToArray();
+            _history.Record(ElementsCommand.Added(dividers: added), Strings.Plural("UndoPlaceDividers", added.Length, added.Length));
+            InvalidateOverlay();
+            ElementCreated?.Invoke(this, new DesignElementCreatedEventArgs(DesignTool.PlaceDividers, null, null, Array.Empty<Berth>(), added));
+            RaiseStateChanged();
+            return added;
+        }
+    }
+
+    /// <summary>
+    /// Takes away the dividers on the boundaries of the berths along one side of a pier: the one on the boundary nearest
+    /// <paramref name="along"/>, or with <paramref name="wholeRow"/> every divider along the row. Raises
+    /// <see cref="ElementErased"/> — with the divider, or for a whole row with the pier — and records one step for
+    /// <see cref="Undo"/>.
+    /// </summary>
+    /// <remarks>
+    /// This is what <see cref="DesignTool.PlaceDividers"/> does with Ctrl held, or with a right-click. The berths either side
+    /// of a divider taken away are connected again (<see cref="Berth.ConnectedBerthIds"/>), when nothing else stands between them.
+    /// </remarks>
+    /// <param name="pierId">The pier.</param>
+    /// <param name="side">Side of the pier.</param>
+    /// <param name="along">Distance from the pier's start of the boundary; the nearest one is taken.</param>
+    /// <param name="wholeRow">True to clear the whole row, false for the one boundary.</param>
+    /// <returns>The dividers removed; empty when there were none there.</returns>
+    /// <exception cref="KeyNotFoundException">No pier has this id.</exception>
+    public IReadOnlyList<Divider> RemoveDividers(string pierId, PierSide side, float along, bool wholeRow = false)
+    {
+        ArgumentNullException.ThrowIfNull(pierId);
+        var pier = Marina.GetPier(pierId) ?? throw new KeyNotFoundException($"Pier '{pierId}' does not exist.");
+        var slots = wholeRow ? Dividers.Slots(pier, side) : DividerSlots(pier, side, along, wholeRow: false);
+        if (slots is not { Count: > 0 }) return Array.Empty<Divider>();
+
+        var doomed = Dividers.Existing(pier, side, slots);
+        if (doomed.Count == 0) return Array.Empty<Divider>();
+
+        using (BeginUpdate())
+        {
+            using (Marina.BeginUpdate())
+            {
+                foreach (var divider in doomed) Marina.RemoveDivider(divider.Id);
+            }
+
+            _history.Record(ElementsCommand.Removed(dividers: doomed), Strings.Plural("UndoRemoveDividers", doomed.Count, doomed.Count));
+            InvalidateOverlay();
+            ElementErased?.Invoke(this, new DesignElementErasedEventArgs(wholeRow ? pier : doomed[0], Array.Empty<Berth>(), doomed));
+            RaiseStateChanged();
+            return doomed;
+        }
+    }
+
+    /// <summary>
+    /// The boundaries a divider change at <paramref name="along"/> works on (see <see cref="DividerPlanner.Pattern"/>), or
+    /// null when that side has no berths or the point is well past the ends of the row.
+    /// </summary>
+    internal IReadOnlyList<DividerSlot>? DividerSlots(Pier pier, PierSide side, float along, bool wholeRow)
+    {
+        var slots = Dividers.Slots(pier, side);
+        return DividerPlanner.Nearest(slots, along) is { } clicked ? DividerPlanner.Pattern(slots, clicked, wholeRow, _dividerInterval) : null;
     }
 
     /// <summary>

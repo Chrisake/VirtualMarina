@@ -69,6 +69,9 @@ public static class DesignerLimits
     /// <summary><see cref="MarinaDesigner.BerthGap"/>, in meters.</summary>
     public static DesignerSettingRange BerthGap => DesignerDefaults.BerthGap;
 
+    /// <summary><see cref="MarinaDesigner.DividerInterval"/>, in berths (a whole number).</summary>
+    public static DesignerSettingRange DividerInterval => DesignerDefaults.DividerInterval;
+
     /// <summary>
     /// <see cref="MarinaDesigner.LandBerthHeading"/>, in degrees. The designer does not refuse a heading outside it: any
     /// finite angle is wrapped into the range.
@@ -136,8 +139,11 @@ internal static class DesignerDefaults
     /// <summary><see cref="MarinaDesigner.PierBerthingSides"/>.</summary>
     public const PierSides PierBerthingSides = PierSides.Both;
 
-    /// <summary><see cref="MarinaDesigner.BerthSeparators"/>.</summary>
-    public const BerthSeparator BerthSeparators = BerthSeparator.FingerPiers;
+    /// <summary><see cref="MarinaDesigner.DividerType"/>.</summary>
+    public const DividerType DividerType = Domain.DividerType.FingerPier;
+
+    /// <summary><see cref="MarinaDesigner.DividerInterval"/>: the fewest and most berths between dividers, and the default.</summary>
+    public static readonly DesignerSettingRange DividerInterval = new(1f, 10f, 1f);
 
     /// <summary><see cref="MarinaDesigner.BerthServices"/>.</summary>
     public const PierServices BerthServices = PierServices.None;

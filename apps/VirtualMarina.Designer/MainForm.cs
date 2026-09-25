@@ -347,6 +347,7 @@ internal sealed class MainForm : Form
         AddToolButton(DesignTool.AddBerths, Strings.ToolBerths, Strings.ToolBerthsTip);
         AddToolButton(DesignTool.AddLandBerths, Strings.ToolAshore, Strings.ToolAshoreTip);
         _toolbar.Items.Add(new ToolStripSeparator());
+        AddToolButton(DesignTool.PlaceDividers, Strings.ToolDividers, Strings.ToolDividersTip);
         AddToolButton(DesignTool.PlantTrees, Strings.ToolTrees, Strings.ToolTreesTip);
         AddToolButton(DesignTool.EditServices, Strings.ToolServices, Strings.ToolServicesTip);
         _toolbar.Items.Add(new ToolStripSeparator());

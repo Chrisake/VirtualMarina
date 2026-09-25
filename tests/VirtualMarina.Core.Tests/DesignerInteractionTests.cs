@@ -43,8 +43,9 @@ public class DesignerInteractionTests
         var marina = CreateDesigner(DesignTool.SelectArea);
         marina.AddPier(new Pier("A", "Pier A", new Vector2(0, -30), 0f, 60f));
         designer = marina.Designer;
-        designer.BerthSeparators = BerthSeparator.Piles;
+        designer.DividerType = DividerType.Piles;
         designer.CreateBerths("A", PierSide.Left, 0f, 30f);
+        designer.PlaceDividers("A", PierSide.Left, 0f, wholeRow: true);
         return marina;
     }
 

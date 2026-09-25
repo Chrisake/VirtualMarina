@@ -106,6 +106,23 @@ public sealed record MarinaLayout
         return new MarinaLayout { Name = name, Shoreline = shoreline, MarineTraffic = traffic, LandAreas = land, Piers = piers, Dividers = dividers, Berths = berths, MultiBerths = groups };
     }
 
+    /// <summary>
+    /// A copy of this layout whose berths carry their <see cref="Berth.ConnectedBerthIds"/>, worked out from where the berths
+    /// and dividers stand, just as a visualizer showing the layout would work them out.
+    /// </summary>
+    /// <remarks>
+    /// A visualizer keeps the connections of what it shows up to date by itself, and a marina file carries them; this is for
+    /// a layout assembled in code, or read from a file written before berths had connections, without a visualizer.
+    /// </remarks>
+    public MarinaLayout WithBerthConnections()
+    {
+        var connections = BerthConnections.Compute(Berths, Dividers);
+        return this with
+        {
+            Berths = Berths.Select(berth => berth is null ? berth! : berth with { ConnectedBerthIds = connections.TryGetValue(berth.Id, out var found) ? found : [] }).ToArray(),
+        };
+    }
+
     /// <summary>Plan-view bounds of all piers, berths, dividers and land. Returns a default 100 m square when empty.</summary>
     public (Vector2 Min, Vector2 Max) ComputeBounds() =>
         ComputeBounds(Piers.Select(d => d.Bounds)

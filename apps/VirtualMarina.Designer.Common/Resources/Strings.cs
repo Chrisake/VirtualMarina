@@ -531,9 +531,6 @@ internal static class Strings
     /// <summary>"Water depth, stored as the berth's maximum draft."</summary>
     internal static string BerthDepthTip => Get("BerthDepthTip");
 
-    /// <summary>"Separator"</summary>
-    internal static string BerthSeparator => Get("BerthSeparator");
-
     /// <summary>"Gap (m)"</summary>
     internal static string BerthGap => Get("BerthGap");
 
@@ -551,30 +548,6 @@ internal static class Strings
 
     /// <summary>"Click beside a pier where the row starts, then where it ends. Clear the tick above to start the r..."</summary>
     internal static string BerthHint => Get("BerthHint");
-
-    /// <summary>"Each berth gets its own pair of short finger piers."</summary>
-    internal static string SeparatorHintFingerPiers => Get("SeparatorHintFingerPiers");
-
-    /// <summary>"Nothing between the berths but a gap, so boats lie side by side."</summary>
-    internal static string SeparatorHintNone => Get("SeparatorHintNone");
-
-    /// <summary>"One walkable pier between every two berths."</summary>
-    internal static string SeparatorHintFingerPier => Get("SeparatorHintFingerPier");
-
-    /// <summary>"A row of mooring piles between every two berths."</summary>
-    internal static string SeparatorHintPiles => Get("SeparatorHintPiles");
-
-    /// <summary>"A floating boom between every two berths."</summary>
-    internal static string SeparatorHintBoom => Get("SeparatorHintBoom");
-
-    /// <summary>"A pier every other berth: each boat has a pier on one side and a neighbour on the other."</summary>
-    internal static string SeparatorHintPaired => Get("SeparatorHintPaired");
-
-    /// <summary>"One mooring pile at the outer end of every berth boundary (Mediterranean mooring)."</summary>
-    internal static string SeparatorHintSinglePile => Get("SeparatorHintSinglePile");
-
-    /// <summary>" Berths are {0:0.##} m apart, {1:0.##} m from center to center."</summary>
-    internal static string SeparatorHintSpacing => Get("SeparatorHintSpacing");
 
     /// <summary>"Names"</summary>
     internal static string BerthNamingHeading => Get("BerthNamingHeading");
@@ -669,6 +642,30 @@ internal static class Strings
     /// <summary>"A berth left alone takes whatever its pier offers, so only the ones you change carry their own se..."</summary>
     internal static string ServicesInheritHint => Get("ServicesInheritHint");
 
+    /// <summary>"Dividers"</summary>
+    internal static string CardDividers => Get("CardDividers");
+
+    /// <summary>"Dividers"</summary>
+    internal static string TitleDividers => Get("TitleDividers");
+
+    /// <summary>"Type"</summary>
+    internal static string DividerType => Get("DividerType");
+
+    /// <summary>"Every (berths)"</summary>
+    internal static string DividerInterval => Get("DividerInterval");
+
+    /// <summary>"When a whole row is filled: 1 puts a divider between every two berths, 2 between every other pair, ..."</summary>
+    internal static string DividerIntervalTip => Get("DividerIntervalTip");
+
+    /// <summary>"Click beside a row of berths to put a divider on the nearest boundary, or to take away the one th..."</summary>
+    internal static string DividersHint => Get("DividersHint");
+
+    /// <summary>"Two berths with a divider between them can no longer be joined for one boat."</summary>
+    internal static string DividersConnectHint => Get("DividersConnectHint");
+
+    /// <summary>"New berths have nothing between them; put dividers where they are wanted with the Dividers tool."</summary>
+    internal static string BerthDividersHint => Get("BerthDividersHint");
+
     /// <summary>"Rename"</summary>
     internal static string CardRename => Get("CardRename");
 
@@ -731,6 +728,12 @@ internal static class Strings
 
     /// <summary>"Give berths power and water; Alt or Ctrl changes a whole side of a pier"</summary>
     internal static string ToolServicesTip => Get("ToolServicesTip");
+
+    /// <summary>"Dividers"</summary>
+    internal static string ToolDividers => Get("ToolDividers");
+
+    /// <summary>"Put finger piers, piles or booms between berths; Alt fills a whole row"</summary>
+    internal static string ToolDividersTip => Get("ToolDividersTip");
 
     /// <summary>"Select"</summary>
     internal static string ToolSelect => Get("ToolSelect");

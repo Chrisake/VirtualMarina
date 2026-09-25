@@ -25,7 +25,8 @@ public class MarinaDocumentTests
         marina.Style.Status.FreeColor = ColorRgba.FromHex("#00C853");
         marina.Style.Land.ShowTrees = false;
         marina.Camera.SetPose(new CameraPose(new Vector3(12, 0, -40), 33f, 41f, 180f), immediate: true);
-        marina.Designer.BerthSeparators = BerthSeparator.PairedFingerPiers;
+        marina.Designer.DividerType = DividerType.Boom;
+        marina.Designer.DividerInterval = 3;
         marina.Designer.BerthGap = 0.6f;
         marina.Designer.BerthServices = PierServices.PowerAndWater;
 
@@ -42,14 +43,16 @@ public class MarinaDocumentTests
         Assert.Equal(marina.GetPiers().Select(d => d.Id), copy.GetPiers().Select(d => d.Id));
         Assert.Equal(marina.GetDividers().Select(d => d.Id), copy.GetDividers().Select(d => d.Id));
         Assert.Equal(marina.GetLandAreas().Sum(l => l.Trees.Count), copy.GetLandAreas().Sum(l => l.Trees.Count));
-        Assert.Equal(marina.GetMultiBerths().Select(b => b.Id), copy.GetMultiBerths().Select(b => b.Id));
+        Assert.NotEmpty(marina.GetMultiBerths());
+        Assert.Empty(copy.GetMultiBerths()); // a design is saved empty: who is where is the host application's to set
         Assert.Equal(BerthLabelMode.OnlyFree, copy.BerthLabelMode);
         Assert.Equal(0.03f, copy.Style.Water.WaveAmplitude, 4);
         Assert.Equal(0.25f, copy.Style.Water.BoatMotion, 4);
         Assert.Equal("#00C853", copy.Style.Status.FreeColor.ToHex());
         Assert.False(copy.Style.Land.ShowTrees);
         Assert.Equal(180f, copy.Camera.DesiredPose.Distance, 2);
-        Assert.Equal(BerthSeparator.PairedFingerPiers, copy.Designer.BerthSeparators);
+        Assert.Equal(DividerType.Boom, copy.Designer.DividerType);
+        Assert.Equal(3, copy.Designer.DividerInterval);
         Assert.Equal(0.6f, copy.Designer.BerthGap, 3);
         Assert.Equal(PierServices.PowerAndWater, copy.Designer.BerthServices);
 
@@ -131,7 +134,7 @@ public class MarinaDocumentTests
         Assert.Equal(new[] { "A-1", "A-2" }, Assert.Single(document.Layout.MultiBerths).BerthIds);
         Assert.Equal(BerthLabelMode.All, document.BerthLabels);
         Assert.Equal(6.5f, document.Designer!.BerthWidth);
-        Assert.Equal(BerthSeparator.Piles, document.Designer.BerthSeparators);
+        Assert.Equal(DividerType.Piles, document.Designer.DividerType); // the old separator setting carries over to the divider tool
         Assert.Equal(4f, document.Designer.PierWidth);
         Assert.Empty(document.Validate());
 
@@ -140,8 +143,8 @@ public class MarinaDocumentTests
         Assert.Equal(2, marina.GetBerths().Count);
         Assert.Single(marina.GetMultiBerths());
 
-        // Saving it again writes the current names, and that file reads back the same way.
-        var again = MarinaDocument.Parse(document.ToJson());
+        // Saving it again (with who is where) writes the current names, and that file reads back the same way.
+        var again = MarinaDocument.Parse(document.ToJson(stripOccupancy: false));
         Assert.Equal(MarinaDocument.CurrentVersion, again.Version);
         Assert.Equal(2, again.Layout.Berths.Count);
         Assert.Single(again.Layout.MultiBerths);
@@ -326,7 +329,8 @@ public class MarinaDocumentTests
             BerthWidth = 9f,
             BerthLength = 28f,
             BerthDepth = 4.5f,
-            BerthSeparators = BerthSeparator.SinglePile,
+            DividerType = DividerType.SinglePile,
+            DividerInterval = 4,
             BerthGap = 1.2f,
             AlignBerthsToExisting = false,
             BerthServices = PierServices.Power,
@@ -336,7 +340,8 @@ public class MarinaDocumentTests
 
         settings.ApplyTo(marina.Designer);
         Assert.Equal(9f, marina.Designer.BerthWidth);
-        Assert.Equal(BerthSeparator.SinglePile, marina.Designer.BerthSeparators);
+        Assert.Equal(DividerType.SinglePile, marina.Designer.DividerType);
+        Assert.Equal(4, marina.Designer.DividerInterval);
         Assert.False(marina.Designer.AlignBerthsToExisting);
         Assert.Equal(LandKind.Grass, marina.Designer.LandKind);
         Assert.Equal(settings, DesignerSettings.FromDesigner(marina.Designer));
@@ -377,7 +382,7 @@ public class MarinaDocumentTests
         });
 
         var reloaded = new MarinaVisualizer();
-        MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson()).ApplyTo(reloaded);
+        MarinaDocument.Parse(MarinaDocument.FromVisualizer(marina).ToJson(stripOccupancy: false)).ApplyTo(reloaded);
 
         Assert.Equal("winter storage", reloaded.GetLandArea("quay")!.Metadata["zone"]);
         Assert.Equal("PONT-07", reloaded.GetPier("A")!.Metadata["erpId"]);

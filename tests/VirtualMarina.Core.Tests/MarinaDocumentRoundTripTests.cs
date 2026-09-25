@@ -49,7 +49,7 @@ public class MarinaDocumentRoundTripTests
             BerthStatus.Occupied,
             multiBerthId: "VIP");
 
-        var root = JsonNode.Parse(MarinaDocument.FromVisualizer(marina).ToJson())!.AsObject();
+        var root = JsonNode.Parse(MarinaDocument.FromVisualizer(marina).ToJson(stripOccupancy: false))!.AsObject();
         root["marina"]!["description"] = "The old harbor, as surveyed in 2024";
         root["erp"] = new JsonObject { ["siteId"] = 42 };
         var layout = root["layout"]!;
@@ -64,7 +64,8 @@ public class MarinaDocumentRoundTripTests
         return root.ToJsonString();
     }
 
-    private static JsonObject Reparse(MarinaDocument document) => JsonNode.Parse(document.ToJson())!.AsObject();
+    /// <summary>The document as saved, occupancy and all, so what a multi-berth carried can be checked too.</summary>
+    private static JsonObject Reparse(MarinaDocument document) => JsonNode.Parse(document.ToJson(stripOccupancy: false))!.AsObject();
 
     [Fact]
     public void SavingAnOpenedDesign_KeepsTheDescriptionExtensionsAndUnknownElementProperties()
@@ -300,7 +301,7 @@ public class MarinaDocumentRoundTripTests
 
         document.BerthLabels = BerthLabelMode.None;
         document.Designer = document.Designer with { PierWidth = 2f, BerthWidth = 5f };
-        var saved = document.ToJson();
+        var saved = document.ToJson(stripOccupancy: false);
 
         foreach (var old in new[] { "slipLabels", "dockWidth", "slipWidth", "dockId", "\"docks\"", "\"slips\"", "slipIds" })
         {

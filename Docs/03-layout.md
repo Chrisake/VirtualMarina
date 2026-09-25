@@ -152,6 +152,7 @@ Their colors come from `Style.Piers` (`PedestalColor`, `PowerColor`, `WaterColor
 | `HasFingerPiers` | Draw simple finger piers on both long sides (default true) |
 | `IsVisible`, `IsDisabled`, `IsReadOnly` | Interaction flags |
 | `MultiBerthId` | Set by the visualizer for members of a multi-berth |
+| `ConnectedBerthIds` | Set by the visualizer: the berths beside it one boat can share it with (see [Multi-berths](05-multi-berths.md#connected-berths)) |
 | `Metadata` | Read-only string attributes you supply |
 | `ExternalData` | Mutable host data bag (see [Selection, tooltips and actions](06-selection-tooltips-actions.md#external-data-on-berths)) |
 

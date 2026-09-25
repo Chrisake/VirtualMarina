@@ -420,12 +420,12 @@ public class DesignerTests
     }
 
     [Fact]
-    public void AddBerths_OnTheClosedSideOfASingleSidedPier_DoesNothing_AndDividersCanBeGenerated()
+    public void AddBerths_OnTheClosedSideOfASingleSidedPier_DoesNothing_AndDividersCanBePlacedAfterwards()
     {
         var marina = CreateDesigner(DesignTool.AddBerths);
         marina.AddPier(new Pier("Q", "Q", new Vector2(0, -25), 0f, 50f, 2f) { BerthingSides = PierSides.Left });
         var designer = marina.Designer;
-        designer.BerthSeparators = BerthSeparator.Piles;
+        designer.DividerType = DividerType.Piles;
 
         // Right-hand side (−X) is closed.
         Click(marina, new Vector2(-6, -15));
@@ -438,18 +438,20 @@ public class DesignerTests
         var berths = marina.GetBerthsByPier("Q");
         Assert.Equal(2, berths.Count);
         Assert.All(berths, s => Assert.False(s.HasFingerPiers));
-        Assert.Equal(3, marina.GetDividersByPier("Q").Count); // shared boundary between the two berths
+        Assert.Empty(marina.GetDividers()); // the berth tool places none of its own
+
+        Assert.Equal(3, designer.PlaceDividers("Q", PierSide.Left, 10f, wholeRow: true).Count); // shared boundary between the two berths
+        Assert.Equal(3, marina.GetDividersByPier("Q").Count);
     }
 
     [Fact]
-    public void AddBerths_SeparatorNone_LeavesAGapWithNoDividersOrFingerPiers()
+    public void AddBerths_PutsNothingBetweenTheBerths_SoNeighboursAreConnected()
     {
         var marina = CreateDesigner(DesignTool.AddBerths);
         marina.AddPier(new Pier("A", "A", new Vector2(0, -25), 0f, 50f, 2f));
         var designer = marina.Designer;
         designer.BerthWidth = 5f;
         designer.BerthLength = 10f;
-        designer.BerthSeparators = BerthSeparator.None;
 
         Click(marina, new Vector2(-8, -25));
         Click(marina, new Vector2(-8, -25 + 10));
@@ -458,22 +460,25 @@ public class DesignerTests
         Assert.Equal(2, berths.Count);
         Assert.All(berths, berth => Assert.False(berth.HasFingerPiers));
         Assert.Empty(marina.GetDividers());
-        // The berths are a hand's width apart instead of touching.
-        Assert.Equal(5f + MarinaDesigner.MinimumSeparatorGap, Vector2.Distance(berths[0].Center, berths[1].Center), 2);
+        // The berths touch, with open water from one to the other.
+        Assert.Equal(5f, Vector2.Distance(berths[0].Center, berths[1].Center), 2);
+        Assert.Equal(new[] { berths[1].Id }, berths[0].ConnectedBerthIds);
+        Assert.Equal(new[] { berths[0].Id }, berths[1].ConnectedBerthIds);
     }
 
     [Fact]
-    public void AddBerths_SinglePileSeparator_PutsOnePileAtEveryBoundary()
+    public void PlaceDividers_SinglePile_PutsOnePileAtEveryBoundaryOfTheRow()
     {
         var marina = CreateDesigner(DesignTool.AddBerths);
         marina.AddPier(new Pier("A", "A", new Vector2(0, -25), 0f, 50f, 2f));
         var designer = marina.Designer;
         designer.BerthWidth = 5f;
         designer.BerthLength = 10f;
-        designer.BerthSeparators = BerthSeparator.SinglePile;
+        designer.DividerType = DividerType.SinglePile;
 
         Click(marina, new Vector2(-8, -25));
         Click(marina, new Vector2(-8, -25 + 10));
+        designer.PlaceDividers("A", PierSide.Right, 0f, wholeRow: true);
 
         var dividers = marina.GetDividersByPier("A");
         Assert.Equal(3, dividers.Count); // two berths share the middle boundary
@@ -535,17 +540,19 @@ public class DesignerTests
     }
 
     [Fact]
-    public void AddBerths_PairedFingerPiers_GiveEveryBerthExactlyOnePier()
+    public void PlaceDividers_OnEveryOtherBoundary_GiveEveryBerthExactlyOnePier_AndPairThemUp()
     {
         var marina = CreateDesigner(DesignTool.AddBerths);
         marina.AddPier(new Pier("A", "A", new Vector2(0, -25), 0f, 50f, 2f));
         var designer = marina.Designer;
         designer.BerthWidth = 5f;
         designer.BerthLength = 10f;
-        designer.BerthSeparators = BerthSeparator.PairedFingerPiers;
+        designer.DividerType = DividerType.FingerPier;
+        designer.DividerInterval = 2;
 
         Click(marina, new Vector2(-8, -25));
         Click(marina, new Vector2(-8, -25 + 20));
+        designer.PlaceDividers("A", PierSide.Right, 0f, wholeRow: true);
 
         var berths = marina.GetBerthsByPier("A");
         Assert.Equal(4, berths.Count);
@@ -557,12 +564,16 @@ public class DesignerTests
         Assert.All(dividers, divider => Assert.Equal(DividerType.FingerPier, divider.Type));
         Assert.Equal(new[] { -25f, -15f, -5f }, dividers.Select(d => MathF.Round(d.Start.Y, 2)).OrderBy(y => y));
 
-        // Every berth has a pier along exactly one of its two long sides.
+        // Every berth has a pier along exactly one of its two long sides, and is connected to the berth on its other side.
         foreach (var berth in berths)
         {
             var touching = dividers.Count(d => MathF.Abs(MathF.Abs(Vector2.Dot(d.Center - berth.Center, berth.Right)) - berth.Width * 0.5f) < 0.05f);
             Assert.Equal(1, touching);
+            Assert.Single(marina.GetBerth(berth.Id)!.ConnectedBerthIds);
         }
+
+        Assert.Equal(new[] { berths[1].Id }, marina.GetBerth(berths[0].Id)!.ConnectedBerthIds);
+        Assert.Equal(new[] { berths[3].Id }, marina.GetBerth(berths[2].Id)!.ConnectedBerthIds);
     }
 
     [Fact]
@@ -573,10 +584,11 @@ public class DesignerTests
         var designer = marina.Designer;
         designer.BerthWidth = 5f;
         designer.BerthLength = 10f;
-        designer.BerthSeparators = BerthSeparator.Piles;
+        designer.DividerType = DividerType.Piles;
 
         Click(marina, new Vector2(-8, -35 + 10));
         Click(marina, new Vector2(-8, -35 + 25));
+        designer.PlaceDividers("A", PierSide.Right, 10f, wholeRow: true);
         Assert.Equal(3, marina.GetBerthsByPier("A").Count);
         Assert.Equal(4, marina.GetDividersByPier("A").Count);
 
@@ -615,7 +627,6 @@ public class DesignerTests
         designer.Tool = DesignTool.AddBerths;
         designer.BerthWidth = 5f;
         designer.BerthLength = 10f;
-        designer.BerthSeparators = BerthSeparator.Piles;
         Click(marina, new Vector2(-8, -25 + 10));
         Click(marina, new Vector2(-8, -25 + 20));
         Assert.Equal(2, marina.GetBerths().Count);

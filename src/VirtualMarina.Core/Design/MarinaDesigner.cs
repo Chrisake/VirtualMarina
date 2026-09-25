@@ -38,8 +38,9 @@ namespace VirtualMarina.Core.Design;
 /// designer.ScaleLineDrawn += (s, e) => e.KnownLengthMeters = AskUser("Length of the scale bar (m)?");
 /// designer.LandKind = LandKind.Quay;
 /// designer.Tool = DesignTool.DrawLandArea;
-/// designer.BerthSeparators = BerthSeparator.SinglePile;   // one mooring pile per berth boundary
 /// designer.BerthGap = 0.5f;                              // half a meter between berths
+/// designer.DividerType = DividerType.SinglePile;         // PlaceDividers puts one mooring pile on a berth boundary
+/// designer.DividerInterval = 2;                          // ... and with Alt, on every other boundary of the row
 /// designer.BerthServices = PierServices.PowerAndWater;   // pedestals beside the berths added to a pier
 /// designer.ElementCreated += (s, e) => erp.Save(marina.ExportObjects());
 /// </code>
@@ -48,9 +49,6 @@ public sealed partial class MarinaDesigner
 {
     /// <summary>Shortest pier the <see cref="DesignTool.DrawPier"/> tool creates, in meters.</summary>
     public const float MinimumPierLength = 1f;
-
-    /// <summary>Gap left between berths separated by <see cref="BerthSeparator.None"/> when <see cref="BerthGap"/> is smaller, in meters.</summary>
-    public const float MinimumSeparatorGap = BerthPlanner.MinimumSeparatorGap;
 
     /// <summary>How many changes <see cref="Undo"/> can step back through (older ones are dropped).</summary>
     public const int MaxUndoSteps = 50;
@@ -74,6 +72,7 @@ public sealed partial class MarinaDesigner
         Marina = marina;
         Picker = new DesignPicker(marina);
         Planner = new BerthPlanner(marina);
+        Dividers = new DividerPlanner(marina);
         Naming = new DesignNaming(marina);
         Image = new ReferenceImageController(OnImageChanged, InvalidateScene);
         _history = new DesignHistory(marina, MaxUndoSteps);
@@ -94,6 +93,7 @@ public sealed partial class MarinaDesigner
             new ServicesTool(this),
             new SelectAreaTool(this),
             new ShorelineTool(this),
+            new DividerTool(this),
         ];
         _handler = _handlers[(int)DesignTool.Navigate];
 
@@ -133,7 +133,10 @@ public sealed partial class MarinaDesigner
     /// </example>
     public event EventHandler<DesignElementRenamingEventArgs>? ElementRenaming;
 
-    /// <summary>A berth, pier or land area was removed with the <see cref="DesignTool.Erase"/> tool (or <see cref="Erase"/>).</summary>
+    /// <summary>
+    /// A berth, pier or land area was removed with the <see cref="DesignTool.Erase"/> tool (or <see cref="Erase"/>), or dividers
+    /// with the <see cref="DesignTool.PlaceDividers"/> tool (or <see cref="RemoveDividers"/>).
+    /// </summary>
     public event EventHandler<DesignElementErasedEventArgs>? ElementErased;
 
     /// <summary>Trees were scattered on a land area (<see cref="DesignTool.PlantTrees"/>, <see cref="PlantTrees"/>, or a new lawn).</summary>
@@ -297,6 +300,8 @@ public sealed partial class MarinaDesigner
 
     internal BerthPlanner Planner { get; }
 
+    internal DividerPlanner Dividers { get; }
+
     internal DesignNaming Naming { get; }
 
     internal ReferenceImageController Image { get; }
@@ -310,7 +315,7 @@ public sealed partial class MarinaDesigner
     internal bool HeadingSnapped { get; set; }
 
     /// <summary>The settings a row of berths is laid out by, as they stand.</summary>
-    internal BerthRowSettings RowSettings => new(_berthWidth, _berthLength, _berthDepth, _berthSeparators, _berthGap, _alignBerths, _berthNaming);
+    internal BerthRowSettings RowSettings => new(_berthWidth, _berthLength, _berthDepth, _berthGap, _alignBerths, _berthNaming);
 
     /// <summary>
     /// The seed of the random numbers behind tree positions and the mainland's scenery, so a test (or a host that wants a

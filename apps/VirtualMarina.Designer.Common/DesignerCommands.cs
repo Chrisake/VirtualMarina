@@ -287,6 +287,7 @@ public static class DesignerCommands
         Tool(DesignTool.AddBerths, "B", () => Strings.ToolBerths),
         Tool(DesignTool.AddLandBerths, "Y", () => Strings.ToolAshore),
         Tool(DesignTool.PlantTrees, "T", () => Strings.ToolTrees),
+        Tool(DesignTool.PlaceDividers, "V", () => Strings.ToolDividers),
         Tool(DesignTool.EditServices, "U", () => Strings.ToolServices),
         Tool(DesignTool.Rename, "R", () => Strings.ToolRename),
         Tool(DesignTool.Erase, "E", () => Strings.ToolErase),

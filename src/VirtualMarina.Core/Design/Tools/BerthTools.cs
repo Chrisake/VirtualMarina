@@ -75,7 +75,7 @@ internal sealed class BerthsTool : DraftTool
         }
 
         var from = _anchor?.Along ?? t.Along;
-        var (berths, _) = Designer.Planner.Plan(t.Pier, t.Side, from, t.Along, Designer.RowSettings, preview: true);
+        var berths = Designer.Planner.Plan(t.Pier, t.Side, from, t.Along, Designer.RowSettings, preview: true);
         foreach (var berth in berths) overlay.Pad(berth, BerthPlacement.PadHeight + 0.03f, OverlayColors.BerthPreview);
 
         if (berths.Count == 0)

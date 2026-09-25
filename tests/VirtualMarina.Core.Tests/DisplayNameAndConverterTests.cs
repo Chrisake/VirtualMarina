@@ -20,7 +20,6 @@ public class DisplayNameAndConverterTests
     {
         var data = new TheoryData<Enum>();
         foreach (var value in Enum.GetValues<DesignTool>()) data.Add(value);
-        foreach (var value in Enum.GetValues<BerthSeparator>()) data.Add(value);
         foreach (var value in Enum.GetValues<PierServices>()) data.Add(value);
         foreach (var value in Enum.GetValues<PierSides>()) data.Add(value);
         foreach (var value in Enum.GetValues<LandKind>()) data.Add(value);
@@ -41,7 +40,6 @@ public class DisplayNameAndConverterTests
         var name = value switch
         {
             DesignTool tool => tool.GetDisplayName(),
-            BerthSeparator separator => separator.GetDisplayName(),
             PierServices services => services.GetDisplayName(),
             PierSides sides => sides.GetDisplayName(),
             LandKind kind => kind.GetDisplayName(),

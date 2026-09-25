@@ -23,7 +23,7 @@ public class LocalizationTests
         Assert.Equal("Floating (wooden)", Pier.GetDisplayName(PierType.FloatingWooden));
         Assert.Equal("Non-occupied", BerthLabelMode.NonOccupied.GetDisplayName());
         Assert.Equal("Land berths", DesignTool.AddLandBerths.GetDisplayName());
-        Assert.Equal("Pier every other berth", BerthSeparator.PairedFingerPiers.GetDisplayName());
+        Assert.Equal("Dividers", DesignTool.PlaceDividers.GetDisplayName());
         Assert.Equal("Power and water", PierServices.PowerAndWater.GetDisplayName());
         Assert.Equal("Boats on the left only", PierSides.Left.GetDisplayName());
         Assert.Equal("Lawn or park", LandKind.Grass.GetDisplayName());

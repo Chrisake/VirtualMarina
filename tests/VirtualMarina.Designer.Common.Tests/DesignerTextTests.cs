@@ -39,17 +39,6 @@ public class DesignerTextTests
     }
 
     [Fact]
-    public void The_separator_hint_adds_the_spacing_only_with_a_gap()
-    {
-        var plain = DesignerText.SeparatorHint(BerthSeparator.Boom, 5f, 0f);
-        var spaced = DesignerText.SeparatorHint(BerthSeparator.Boom, 5f, 1f);
-
-        Assert.Equal(Strings.SeparatorHintBoom, plain);
-        Assert.StartsWith(plain, spaced, StringComparison.Ordinal);
-        Assert.True(spaced.Length > plain.Length);
-    }
-
-    [Fact]
     public void Naming_examples_use_the_first_pier_or_a_stand_in()
     {
         var marina = new MarinaVisualizer();
@@ -160,10 +149,10 @@ public class DesignerTextTests
     [Fact]
     public void Choices_are_described_by_the_core_library()
     {
-        Assert.Equal(BerthSeparator.FingerPiers.GetDisplayName(), DesignerChoices.Describe(BerthSeparator.FingerPiers));
+        Assert.Equal(DividerType.Piles.GetDisplayName(), DesignerChoices.Describe(DividerType.Piles));
         Assert.Equal(Pier.GetDisplayName(PierType.FloatingWooden), DesignerChoices.Describe(PierType.FloatingWooden));
-        Assert.Equal(DesignerChoices.Separators.Count, DesignerChoices.Separators.Distinct().Count());
-        Assert.Equal(Enum.GetValues<BerthSeparator>().Length, DesignerChoices.Separators.Count);
+        Assert.Equal(DesignerChoices.DividerTypes.Count, DesignerChoices.DividerTypes.Distinct().Count());
+        Assert.Equal(Enum.GetValues<DividerType>().Length, DesignerChoices.DividerTypes.Count);
     }
 
     [Fact]

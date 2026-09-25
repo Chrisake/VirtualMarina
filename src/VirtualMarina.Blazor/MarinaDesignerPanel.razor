@@ -85,13 +85,6 @@
             <input type="number" min="@Min(DesignerLimits.BerthLength)" max="@Max(DesignerLimits.BerthLength)" step="0.5" value="@Format(Designer.BerthLength)" @onchange="e => SetNumber(e, (d, v) => d.BerthLength = v)" />
             <span>@Strings.BerthDepth</span>
             <input type="number" min="@Min(DesignerLimits.BerthDepth)" max="@Max(DesignerLimits.BerthDepth)" step="0.1" value="@Format(Designer.BerthDepth)" @onchange="e => SetNumber(e, (d, v) => d.BerthDepth = v)" />
-            <span>@Strings.BerthSeparators</span>
-            <select value="@Designer.BerthSeparators" @onchange="e => Set(d => d.BerthSeparators = Enum.Parse<BerthSeparator>((string)e.Value!))">
-                @foreach (var separator in Separators)
-                {
-                    <option value="@separator">@separator.GetDisplayName()</option>
-                }
-            </select>
             <span title="@Strings.BerthGapHint">@Strings.BerthGap</span>
             <input type="number" min="@Min(DesignerLimits.BerthGap)" max="@Max(DesignerLimits.BerthGap)" step="0.1" value="@Format(Designer.BerthGap)" @onchange="e => SetNumber(e, (d, v) => d.BerthGap = v)" />
             <span title="@Strings.AlignBerthsHint">@Strings.AlignBerthsLabel</span>
@@ -105,6 +98,21 @@
             </select>
             <span title="@Strings.LandBerthHeadingHint">@Strings.LandBerthHeading</span>
             <input type="number" min="@Min(DesignerLimits.LandBerthHeading)" max="@Max(DesignerLimits.LandBerthHeading)" step="15" value="@Format(Designer.LandBerthHeading, "0")" @onchange="e => SetNumber(e, (d, v) => d.LandBerthHeading = v)" />
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>@Strings.SectionDividers</legend>
+        <div class="vm-designer__grid">
+            <span>@Strings.DividerType</span>
+            <select value="@Designer.DividerType" @onchange="e => Set(d => d.DividerType = Enum.Parse<DividerType>((string)e.Value!))">
+                @foreach (var type in DividerTypes)
+                {
+                    <option value="@type">@type.GetDisplayName()</option>
+                }
+            </select>
+            <span title="@Strings.DividerIntervalHint">@Strings.DividerInterval</span>
+            <input type="number" min="@Min(DesignerLimits.DividerInterval)" max="@Max(DesignerLimits.DividerInterval)" step="1" value="@Designer.DividerInterval" @onchange="e => SetNumber(e, (d, v) => d.DividerInterval = (int)MathF.Round(v))" />
         </div>
     </fieldset>
 
@@ -214,16 +222,15 @@
     private static readonly DesignTool[] Tools =
     {
         DesignTool.Navigate, DesignTool.SelectArea, DesignTool.DrawShoreline, DesignTool.DrawLandArea, DesignTool.DrawPier,
-        DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlantTrees, DesignTool.EditServices, DesignTool.Rename,
-        DesignTool.Erase,
+        DesignTool.AddBerths, DesignTool.AddLandBerths, DesignTool.PlaceDividers, DesignTool.PlantTrees, DesignTool.EditServices,
+        DesignTool.Rename, DesignTool.Erase,
     };
 
     private static readonly PierSides[] BerthingSides = { PierSides.Both, PierSides.Left, PierSides.Right };
 
-    private static readonly BerthSeparator[] Separators =
+    private static readonly DividerType[] DividerTypes =
     {
-        BerthSeparator.FingerPiers, BerthSeparator.PairedFingerPiers, BerthSeparator.FingerPier,
-        BerthSeparator.Piles, BerthSeparator.SinglePile, BerthSeparator.Boom, BerthSeparator.None,
+        DividerType.FingerPier, DividerType.Piles, DividerType.SinglePile, DividerType.Boom,
     };
 
     private static readonly PierServices[] Services =

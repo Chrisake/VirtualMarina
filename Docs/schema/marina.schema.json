@@ -153,7 +153,7 @@
     },
     "berth": {
       "type": "object",
-      "description": "A water berth (pierId) or land berth (landAreaId). Occupancy and the interaction flags are runtime state and not written; they are still read from older files.",
+      "description": "A water berth (pierId) or land berth (landAreaId). Occupancy and the interaction flags are runtime state: a design is saved with every berth Free and enabled, unless it is saved with its occupancy kept. They are always read.",
       "properties": {
         "id": { "type": "string" },
         "pierId": { "type": "string" },
@@ -164,13 +164,18 @@
         "length": { "type": "number" },
         "width": { "type": "number" },
         "maxDraft": { "type": "number" },
-        "status": { "$ref": "#/$defs/berthStatus", "description": "Read only, from older files." },
-        "boat": { "$ref": "#/$defs/boat", "description": "Read only, from older files." },
+        "status": { "$ref": "#/$defs/berthStatus", "description": "Written only when the design is saved with its occupancy (stripOccupancy: false); always read." },
+        "boat": { "$ref": "#/$defs/boat", "description": "Written only when the design is saved with its occupancy (stripOccupancy: false); always read." },
         "hasFingerPiers": { "type": "boolean" },
         "services": { "$ref": "#/$defs/pierServices" },
-        "isVisible": { "type": "boolean", "description": "Read only, from older files." },
-        "isDisabled": { "type": "boolean", "description": "Read only, from older files." },
-        "isReadOnly": { "type": "boolean", "description": "Read only, from older files." },
+        "isVisible": { "type": "boolean", "description": "Written only when the design is saved with its occupancy (stripOccupancy: false); always read." },
+        "isDisabled": { "type": "boolean", "description": "Written only when the design is saved with its occupancy (stripOccupancy: false); always read." },
+        "isReadOnly": { "type": "boolean", "description": "Written only when the design is saved with its occupancy (stripOccupancy: false); always read." },
+        "connectedBerthIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "The berths beside this one that one boat can share it with: side by side, facing the same way, with open water and no divider or finger pier between them. Worked out by the library from the layout; written only when there are any."
+        },
         "metadata": { "$ref": "#/$defs/metadata" }
       }
     },
@@ -190,7 +195,7 @@
     },
     "multiBerth": {
       "type": "object",
-      "description": "One boat across several berths. Its boat and status are written: a multi-berth cannot exist without them.",
+      "description": "One boat across several berths. Written only when the design is saved with its occupancy (stripOccupancy: false), and then with its boat and status: a multi-berth cannot exist without them.",
       "properties": {
         "id": { "type": "string" },
         "berthIds": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
@@ -362,7 +367,9 @@
         "berthWidth": { "type": "number" },
         "berthLength": { "type": "number" },
         "berthDepth": { "type": "number" },
-        "berthSeparators": { "$ref": "#/$defs/berthSeparator" },
+        "dividerType": { "$ref": "#/$defs/dividerType" },
+        "dividerInterval": { "type": "integer", "minimum": 1, "maximum": 10, "description": "Berths between the dividers the divider tool puts along a whole row." },
+        "berthSeparators": { "$ref": "#/$defs/berthSeparator", "description": "Read only, from older files: what the berth tool used to put between berths. Sets the divider tool up the same way." },
         "berthGap": { "type": "number" },
         "alignBerthsToExisting": { "type": "boolean" },
         "berthServices": { "$ref": "#/$defs/pierServices" },

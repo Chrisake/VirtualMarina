@@ -102,7 +102,6 @@ public static class MarinaJson
             new TolerantEnumConverter<BerthStatus>(),
             new TolerantEnumConverter<BoatType>(),
             new TolerantEnumConverter<MooringStyle>(),
-            new TolerantEnumConverter<BerthSeparator>(),
             new TolerantEnumConverter<BerthLabelMode>(),
             new TolerantEnumConverter<LabelFont>(),
             new TolerantEnumConverter<LabelTypeface>(),

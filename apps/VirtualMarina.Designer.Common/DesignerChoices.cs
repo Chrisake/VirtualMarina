@@ -22,12 +22,9 @@ public static class DesignerChoices
     public static IReadOnlyList<PierServices> Services { get; } =
         [PierServices.None, PierServices.PowerAndWater, PierServices.Power, PierServices.Water];
 
-    /// <summary>What stands between neighbouring berths.</summary>
-    public static IReadOnlyList<BerthSeparator> Separators { get; } =
-    [
-        BerthSeparator.FingerPiers, BerthSeparator.PairedFingerPiers, BerthSeparator.FingerPier,
-        BerthSeparator.Piles, BerthSeparator.SinglePile, BerthSeparator.Boom, BerthSeparator.None,
-    ];
+    /// <summary>What the divider tool puts between neighbouring berths.</summary>
+    public static IReadOnlyList<DividerType> DividerTypes { get; } =
+        [DividerType.FingerPier, DividerType.Piles, DividerType.SinglePile, DividerType.Boom];
 
     /// <summary>Every kind of pier construction.</summary>
     public static IReadOnlyList<PierType> PierTypes { get; } = Enum.GetValues<PierType>();
@@ -44,7 +41,7 @@ public static class DesignerChoices
         PierType type => Pier.GetDisplayName(type),
         PierSides sides => sides.GetDisplayName(),
         PierServices services => services.GetDisplayName(),
-        BerthSeparator separator => separator.GetDisplayName(),
+        DividerType divider => divider.GetDisplayName(),
         HinterlandScenery scenery => scenery.GetDisplayName(),
         _ => value.ToString(),
     };
@@ -108,6 +105,9 @@ public static class DesignerRanges
 
     /// <summary>Gap between neighbouring berths, meters.</summary>
     public static readonly NumberRange BerthGap = NumberRange.Of(DesignerLimits.BerthGap, 0.1m, 2);
+
+    /// <summary>Berths between the dividers of a filled row.</summary>
+    public static readonly NumberRange DividerInterval = NumberRange.Of(DesignerLimits.DividerInterval, 1m, 0);
 
     /// <summary>Where the bow of a berth ashore points, degrees from north.</summary>
     public static readonly NumberRange LandBerthHeading = NumberRange.Of(DesignerLimits.LandBerthHeading, 15m, 0);
