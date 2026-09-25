@@ -29,10 +29,13 @@
     <!-- OpenTK 3.3 is the last OpenTK, and its GLControl the last GLControl, that run on .NET Framework. -->
     <PackageReference Include="OpenTK" VersionOverride="3.3.3" />
     <PackageReference Include="OpenTK.GLControl" VersionOverride="3.3.3" />
-    <!-- The .NET 8 library APIs the shared code uses: spans, System.Text.Json (with its source generator), HashCode. -->
+    <!--
+      The .NET 8 library APIs the shared code uses: spans and System.Text.Json (with its source generator). HashCode is
+      Polyfills/HashCode.cs rather than Microsoft.Bcl.HashCode, whose assembly clashes with the older one many .NET
+      Framework applications already load.
+    -->
     <PackageReference Include="System.Memory" VersionOverride="4.6.3" />
     <PackageReference Include="System.Text.Json" VersionOverride="8.0.6" />
-    <PackageReference Include="Microsoft.Bcl.HashCode" VersionOverride="6.0.0" />
     <PackageReference Include="PolySharp" VersionOverride="1.15.0" PrivateAssets="all" />
   </ItemGroup>
 
