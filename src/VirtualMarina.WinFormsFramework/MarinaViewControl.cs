@@ -373,10 +373,14 @@ public sealed class MarinaViewControl : UserControl
         _modifierWatcher.Start();
     }
 
-    /// <summary>Stops watching the keyboard while there is no window; <see cref="OnHandleCreated"/> starts again.</summary>
+    /// <summary>
+    /// Stops watching the keyboard while there is no window (<see cref="OnHandleCreated"/> starts again), and lets go of
+    /// the renderer while the GL surface's own window is still whole: Windows destroys this window before its children.
+    /// </summary>
     protected override void OnHandleDestroyed(EventArgs e)
     {
         _modifierWatcher.Stop();
+        ReleaseRenderer();
         base.OnHandleDestroyed(e);
     }
 
@@ -589,11 +593,21 @@ public sealed class MarinaViewControl : UserControl
         _renderer = null;
 
         // Without a live context there is nothing to free: the resources went with it.
-        if (_glControl is { IsHandleCreated: true, IsDisposed: false } gl)
+        if (_glControl is not { IsHandleCreated: true, IsDisposed: false } gl) return;
+
+        try
         {
             gl.MakeCurrent();
-            renderer.Dispose();
         }
+        catch (GraphicsContextException)
+        {
+            // The window is already being torn down (closing the form destroys it from the top), and some drivers then
+            // refuse to make its context current. GLControl deletes that context straight after, and every buffer and
+            // program in it goes with it, so there is nothing left to free by hand, and nothing may be called without it.
+            return;
+        }
+
+        renderer.Dispose();
     }
 
     private void OnPopupChanged(object? sender, BerthPopupChangedEventArgs e) => Post(() =>
