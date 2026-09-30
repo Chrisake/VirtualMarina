@@ -17,8 +17,8 @@
   </PropertyGroup>
 
   <ItemGroup Label="Build">
-    <GlobalPackageReference Include="SonarAnalyzer.CSharp" Version="10.34.0.3385" />
-    <PackageVersion Include="MinVer" Version="7.0.0" />
+    <GlobalPackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" />
+    <PackageVersion Include="MinVer" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Libraries and apps">
@@ -35,7 +35,7 @@
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.assert" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
     <PackageVersion Include="CsCheck" Version="4.9.1" />
   </ItemGroup>
 </Project>
