@@ -13,7 +13,7 @@
 
   <PropertyGroup>
     <!-- The ASP.NET Core 8 servicing band; the Blazor packages have to move together. -->
-    <AspNetCoreVersion>8.0.31</AspNetCoreVersion>
+    <AspNetCoreVersion>8.0.32</AspNetCoreVersion>
   </PropertyGroup>
 
   <ItemGroup Label="Build">
